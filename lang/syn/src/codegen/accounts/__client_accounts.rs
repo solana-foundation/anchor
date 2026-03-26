@@ -166,7 +166,7 @@ pub fn generate(
         /// An internal, Anchor generated module. This is used (as an
         /// implementation detail), to generate a struct for a given
         /// `#[derive(Accounts)]` implementation, where each field is a Pubkey,
-        /// instead of an `AccountInfo`. This is useful for clients that want
+        /// instead of an `AccountView`. This is useful for clients that want
         /// to generate a list of accounts, without explicitly knowing the
         /// order all the fields should be in.
         ///

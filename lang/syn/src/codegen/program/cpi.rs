@@ -133,7 +133,7 @@ pub fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
     quote! {
         /// An Anchor generated module, providing a set of structs
         /// mirroring the structs deriving `Accounts`, where each field is
-        /// an `AccountInfo`. This is useful for CPI.
+        /// an `AccountView`. This is useful for CPI.
         pub mod accounts {
             #(#account_structs)*
         }

@@ -2,7 +2,7 @@
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::pinocchio_runtime::system_program;
@@ -14,7 +14,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-/// Wrapper around [`AccountInfo`](crate::pinocchio_runtime::account_info::AccountInfo)
+/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_info::AccountView)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -226,7 +226,7 @@ use std::ops::{Deref, DerefMut};
 #[derive(Clone)]
 pub struct Account<'info, T: AccountSerialize + AccountDeserialize + Clone> {
     account: T,
-    info: &'info AccountInfo,
+    info: &'info AccountView,
 }
 
 impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug for Account<'_, T> {
@@ -245,7 +245,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<'_, 
 }
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
-    pub(crate) fn new(info: &'a AccountInfo, account: T) -> Account<'a, T> {
+    pub(crate) fn new(info: &'a AccountView, account: T) -> Account<'a, T> {
         Self { info, account }
     }
 
@@ -311,7 +311,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
 
     /// Deserializes the given `info` into a `Account`.
     #[inline(never)]
-    pub fn try_from(info: &'a AccountInfo) -> Result<Account<'a, T>> {
+    pub fn try_from(info: &'a AccountView) -> Result<Account<'a, T>> {
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
@@ -328,7 +328,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// the account discriminator. Be careful when using this and avoid it if
     /// possible.
     #[inline(never)]
-    pub fn try_from_unchecked(info: &'a AccountInfo) -> Result<Account<'a, T>> {
+    pub fn try_from_unchecked(info: &'a AccountView) -> Result<Account<'a, T>> {
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
@@ -350,7 +350,7 @@ where
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -375,7 +375,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsEx
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
     for Account<'info, T>
 {
-    fn close(&self, sol_destination: AccountInfo) -> Result<()> {
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
         crate::common::close(self.to_account_info(), sol_destination)
     }
 }
@@ -396,15 +396,15 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Accoun
 impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
     for Account<'info, T>
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo>
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountView>
     for Account<'info, T>
 {
-    fn as_ref(&self) -> &AccountInfo {
+    fn as_ref(&self) -> &AccountView {
         self.info
     }
 }

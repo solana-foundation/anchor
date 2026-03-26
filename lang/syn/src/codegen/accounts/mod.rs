@@ -60,7 +60,7 @@ fn generics(accs: &AccountsStruct) -> ParsedGenerics {
         });
 
     let trait_lifetime = if all_account_info {
-        // Use 'static for AccountInfo-only structs since AccountInfo is Copy
+        // Use 'static for AccountView-only structs since AccountView is Copy
         syn::parse_str("'static").expect("Could not parse 'static lifetime")
     } else {
         accs.generics

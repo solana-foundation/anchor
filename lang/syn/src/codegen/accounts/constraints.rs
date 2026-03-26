@@ -384,7 +384,7 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
 
     quote! {
         {
-            let my_owner = AsRef::<AccountInfo>::as_ref(& #maybe_deref #ident).owner;
+            let my_owner = AsRef::<AccountView>::as_ref(& #maybe_deref #ident).owner;
             let owner_address = #owner_address;
             if my_owner != &owner_address {
                 return #error;
@@ -970,7 +970,7 @@ fn generate_constraint_init_group(
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
-                    let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner;
+                    let owner_program = AsRef::<AccountView>::as_ref(&#field).owner;
                     if !#if_needed || owner_program == &anchor_lang::pinocchio_runtime::system_program::ID {
                         // Define payer variable.
                         #payer_optional_check
@@ -1776,10 +1776,10 @@ fn generate_account_ref(field: &Field) -> proc_macro2::TokenStream {
 
     match &field.ty {
         Ty::AccountInfo => quote!(&#name),
-        Ty::Account(acc) if acc.boxed => quote!(AsRef::<AccountInfo>::as_ref(#name.as_ref())),
+        Ty::Account(acc) if acc.boxed => quote!(AsRef::<AccountView>::as_ref(#name.as_ref())),
         Ty::InterfaceAccount(acc) if acc.boxed => {
-            quote!(AsRef::<AccountInfo>::as_ref(#name.as_ref()))
+            quote!(AsRef::<AccountView>::as_ref(#name.as_ref()))
         }
-        _ => quote!(AsRef::<AccountInfo>::as_ref(&#name)),
+        _ => quote!(AsRef::<AccountView>::as_ref(&#name)),
     }
 }

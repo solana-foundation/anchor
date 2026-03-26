@@ -298,7 +298,7 @@ impl Field {
         let container_ty = self.container_ty();
         let inner_ty = match &self.ty {
             Ty::AccountInfo => quote! {
-                AccountInfo
+                AccountView
             },
             Ty::UncheckedAccount => quote! {
                 UncheckedAccount
@@ -512,7 +512,7 @@ impl Field {
     pub fn account_ty(&self) -> proc_macro2::TokenStream {
         match &self.ty {
             Ty::AccountInfo => quote! {
-                AccountInfo
+                AccountView
             },
             Ty::UncheckedAccount => quote! {
                 UncheckedAccount

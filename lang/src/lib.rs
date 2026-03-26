@@ -47,7 +47,7 @@ mod vec;
 mod lazy;
 
 pub use crate::bpf_upgradeable_state::*;
-pub use crate::pinocchio_runtime::account_info::{AccountInfo, Ref, RefMut};
+pub use crate::pinocchio_runtime::account_info::{AccountView, Ref, RefMut};
 pub use crate::pinocchio_runtime::instruction::AccountMeta;
 pub use crate::pinocchio_runtime::program_error::ProgramError;
 pub use crate::pinocchio_runtime::pubkey::Pubkey;
@@ -81,9 +81,9 @@ pub mod pinocchio_runtime {
 
     pub mod account_info {
         pub use pinocchio::account::*;
-        pub type AccountInfo = AccountView;
+        pub type AccountView = pinocchio::account::AccountView;
 
-        pub fn next_account_info<I: Iterator<Item = AccountInfo>>(
+        pub fn next_account_info<I: Iterator<Item = AccountView>>(
             iter: &mut I,
         ) -> Result<I::Item, pinocchio::error::ProgramError> {
             iter.next()
@@ -205,10 +205,8 @@ pub use idl::IdlBuild;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
-// Deprecated message for AccountInfo usage in Accounts struct
-#[deprecated(
-    note = "Use `UncheckedAccount` instead of `AccountInfo` for safer unchecked accounts."
-)]
+// Deprecated message for old account wrapper usage in Accounts struct.
+#[deprecated(note = "Use `UncheckedAccount` for safer unchecked account access.")]
 pub fn deprecated_account_info_usage() {}
 
 /// A data structure of validated accounts that can be deserialized from the
@@ -254,7 +252,7 @@ pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     /// so that it cannot be used again.
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -286,7 +284,7 @@ pub trait DuplicateMutableAccountKeys {
 /// The close procedure to initiate garabage collection of an account, allowing
 /// one to retrieve the rent exemption.
 pub trait AccountsClose<'info>: ToAccountInfos<'info> {
-    fn close(&self, sol_destination: AccountInfo) -> Result<()>;
+    fn close(&self, sol_destination: AccountView) -> Result<()>;
 }
 
 /// Transformation to
@@ -302,28 +300,28 @@ pub trait ToAccountMetas {
 }
 
 /// Transformation to
-/// [`AccountInfo`](../pinocchio_runtime/account_info/struct.AccountInfo.html)
+/// [`AccountView`](../pinocchio_runtime/account_info/struct.AccountView.html)
 /// structs.
 pub trait ToAccountInfos<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo>;
+    fn to_account_infos(&self) -> Vec<AccountView>;
 }
 
-/// Transformation to an `AccountInfo` struct.
+/// Transformation to an `AccountView` struct.
 pub trait ToAccountInfo<'info> {
-    fn to_account_info(&self) -> AccountInfo;
+    fn to_account_info(&self) -> AccountView;
 }
 
 impl<'info, T> ToAccountInfo<'info> for T
 where
-    T: AsRef<AccountInfo>,
+    T: AsRef<AccountView>,
 {
-    fn to_account_info(&self) -> AccountInfo {
+    fn to_account_info(&self) -> AccountView {
         *self.as_ref()
     }
 }
 
 /// Lamports related utility methods for accounts.
-pub trait Lamports<'info>: AsRef<AccountInfo> {
+pub trait Lamports<'info>: AsRef<AccountView> {
     /// Get the lamports of the account.
     fn get_lamports(&self) -> u64 {
         self.as_ref().lamports()
@@ -375,11 +373,11 @@ pub trait Lamports<'info>: AsRef<AccountInfo> {
     }
 }
 
-impl<'info, T: AsRef<AccountInfo>> Lamports<'info> for T {}
+impl<'info, T: AsRef<AccountView>> Lamports<'info> for T {}
 
 /// A data structure that can be serialized and stored into account storage,
 /// i.e. an
-/// [`AccountInfo`](../pinocchio_runtime/account_info/struct.AccountInfo.html#structfield.data)'s
+/// [`AccountView`](../pinocchio_runtime/account_info/struct.AccountView.html#structfield.data)'s
 /// mutable data slice.
 ///
 /// Implementors of this trait should ensure that any subsequent usage of the
@@ -397,7 +395,7 @@ pub trait AccountSerialize {
 
 /// A data structure that can be deserialized and stored into account storage,
 /// i.e. an
-/// [`AccountInfo`](../pinocchio_runtime/account_info/struct.AccountInfo.html#structfield.data)'s
+/// [`AccountView`](../pinocchio_runtime/account_info/struct.AccountView.html#structfield.data)'s
 /// mutable data slice.
 pub trait AccountDeserialize: Sized {
     /// Deserializes previously initialized account data. Should fail for all
@@ -567,7 +565,7 @@ pub mod prelude {
         ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     };
     // V2: Using pinocchio_runtime types
-    pub use crate::pinocchio_runtime::account_info::{next_account_info, AccountInfo};
+    pub use crate::pinocchio_runtime::account_info::{next_account_info, AccountView};
     pub use crate::pinocchio_runtime::instruction::AccountMeta;
     pub use crate::pinocchio_runtime::program_error::{ProgramError, ProgramResult};
     pub use crate::pinocchio_runtime::pubkey::Pubkey;

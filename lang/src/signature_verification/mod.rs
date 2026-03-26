@@ -10,7 +10,7 @@ pub use secp256k1::{verify_secp256k1_ix, verify_secp256k1_ix_with_instruction_in
 /// Loads the instruction currently executing in this transaction and verifies it
 /// as an Ed25519 signature instruction.
 pub fn verify_current_ed25519_instruction(
-    ix_sysvar: &AccountInfo,
+    ix_sysvar: &AccountView,
     pubkey: &[u8; 32],
     msg: &[u8],
     sig: &[u8; 64],
@@ -26,7 +26,7 @@ pub fn verify_current_ed25519_instruction(
 /// Loads the instruction currently executing in this transaction and verifies it
 /// as a Secp256k1 signature instruction.
 pub fn verify_current_secp256k1_instruction(
-    ix_sysvar: &AccountInfo,
+    ix_sysvar: &AccountView,
     eth_address: &[u8; 20],
     msg: &[u8],
     sig: &[u8; 64],

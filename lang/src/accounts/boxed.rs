@@ -13,7 +13,7 @@
 //! }
 //! ```
 
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas};
@@ -23,7 +23,7 @@ use std::ops::Deref;
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Box<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -39,7 +39,7 @@ impl<'info, T: AccountsExit<'info>> AccountsExit<'info> for Box<T> {
 }
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Box<T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         T::to_account_infos(self)
     }
 }
@@ -51,7 +51,7 @@ impl<T: ToAccountMetas> ToAccountMetas for Box<T> {
 }
 
 impl<'info, T: AccountsClose<'info>> AccountsClose<'info> for Box<T> {
-    fn close(&self, sol_destination: AccountInfo) -> Result<()> {
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
         T::close(self, sol_destination)
     }
 }

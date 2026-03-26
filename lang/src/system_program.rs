@@ -1,4 +1,4 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
 use crate::prelude::*;
 
@@ -16,9 +16,9 @@ impl anchor_lang::Id for System {
 
 #[derive(Accounts)]
 pub struct AdvanceNonceAccount {
-    pub nonce: AccountInfo,
-    pub authorized: AccountInfo,
-    pub recent_blockhashes: AccountInfo,
+    pub nonce: AccountView,
+    pub authorized: AccountView,
+    pub recent_blockhashes: AccountView,
 }
 pub fn advance_nonce_account(ctx: CpiContext<'_, '_, AdvanceNonceAccount>) -> Result<()> {
     let instruction = system_instruction::AdvanceNonceAccount {
@@ -34,7 +34,7 @@ pub fn advance_nonce_account(ctx: CpiContext<'_, '_, AdvanceNonceAccount>) -> Re
 
 #[derive(Accounts)]
 pub struct Allocate {
-    pub account_to_allocate: AccountInfo,
+    pub account_to_allocate: AccountView,
 }
 
 pub fn allocate(ctx: CpiContext<'_, '_, Allocate>, space: u64) -> Result<()> {
@@ -49,8 +49,8 @@ pub fn allocate(ctx: CpiContext<'_, '_, Allocate>, space: u64) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct AllocateWithSeed {
-    pub account_to_allocate: AccountInfo,
-    pub base: AccountInfo,
+    pub account_to_allocate: AccountView,
+    pub base: AccountView,
 }
 
 pub fn allocate_with_seed(
@@ -73,7 +73,7 @@ pub fn allocate_with_seed(
 
 #[derive(Accounts)]
 pub struct Assign {
-    pub account_to_assign: AccountInfo,
+    pub account_to_assign: AccountView,
 }
 
 pub fn assign(ctx: CpiContext<'_, '_, Assign>, owner: &Pubkey) -> Result<()> {
@@ -90,8 +90,8 @@ pub fn assign(ctx: CpiContext<'_, '_, Assign>, owner: &Pubkey) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct AssignWithSeed {
-    pub account_to_assign: AccountInfo,
-    pub base: AccountInfo,
+    pub account_to_assign: AccountView,
+    pub base: AccountView,
 }
 
 pub fn assign_with_seed(
@@ -112,8 +112,8 @@ pub fn assign_with_seed(
 
 #[derive(Accounts)]
 pub struct AuthorizeNonceAccount {
-    pub nonce: AccountInfo,
-    pub authorized: AccountInfo,
+    pub nonce: AccountView,
+    pub authorized: AccountView,
 }
 
 pub fn authorize_nonce_account(
@@ -133,8 +133,8 @@ pub fn authorize_nonce_account(
 
 #[derive(Accounts)]
 pub struct CreateAccount {
-    pub from: AccountInfo,
-    pub to: AccountInfo,
+    pub from: AccountView,
+    pub to: AccountView,
 }
 
 pub fn create_account(
@@ -157,9 +157,9 @@ pub fn create_account(
 
 #[derive(Accounts)]
 pub struct CreateAccountWithSeed {
-    pub from: AccountInfo,
-    pub to: AccountInfo,
-    pub base: AccountInfo,
+    pub from: AccountView,
+    pub to: AccountView,
+    pub base: AccountView,
 }
 
 pub fn create_account_with_seed(
@@ -185,10 +185,10 @@ pub fn create_account_with_seed(
 
 // #[derive(Accounts)]
 // pub struct CreateNonceAccount {
-//     pub from: AccountInfo,
-//     pub nonce: AccountInfo,
-//     pub recent_blockhashes: AccountInfo,
-//     pub rent: AccountInfo,
+//     pub from: AccountView,
+//     pub nonce: AccountView,
+//     pub recent_blockhashes: AccountView,
+//     pub rent: AccountView,
 // }
 
 // pub fn create_nonce_account(
@@ -210,11 +210,11 @@ pub fn create_account_with_seed(
 // }
 
 // pub struct CreateNonceAccountWithSeed {
-//     pub from: AccountInfo,
-//     pub nonce: AccountInfo,
-//     pub base: AccountInfo,
-//     pub recent_blockhashes: AccountInfo,
-//     pub rent: AccountInfo,
+//     pub from: AccountView,
+//     pub nonce: AccountView,
+//     pub base: AccountView,
+//     pub recent_blockhashes: AccountView,
+//     pub rent: AccountView,
 // }
 
 // pub fn create_nonce_account_with_seed(
@@ -239,10 +239,10 @@ pub fn create_account_with_seed(
 
 #[derive(Accounts)]
 pub struct InitializeNonceAccount {
-    pub nonce: AccountInfo,
-    pub base: AccountInfo,
-    pub recent_blockhashes: AccountInfo,
-    pub rent: AccountInfo,
+    pub nonce: AccountView,
+    pub base: AccountView,
+    pub recent_blockhashes: AccountView,
+    pub rent: AccountView,
 }
 
 pub fn initialize_nonce_account(
@@ -260,8 +260,8 @@ pub fn initialize_nonce_account(
 
 #[derive(Accounts)]
 pub struct Transfer {
-    pub from: AccountInfo,
-    pub to: AccountInfo,
+    pub from: AccountView,
+    pub to: AccountView,
 }
 
 pub fn transfer(ctx: CpiContext<'_, '_, Transfer>, lamports: u64) -> Result<()> {
@@ -277,9 +277,9 @@ pub fn transfer(ctx: CpiContext<'_, '_, Transfer>, lamports: u64) -> Result<()> 
 
 #[derive(Accounts)]
 pub struct TransferWithSeed {
-    pub from: AccountInfo,
-    pub base: AccountInfo,
-    pub to: AccountInfo,
+    pub from: AccountView,
+    pub base: AccountView,
+    pub to: AccountView,
 }
 
 pub fn transfer_with_seed(
@@ -304,11 +304,11 @@ pub fn transfer_with_seed(
 
 #[derive(Accounts)]
 pub struct WithdrawNonceAccount {
-    pub nonce: AccountInfo,
-    pub to: AccountInfo,
-    pub recent_blockhashes: AccountInfo,
-    pub rent: AccountInfo,
-    pub authorized: AccountInfo,
+    pub nonce: AccountView,
+    pub to: AccountView,
+    pub recent_blockhashes: AccountView,
+    pub rent: AccountView,
+    pub authorized: AccountView,
 }
 
 pub fn withdraw_nonce_account(

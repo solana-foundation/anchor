@@ -4,7 +4,7 @@ use std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc};
 
 use crate::{
     error::{Error, ErrorCode},
-    AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key, Owner,
+    AccountMeta, AccountSerialize, AccountView, Accounts, AccountsClose, Discriminator, Key, Owner,
     Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
 };
 
@@ -176,7 +176,7 @@ where
 {
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
-    pub __info: &'info AccountInfo,
+    pub __info: &'info AccountView,
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
     pub __account: Rc<RefCell<MaybeUninit<T>>>,
@@ -202,7 +202,7 @@ impl<'info, T> LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn new(info: &'info AccountInfo) -> LazyAccount<'info, T> {
+    fn new(info: &'info AccountView) -> LazyAccount<'info, T> {
         Self {
             __info: info,
             __account: Rc::new(RefCell::new(MaybeUninit::uninit())),
@@ -211,7 +211,7 @@ where
     }
 
     /// Check both the owner and the discriminator.
-    pub fn try_from(info: &'info AccountInfo) -> Result<LazyAccount<'info, T>> {
+    pub fn try_from(info: &'info AccountView) -> Result<LazyAccount<'info, T>> {
         let data = &info.try_borrow_data()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
@@ -227,7 +227,7 @@ where
     }
 
     /// Check the owner but **not** the discriminator.
-    pub fn try_from_unchecked(info: &'info AccountInfo) -> Result<LazyAccount<'info, T>> {
+    pub fn try_from_unchecked(info: &'info AccountView) -> Result<LazyAccount<'info, T>> {
         if info.owner() != &T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner(), T::owner())));
@@ -273,7 +273,7 @@ where
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -291,7 +291,7 @@ impl<'info, T> AccountsClose<'info> for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn close(&self, sol_destination: AccountInfo) -> Result<()> {
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
         crate::common::close(self.to_account_info(), sol_destination)
     }
 }
@@ -316,16 +316,16 @@ impl<'info, T> ToAccountInfos<'info> for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         vec![self.to_account_info()]
     }
 }
 
-impl<'info, T> AsRef<AccountInfo> for LazyAccount<'info, T>
+impl<'info, T> AsRef<AccountView> for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn as_ref(&self) -> &AccountInfo {
+    fn as_ref(&self) -> &AccountView {
         self.__info
     }
 }

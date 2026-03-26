@@ -2,7 +2,7 @@
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::account_info::AccountView;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::solana_program::system_program;
@@ -22,7 +22,7 @@ pub enum MigrationInner<From, To> {
     To(To),
 }
 
-/// Wrapper around [`AccountInfo`]
+/// Wrapper around [`AccountView`]
 /// that handles account schema migrations from one type to another.
 ///
 /// # Table of Contents
@@ -154,7 +154,7 @@ where
     To: AccountSerialize,
 {
     /// Account info reference
-    info: &'info AccountInfo,
+    info: &'info AccountView,
     /// Internal migration state
     inner: MigrationInner<From, To>,
 }
@@ -165,7 +165,7 @@ where
     To: AccountSerialize + Owner,
 {
     /// Creates a new Migration in the From (unmigrated) state.
-    fn new(info: &'info AccountInfo, account: From) -> Self {
+    fn new(info: &'info AccountView, account: From) -> Self {
         Self {
             info,
             inner: MigrationInner::From(account),
@@ -293,7 +293,7 @@ where
     /// Only accepts accounts in the `From` format. Accounts already in the `To`
     /// format will be rejected.
     #[inline(never)]
-    pub fn try_from(info: &'info AccountInfo) -> Result<Self> {
+    pub fn try_from(info: &'info AccountView) -> Result<Self> {
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
@@ -312,7 +312,7 @@ where
     ///
     /// **Warning:** Use with caution. This skips discriminator validation.
     #[inline(never)]
-    pub fn try_from_unchecked(info: &'info AccountInfo) -> Result<Self> {
+    pub fn try_from_unchecked(info: &'info AccountView) -> Result<Self> {
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
@@ -335,7 +335,7 @@ where
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -408,17 +408,17 @@ where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
 }
 
-impl<'info, From, To> AsRef<AccountInfo> for Migration<'info, From, To>
+impl<'info, From, To> AsRef<AccountView> for Migration<'info, From, To>
 where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn as_ref(&self) -> &AccountInfo {
+    fn as_ref(&self) -> &AccountView {
         self.info
     }
 }
@@ -573,7 +573,7 @@ mod tests {
         owner: &Pubkey,
         lamports: &mut u64,
         data: &mut [u8],
-    ) -> AccountInfo {
+    ) -> AccountView {
         let header_len = size_of::<RuntimeAccount>();
         let total = header_len + data.len();
         let storage = Box::leak(vec![0u8; total].into_boxed_slice());
@@ -596,7 +596,7 @@ mod tests {
                 storage.as_mut_ptr().add(header_len),
                 data.len(),
             );
-            AccountInfo::new_unchecked(header_ptr)
+            AccountView::new_unchecked(header_ptr)
         }
     }
 

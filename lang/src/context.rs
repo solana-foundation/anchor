@@ -2,7 +2,7 @@
 
 use pinocchio::cpi::Signer;
 
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, Bumps, ToAccountInfos, ToAccountMetas};
@@ -30,7 +30,7 @@ pub struct Context<'a, 'b, 'c, T: Bumps> {
     pub accounts: &'b mut T,
     /// Remaining accounts given but not deserialized or validated.
     /// Be very careful when using this directly.
-    pub remaining_accounts: &'c [AccountInfo],
+    pub remaining_accounts: &'c [AccountView],
     /// Bump seeds found during constraint validation. This is provided as a
     /// convenience so that handlers don't have to recalculate bump seeds or
     /// pass them in as arguments.
@@ -59,7 +59,7 @@ where
     pub fn new(
         program_id: &'a Pubkey,
         accounts: &'b mut T,
-        remaining_accounts: &'c [AccountInfo],
+        remaining_accounts: &'c [AccountView],
         bumps: T::Bumps,
     ) -> Self {
         Self {
@@ -175,7 +175,7 @@ where
     T: ToAccountMetas + ToAccountInfos<'static>,
 {
     pub accounts: T,
-    pub remaining_accounts: Vec<AccountInfo>,
+    pub remaining_accounts: Vec<AccountView>,
     pub program_id: Pubkey,
     pub signer_seeds: &'a [Signer<'a, 'b>],
 }
@@ -215,7 +215,7 @@ where
     }
 
     #[must_use]
-    pub fn with_remaining_accounts(mut self, ra: Vec<AccountInfo>) -> Self {
+    pub fn with_remaining_accounts(mut self, ra: Vec<AccountView>) -> Self {
         self.remaining_accounts = ra;
         self
     }
@@ -224,7 +224,7 @@ where
 impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
     for CpiContext<'_, '_, T>
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         let mut infos = self.accounts.to_account_infos();
         infos.extend_from_slice(&self.remaining_accounts);
         infos

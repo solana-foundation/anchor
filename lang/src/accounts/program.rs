@@ -1,7 +1,7 @@
 //! Type validating that the account is the given Program
 
 use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
@@ -95,7 +95,7 @@ use std::ops::Deref;
 ///
 #[derive(Clone)]
 pub struct Program<'info, T = ()> {
-    info: &'info AccountInfo,
+    info: &'info AccountView,
     _phantom: PhantomData<T>,
 }
 
@@ -106,7 +106,7 @@ impl<T: fmt::Debug> fmt::Debug for Program<'_, T> {
 }
 
 impl<'a, T> Program<'a, T> {
-    pub(crate) fn new(info: &'a AccountInfo) -> Program<'a, T> {
+    pub(crate) fn new(info: &'a AccountView) -> Program<'a, T> {
         Self {
             info,
             _phantom: PhantomData,
@@ -143,10 +143,10 @@ impl<'a, T> Program<'a, T> {
     }
 }
 
-impl<'a, T: Id> TryFrom<&'a AccountInfo> for Program<'a, T> {
+impl<'a, T: Id> TryFrom<&'a AccountView> for Program<'a, T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
-    fn try_from(info: &'a AccountInfo) -> Result<Self> {
+    fn try_from(info: &'a AccountView) -> Result<Self> {
         // Special handling for unit type () - only check executable, not program ID
         let is_unit_type = T::id() == Pubkey::default();
 
@@ -166,7 +166,7 @@ impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -194,19 +194,19 @@ impl<T> ToAccountMetas for Program<'_, T> {
 }
 
 impl<'info, T> ToAccountInfos<'info> for Program<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
 }
 
-impl<'info, T> AsRef<AccountInfo> for Program<'info, T> {
-    fn as_ref(&self) -> &AccountInfo {
+impl<'info, T> AsRef<AccountView> for Program<'info, T> {
+    fn as_ref(&self) -> &AccountView {
         self.info
     }
 }
 
 impl<'info, T> Deref for Program<'info, T> {
-    type Target = AccountInfo;
+    type Target = AccountView;
 
     fn deref(&self) -> &Self::Target {
         self.info
