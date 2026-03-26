@@ -391,7 +391,7 @@ where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
         let meta = match (self.info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.info.address()),
@@ -409,7 +409,7 @@ where
     To: AccountSerialize,
 {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![self.info.clone()]
+        vec![*self.info]
     }
 }
 
@@ -474,7 +474,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED};
     use crate::{AnchorDeserialize, AnchorSerialize, Discriminator};
+    use std::mem::size_of;
+    use std::ptr;
 
     const TEST_DISCRIMINATOR_V1: [u8; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
     const TEST_DISCRIMINATOR_V2: [u8; 8] = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -565,13 +568,36 @@ mod tests {
         }
     }
 
-    fn create_account_info<'a>(
-        key: &'a Pubkey,
-        owner: &'a Pubkey,
-        lamports: &'a mut u64,
-        data: &'a mut [u8],
-    ) -> AccountInfo<'a> {
-        AccountInfo::new(key, false, true, lamports, data, owner, false)
+    fn create_account_info(
+        key: &Pubkey,
+        owner: &Pubkey,
+        lamports: &mut u64,
+        data: &mut [u8],
+    ) -> AccountInfo {
+        let header_len = size_of::<RuntimeAccount>();
+        let total = header_len + data.len();
+        let storage = Box::leak(vec![0u8; total].into_boxed_slice());
+        let header_ptr = storage.as_mut_ptr().cast::<RuntimeAccount>();
+        let acc = RuntimeAccount {
+            borrow_state: NOT_BORROWED,
+            is_signer: 0,
+            is_writable: 1,
+            executable: 0,
+            padding: [0; 4],
+            address: *key,
+            owner: *owner,
+            lamports: *lamports,
+            data_len: data.len() as u64,
+        };
+        unsafe {
+            ptr::write(header_ptr, acc);
+            ptr::copy_nonoverlapping(
+                data.as_ptr(),
+                storage.as_mut_ptr().add(header_len),
+                data.len(),
+            );
+            AccountInfo::new_unchecked(header_ptr)
+        }
     }
 
     // Verifies that a freshly deserialized Migration account reports

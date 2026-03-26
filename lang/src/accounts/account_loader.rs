@@ -120,7 +120,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     pub fn try_from(acc_info: &'info AccountInfo) -> Result<AccountLoader<'info, T>> {
         if acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *acc_info.owner() }, T::owner())));
+                .with_pubkeys((*acc_info.owner(), T::owner())));
         }
 
         let data = &acc_info.try_borrow()?;
@@ -145,7 +145,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     ) -> Result<AccountLoader<'info, T>> {
         if acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *acc_info.owner() }, T::owner())));
+                .with_pubkeys((*acc_info.owner(), T::owner())));
         }
         Ok(AccountLoader::new(acc_info))
     }
@@ -257,7 +257,7 @@ impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T
 }
 
 impl<T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.acc_info.is_signer());
         let meta = match (self.acc_info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.acc_info.address()),
