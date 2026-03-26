@@ -181,7 +181,7 @@ impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
 }
 
 impl<T> ToAccountMetas for Program<'_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
         let meta = match (self.info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.info.address()),
@@ -217,7 +217,7 @@ impl<'info, T: AccountDeserialize> AccountsExit<'info> for Program<'info, T> {}
 
 impl<T: AccountDeserialize> Key for Program<'_, T> {
     fn key(&self) -> Pubkey {
-        self.info.address().clone()
+        *self.info.address()
     }
 }
 

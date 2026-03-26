@@ -48,9 +48,10 @@ mod vec;
 mod lazy;
 
 pub use crate::bpf_upgradeable_state::*;
-use crate::pinocchio_runtime::{
-    account_info::*, instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey,
-};
+pub use crate::pinocchio_runtime::account_info::{AccountInfo, Ref, RefMut};
+pub use crate::pinocchio_runtime::instruction::AccountMeta;
+pub use crate::pinocchio_runtime::program_error::ProgramError;
+pub use crate::pinocchio_runtime::pubkey::Pubkey;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
 pub use anchor_attribute_constant::constant;
@@ -82,7 +83,7 @@ pub mod pinocchio_runtime {
         pub use pinocchio::account::*;
         pub type AccountInfo = AccountView;
 
-        pub fn next_account_info<'a, 'b, I: Iterator<Item = AccountInfo>>(
+        pub fn next_account_info<I: Iterator<Item = AccountInfo>>(
             iter: &mut I,
         ) -> Result<I::Item, pinocchio::error::ProgramError> {
             iter.next()
@@ -392,7 +393,7 @@ pub trait ToAccountMetas {
     /// a transaction from a client to another program but sign the transaction
     /// before the relay. The client cannot mark the field as a signer, and so
     /// we have to override the is_signer meta field given by the client.
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta>;
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>>;
 }
 
 /// Transformation to

@@ -175,7 +175,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, T> {
     fn new(info: &'a AccountInfo, account: T) -> Self {
-        let owner = unsafe { *info.owner() };
+        let owner = *info.owner();
         Self {
             account: Account::new(info, account),
             owner,
@@ -198,7 +198,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
         // Enforce owner stability: must match the one validated at construction.
         if !info.owned_by(&self.owner) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *info.owner() }, self.owner)));
+                .with_pubkeys((*info.owner(), self.owner)));
         }
 
         // Re-deserialize fresh data into the inner account.
@@ -254,7 +254,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        T::check_owner(&unsafe { *info.owner() })?;
+        T::check_owner(info.owner())?;
         let mut data: &[u8] = &info.try_borrow()?;
         Ok(Self::new(info, T::try_deserialize_unchecked(&mut data)?))
     }
@@ -298,7 +298,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'inf
 }
 
 impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for InterfaceAccount<'_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         self.account.to_account_metas(is_signer)
     }
 }

@@ -296,7 +296,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
     /// This method also re-validates that the program owner has not
     /// changed since the initial validation
     pub fn reload(&mut self) -> Result<()> {
-        let owner_pubkey = *unsafe { self.info.owner() };
+        let owner_pubkey = *self.info.owner();
         if owner_pubkey != T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((owner_pubkey, T::owner())));
@@ -316,7 +316,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
         }
         if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *info.owner() }, T::owner())));
+                .with_pubkeys((*info.owner(), T::owner())));
         }
         let data = info.try_borrow()?;
         let mut data: &[u8] = &data;
@@ -333,7 +333,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
         }
         if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((unsafe { *info.owner() }, T::owner())));
+                .with_pubkeys((*info.owner(), T::owner())));
         }
         let data = info.try_borrow()?;
         let mut data: &[u8] = &data;
@@ -380,7 +380,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'inf
 }
 
 impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Account<'_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
         let meta = match (self.info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(self.info.address()),
@@ -396,7 +396,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'in
     for Account<'info, T>
 {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![self.info.clone()]
+        vec![*self.info]
     }
 }
 
@@ -435,6 +435,6 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, 
 
 impl<T: AccountSerialize + AccountDeserialize + Clone> Key for Account<'_, T> {
     fn key(&self) -> Pubkey {
-        self.info.address().clone()
+        *self.info.address()
     }
 }

@@ -476,14 +476,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        crate::{
-            pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED},
-            AnchorDeserialize, AnchorSerialize, Discriminator,
-        },
-        std::{mem::size_of, ptr},
-    };
+    use super::*;
+    use crate::pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED};
+    use crate::{AnchorDeserialize, AnchorSerialize, Discriminator};
+    use std::mem::size_of;
+    use std::ptr;
 
     const TEST_DISCRIMINATOR_V1: [u8; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
     const TEST_DISCRIMINATOR_V2: [u8; 8] = [8, 7, 6, 5, 4, 3, 2, 1];
