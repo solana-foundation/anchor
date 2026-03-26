@@ -1,21 +1,21 @@
-//! Explicit wrapper for AccountInfo types to emphasize
+//! Explicit wrapper for AccountView types to emphasize
 //! that no checks are performed
 
 use crate::error::ErrorCode;
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
 use std::collections::BTreeSet;
 use std::ops::Deref;
 
-/// Explicit wrapper for AccountInfo types to emphasize
+/// Explicit wrapper for AccountView types to emphasize
 /// that no checks are performed
 #[derive(Debug, Clone)]
-pub struct UncheckedAccount<'info>(&'info AccountInfo);
+pub struct UncheckedAccount<'info>(&'info AccountView);
 
 impl<'info> UncheckedAccount<'info> {
-    pub fn try_from(acc_info: &'info AccountInfo) -> Self {
+    pub fn try_from(acc_info: &'info AccountView) -> Self {
         Self(acc_info)
     }
 }
@@ -23,7 +23,7 @@ impl<'info> UncheckedAccount<'info> {
 impl<'info, B> Accounts<'info, B> for UncheckedAccount<'info> {
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -51,21 +51,21 @@ impl ToAccountMetas for UncheckedAccount<'_> {
 }
 
 impl<'info> ToAccountInfos<'info> for UncheckedAccount<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.0]
     }
 }
 
 impl<'info> AccountsExit<'info> for UncheckedAccount<'info> {}
 
-impl<'info> AsRef<AccountInfo> for UncheckedAccount<'info> {
-    fn as_ref(&self) -> &AccountInfo {
+impl<'info> AsRef<AccountView> for UncheckedAccount<'info> {
+    fn as_ref(&self) -> &AccountView {
         self.0
     }
 }
 
 impl<'info> Deref for UncheckedAccount<'info> {
-    type Target = AccountInfo;
+    type Target = AccountView;
 
     fn deref(&self) -> &Self::Target {
         self.0

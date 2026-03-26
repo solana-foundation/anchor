@@ -36,9 +36,17 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
+        /// Anchor's generated entrypoint accepts [`AccountView`] values directly.
+        ///
+        /// The custom-entrypoint escape hatch documented in the performance section may still
+        /// receive `&[AccountInfo]` from the Solana runtime. In that case, wrap at the boundary
+        /// into `AccountView` before calling Anchor dispatch.
+        ///
+        /// This keeps all user-facing Anchor traits/structs/codegen on `AccountView` while still
+        /// supporting runtime compatibility at the outermost entrypoint edge.
         pub fn entry(
             program_id: &anchor_lang::pinocchio_runtime::pubkey::Pubkey,
-            accounts: &mut [AccountInfo],
+            accounts: &mut [AccountView],
             data: &[u8],
         ) -> core::result::Result<(), anchor_lang::pinocchio_runtime::program_error::ProgramError> {
             try_entry(program_id, accounts, data).map_err(|e| {
@@ -47,7 +55,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             })
         }
 
-        fn try_entry(program_id: &Pubkey, accounts: &mut [AccountInfo], data: &[u8]) -> anchor_lang::Result<()> {
+        fn try_entry(program_id: &Pubkey, accounts: &mut [AccountView], data: &[u8]) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");

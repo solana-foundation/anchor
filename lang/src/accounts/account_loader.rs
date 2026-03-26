@@ -1,6 +1,6 @@
 //! Type facilitating on demand zero copy deserialization.
 
-use crate::pinocchio_runtime::account_info::{AccountInfo, Ref, RefMut};
+use crate::pinocchio_runtime::account_info::{AccountView, Ref, RefMut};
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
@@ -79,7 +79,7 @@ use std::mem;
 ///     bar: AccountLoader<'info, Bar>,
 ///     #[account(mut)]
 ///     authority: Signer<'info>,
-///     system_program: AccountInfo<'info>,
+///     system_program: AccountView<'info>,
 /// }
 ///
 /// #[derive(Accounts)]
@@ -94,7 +94,7 @@ use std::mem;
 /// ```
 #[derive(Clone)]
 pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
-    acc_info: &'info AccountInfo,
+    acc_info: AccountView,
     phantom: PhantomData<&'info T>,
 }
 
@@ -108,16 +108,16 @@ impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
-    fn new(acc_info: &'info AccountInfo) -> AccountLoader<'info, T> {
+    fn new(acc_info: &'info AccountView) -> AccountLoader<'info, T> {
         Self {
-            acc_info,
+            acc_info: *acc_info,
             phantom: PhantomData,
         }
     }
 
     /// Constructs a new `Loader` from a previously initialized account.
     #[inline(never)]
-    pub fn try_from(acc_info: &'info AccountInfo) -> Result<AccountLoader<'info, T>> {
+    pub fn try_from(acc_info: &'info AccountView) -> Result<AccountLoader<'info, T>> {
         if !acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*acc_info.owner(), T::owner())));
@@ -141,7 +141,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     #[inline(never)]
     pub fn try_from_unchecked(
         _program_id: &Pubkey,
-        acc_info: &'info AccountInfo,
+        acc_info: &'info AccountView,
     ) -> Result<AccountLoader<'info, T>> {
         if !acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
@@ -168,8 +168,8 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }))
     }
     /// Returns a `RefMut` to the account data structure for reading or writing.
-    pub fn load_mut(&self) -> Result<RefMut<'_, T>> {
-        // AccountInfo api allows you to borrow mut even if the account isn't
+    pub fn load_mut(&mut self) -> Result<RefMut<'_, T>> {
+        // AccountView api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable() {
             return Err(ErrorCode::AccountNotMutable.into());
@@ -193,8 +193,8 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
     /// Should only be called once, when the account is being initialized.
-    pub fn load_init(&self) -> Result<RefMut<'_, T>> {
-        // AccountInfo api allows you to borrow mut even if the account isn't
+    pub fn load_init(&mut self) -> Result<RefMut<'_, T>> {
+        // AccountView api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
         if !self.acc_info.is_writable() {
             return Err(ErrorCode::AccountNotMutable.into());
@@ -220,7 +220,7 @@ impl<'info, B, T: ZeroCopy + Owner> Accounts<'info, B> for AccountLoader<'info, 
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -239,8 +239,9 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
     // The account *cannot* be loaded when this is called.
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
         // Only persist if the owner is the current program and the account is not closed.
-        if &T::owner() == program_id && !crate::common::is_closed(self.acc_info) {
-            let mut data = self.acc_info.try_borrow_mut()?;
+        if &T::owner() == program_id && !crate::common::is_closed(&self.acc_info) {
+            let mut acc_info = self.acc_info;
+            let mut data = acc_info.try_borrow_mut()?;
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
             writer.write_all(T::DISCRIMINATOR).unwrap();
@@ -250,7 +251,7 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T> {
-    fn close(&self, sol_destination: AccountInfo) -> Result<()> {
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
         crate::common::close(self.to_account_info(), sol_destination)
     }
 }
@@ -268,15 +269,15 @@ impl<T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'_, T> {
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> AsRef<AccountInfo> for AccountLoader<'info, T> {
-    fn as_ref(&self) -> &AccountInfo {
-        self.acc_info
+impl<'info, T: ZeroCopy + Owner> AsRef<AccountView> for AccountLoader<'info, T> {
+    fn as_ref(&self) -> &AccountView {
+        &self.acc_info
     }
 }
 
 impl<'info, T: ZeroCopy + Owner> ToAccountInfos<'info> for AccountLoader<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
-        vec![*self.acc_info]
+    fn to_account_infos(&self) -> Vec<AccountView> {
+        vec![self.acc_info]
     }
 }
 

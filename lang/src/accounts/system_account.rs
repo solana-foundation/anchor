@@ -12,16 +12,16 @@ use std::ops::Deref;
 /// - `SystemAccount.info.owner == SystemProgram`
 #[derive(Debug, Clone)]
 pub struct SystemAccount<'info> {
-    info: &'info AccountInfo,
+    info: &'info AccountView,
 }
 
 impl<'info> SystemAccount<'info> {
-    fn new(info: &'info AccountInfo) -> SystemAccount<'info> {
+    fn new(info: &'info AccountView) -> SystemAccount<'info> {
         Self { info }
     }
 
     #[inline(never)]
-    pub fn try_from(info: &'info AccountInfo) -> Result<SystemAccount<'info>> {
+    pub fn try_from(info: &'info AccountView) -> Result<SystemAccount<'info>> {
         if !info.owned_by(&system_program::ID) {
             return Err(ErrorCode::AccountNotSystemOwned.into());
         }
@@ -33,7 +33,7 @@ impl<'info, B> Accounts<'info, B> for SystemAccount<'info> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -63,19 +63,19 @@ impl ToAccountMetas for SystemAccount<'_> {
 }
 
 impl<'info> ToAccountInfos<'info> for SystemAccount<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
 }
 
-impl<'info> AsRef<AccountInfo> for SystemAccount<'info> {
-    fn as_ref(&self) -> &AccountInfo {
+impl<'info> AsRef<AccountView> for SystemAccount<'info> {
+    fn as_ref(&self) -> &AccountView {
         self.info
     }
 }
 
 impl<'info> Deref for SystemAccount<'info> {
-    type Target = AccountInfo;
+    type Target = AccountView;
 
     fn deref(&self) -> &Self::Target {
         self.info

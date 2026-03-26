@@ -1,6 +1,6 @@
 //! Type validating that the account signed the transaction
 use crate::error::ErrorCode;
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
@@ -36,17 +36,17 @@ use std::ops::Deref;
 /// When creating an account with `init`, the `payer` needs to sign the transaction.
 #[derive(Debug, Clone)]
 pub struct Signer<'info> {
-    info: &'info AccountInfo,
+    info: &'info AccountView,
 }
 
 impl<'info> Signer<'info> {
-    fn new(info: &'info AccountInfo) -> Signer<'info> {
+    fn new(info: &'info AccountView) -> Signer<'info> {
         Self { info }
     }
 
     /// Deserializes the given `info` into a `Signer`.
     #[inline(never)]
-    pub fn try_from(info: &'info AccountInfo) -> Result<Signer<'info>> {
+    pub fn try_from(info: &'info AccountView) -> Result<Signer<'info>> {
         if !info.is_signer() {
             return Err(ErrorCode::AccountNotSigner.into());
         }
@@ -58,7 +58,7 @@ impl<'info, B> Accounts<'info, B> for Signer<'info> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -88,19 +88,19 @@ impl ToAccountMetas for Signer<'_> {
 }
 
 impl<'info> ToAccountInfos<'info> for Signer<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
 }
 
-impl<'info> AsRef<AccountInfo> for Signer<'info> {
-    fn as_ref(&self) -> &AccountInfo {
+impl<'info> AsRef<AccountView> for Signer<'info> {
+    fn as_ref(&self) -> &AccountView {
         self.info
     }
 }
 
 impl<'info> Deref for Signer<'info> {
-    type Target = AccountInfo;
+    type Target = AccountView;
 
     fn deref(&self) -> &Self::Target {
         self.info
