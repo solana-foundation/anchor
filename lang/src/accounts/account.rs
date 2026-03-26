@@ -392,9 +392,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Accoun
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
-    for Account<'info, T>
-{
+impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos for Account<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }

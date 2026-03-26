@@ -312,7 +312,7 @@ where
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for LazyAccount<'info, T>
+impl<'info, T> ToAccountInfos for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {

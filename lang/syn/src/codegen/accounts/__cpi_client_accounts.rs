@@ -216,7 +216,7 @@ pub fn generate(
             }
 
             #[automatically_derived]
-            impl anchor_lang::ToAccountInfos<'static> for #name #generics {
+            impl anchor_lang::ToAccountInfos for #name #generics {
                 fn to_account_infos(&self) -> Vec<anchor_lang::pinocchio_runtime::account_info::AccountView> {
                     let mut account_infos = vec![];
                     #(#account_struct_infos)*

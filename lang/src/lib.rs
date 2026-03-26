@@ -232,7 +232,7 @@ pub fn deprecated_account_info_usage() {}
 ///     pub pda_1: u8,
 /// }
 /// ```
-pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos<'info> + Sized {
+pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos + Sized {
     /// Returns the validated accounts struct. What constitutes "valid" is
     /// program dependent. However, users of these types should never have to
     /// worry about account substitution attacks. For example, if a program
@@ -261,7 +261,7 @@ pub trait Bumps {
 
 /// The exit procedure for an account. Any cleanup or persistence to storage
 /// should be done here.
-pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
+pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos {
     /// `program_id` is the currently executing program.
     fn exit(&self, _program_id: &Pubkey) -> Result<()> {
         // no-op
@@ -271,7 +271,7 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
 
 /// The close procedure to initiate garabage collection of an account, allowing
 /// one to retrieve the rent exemption.
-pub trait AccountsClose<'info>: ToAccountInfos<'info> {
+pub trait AccountsClose<'info>: ToAccountInfos {
     fn close(&self, sol_destination: AccountView) -> Result<()>;
 }
 
@@ -290,16 +290,16 @@ pub trait ToAccountMetas {
 /// Transformation to
 /// [`AccountView`](../pinocchio_runtime/account_info/struct.AccountView.html)
 /// structs.
-pub trait ToAccountInfos<'info> {
+pub trait ToAccountInfos {
     fn to_account_infos(&self) -> Vec<AccountView>;
 }
 
 /// Transformation to an `AccountView` struct.
-pub trait ToAccountInfo<'info> {
+pub trait ToAccountInfo {
     fn to_account_info(&self) -> AccountView;
 }
 
-impl<'info, T> ToAccountInfo<'info> for T
+impl<T> ToAccountInfo for T
 where
     T: AsRef<AccountView>,
 {
@@ -309,7 +309,7 @@ where
 }
 
 /// Lamports related utility methods for accounts.
-pub trait Lamports<'info>: AsRef<AccountView> {
+pub trait Lamports: AsRef<AccountView> {
     /// Get the lamports of the account.
     fn get_lamports(&self) -> u64 {
         self.as_ref().lamports()
@@ -359,7 +359,7 @@ pub trait Lamports<'info>: AsRef<AccountView> {
     }
 }
 
-impl<'info, T: AsRef<AccountView>> Lamports<'info> for T {}
+impl<T: AsRef<AccountView>> Lamports for T {}
 
 /// A data structure that can be serialized and stored into account storage,
 /// i.e. an

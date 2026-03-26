@@ -129,7 +129,7 @@ impl<T> ToAccountMetas for Interface<'_, T> {
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for Interface<'info, T> {
+impl<'info, T> ToAccountInfos for Interface<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         self.0.to_account_infos()
     }

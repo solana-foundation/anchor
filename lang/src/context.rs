@@ -172,7 +172,7 @@ where
 /// ```
 pub struct CpiContext<'a, 'b, T>
 where
-    T: ToAccountMetas + ToAccountInfos<'static>,
+    T: ToAccountMetas + ToAccountInfos,
 {
     pub accounts: T,
     pub remaining_accounts: Vec<AccountView>,
@@ -182,7 +182,7 @@ where
 
 impl<'a, 'b, T> CpiContext<'a, 'b, T>
 where
-    T: ToAccountMetas + ToAccountInfos<'static>,
+    T: ToAccountMetas + ToAccountInfos,
 {
     #[must_use]
     pub fn new(program_id: Pubkey, accounts: T) -> Self {
@@ -221,9 +221,7 @@ where
     }
 }
 
-impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
-    for CpiContext<'_, '_, T>
-{
+impl<T: ToAccountInfos + ToAccountMetas> ToAccountInfos for CpiContext<'_, '_, T> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         let mut infos = self.accounts.to_account_infos();
         infos.extend_from_slice(&self.remaining_accounts);
@@ -231,7 +229,7 @@ impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
     }
 }
 
-impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T> {
+impl<T: ToAccountInfos + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let mut metas = self.accounts.to_account_metas(is_signer);
         metas.append(
