@@ -35,7 +35,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 AccountField::Field(f) => {
                     // `init` and `zero` accounts are special cased as they are
                     // deserialized by constraints. Here, we just take out the
-                    // AccountInfo for later use at constraint validation time.
+                    // AccountView for later use at constraint validation time.
                     if is_init(af) || f.constraints.zeroed.is_some()  {
                         let name = &f.ident;
                         // Optional accounts have slightly different behavior here and
@@ -73,7 +73,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         let name = f.ident.to_string();
                         let typed_name = f.typed_ident();
 
-                        // Generate the deprecation call if it is an AccountInfo
+                        // Generate the deprecation call if it is an AccountView
                         let warning = if matches!(f.ty, Ty::AccountInfo) {
                             quote_spanned! { f.ty_span =>
                                 ::anchor_lang::deprecated_account_info_usage();
@@ -237,7 +237,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             #[inline(never)]
             fn try_accounts(
                 __program_id: &anchor_lang::pinocchio_runtime::pubkey::Pubkey,
-                __accounts: &mut &#trait_generics [anchor_lang::pinocchio_runtime::account_info::AccountInfo],
+                __accounts: &mut &#trait_generics [anchor_lang::pinocchio_runtime::account_info::AccountView],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
                 __reallocs: &mut std::collections::BTreeSet<anchor_lang::pinocchio_runtime::pubkey::Pubkey>,

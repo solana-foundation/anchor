@@ -102,7 +102,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 #[inline(never)]
                 pub fn #ix_method_name(
                     __program_id: &Pubkey,
-                    __accounts: &mut [AccountInfo],
+                    __accounts: &mut [AccountView],
                     __ix_data: &[u8],
                 ) -> anchor_lang::Result<()> {
                     #[cfg(not(feature = "no-log-ix-name"))]
@@ -120,7 +120,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     let mut __reallocs = std::collections::BTreeSet::new();
 
                     // Deserialize accounts.
-                    let mut __remaining_accounts: &[AccountInfo] = __accounts;
+                    let mut __remaining_accounts: &[AccountView] = __accounts;
                     let mut __accounts = #anchor::try_accounts(
                         __program_id,
                         &mut __remaining_accounts,
@@ -184,7 +184,7 @@ fn generate_event_cpi_mod() -> proc_macro2::TokenStream {
                 #[inline(never)]
                 pub fn __event_dispatch(
                     program_id: &Pubkey,
-                    accounts: &[AccountInfo],
+                    accounts: &[AccountView],
                     event_data: &[u8],
                 ) -> anchor_lang::Result<()> {
                     let given_event_authority = next_account_info(&mut accounts.iter())?;

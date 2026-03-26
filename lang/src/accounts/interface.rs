@@ -2,7 +2,7 @@
 
 use crate::accounts::program::Program;
 use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{
@@ -75,17 +75,17 @@ use std::ops::Deref;
 #[derive(Clone)]
 pub struct Interface<'info, T>(Program<'info, T>);
 impl<'a, T> Interface<'a, T> {
-    pub(crate) fn new(info: &'a AccountInfo) -> Self {
+    pub(crate) fn new(info: &'a AccountView) -> Self {
         Self(Program::new(info))
     }
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
         self.0.programdata_address()
     }
 }
-impl<'a, T: CheckId> TryFrom<&'a AccountInfo> for Interface<'a, T> {
+impl<'a, T: CheckId> TryFrom<&'a AccountView> for Interface<'a, T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
-    fn try_from(info: &'a AccountInfo) -> Result<Self> {
+    fn try_from(info: &'a AccountView) -> Result<Self> {
         T::check_id(info.address())?;
         if !info.executable() {
             return Err(ErrorCode::InvalidProgramExecutable.into());
@@ -94,13 +94,13 @@ impl<'a, T: CheckId> TryFrom<&'a AccountInfo> for Interface<'a, T> {
     }
 }
 impl<'info, T> Deref for Interface<'info, T> {
-    type Target = AccountInfo;
+    type Target = AccountView;
     fn deref(&self) -> &Self::Target {
         self.0.as_ref()
     }
 }
-impl<'info, T> AsRef<AccountInfo> for Interface<'info, T> {
-    fn as_ref(&self) -> &AccountInfo {
+impl<'info, T> AsRef<AccountView> for Interface<'info, T> {
+    fn as_ref(&self) -> &AccountView {
         self.0.as_ref()
     }
 }
@@ -109,7 +109,7 @@ impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -130,7 +130,7 @@ impl<T> ToAccountMetas for Interface<'_, T> {
 }
 
 impl<'info, T> ToAccountInfos<'info> for Interface<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         self.0.to_account_infos()
     }
 }

@@ -6,7 +6,7 @@ use quote::quote;
 
 // Generates the private `__cpi_client_accounts` mod implementation, containing
 // a generated struct mapping 1-1 to the `Accounts` struct, except with
-// `AccountInfo`s as the types. This is generated for CPI clients.
+// `AccountView`s as the types. This is generated for CPI clients.
 pub fn generate(
     accs: &AccountsStruct,
     program_id: proc_macro2::TokenStream,
@@ -66,12 +66,12 @@ pub fn generate(
                 if f.is_optional {
                     quote! {
                         #docs
-                        pub #name: Option<anchor_lang::pinocchio_runtime::account_info::AccountInfo>
+                        pub #name: Option<anchor_lang::pinocchio_runtime::account_info::AccountView>
                     }
                 } else {
                     quote! {
                         #docs
-                        pub #name: anchor_lang::pinocchio_runtime::account_info::AccountInfo
+                        pub #name: anchor_lang::pinocchio_runtime::account_info::AccountView
                     }
                 }
             }
@@ -102,7 +102,7 @@ pub fn generate(
                 if f.is_optional {
                     quote! {
                         if let Some(#name) = &self.#name {
-                            // For AccountInfo, use address() which returns &Pubkey directly
+                            // For AccountView, use address() which returns &Pubkey directly
                             let account_ref = #name;
                             let meta = match (#is_mutable, #is_signer) {
                                 (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(account_ref.address()),
@@ -117,7 +117,7 @@ pub fn generate(
                     }
                 } else {
                     quote! {
-                        // For AccountInfo, use address() which returns &Pubkey directly
+                        // For AccountView, use address() which returns &Pubkey directly
                         let account_ref = &self.#name;
                         let meta = match (#is_mutable, #is_signer) {
                             (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(account_ref.address()),
@@ -173,7 +173,7 @@ pub fn generate(
             .collect()
     };
     // Check if there are any composite fields (which need lifetimes)
-    // Regular fields are always AccountInfo in this module, so they don't need lifetimes
+    // Regular fields are always AccountView in this module, so they don't need lifetimes
     let has_composite_fields = accs
         .fields
         .iter()
@@ -192,7 +192,7 @@ pub fn generate(
         /// An internal, Anchor generated module. This is used (as an
         /// implementation detail), to generate a CPI struct for a given
         /// `#[derive(Accounts)]` implementation, where each field is an
-        /// AccountInfo.
+        /// AccountView.
         ///
         /// To access the struct in this module, one should use the sibling
         /// [`cpi::accounts`] module (also generated), which re-exports this.
@@ -217,7 +217,7 @@ pub fn generate(
 
             #[automatically_derived]
             impl anchor_lang::ToAccountInfos<'static> for #name #generics {
-                fn to_account_infos(&self) -> Vec<anchor_lang::pinocchio_runtime::account_info::AccountInfo> {
+                fn to_account_infos(&self) -> Vec<anchor_lang::pinocchio_runtime::account_info::AccountView> {
                     let mut account_infos = vec![];
                     #(#account_struct_infos)*
                     account_infos

@@ -1,6 +1,6 @@
 //! Type validating that the account is a sysvar and deserializing it
 
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::pinocchio_runtime::sysvars::Sysvar as SolanaSysvar;
@@ -30,7 +30,7 @@ use std::ops::{Deref, DerefMut};
 /// }
 /// ```
 pub struct Sysvar<'info, T: SolanaSysvar> {
-    info: &'info AccountInfo,
+    info: &'info AccountView,
     account: T,
 }
 
@@ -50,13 +50,13 @@ impl<T: SolanaSysvar> ToAccountMetas for Sysvar<'_, T> {
 }
 
 impl<'info, T: SolanaSysvar> ToAccountInfos<'info> for Sysvar<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
 }
 
-impl<'info, T: SolanaSysvar> AsRef<AccountInfo> for Sysvar<'info, T> {
-    fn as_ref(&self) -> &AccountInfo {
+impl<'info, T: SolanaSysvar> AsRef<AccountView> for Sysvar<'info, T> {
+    fn as_ref(&self) -> &AccountView {
         self.info
     }
 }

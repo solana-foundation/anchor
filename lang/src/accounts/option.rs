@@ -10,7 +10,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 
@@ -21,7 +21,7 @@ use crate::{
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -56,7 +56,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
 }
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Option<T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         self.as_ref()
             .map_or_else(Vec::new, |account| account.to_account_infos())
     }
@@ -71,7 +71,7 @@ impl<T: ToAccountMetas> ToAccountMetas for Option<T> {
 }
 
 impl<'info, T: AccountsClose<'info>> AccountsClose<'info> for Option<T> {
-    fn close(&self, sol_destination: AccountInfo) -> Result<()> {
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
         self.as_ref()
             .map_or(Ok(()), |t| T::close(t, sol_destination))
     }

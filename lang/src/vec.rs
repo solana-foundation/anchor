@@ -1,13 +1,13 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use crate::pinocchio_runtime::account_info::AccountInfo;
+use crate::pinocchio_runtime::account_info::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
 use std::collections::BTreeSet;
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         self.iter()
             .flat_map(|item| item.to_account_infos())
             .collect()
@@ -25,7 +25,7 @@ impl<T: ToAccountMetas> ToAccountMetas for Vec<T> {
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo],
+        accounts: &mut &'info [AccountView],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -48,7 +48,7 @@ mod tests {
     #[derive(Accounts)]
     pub struct Test {
         #[account(signer)]
-        test: AccountInfo,
+        test: AccountView,
     }
 
     // TODO: @Otter-0x4ka5h fix this test
@@ -63,7 +63,7 @@ mod tests {
     //     let mut raw = RuntimeAccount{borrow_state: 0, is_signer: 1, is_writable: 1, executable: 0, resize_delta: 0, address: key, owner: owner, lamports: lamports1, data_len: data1.len() as u64};
     //     let account1;
     //     unsafe {
-    //         account1 = AccountInfo::new_unchecked(&mut raw);
+    //         account1 = AccountView::new_unchecked(&mut raw);
     //     };
 
     //     let lamports2 = 0;
@@ -71,7 +71,7 @@ mod tests {
     //     let mut raw = RuntimeAccount{borrow_state: 0, is_signer: 1, is_writable: 1, executable: 0, resize_delta: 0, address: key, owner: owner, lamports: lamports2, data_len: data2.len() as u64};
     //     let account2;
     //     unsafe {
-    //         account2 = AccountInfo::new_unchecked(&mut raw);
+    //         account2 = AccountView::new_unchecked(&mut raw);
     //     };
     //     let mut bumps = TestBumps::default();
     //     let mut reallocs = std::collections::BTreeSet::new();
