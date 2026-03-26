@@ -10,7 +10,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 struct OwnedPinocchioAccount {
     #[allow(dead_code)]
     storage: Box<[u8]>,
-    info: AccountInfo,
+    info: AccountView,
 }
 
 impl OwnedPinocchioAccount {
@@ -38,7 +38,7 @@ impl OwnedPinocchioAccount {
                 data.len(),
             );
         }
-        let info = unsafe { AccountInfo::new_unchecked(header_ptr) };
+        let info = unsafe { AccountView::new_unchecked(header_ptr) };
         Self { storage, info }
     }
 }
