@@ -5,7 +5,6 @@ mod support;
 
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, CreateAccount, Transfer};
-use anchor_lang::CheckOwner;
 
 use support::OwnedPinocchioAccount;
 
@@ -15,16 +14,6 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 #[derive(Default)]
 struct DataAcc {
     v: u64,
-}
-
-impl CheckOwner for DataAcc {
-    fn check_owner(owner: &Pubkey) -> anchor_lang::Result<()> {
-        if owner == &DataAcc::owner() {
-            Ok(())
-        } else {
-            Err(anchor_lang::error::ErrorCode::AccountOwnedByWrongProgram.into())
-        }
-    }
 }
 
 #[test]
@@ -63,8 +52,7 @@ fn cpi_context_create_account_triple_lifetime() {
         from: from_o.info,
         to: to_o.info,
     };
-    let _ctx: CpiContext<'_, '_, 'static, CreateAccount> =
-        CpiContext::new(system_program::ID, accs);
+    let _ctx: CpiContext<'_, '_, CreateAccount> = CpiContext::new(system_program::ID, accs);
 }
 
 #[test]
