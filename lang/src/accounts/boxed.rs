@@ -38,7 +38,7 @@ impl<'info, T: AccountsExit<'info>> AccountsExit<'info> for Box<T> {
     }
 }
 
-impl<'info, T: ToAccountInfos> ToAccountInfos for Box<T> {
+impl<T: ToAccountInfos> ToAccountInfos for Box<T> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         T::to_account_infos(self)
     }

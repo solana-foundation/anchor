@@ -55,7 +55,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     }
 }
 
-impl<'info, T: ToAccountInfos> ToAccountInfos for Option<T> {
+impl<T: ToAccountInfos> ToAccountInfos for Option<T> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         self.as_ref()
             .map_or_else(Vec::new, |account| account.to_account_infos())
