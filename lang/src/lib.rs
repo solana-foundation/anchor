@@ -88,6 +88,9 @@ pub mod pinocchio_runtime {
     pub mod account_view {
         pub use pinocchio::account::*;
         pub type AccountView = pinocchio::account::AccountView;
+        // Back-compat alias for downstream crates that still reference `AccountInfo`
+        // in the Pinocchio runtime path. In V2, the canonical type is `AccountView`.
+        pub type AccountInfo = AccountView;
 
         pub fn next_account_view<I: Iterator<Item = AccountView>>(
             iter: &mut I,
