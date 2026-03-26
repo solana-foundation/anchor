@@ -401,7 +401,7 @@ where
     }
 }
 
-impl<'info, From, To> ToAccountInfos<'info> for Migration<'info, From, To>
+impl<'info, From, To> ToAccountInfos for Migration<'info, From, To>
 where
     From: AccountDeserialize,
     To: AccountSerialize,

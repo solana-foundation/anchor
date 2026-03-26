@@ -275,7 +275,7 @@ impl<'info, T: ZeroCopy + Owner> AsRef<AccountView> for AccountLoader<'info, T> 
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> ToAccountInfos<'info> for AccountLoader<'info, T> {
+impl<'info, T: ZeroCopy + Owner> ToAccountInfos for AccountLoader<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         vec![self.acc_info]
     }

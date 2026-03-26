@@ -193,7 +193,7 @@ impl<T> ToAccountMetas for Program<'_, T> {
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for Program<'info, T> {
+impl<'info, T> ToAccountInfos for Program<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }

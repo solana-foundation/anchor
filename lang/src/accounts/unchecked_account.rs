@@ -50,7 +50,7 @@ impl ToAccountMetas for UncheckedAccount<'_> {
     }
 }
 
-impl<'info> ToAccountInfos<'info> for UncheckedAccount<'info> {
+impl<'info> ToAccountInfos for UncheckedAccount<'info> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.0]
     }

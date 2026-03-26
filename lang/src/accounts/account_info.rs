@@ -39,7 +39,7 @@ impl ToAccountMetas for AccountView {
     }
 }
 
-impl<'info> ToAccountInfos<'info> for AccountView {
+impl<'info> ToAccountInfos for AccountView {
     fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self]
     }

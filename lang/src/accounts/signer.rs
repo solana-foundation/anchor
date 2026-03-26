@@ -87,7 +87,7 @@ impl ToAccountMetas for Signer<'_> {
     }
 }
 
-impl<'info> ToAccountInfos<'info> for Signer<'info> {
+impl<'info> ToAccountInfos for Signer<'info> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }

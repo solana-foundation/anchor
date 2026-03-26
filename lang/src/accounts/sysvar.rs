@@ -49,7 +49,7 @@ impl<T: SolanaSysvar> ToAccountMetas for Sysvar<'_, T> {
     }
 }
 
-impl<'info, T: SolanaSysvar> ToAccountInfos<'info> for Sysvar<'info, T> {
+impl<'info, T: SolanaSysvar> ToAccountInfos for Sysvar<'info, T> {
     fn to_account_infos(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
