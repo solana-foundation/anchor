@@ -301,7 +301,7 @@ impl<T> ToAccountMetas for LazyAccount<'_, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.__info.is_signer());
         let meta = match (self.__info.is_writable(), is_signer) {
             (false, false) => AccountMeta::readonly(*self.__info.key()),
