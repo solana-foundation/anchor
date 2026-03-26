@@ -1,11 +1,9 @@
-use {
-    anchor_lang::{
-        pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED},
-        prelude::*,
-        RefMut,
-    },
-    std::{mem::size_of, ptr},
-};
+use std::mem::size_of;
+use std::ptr;
+
+use anchor_lang::pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED};
+use anchor_lang::prelude::*;
+use anchor_lang::RefMut;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 

@@ -1,20 +1,17 @@
 //! Account container for migrating from one account type to another.
 
-use {
-    crate::{
-        bpf_writer::BpfWriter,
-        error::{Error, ErrorCode},
-        solana_program::{
-            account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey, system_program,
-        },
-        AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Owner, Result,
-        ToAccountInfos, ToAccountMetas,
-    },
-    std::{
-        collections::BTreeSet,
-        ops::{Deref, DerefMut},
-    },
+use crate::bpf_writer::BpfWriter;
+use crate::error::{Error, ErrorCode};
+use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::instruction::AccountMeta;
+use crate::solana_program::pubkey::Pubkey;
+use crate::solana_program::system_program;
+use crate::{
+    AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Owner, Result,
+    ToAccountInfos, ToAccountMetas,
 };
+use std::collections::BTreeSet;
+use std::ops::{Deref, DerefMut};
 
 /// Internal representation of the migration state.
 #[derive(Debug)]
@@ -476,14 +473,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        crate::{
-            pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED},
-            AnchorDeserialize, AnchorSerialize, Discriminator,
-        },
-        std::{mem::size_of, ptr},
-    };
+    use super::*;
+    use crate::pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED};
+    use crate::{AnchorDeserialize, AnchorSerialize, Discriminator};
+    use std::mem::size_of;
+    use std::ptr;
 
     const TEST_DISCRIMINATOR_V1: [u8; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
     const TEST_DISCRIMINATOR_V2: [u8; 8] = [8, 7, 6, 5, 4, 3, 2, 1];

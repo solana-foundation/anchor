@@ -232,7 +232,7 @@ impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountInfos<'static>
 }
 
 impl<T: ToAccountInfos<'static> + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let mut metas = self.accounts.to_account_metas(is_signer);
         metas.append(
             &mut self
