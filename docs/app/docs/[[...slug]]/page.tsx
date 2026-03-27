@@ -4,7 +4,6 @@ import {
   DocsBody,
   DocsDescription,
   DocsTitle,
-  DocsCategory,
 } from "fumadocs-ui/page";
 import { notFound } from "next/navigation";
 import defaultMdxComponents from "fumadocs-ui/mdx";
@@ -15,7 +14,12 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Callout } from "fumadocs-ui/components/callout";
 import { TypeTable } from "fumadocs-ui/components/type-table";
 import { Files, Folder, File } from "fumadocs-ui/components/files";
-import GithubIcon from "@/public/icons/github.svg";
+import { getPageTreePeers } from "fumadocs-core/page-tree";
+import { GithubIcon } from "@/app/components/icons";
+import {
+  MarkdownCopyButton,
+  ViewOptionsPopover,
+} from "@/components/ai/page-actions";
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -25,21 +29,29 @@ export default async function Page(props: {
   if (!page) notFound();
 
   const MDX = page.data.body;
+  const markdownUrl = `${page.url}.mdx`;
+  const githubUrl = getGithubUrl(page.path);
 
   return (
     <DocsPage
-      // Filter the toc to only include h1, h2, and h3
-      toc={page.data.toc.filter(item => item.depth <= 3)}
+      toc={page.data.toc.filter((item) => item.depth <= 3)}
       full={page.data.full}
-      tableOfContent={{ footer: <EditOnGithub path={page.file.path} /> }}
+      tableOfContent={{ footer: <EditOnGithub path={page.path} /> }}
     >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
+      <div className="flex flex-row gap-2 items-center border-b pt-2 pb-6">
+        <MarkdownCopyButton markdownUrl={markdownUrl} />
+        <ViewOptionsPopover
+          markdownUrl={markdownUrl}
+          githubUrl={githubUrl}
+        />
+      </div>
       <DocsBody>
         <MDX
           components={{
             ...defaultMdxComponents,
-            img: props => <ImageZoom {...(props as any)} />,
+            img: (props) => <ImageZoom {...(props as React.ImgHTMLAttributes<HTMLImageElement> & { src: string })} />,
             Accordion,
             Accordions,
             Step,
@@ -53,18 +65,37 @@ export default async function Page(props: {
             File,
           }}
         />
-        {page.data.index ? <DocsCategory page={page} from={source} /> : null}
+        {page.data.index ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {getPageTreePeers(source.pageTree, page.url).map((item) => (
+              <a
+                key={item.url}
+                href={item.url}
+                className="block rounded-lg border p-4 transition-colors hover:bg-fd-accent"
+              >
+                <p className="font-medium">{item.name}</p>
+                {item.description ? (
+                  <p className="mt-1 text-sm text-fd-muted-foreground">
+                    {item.description}
+                  </p>
+                ) : null}
+              </a>
+            ))}
+          </div>
+        ) : null}
       </DocsBody>
     </DocsPage>
   );
 }
 
+function getGithubUrl(path: string) {
+  return `https://github.com/solana-foundation/anchor/blob/master/docs/content/docs/${path.startsWith("/") ? path.slice(1) : path}`;
+}
+
 function EditOnGithub({ path }: { path: string }) {
-  // placeholder
-  const href = `https://github.com/solana-foundation/anchor/blob/master/docs/content/docs/${path.startsWith("/") ? path.slice(1) : path}`;
   return (
     <a
-      href={href}
+      href={getGithubUrl(path)}
       target="_blank"
       rel="noreferrer noopener"
       className="pt-2 flex items-center gap-2 text-sm text-fd-muted-foreground hover:text-fd-accent-foreground/80"

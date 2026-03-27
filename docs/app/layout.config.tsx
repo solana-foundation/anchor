@@ -1,9 +1,11 @@
 import { type DocsLayoutProps } from "fumadocs-ui/layouts/notebook";
 import { type HomeLayoutProps } from "fumadocs-ui/layouts/home";
 import { docsSource } from "./source";
-import StackExchangeIcon from "@/public/icons/stackexchange.svg";
-import GithubIcon from "@/public/icons/github.svg";
-import DiscordIcon from "@/public/icons/discord.svg";
+import {
+  StackExchangeIcon,
+  GithubIcon,
+  DiscordIcon,
+} from "@/app/components/icons";
 import Image from "next/image";
 
 /**
