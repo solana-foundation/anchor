@@ -216,7 +216,7 @@ lifecycle by adding a `[hooks]` section to your `Anchor.toml`:
 ```toml
 [hooks]
 pre_build  = "echo building..."
-post_build = "echo done"
+post_build = ["echo done", "echo done again"]
 pre_test   = "some-setup-script"
 post_deploy = "some-notify-script"
 ```
@@ -240,7 +240,8 @@ anchor init my-program --test-template mocha
 `anchor build` now checks that the program ID declared in your source code
 matches the public key in the program's keypair file and emits an error if
 they differ. This check is skipped during `anchor test` where ephemeral
-keypairs are common.
+keypairs are common. You can skip this check during builds with 
+`anchor build --ignore-keys`.
 
 ### `--install-agent-skills`
 
@@ -288,6 +289,18 @@ dependency is sufficient.
 Three redundant lifetime parameters have been removed from `Context`. Most
 programs will not be affected; if you referenced these lifetimes explicitly
 you will need to update the annotations.
+
+```rust
+// Before (v0.32)
+pub fn my_handler<'a, 'b, 'c, 'info>(
+    ctx: Context<'a, 'b, 'c, 'info, MyAccounts<'info>>,
+) -> Result<()> { ... }
+
+// After (v1)
+pub fn my_handler<'info>(ctx: Context<'info, MyAccounts<'info>>) -> Result<()> { ... }
+// or simply (when the lifetime is inferred)
+pub fn my_handler(ctx: Context<MyAccounts<'_>>) -> Result<()> { ... }
+```
 
 ### Deprecate `AccountInfo` in `Accounts` macro
 
