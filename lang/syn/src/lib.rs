@@ -298,7 +298,7 @@ impl Field {
         let container_ty = self.container_ty();
         let inner_ty = match &self.ty {
             Ty::AccountInfo => quote! {
-                AccountInfo
+                anchor_lang::AccountView
             },
             Ty::UncheckedAccount => quote! {
                 UncheckedAccount
@@ -397,7 +397,7 @@ impl Field {
             },
         };
         match &self.ty {
-            Ty::AccountInfo => quote! { #field.to_account_info() },
+            Ty::AccountInfo => quote! { #field.to_account_view() },
             Ty::UncheckedAccount => {
                 quote! { UncheckedAccount::try_from(&#field) }
             }
@@ -512,7 +512,7 @@ impl Field {
     pub fn account_ty(&self) -> proc_macro2::TokenStream {
         match &self.ty {
             Ty::AccountInfo => quote! {
-                AccountInfo
+                anchor_lang::AccountView
             },
             Ty::UncheckedAccount => quote! {
                 UncheckedAccount

@@ -24,14 +24,14 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     let ty = &s.raw_field.ty;
                     quote! {
                         #[cfg(feature = "anchor-debug")]
-                        ::anchor_lang::solana_program::log::sol_log(stringify!(#name));
+                        ::anchor_lang::pinocchio_runtime::log::sol_log(stringify!(#name));
                         let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __reallocs)?;
                     }
                 }
                 AccountField::Field(f) => {
                     // `init` and `zero` accounts are special cased as they are
                     // deserialized by constraints. Here, we just take out the
-                    // AccountInfo for later use at constraint validation time.
+                    // AccountView for later use at constraint validation time.
                     if is_init(af) || f.constraints.zeroed.is_some()  {
                         let name = &f.ident;
                         // Optional accounts have slightly different behavior here and
@@ -47,7 +47,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             quote! {
                                 let #name = if __accounts.is_empty() {
                                     #empty_behavior
-                                } else if __accounts[0].key == __program_id {
+                                } else if __accounts[0].key() == __program_id {
                                     *__accounts = &__accounts[1..];
                                     None
                                 } else {
@@ -69,7 +69,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         let name = f.ident.to_string();
                         let typed_name = f.typed_ident();
 
-                        // Generate the deprecation call if it is an AccountInfo
+                        // Generate the deprecation call if it is an AccountView
                         let warning = if matches!(f.ty, Ty::AccountInfo) {
                             quote_spanned! { f.ty_span =>
                                 ::anchor_lang::deprecated_account_info_usage();
@@ -79,7 +79,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         };
                         quote! {
                             #[cfg(feature = "anchor-debug")]
-                            ::anchor_lang::solana_program::log::sol_log(stringify!(#typed_name));
+                            ::anchor_lang::pinocchio_runtime::log::sol_log(stringify!(#typed_name));
                             let #typed_name = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)
                                 .map_err(|e| e.with_account_name(#name))?;
                             #warning
@@ -232,11 +232,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         impl<#combined_generics> anchor_lang::Accounts<#trait_generics, #bumps_struct_name> for #name<#struct_generics> #where_clause {
             #[inline(never)]
             fn try_accounts(
-                __program_id: &anchor_lang::solana_program::pubkey::Pubkey,
-                __accounts: &mut &#trait_generics [anchor_lang::solana_program::account_info::AccountInfo<#trait_generics>],
+                __program_id: &anchor_lang::pinocchio_runtime::pubkey::Pubkey,
+                __accounts: &mut &#trait_generics [anchor_lang::pinocchio_runtime::account_view::AccountView],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
-                __reallocs: &mut std::collections::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,
+                __reallocs: &mut std::collections::BTreeSet<anchor_lang::pinocchio_runtime::pubkey::Pubkey>,
             ) -> anchor_lang::Result<Self> {
                 // Deserialize instruction, if declared.
                 #ix_de
@@ -322,10 +322,7 @@ fn is_init(af: &AccountField) -> bool {
 
 // Generates duplicate mutable account validation logic
 fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::TokenStream {
-    // Collect all mutable account fields without `dup` constraint that serialize on exit.
-    // Only types that serialize on exit are included, as duplicate mutable accounts
-    // are problematic due to double serialization (the second write overwrites the first).
-    // Types like UncheckedAccount, Signer, SystemAccount, AccountLoader, etc. don't serialize on exit
+    // Collect all mutable account fields without `dup` constraint, excluding UncheckedAccount, Signer, and init accounts.
     let candidates: Vec<_> = accs
         .fields
         .iter()
@@ -333,33 +330,37 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
             AccountField::Field(f)
                 if f.constraints.is_mutable()
                     && !f.constraints.is_dup()
-                    && !f.constraints.is_pure_init() =>
+                    && f.constraints.init.is_none() =>
             {
                 match &f.ty {
-                    // Only include types that serialize on exit
-                    crate::Ty::Account(_)
-                    | crate::Ty::LazyAccount(_)
-                    | crate::Ty::InterfaceAccount(_)
-                    | crate::Ty::Migration(_) => Some(f),
-                    _ => None,
+                    crate::Ty::UncheckedAccount => None, // unchecked by design
+                    crate::Ty::Signer => None, // signers are excluded as they're typically payers
+                    _ => Some(f),
                 }
             }
             _ => None,
         })
         .collect();
 
-    // Collect composite field idents (nested account structs)
-    let composite_fields: Vec<_> = accs
-        .fields
-        .iter()
-        .filter_map(|af| match af {
-            AccountField::CompositeField(s) => Some(&s.ident),
-            _ => None,
-        })
-        .collect();
+    if candidates.is_empty() {
+        // No declared mutable accounts, but still need to check remaining_accounts
+        return quote! {
+            // Duplicate mutable account validation for remaining_accounts only
+            {
+                let mut __mutable_accounts = std::collections::HashSet::new();
 
-    if candidates.is_empty() && composite_fields.is_empty() {
-        return quote! {};
+                for __remaining_account in __accounts.iter() {
+                    if __remaining_account.is_writable() {
+                        if !__mutable_accounts.insert(__remaining_account.key()) {
+                            return Err(anchor_lang::error::Error::from(
+                                anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
+                            )
+                            .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key())));
+                        }
+                    }
+                }
+            }
+        };
     }
 
     let mut field_keys = Vec::with_capacity(candidates.len());
@@ -378,28 +379,12 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
         field_name_strs.push(quote! { stringify!(#name) });
     }
 
-    // Generate code to check composite field keys
-    let composite_checks: Vec<proc_macro2::TokenStream> = composite_fields
-        .iter()
-        .map(|composite_name| {
-            quote! {
-                for key in #composite_name.duplicate_mutable_account_keys() {
-                    if !__mutable_accounts.insert(key) {
-                        return Err(anchor_lang::error::Error::from(
-                            anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
-                        ).with_account_name(format!("{}", key)));
-                    }
-                }
-            }
-        })
-        .collect();
-
     quote! {
         // Duplicate mutable account validation - using HashSet
         {
             let mut __mutable_accounts = std::collections::HashSet::new();
 
-            // Check declared mutable accounts for duplicates among themselves
+            // First, check declared mutable accounts for duplicates among themselves
             #(
                 if let Some(key) = #field_keys {
                     // Check for duplicates and insert the key and account name
@@ -411,8 +396,17 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
                 }
             )*
 
-            // Check composite (nested) account struct keys for duplicates
-            #(#composite_checks)*
+            // This prevents duplicates from being passed via remaining_accounts
+            for __remaining_account in __accounts.iter() {
+                if __remaining_account.is_writable() {
+                    if !__mutable_accounts.insert(__remaining_account.key()) {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintDuplicateMutableAccount
+                        )
+                        .with_account_name(format!("{} (remaining_accounts)", __remaining_account.key())));
+                    }
+                }
+            }
         }
     }
 }

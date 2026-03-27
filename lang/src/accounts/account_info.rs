@@ -1,18 +1,18 @@
-//! AccountInfo can be used as a type but
+//! AccountView can be used as a type but
 //! [Unchecked Account](crate::accounts::unchecked_account::UncheckedAccount)
 //! should be used instead.
 
 use crate::error::ErrorCode;
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
+use crate::pinocchio_runtime::account_view::AccountView;
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
+use crate::{Accounts, AccountsExit, Key, Result, ToAccountMetas, ToAccountViews};
 use std::collections::BTreeSet;
 
-impl<'info, B> Accounts<'info, B> for AccountInfo<'info> {
+impl<'info, B> Accounts<'info, B> for AccountView {
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &[AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -20,33 +20,35 @@ impl<'info, B> Accounts<'info, B> for AccountInfo<'info> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
-        Ok(account.clone())
+        Ok(account)
     }
 }
 
-impl ToAccountMetas for AccountInfo<'_> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.is_signer);
-        let meta = match self.is_writable {
-            false => AccountMeta::new_readonly(*self.key, is_signer),
-            true => AccountMeta::new(*self.key, is_signer),
+impl ToAccountMetas for AccountView {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        let is_signer = is_signer.unwrap_or(self.is_signer());
+        let meta = match (self.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.address()),
+            (false, true) => AccountMeta::readonly_signer(self.address()),
+            (true, false) => AccountMeta::writable(self.address()),
+            (true, true) => AccountMeta::writable_signer(self.address()),
         };
         vec![meta]
     }
 }
 
-impl<'info> ToAccountInfos<'info> for AccountInfo<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.clone()]
+impl ToAccountViews for AccountView {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![*self]
     }
 }
 
-impl<'info> AccountsExit<'info> for AccountInfo<'info> {}
+impl<'info> AccountsExit<'info> for AccountView {}
 
-impl Key for AccountInfo<'_> {
+impl Key for AccountView {
     fn key(&self) -> Pubkey {
-        *self.key
+        *self.address()
     }
 }

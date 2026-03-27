@@ -19,16 +19,13 @@
 //!
 //! For detailed tutorials and examples on how to use Anchor, see the guided
 //! [tutorials](https://anchor-lang.com) or examples in the GitHub
-//! [repository](https://github.com/solana-foundation/anchor).
+//! [repository](https://github.com/coral-xyz/anchor).
 //!
 //! Presented here are the Rust primitives for building on Solana.
 
 extern crate self as anchor_lang;
 
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::program_error::ProgramError;
-use crate::solana_program::pubkey::Pubkey;
+// V2 migration: Using pinocchio_runtime types
 use bytemuck::{Pod, Zeroable};
 use std::{collections::BTreeSet, fmt::Debug, io::Write};
 
@@ -50,6 +47,10 @@ mod vec;
 mod lazy;
 
 pub use crate::bpf_upgradeable_state::*;
+pub use crate::pinocchio_runtime::account_view::{AccountView, Ref, RefMut};
+pub use crate::pinocchio_runtime::instruction::AccountMeta;
+pub use crate::pinocchio_runtime::program_error::ProgramError;
+pub use crate::pinocchio_runtime::pubkey::Pubkey;
 pub use anchor_attribute_access_control::access_control;
 pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
 pub use anchor_attribute_constant::constant;
@@ -57,55 +58,68 @@ pub use anchor_attribute_error::*;
 pub use anchor_attribute_event::{emit, event};
 pub use anchor_attribute_program::{declare_program, instruction, program};
 pub use anchor_derive_accounts::Accounts;
+pub use anchor_derive_serde::__erase;
 pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
 pub use anchor_derive_space::InitSpace;
 pub use const_crypto::ed25519::derive_program_address;
 
-pub use anchor_derive_serde::__erase;
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
 pub use borsh::ser::BorshSerialize as AnchorSerialize;
+/// Pinocchio runtime module - replaces solana_program for V2
+pub mod pinocchio_runtime {
 
-pub mod solana_program {
-    pub use solana_feature_gate_interface as feature;
+    pub use pinocchio::*;
 
-    pub use {
-        solana_account_info as account_info, solana_clock as clock, solana_msg::msg,
-        solana_program_entrypoint as entrypoint, solana_program_entrypoint::entrypoint,
-        solana_program_error as program_error, solana_program_memory as program_memory,
-        solana_program_option as program_option, solana_program_pack as program_pack,
-        solana_pubkey as pubkey, solana_sdk_ids::system_program,
-        solana_system_interface::instruction as system_instruction,
-    };
-    pub mod instruction {
-        pub use solana_instruction::*;
-        /// Get the current stack height, transaction-level instructions are height
-        /// TRANSACTION_LEVEL_STACK_HEIGHT, fist invoked inner instruction is height
-        /// TRANSACTION_LEVEL_STACK_HEIGHT + 1, etc...
-        pub fn get_stack_height() -> usize {
-            #[cfg(target_os = "solana")]
-            unsafe {
-                solana_instruction::syscalls::sol_get_stack_height() as usize
-            }
+    pub mod pubkey {
+        pub type Pubkey = pinocchio::Address;
+    }
 
-            #[cfg(not(target_os = "solana"))]
-            {
-                solana_sysvar::program_stubs::sol_get_stack_height() as usize
-            }
+    pub mod program_error {
+        pub use pinocchio::error::*;
+    }
+
+    pub mod account_view {
+        pub use pinocchio::account::*;
+        pub type AccountView = pinocchio::account::AccountView;
+
+        pub fn next_account_info<I: Iterator<Item = AccountView>>(
+            iter: &mut I,
+        ) -> Result<I::Item, pinocchio::error::ProgramError> {
+            iter.next()
+                .ok_or(pinocchio::error::ProgramError::NotEnoughAccountKeys)
         }
     }
-    pub mod rent {
-        pub use solana_sysvar::rent::*;
+
+    #[deprecated(
+        since = "1.0.0-rc.5",
+        note = "use `pinocchio_runtime::account_view` instead"
+    )]
+    pub mod account_info {
+        pub use super::account_view::*;
     }
+
+    pub use {
+        pinocchio::entrypoint, pinocchio::program_entrypoint, pinocchio::sysvars::clock,
+        solana_msg::msg,
+    };
+
+    pub mod instruction {
+        pub use pinocchio::instruction::*;
+        pub type AccountMeta<'a> = InstructionAccount<'a>;
+    }
+
+    pub mod rent {
+        pub use pinocchio::sysvars::rent::*;
+    }
+
     pub mod program {
-        pub use solana_cpi::*;
-        pub use solana_invoke::{invoke, invoke_signed, invoke_signed_unchecked, invoke_unchecked};
+        pub use pinocchio::cpi::*;
     }
 
     pub mod bpf_loader_upgradeable {
         #[allow(deprecated)]
         pub use solana_loader_v3_interface::{
-            get_program_data_address,
             instruction::{
                 close, close_any, create_buffer, deploy_with_max_program_len, extend_program,
                 is_close_instruction, is_set_authority_checked_instruction,
@@ -115,7 +129,27 @@ pub mod solana_program {
             },
             state::UpgradeableLoaderState,
         };
-        pub use solana_sdk_ids::bpf_loader_upgradeable::{check_id, id, ID};
+
+        pub fn get_program_data_address(
+            program_address: &crate::pinocchio_runtime::Address,
+        ) -> crate::pinocchio_runtime::Address {
+            crate::pinocchio_runtime::Address::find_program_address(
+                &[program_address.as_ref()],
+                &id(),
+            )
+            .0
+        }
+
+        pub const ID: crate::Pubkey =
+            crate::Pubkey::from_str_const("BPFLoaderUpgradeab1e11111111111111111111111");
+
+        pub fn check_id(id: &crate::Pubkey) -> bool {
+            id == &ID
+        }
+
+        pub fn id() -> crate::Pubkey {
+            ID
+        }
     }
 
     pub mod log {
@@ -134,14 +168,40 @@ pub mod solana_program {
             core::hint::black_box(data);
         }
     }
-    pub mod sysvar {
-        pub use solana_sysvar_id::{declare_deprecated_sysvar_id, declare_sysvar_id, SysvarId};
-        pub mod instructions {
-            pub use solana_instruction::{BorrowedAccountMeta, BorrowedInstruction};
-            #[cfg(not(target_os = "solana"))]
-            pub use solana_instructions_sysvar::construct_instructions_data;
-        }
+
+    pub mod sysvar_instructions {
+        pub use pinocchio::sysvars::instructions::*;
     }
+
+    pub mod system_program {
+        pub const ID: crate::Pubkey =
+            crate::Pubkey::from_str_const("11111111111111111111111111111111");
+    }
+
+    pub mod system_instruction {
+        pub use pinocchio_system::instructions::*;
+    }
+    pub mod program_pack {
+        pub use solana_program_pack::*;
+    }
+
+    pub mod program_option {
+        pub use solana_program_option::*;
+    }
+
+    pub mod program_memory {
+        pub use solana_program_memory::*;
+    }
+
+    pub mod feature {
+        pub use solana_feature_gate_interface as feature;
+    }
+}
+
+// Compatibility shim for derive macros and legacy paths that still resolve through
+// `anchor_lang::solana_program::*`.
+pub mod solana_program {
+    pub use crate::pinocchio_runtime::*;
 }
 
 #[cfg(feature = "event-cpi")]
@@ -152,10 +212,8 @@ pub use idl::IdlBuild;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
-// Deprecated message for AccountInfo usage in Accounts struct
-#[deprecated(
-    note = "Use `UncheckedAccount` instead of `AccountInfo` for safer unchecked accounts."
-)]
+// Deprecated message for old account wrapper usage in Accounts struct.
+#[deprecated(note = "Use `UncheckedAccount` for safer unchecked account access.")]
 pub fn deprecated_account_info_usage() {}
 
 /// A data structure of validated accounts that can be deserialized from the
@@ -187,7 +245,7 @@ pub fn deprecated_account_info_usage() {}
 ///     pub pda_1: u8,
 /// }
 /// ```
-pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos<'info> + Sized {
+pub trait Accounts<'info, B>: ToAccountMetas + ToAccountViews + Sized {
     /// Returns the validated accounts struct. What constitutes "valid" is
     /// program dependent. However, users of these types should never have to
     /// worry about account substitution attacks. For example, if a program
@@ -201,7 +259,7 @@ pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos<'info> + Sized {
     /// so that it cannot be used again.
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -216,7 +274,7 @@ pub trait Bumps {
 
 /// The exit procedure for an account. Any cleanup or persistence to storage
 /// should be done here.
-pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
+pub trait AccountsExit<'info>: ToAccountMetas + ToAccountViews {
     /// `program_id` is the currently executing program.
     fn exit(&self, _program_id: &Pubkey) -> Result<()> {
         // no-op
@@ -225,20 +283,19 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
 }
 
 /// Returns the pubkeys of mutable accounts that serialize on exit.
-/// Used by the duplicate mutable account validation to check across
-/// composite (nested) account struct boundaries.
+/// Used by duplicate mutable account validation across nested account structs.
 pub trait DuplicateMutableAccountKeys {
     fn duplicate_mutable_account_keys(&self) -> Vec<Pubkey>;
 }
 
 /// The close procedure to initiate garabage collection of an account, allowing
 /// one to retrieve the rent exemption.
-pub trait AccountsClose<'info>: ToAccountInfos<'info> {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()>;
+pub trait AccountsClose<'info>: ToAccountViews {
+    fn close(&self, sol_destination: AccountView) -> Result<()>;
 }
 
 /// Transformation to
-/// [`AccountMeta`](../solana_program/instruction/struct.AccountMeta.html)
+/// [`AccountMeta`](../pinocchio_runtime/instruction/struct.AccountMeta.html)
 /// structs.
 pub trait ToAccountMetas {
     /// `is_signer` is given as an optional override for the signer meta field.
@@ -246,32 +303,32 @@ pub trait ToAccountMetas {
     /// a transaction from a client to another program but sign the transaction
     /// before the relay. The client cannot mark the field as a signer, and so
     /// we have to override the is_signer meta field given by the client.
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta>;
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>>;
 }
 
 /// Transformation to
-/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html)
+/// [`AccountView`](../pinocchio_runtime/account_view/struct.AccountView.html)
 /// structs.
-pub trait ToAccountInfos<'info> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>>;
+pub trait ToAccountViews {
+    fn to_account_views(&self) -> Vec<AccountView>;
 }
 
-/// Transformation to an `AccountInfo` struct.
-pub trait ToAccountInfo<'info> {
-    fn to_account_info(&self) -> AccountInfo<'info>;
+/// Transformation to an `AccountView` struct.
+pub trait ToAccountView {
+    fn to_account_view(&self) -> AccountView;
 }
 
-impl<'info, T> ToAccountInfo<'info> for T
+impl<T> ToAccountView for T
 where
-    T: AsRef<AccountInfo<'info>>,
+    T: AsRef<AccountView>,
 {
-    fn to_account_info(&self) -> AccountInfo<'info> {
-        self.as_ref().clone()
+    fn to_account_view(&self) -> AccountView {
+        *self.as_ref()
     }
 }
 
 /// Lamports related utility methods for accounts.
-pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
+pub trait Lamports: AsRef<AccountView> {
     /// Get the lamports of the account.
     fn get_lamports(&self) -> u64 {
         self.as_ref().lamports()
@@ -290,10 +347,12 @@ pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
     ///
     /// See [`Lamports::sub_lamports`] for subtracting lamports.
     fn add_lamports(&self, amount: u64) -> Result<&Self> {
-        **self.as_ref().try_borrow_mut_lamports()? = self
+        let new_lamports = self
             .get_lamports()
             .checked_add(amount)
             .ok_or(ProgramError::ArithmeticOverflow)?;
+        let mut account_info = *self.as_ref();
+        account_info.set_lamports(new_lamports);
         Ok(self)
     }
 
@@ -311,19 +370,21 @@ pub trait Lamports<'info>: AsRef<AccountInfo<'info>> {
     ///
     /// See [`Lamports::add_lamports`] for adding lamports.
     fn sub_lamports(&self, amount: u64) -> Result<&Self> {
-        **self.as_ref().try_borrow_mut_lamports()? = self
+        let new_lamports = self
             .get_lamports()
             .checked_sub(amount)
             .ok_or(ProgramError::ArithmeticOverflow)?;
+        let mut account_info = *self.as_ref();
+        account_info.set_lamports(new_lamports);
         Ok(self)
     }
 }
 
-impl<'info, T: AsRef<AccountInfo<'info>>> Lamports<'info> for T {}
+impl<T: AsRef<AccountView>> Lamports for T {}
 
 /// A data structure that can be serialized and stored into account storage,
 /// i.e. an
-/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html#structfield.data)'s
+/// [`AccountView`](../pinocchio_runtime/account_view/struct.AccountView.html#structfield.data)'s
 /// mutable data slice.
 ///
 /// Implementors of this trait should ensure that any subsequent usage of the
@@ -341,7 +402,7 @@ pub trait AccountSerialize {
 
 /// A data structure that can be deserialized and stored into account storage,
 /// i.e. an
-/// [`AccountInfo`](../solana_program/account_info/struct.AccountInfo.html#structfield.data)'s
+/// [`AccountView`](../pinocchio_runtime/account_view/struct.AccountView.html#structfield.data)'s
 /// mutable data slice.
 pub trait AccountDeserialize: Sized {
     /// Deserializes previously initialized account data. Should fail for all
@@ -377,7 +438,7 @@ pub trait InstructionData: Discriminator + AnchorSerialize {
 
     /// Clears `data` and writes instruction data to it.
     ///
-    /// We use a `Vec<u8>` here because of the additional flexibility of re-allocation (only if
+    /// We use a `Vec<u8>`` here because of the additional flexibility of re-allocation (only if
     /// necessary), and because the data field in `Instruction` expects a `Vec<u8>`.
     fn write_to(&self, mut data: &mut Vec<u8>) {
         data.clear();
@@ -438,12 +499,12 @@ pub trait CheckOwner {
     fn check_owner(owner: &Pubkey) -> Result<()>;
 }
 
-impl<T: Owners> CheckOwner for T {
+impl<T: Owner> CheckOwner for T {
     fn check_owner(owner: &Pubkey) -> Result<()> {
-        if !Self::owners().contains(owner) {
+        if Self::owner() != *owner {
             Err(
                 error::Error::from(error::ErrorCode::AccountOwnedByWrongProgram)
-                    .with_account_name(*owner),
+                    .with_account_name(pubkey_to_string(owner)),
             )
         } else {
             Ok(())
@@ -469,11 +530,17 @@ pub trait CheckId {
 impl<T: Ids> CheckId for T {
     fn check_id(id: &Pubkey) -> Result<()> {
         if !Self::ids().contains(id) {
-            Err(error::Error::from(error::ErrorCode::InvalidProgramId).with_account_name(*id))
+            Err(error::Error::from(error::ErrorCode::InvalidProgramId)
+                .with_account_name(pubkey_to_string(id)))
         } else {
             Ok(())
         }
     }
+}
+
+/// Converts a Pubkey to its base58 string representation.
+fn pubkey_to_string(pubkey: &Pubkey) -> String {
+    bs58::encode(pubkey.as_ref()).into_string()
 }
 
 /// Defines the Pubkey of an account.
@@ -493,38 +560,36 @@ pub mod prelude {
     pub use super::{
         access_control, account, accounts::account::Account,
         accounts::account_loader::AccountLoader, accounts::interface::Interface,
-        accounts::interface_account::InterfaceAccount, accounts::migration::Migration,
-        accounts::program::Program, accounts::signer::Signer,
-        accounts::system_account::SystemAccount, accounts::sysvar::Sysvar,
-        accounts::unchecked_account::UncheckedAccount, constant, context::Context,
-        context::CpiContext, declare_id, declare_program, emit, err, error, event, instruction,
+        accounts::interface_account::InterfaceAccount, accounts::program::Program,
+        accounts::signer::Signer, accounts::system_account::SystemAccount,
+        accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
+        context::Context, context::CpiContext, declare_id, declare_program, emit, err, error,
+        event, instruction, pinocchio_runtime::bpf_loader_upgradeable::UpgradeableLoaderState,
         program, pubkey, require, require_eq, require_gt, require_gte, require_keys_eq,
-        require_keys_neq, require_neq,
-        solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
-        system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
-        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator,
-        DuplicateMutableAccountKeys, Id, InitSpace, Key, Lamports, Owner, Owners, ProgramData,
-        Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+        require_keys_neq, require_neq, source, system_program::System, zero_copy,
+        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
+        AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
+        ProgramData, Result, Space, ToAccountView, ToAccountViews, ToAccountMetas,
     };
-    // Re-export the crate as anchor_lang for declare_program! macro
-    pub use crate as anchor_lang;
-    pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
-    pub use crate::solana_program::instruction::AccountMeta;
-    pub use crate::solana_program::program_error::ProgramError;
-    pub use crate::solana_program::pubkey::Pubkey;
-    pub use crate::solana_program::*;
+    // V2: Using pinocchio_runtime types
+    pub use crate::pinocchio_runtime::account_view::{next_account_info, AccountView};
+    pub use crate::pinocchio_runtime::instruction::AccountMeta;
+    pub use crate::pinocchio_runtime::program_error::{ProgramError, ProgramResult};
+    pub use crate::pinocchio_runtime::pubkey::Pubkey;
+    pub use crate::pinocchio_runtime::*;
     pub use anchor_attribute_error::*;
     pub use borsh;
     pub use error::*;
-    pub use solana_clock::Clock;
-    pub use solana_instructions_sysvar::Instructions;
+    pub use pinocchio::sysvars::clock::Clock;
+    pub use pinocchio::sysvars::instructions::Instructions;
+    pub use pinocchio::sysvars::rent::Rent;
+    pub use pinocchio::sysvars::slot_hashes::SlotHashes;
+    pub use pinocchio::sysvars::Sysvar as SolanaSysvar;
+
     pub use solana_stake_interface::stake_history::StakeHistory;
     pub use solana_sysvar::epoch_schedule::EpochSchedule;
-    pub use solana_sysvar::rent::Rent;
     pub use solana_sysvar::rewards::Rewards;
-    pub use solana_sysvar::slot_hashes::SlotHashes;
     pub use solana_sysvar::slot_history::SlotHistory;
-    pub use solana_sysvar::Sysvar as SolanaSysvar;
     pub use thiserror;
 
     #[cfg(feature = "event-cpi")]
@@ -546,7 +611,7 @@ pub mod __private {
 
     pub use crate::{bpf_writer::BpfWriter, common::is_closed};
 
-    use crate::solana_program::pubkey::Pubkey;
+    use crate::pinocchio_runtime::pubkey::Pubkey;
 
     // Used to calculate the maximum between two expressions.
     // It is necessary for the calculation of the enum space.
@@ -568,7 +633,10 @@ pub mod __private {
             Pubkey::from(*self)
         }
         fn set(input: &Pubkey) -> [u8; 32] {
-            input.to_bytes()
+            let bytes = input.as_ref();
+            let mut result = [0u8; 32];
+            result.copy_from_slice(bytes);
+            result
         }
     }
 

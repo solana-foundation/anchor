@@ -4,8 +4,8 @@ use std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc};
 
 use crate::{
     error::{Error, ErrorCode},
-    AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key, Owner,
-    Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    AccountMeta, AccountSerialize, AccountView, Accounts, AccountsClose, Discriminator, Key, Owner,
+    Pubkey, Result, ToAccountMetas, ToAccountView, ToAccountViews,
 };
 
 /// Deserialize account data lazily (on-demand).
@@ -56,7 +56,7 @@ use crate::{
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use anchor_lang::prelude::*;
 ///
 /// declare_id!("LazyAccount11111111111111111111111111111111");
@@ -176,7 +176,7 @@ where
 {
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
-    pub __info: &'info AccountInfo<'info>,
+    pub __info: &'info AccountView,
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
     pub __account: Rc<RefCell<MaybeUninit<T>>>,
@@ -202,7 +202,7 @@ impl<'info, T> LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn new(info: &'info AccountInfo<'info>) -> LazyAccount<'info, T> {
+    fn new(info: &'info AccountView) -> LazyAccount<'info, T> {
         Self {
             __info: info,
             __account: Rc::new(RefCell::new(MaybeUninit::uninit())),
@@ -211,7 +211,7 @@ where
     }
 
     /// Check both the owner and the discriminator.
-    pub fn try_from(info: &'info AccountInfo<'info>) -> Result<LazyAccount<'info, T>> {
+    pub fn try_from(info: &'info AccountView) -> Result<LazyAccount<'info, T>> {
         let data = &info.try_borrow_data()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
@@ -227,10 +227,10 @@ where
     }
 
     /// Check the owner but **not** the discriminator.
-    pub fn try_from_unchecked(info: &'info AccountInfo<'info>) -> Result<LazyAccount<'info, T>> {
-        if info.owner != &T::owner() {
+    pub fn try_from_unchecked(info: &'info AccountView) -> Result<LazyAccount<'info, T>> {
+        if info.owner() != &T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, T::owner())));
+                .with_pubkeys((*info.owner(), T::owner())));
         }
 
         Ok(LazyAccount::new(info))
@@ -273,7 +273,7 @@ where
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -291,8 +291,8 @@ impl<'info, T> AccountsClose<'info> for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
-        crate::common::close(self.as_ref(), sol_destination.as_ref())
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
+        crate::common::close(self.to_account_view(), sol_destination)
     }
 }
 
@@ -300,30 +300,32 @@ impl<T> ToAccountMetas for LazyAccount<'_, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.__info.is_signer);
-        let meta = match self.__info.is_writable {
-            false => AccountMeta::new_readonly(*self.__info.key, is_signer),
-            true => AccountMeta::new(*self.__info.key, is_signer),
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        let is_signer = is_signer.unwrap_or(self.__info.is_signer());
+        let meta = match (self.__info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(*self.__info.key()),
+            (false, true) => AccountMeta::readonly_signer(*self.__info.key()),
+            (true, false) => AccountMeta::writable(*self.__info.key()),
+            (true, true) => AccountMeta::writable_signer(*self.__info.key()),
         };
         vec![meta]
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for LazyAccount<'info, T>
+impl<'info, T> ToAccountViews for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.to_account_info()]
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![self.to_account_view()]
     }
 }
 
-impl<'info, T> AsRef<AccountInfo<'info>> for LazyAccount<'info, T>
+impl<'info, T> AsRef<AccountView> for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+    fn as_ref(&self) -> &AccountView {
         self.__info
     }
 }
@@ -333,6 +335,6 @@ where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     fn key(&self) -> Pubkey {
-        *self.__info.key
+        *self.__info.key()
     }
 }

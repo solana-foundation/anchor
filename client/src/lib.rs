@@ -64,24 +64,29 @@
 //!
 //! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/3.0.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
-use anchor_lang::solana_program::program_error::ProgramError;
-use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::pinocchio_runtime::program_error::ProgramError;
+use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::{UiAccount, UiAccountEncoding};
-use solana_instruction::AccountMeta;
-use solana_pubsub_client::nonblocking::pubsub_client::PubsubClient;
+use solana_commitment_config::CommitmentConfig;
+use solana_instruction::{AccountMeta as SolanaAccountMeta, Instruction};
+use solana_program::hash::Hash;
+use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 use solana_rpc_client_api::{
+    client_error::Error as SolanaClientError,
     config::{
-        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcTransactionLogsConfig,
-        RpcTransactionLogsFilter,
+        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
+        RpcTransactionLogsConfig, RpcTransactionLogsFilter,
     },
-    filter::Memcmp,
+    filter::{Memcmp, RpcFilterType},
     response::{Response as RpcResponse, RpcLogsResponse},
 };
 use solana_signature::Signature;
+use solana_signer::{Signer, SignerError};
+use solana_transaction::Transaction;
 use std::iter::Map;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -101,16 +106,6 @@ pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
 pub use solana_account_decoder;
-pub use solana_commitment_config::CommitmentConfig;
-pub use solana_instruction::Instruction;
-pub use solana_program::hash::Hash;
-pub use solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError;
-pub use solana_rpc_client_api::{
-    client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,
-    filter::RpcFilterType,
-};
-pub use solana_signer::{Signer, SignerError};
-pub use solana_transaction::Transaction;
 
 mod cluster;
 
@@ -297,7 +292,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 
     async fn on_internal<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        mut f: impl FnMut(&EventContext, T) + Send + 'static,
+        f: impl Fn(&EventContext, T) + Send + 'static,
     ) -> Result<
         (
             JoinHandle<Result<(), ClientError>>,
@@ -506,7 +501,7 @@ impl AsSigner for Box<dyn Signer + '_> {
 pub struct RequestBuilder<'a, C, S: 'a> {
     cluster: String,
     program_id: Pubkey,
-    accounts: Vec<AccountMeta>,
+    accounts: Vec<SolanaAccountMeta>,
     options: CommitmentConfig,
     instructions: Vec<Instruction>,
     payer: C,
@@ -519,7 +514,7 @@ pub struct RequestBuilder<'a, C, S: 'a> {
 }
 
 // Shared implementation for all RequestBuilders
-impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, S> {
+impl<'a, C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'a, C, S> {
     #[must_use]
     pub fn payer(mut self, payer: C) -> Self {
         self.payer = payer;
@@ -575,9 +570,18 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     ///     .send()?;
     /// ```
     #[must_use]
-    pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
-        let mut metas = accounts.to_account_metas(None);
-        self.accounts.append(&mut metas);
+    pub fn accounts(mut self, accounts: impl ToAccountMetas + 'a) -> Self {
+        self.accounts
+            .extend(
+                accounts
+                    .to_account_metas(None)
+                    .into_iter()
+                    .map(|meta| SolanaAccountMeta {
+                        pubkey: *meta.address,
+                        is_signer: meta.is_signer,
+                        is_writable: meta.is_writable,
+                    }),
+            );
         self
     }
 

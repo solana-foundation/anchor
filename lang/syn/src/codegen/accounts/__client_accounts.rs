@@ -96,22 +96,32 @@ pub fn generate(
                     false => quote! {false},
                     true => quote! {true},
                 };
-                let meta = match f.constraints.is_mutable() {
-                    false => quote! { anchor_lang::solana_program::instruction::AccountMeta::new_readonly },
-                    true => quote! { anchor_lang::solana_program::instruction::AccountMeta::new },
-                };
+
                 let name = &f.ident;
+                let is_mutable = f.constraints.is_mutable();
                 if f.is_optional {
                     quote! {
                         if let Some(#name) = &self.#name {
-                            account_metas.push(#meta(*#name, #is_signer));
+                            let meta = match (#is_mutable, #is_signer) {
+                                (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(#name),
+                                (false, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(#name),
+                                (true, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable(#name),
+                                (true, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable_signer(#name),
+                            };
+                            account_metas.push(meta);
                         } else {
-                            account_metas.push(anchor_lang::solana_program::instruction::AccountMeta::new_readonly(#program_id, false));
+                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(#program_id));
                         }
                     }
                 } else {
                     quote! {
-                        account_metas.push(#meta(self.#name, #is_signer));
+                        let meta = match (#is_mutable, #is_signer) {
+                            (false, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(&self.#name),
+                            (false, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(&self.#name),
+                            (true, false) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable(&self.#name),
+                            (true, true) => anchor_lang::pinocchio_runtime::instruction::AccountMeta::writable_signer(&self.#name),
+                        };
+                        account_metas.push(meta);
                     }
                 }
             }
@@ -156,7 +166,7 @@ pub fn generate(
         /// An internal, Anchor generated module. This is used (as an
         /// implementation detail), to generate a struct for a given
         /// `#[derive(Accounts)]` implementation, where each field is a Pubkey,
-        /// instead of an `AccountInfo`. This is useful for clients that want
+        /// instead of an `AccountView`. This is useful for clients that want
         /// to generate a list of accounts, without explicitly knowing the
         /// order all the fields should be in.
         ///
@@ -175,7 +185,7 @@ pub fn generate(
 
             #[automatically_derived]
             impl anchor_lang::ToAccountMetas for #name {
-                fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+                fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::pinocchio_runtime::instruction::AccountMeta> {
                     let mut account_metas = vec![];
 
                     #(#account_struct_metas)*
