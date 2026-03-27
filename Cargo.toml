@@ -50,6 +50,7 @@ solana-rpc-client-api = "3.0.14"
 solana-sdk-ids = "3.1.0"
 solana-signature = "3.3.0"
 solana-signer = "3.0.0"
+solana-sbpf = "0.13.1"
 solana-stake-interface = "2.0.2"
 solana-system-interface = "2.0.0"
 # FIXME: solana-sysvar 3.1.x contains breaking changes to sysvar retrieval
