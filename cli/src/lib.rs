@@ -1596,8 +1596,14 @@ pub type Files = Vec<(PathBuf, String)>;
 ///
 /// # Example
 ///
-/// ```ignore
-/// crate_files(vec![("programs/my_program/src/lib.rs".into(), "// Content".into())])?;
+/// ```rust,no_run
+/// # use anchor_cli::create_files;
+/// # use std::path::PathBuf;
+/// # fn main() -> anyhow::Result<()> {
+/// let files = vec![(PathBuf::from("programs/my_program/src/lib.rs"), "// Content".to_string())];
+/// create_files(&files)?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn create_files(files: &Files) -> Result<()> {
     for (path, content) in files {
@@ -1626,8 +1632,14 @@ pub fn create_files(files: &Files) -> Result<()> {
 ///
 /// # Example
 ///
-/// ```ignore
-/// override_or_create_files(vec![("programs/my_program/src/lib.rs".into(), "// Content".into())])?;
+/// ```rust,no_run
+/// # use anchor_cli::override_or_create_files;
+/// # use std::path::PathBuf;
+/// # fn main() -> anyhow::Result<()> {
+/// let files = vec![(PathBuf::from("test.rs"), "// Content".to_string())];
+/// override_or_create_files(&files)?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn override_or_create_files(files: &Files) -> Result<()> {
     for (path, content) in files {

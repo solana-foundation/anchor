@@ -16,6 +16,8 @@ use syn::{
 ///
 /// # Example
 /// ```ignore
+/// use anchor_lang::prelude::*;
+///
 /// #[account]
 /// #[derive(InitSpace)]
 /// pub struct ExampleAccount {
