@@ -243,8 +243,10 @@ impl ParsedModule {
                     path: syn::Path { segments, .. },
                     ..
                 }) => {
-                    segments.len() == 1 && segments[0].ident == "UncheckedAccount"
-                        || segments[0].ident == "AccountInfo"
+                    segments.len() == 1
+                        && (segments[0].ident == "UncheckedAccount"
+                            || segments[0].ident == "AccountInfo"
+                            || segments[0].ident == "AccountView")
                 }
                 _ => false,
             })

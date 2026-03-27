@@ -6,7 +6,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
-        anchor_lang::solana_program::entrypoint!(entry);
+        anchor_lang::pinocchio_runtime::entrypoint::entrypoint!(entry);
         /// The Anchor codegen exposes a programming model where a user defines
         /// a set of methods inside of a `#[program]` module in a way similar
         /// to writing RPC request handlers. The macro then generates a bunch of
@@ -36,22 +36,30 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
+        /// Anchor's generated entrypoint accepts [`AccountView`] values directly.
+        ///
+        /// The custom-entrypoint escape hatch documented in the performance section may still
+        /// receive `&[AccountInfo]` from the Solana runtime. In that case, wrap at the boundary
+        /// into `AccountView` before calling Anchor dispatch.
+        ///
+        /// This keeps all user-facing Anchor traits/structs/codegen on `AccountView` while still
+        /// supporting runtime compatibility at the outermost entrypoint edge.
         pub fn entry<'info>(
-            program_id: &'info Pubkey,
-            accounts: &'info [AccountInfo<'info>],
-            data: &'info [u8]
-        ) -> anchor_lang::solana_program::entrypoint::ProgramResult {
-            try_entry(program_id, accounts, data).map_err(|e| {
+            program_id: &anchor_lang::pinocchio_runtime::pubkey::PinocchioPubkey,
+            accounts: &'info [AccountView],
+            data: &[u8]
+        ) -> anchor_lang::pinocchio_runtime::entrypoint::ProgramResult {
+            // Convert Pinocchio's Pubkey ([u8; 32]) to Solana's Pubkey
+            let program_id_pubkey = Pubkey::from(*program_id);
+
+            // AccountView is now used directly throughout Anchor.
+            try_entry(&program_id_pubkey, accounts, data).map_err(|e| {
                 e.log();
                 e.into()
             })
         }
 
-        fn try_entry<'info>(
-            program_id: &'info Pubkey,
-            accounts: &'info [AccountInfo<'info>],
-            data: &'info [u8]
-        ) -> anchor_lang::Result<()> {
+        fn try_entry<'info>(program_id: &Pubkey, accounts: &'info [AccountView], data: &[u8]) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
                 msg!("anchor-debug is active");

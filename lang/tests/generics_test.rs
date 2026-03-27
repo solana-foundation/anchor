@@ -1,4 +1,4 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(dead_code, deprecated)]
 // Generic accounts are not supported with `Lazy`
 #![cfg(not(feature = "lazy-account"))]
@@ -22,7 +22,7 @@ where
     T: AccountSerialize + AccountDeserialize + Owner + Clone,
     U: BorshSerialize + BorshDeserialize + Default + Clone,
 {
-    pub non_generic: AccountInfo<'info>,
+    pub non_generic: AccountView,
     pub generic: Account<'info, T>,
 
     pub const_generic: AccountLoader<'info, FooAccount<N>>,
