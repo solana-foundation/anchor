@@ -1,6 +1,6 @@
 use anchor_lang::{
     context::CpiContext,
-    solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+    solana_program::{account_info::AccountView, pubkey::Pubkey},
     Accounts, Result,
 };
 use borsh::BorshDeserialize;
@@ -16,7 +16,7 @@ use std::ops::Deref;
 pub fn authorize(
     ctx: CpiContext<'_, '_, Authorize>,
     stake_authorize: StakeAuthorize,
-    custodian: Option<AccountInfo>,
+    custodian: Option<AccountView>,
 ) -> Result<()> {
     let ix = stake::instruction::authorize(
         ctx.accounts.stake.key,
@@ -40,7 +40,7 @@ pub fn authorize(
 pub fn withdraw(
     ctx: CpiContext<'_, '_, Withdraw>,
     amount: u64,
-    custodian: Option<AccountInfo>,
+    custodian: Option<AccountView>,
 ) -> Result<()> {
     let ix = stake::instruction::withdraw(
         ctx.accounts.stake.key,
@@ -78,46 +78,46 @@ pub fn deactivate_stake(ctx: CpiContext<'_, '_, DeactivateStake>) -> Result<()> 
 #[derive(Accounts)]
 pub struct Authorize {
     /// The stake account to be updated
-    pub stake: AccountInfo,
+    pub stake: AccountView,
 
     /// The existing authority
-    pub authorized: AccountInfo,
+    pub authorized: AccountView,
 
     /// The new authority to replace the existing authority
-    pub new_authorized: AccountInfo,
+    pub new_authorized: AccountView,
 
     /// Clock sysvar
-    pub clock: AccountInfo,
+    pub clock: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Withdraw {
     /// The stake account to be updated
-    pub stake: AccountInfo,
+    pub stake: AccountView,
 
     /// The stake account's withdraw authority
-    pub withdrawer: AccountInfo,
+    pub withdrawer: AccountView,
 
     /// Account to send withdrawn lamports to
-    pub to: AccountInfo,
+    pub to: AccountView,
 
     /// Clock sysvar
-    pub clock: AccountInfo,
+    pub clock: AccountView,
 
     /// StakeHistory sysvar
-    pub stake_history: AccountInfo,
+    pub stake_history: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct DeactivateStake {
     /// The stake account to be deactivated
-    pub stake: AccountInfo,
+    pub stake: AccountView,
 
     /// The stake account's stake authority
-    pub staker: AccountInfo,
+    pub staker: AccountView,
 
     /// Clock sysvar
-    pub clock: AccountInfo,
+    pub clock: AccountView,
 }
 
 // State

@@ -3,10 +3,10 @@
 //! should be used instead.
 
 use crate::error::ErrorCode;
-use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::account_view::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsExit, Key, Result, ToAccountMetas, ToAccountViews};
 use std::collections::BTreeSet;
 
 impl<'info, B> Accounts<'info, B> for AccountView {
@@ -39,8 +39,8 @@ impl ToAccountMetas for AccountView {
     }
 }
 
-impl ToAccountInfos for AccountView {
-    fn to_account_infos(&self) -> Vec<AccountView> {
+impl ToAccountViews for AccountView {
+    fn to_account_views(&self) -> Vec<AccountView> {
         vec![*self]
     }
 }

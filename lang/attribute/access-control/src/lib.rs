@@ -31,7 +31,7 @@ use syn::parse_macro_input;
 ///
 /// impl Create {
 ///   pub fn accounts(ctx: &Context<Create>, bump_seed: u8) -> Result<()> {
-///     let seeds = &[ctx.accounts.my_account.to_account_info().key.as_ref(), &[bump_seed]];
+///     let seeds = &[ctx.accounts.my_account.to_account_view().key.as_ref(), &[bump_seed]];
 ///     Pubkey::create_program_address(seeds, ctx.program_id)
 ///       .map_err(|_| ErrorCode::InvalidNonce)?;
 ///     Ok(())

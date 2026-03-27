@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -21,15 +21,15 @@ pub fn interest_bearing_mint_initialize(
 
 #[derive(Accounts)]
 pub struct InterestBearingMintInitialize {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
 }
 
 pub fn interest_bearing_mint_update_rate(
     ctx: CpiContext<'_, '_, InterestBearingMintUpdateRate>,
     rate: i16,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token_2022::instructions::interest_bearing_mint::Update {
         token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
@@ -42,7 +42,7 @@ pub fn interest_bearing_mint_update_rate(
 
 #[derive(Accounts)]
 pub struct InterestBearingMintUpdateRate {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
-    pub rate_authority: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
+    pub rate_authority: AccountView,
 }

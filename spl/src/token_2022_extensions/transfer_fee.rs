@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -25,8 +25,8 @@ pub fn transfer_fee_initialize(
 
 #[derive(Accounts)]
 pub struct TransferFeeInitialize {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
 }
 
 pub fn transfer_fee_set(
@@ -34,7 +34,7 @@ pub fn transfer_fee_set(
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token_2022::instructions::transfer_fee::SetTransferFee {
         token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
@@ -48,9 +48,9 @@ pub fn transfer_fee_set(
 
 #[derive(Accounts)]
 pub struct TransferFeeSetTransferFee {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }
 
 pub fn transfer_checked_with_fee(
@@ -59,7 +59,7 @@ pub fn transfer_checked_with_fee(
     decimals: u8,
     fee: u64,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token_2022::instructions::transfer_fee::TransferCheckedWithFee {
         token_program: ctx.accounts.token_program_id.address(),
         source: &ctx.accounts.source,
@@ -76,16 +76,16 @@ pub fn transfer_checked_with_fee(
 
 #[derive(Accounts)]
 pub struct TransferCheckedWithFee {
-    pub token_program_id: AccountInfo,
-    pub source: AccountInfo,
-    pub mint: AccountInfo,
-    pub destination: AccountInfo,
-    pub authority: AccountInfo,
+    pub token_program_id: AccountView,
+    pub source: AccountView,
+    pub mint: AccountView,
+    pub destination: AccountView,
+    pub authority: AccountView,
 }
 
 pub fn harvest_withheld_tokens_to_mint(
     ctx: CpiContext<'_, '_, HarvestWithheldTokensToMint>,
-    sources: Vec<&AccountInfo>,
+    sources: Vec<&AccountView>,
 ) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::transfer_fee::HarvestWithheldTokensToMint {
         token_program: ctx.accounts.token_program_id.address(),
@@ -97,14 +97,14 @@ pub fn harvest_withheld_tokens_to_mint(
 
 #[derive(Accounts)]
 pub struct HarvestWithheldTokensToMint {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
 }
 
 pub fn withdraw_withheld_tokens_from_mint(
     ctx: CpiContext<'_, '_, WithdrawWithheldTokensFromMint>,
 ) -> Result<()> {
-    let signers = ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>();
+    let signers = ctx.remaining_accounts.iter().collect::<Vec<&AccountView>>();
     let ix = pinocchio_token_2022::instructions::transfer_fee::WithdrawWithheldTokensFromMint {
         token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
@@ -117,17 +117,17 @@ pub fn withdraw_withheld_tokens_from_mint(
 
 #[derive(Accounts)]
 pub struct WithdrawWithheldTokensFromMint {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
-    pub destination: AccountInfo,
-    pub authority: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
+    pub destination: AccountView,
+    pub authority: AccountView,
 }
 
 pub fn withdraw_withheld_tokens_from_accounts(
     ctx: CpiContext<'_, '_, WithdrawWithheldTokensFromAccounts>,
-    sources: Vec<&AccountInfo>,
+    sources: Vec<&AccountView>,
 ) -> Result<()> {
-    let signers = ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>();
+    let signers = ctx.remaining_accounts.iter().collect::<Vec<&AccountView>>();
     let ix = pinocchio_token_2022::instructions::transfer_fee::WithdrawWithheldTokensFromAccounts {
         token_program: ctx.accounts.token_program_id.address(),
         mint: &ctx.accounts.mint,
@@ -141,8 +141,8 @@ pub fn withdraw_withheld_tokens_from_accounts(
 
 #[derive(Accounts)]
 pub struct WithdrawWithheldTokensFromAccounts {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
-    pub destination: AccountInfo,
-    pub authority: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
+    pub destination: AccountView,
+    pub authority: AccountView,
 }

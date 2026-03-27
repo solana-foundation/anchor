@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -20,15 +20,15 @@ pub fn default_account_state_initialize(
 
 #[derive(Accounts)]
 pub struct DefaultAccountStateInitialize {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
 }
 
 pub fn default_account_state_update(
     ctx: CpiContext<'_, '_, DefaultAccountStateUpdate>,
     state: AccountState,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
 
     let ix = pinocchio_token_2022::instructions::default_account_state::update::Update {
         mint: &ctx.accounts.mint,
@@ -42,7 +42,7 @@ pub fn default_account_state_update(
 
 #[derive(Accounts)]
 pub struct DefaultAccountStateUpdate {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
-    pub freeze_authority: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
+    pub freeze_authority: AccountView,
 }

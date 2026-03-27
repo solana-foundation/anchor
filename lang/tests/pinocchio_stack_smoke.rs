@@ -34,7 +34,7 @@ fn cpi_context_transfer_construct_and_meta_roundtrip() {
     let metas = ctx.accounts.to_account_metas(None);
     assert_eq!(metas.len(), 2);
 
-    let infos = ctx.accounts.to_account_infos();
+    let infos = ctx.accounts.to_account_views();
     assert_eq!(infos.len(), 2);
 }
 

@@ -58,7 +58,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 data,
                             }
                         };
-                        let mut acc_infos = ctx.to_account_infos();
+                        let mut acc_infos = ctx.to_account_views();
                         anchor_lang::pinocchio_runtime::program::invoke_signed(
                             &ix,
                             &acc_infos,

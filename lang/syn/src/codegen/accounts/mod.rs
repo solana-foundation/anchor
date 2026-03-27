@@ -11,13 +11,13 @@ mod bumps;
 mod constraints;
 mod duplicate_mutable_account_keys;
 mod exit;
-mod to_account_infos;
+mod to_account_views;
 mod to_account_metas;
 mod try_accounts;
 
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_try_accounts = try_accounts::generate(accs);
-    let impl_to_account_infos = to_account_infos::generate(accs);
+    let impl_to_account_views = to_account_views::generate(accs);
     let impl_to_account_metas = to_account_metas::generate(accs);
     let impl_exit = exit::generate(accs);
     let impl_dup_mutable_keys = duplicate_mutable_account_keys::generate(accs);
@@ -28,7 +28,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     let ret = quote! {
         #impl_try_accounts
-        #impl_to_account_infos
+        #impl_to_account_views
         #impl_to_account_metas
         #impl_exit
         #impl_dup_mutable_keys

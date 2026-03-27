@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -9,7 +9,7 @@ use std::ops::Deref;
 use pinocchio_token::ID;
 
 pub fn transfer(ctx: CpiContext<'_, '_, Transfer>, amount: u64) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::Transfer {
         from: &ctx.accounts.from,
         to: &ctx.accounts.to,
@@ -25,7 +25,7 @@ pub fn transfer_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::TransferChecked {
         from: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
@@ -39,7 +39,7 @@ pub fn transfer_checked(
 }
 
 pub fn mint_to(ctx: CpiContext<'_, '_, MintTo>, amount: u64) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::MintTo {
         mint: &ctx.accounts.mint,
         account: &ctx.accounts.to,
@@ -51,7 +51,7 @@ pub fn mint_to(ctx: CpiContext<'_, '_, MintTo>, amount: u64) -> Result<()> {
 }
 
 pub fn burn(ctx: CpiContext<'_, '_, Burn>, amount: u64) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::Burn {
         account: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
@@ -63,7 +63,7 @@ pub fn burn(ctx: CpiContext<'_, '_, Burn>, amount: u64) -> Result<()> {
 }
 
 pub fn burn_checked(ctx: CpiContext<'_, '_, BurnChecked>, amount: u64, decimals: u8) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::BurnChecked {
         account: &ctx.accounts.from,
         mint: &ctx.accounts.mint,
@@ -76,7 +76,7 @@ pub fn burn_checked(ctx: CpiContext<'_, '_, BurnChecked>, amount: u64, decimals:
 }
 
 pub fn approve(ctx: CpiContext<'_, '_, Approve>, amount: u64) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::Approve {
         source: &ctx.accounts.to,
         delegate: &ctx.accounts.delegate,
@@ -92,7 +92,7 @@ pub fn approve_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::ApproveChecked {
         source: &ctx.accounts.to,
         mint: &ctx.accounts.mint,
@@ -106,7 +106,7 @@ pub fn approve_checked(
 }
 
 pub fn revoke(ctx: CpiContext<'_, '_, Revoke>) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::Revoke {
         source: &ctx.accounts.source,
         authority: &ctx.accounts.authority,
@@ -135,7 +135,7 @@ pub fn initialize_account3(ctx: CpiContext<'_, '_, InitializeAccount3>) -> Resul
 }
 
 pub fn close_account(ctx: CpiContext<'_, '_, CloseAccount>) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::CloseAccount {
         account: &ctx.accounts.account,
         destination: &ctx.accounts.destination,
@@ -146,7 +146,7 @@ pub fn close_account(ctx: CpiContext<'_, '_, CloseAccount>) -> Result<()> {
 }
 
 pub fn freeze_account(ctx: CpiContext<'_, '_, FreezeAccount>) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::FreezeAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
@@ -157,7 +157,7 @@ pub fn freeze_account(ctx: CpiContext<'_, '_, FreezeAccount>) -> Result<()> {
 }
 
 pub fn thaw_account(ctx: CpiContext<'_, '_, ThawAccount>) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::ThawAccount {
         account: &ctx.accounts.account,
         mint: &ctx.accounts.mint,
@@ -203,7 +203,7 @@ pub fn set_authority(
     authority_type: pinocchio_token::instructions::AuthorityType,
     new_authority: Option<Pubkey>,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token::instructions::SetAuthority {
         account: &ctx.accounts.account_or_mint,
         authority: &ctx.accounts.current_authority,
@@ -282,137 +282,137 @@ pub fn initialize_immutable_owner(ctx: CpiContext<'_, '_, InitializeImmutableOwn
 
 #[derive(Accounts)]
 pub struct Transfer {
-    pub from: AccountInfo,
-    pub to: AccountInfo,
-    pub authority: AccountInfo,
+    pub from: AccountView,
+    pub to: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct TransferChecked {
-    pub from: AccountInfo,
-    pub mint: AccountInfo,
-    pub to: AccountInfo,
-    pub authority: AccountInfo,
+    pub from: AccountView,
+    pub mint: AccountView,
+    pub to: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct MintTo {
-    pub mint: AccountInfo,
-    pub to: AccountInfo,
-    pub authority: AccountInfo,
+    pub mint: AccountView,
+    pub to: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Burn {
-    pub mint: AccountInfo,
-    pub from: AccountInfo,
-    pub authority: AccountInfo,
+    pub mint: AccountView,
+    pub from: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct BurnChecked {
-    pub mint: AccountInfo,
-    pub from: AccountInfo,
-    pub authority: AccountInfo,
+    pub mint: AccountView,
+    pub from: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Approve {
-    pub to: AccountInfo,
-    pub delegate: AccountInfo,
-    pub authority: AccountInfo,
+    pub to: AccountView,
+    pub delegate: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct ApproveChecked {
-    pub to: AccountInfo,
-    pub mint: AccountInfo,
-    pub delegate: AccountInfo,
-    pub authority: AccountInfo,
+    pub to: AccountView,
+    pub mint: AccountView,
+    pub delegate: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Revoke {
-    pub source: AccountInfo,
-    pub authority: AccountInfo,
+    pub source: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeAccount {
-    pub account: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
-    pub rent: AccountInfo,
+    pub account: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
+    pub rent: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeAccount3 {
-    pub account: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct CloseAccount {
-    pub account: AccountInfo,
-    pub destination: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub destination: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct FreezeAccount {
-    pub account: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct ThawAccount {
-    pub account: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeMint {
-    pub mint: AccountInfo,
-    pub rent: AccountInfo,
+    pub mint: AccountView,
+    pub rent: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeMint2 {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SetAuthority {
-    pub current_authority: AccountInfo,
-    pub account_or_mint: AccountInfo,
+    pub current_authority: AccountView,
+    pub account_or_mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SyncNative {
-    pub account: AccountInfo,
+    pub account: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct UiAmountToAmount {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct GetAccountDataSize {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct AmountToUiAmount {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeImmutableOwner {
-    pub account: AccountInfo,
+    pub account: AccountView,
 }
 
 #[derive()]
@@ -491,21 +491,21 @@ impl anchor_lang::Id for Token {
 pub mod accessor {
     use super::*;
 
-    pub fn amount(account: &AccountInfo) -> Result<u64> {
+    pub fn amount(account: &AccountView) -> Result<u64> {
         let bytes = account.try_borrow()?;
         let mut amount_bytes = [0u8; 8];
         amount_bytes.copy_from_slice(&bytes[64..72]);
         Ok(u64::from_le_bytes(amount_bytes))
     }
 
-    pub fn mint(account: &AccountInfo) -> Result<Pubkey> {
+    pub fn mint(account: &AccountView) -> Result<Pubkey> {
         let bytes = account.try_borrow()?;
         let mut mint_bytes = [0u8; 32];
         mint_bytes.copy_from_slice(&bytes[..32]);
         Ok(Pubkey::new_from_array(mint_bytes))
     }
 
-    pub fn authority(account: &AccountInfo) -> Result<Pubkey> {
+    pub fn authority(account: &AccountView) -> Result<Pubkey> {
         let bytes = account.try_borrow()?;
         let mut owner_bytes = [0u8; 32];
         owner_bytes.copy_from_slice(&bytes[32..64]);

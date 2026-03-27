@@ -1,14 +1,14 @@
 //! Type facilitating on demand zero copy deserialization.
 
-use crate::pinocchio_runtime::account_info::{AccountView, Ref, RefMut};
+use crate::pinocchio_runtime::account_view::{AccountView, Ref, RefMut};
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{
-    Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
-    ToAccountMetas, ZeroCopy,
+    Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountMetas, ToAccountView,
+    ToAccountViews, ZeroCopy,
 };
 
 use std::collections::BTreeSet;
@@ -252,7 +252,7 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
 
 impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T> {
     fn close(&self, sol_destination: AccountView) -> Result<()> {
-        crate::common::close(self.to_account_info(), sol_destination)
+        crate::common::close(self.to_account_view(), sol_destination)
     }
 }
 
@@ -275,8 +275,8 @@ impl<'info, T: ZeroCopy + Owner> AsRef<AccountView> for AccountLoader<'info, T> 
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> ToAccountInfos for AccountLoader<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountView> {
+impl<'info, T: ZeroCopy + Owner> ToAccountViews for AccountLoader<'info, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
         vec![self.acc_info]
     }
 }

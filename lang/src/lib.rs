@@ -47,7 +47,7 @@ mod vec;
 mod lazy;
 
 pub use crate::bpf_upgradeable_state::*;
-pub use crate::pinocchio_runtime::account_info::{AccountView, Ref, RefMut};
+pub use crate::pinocchio_runtime::account_view::{AccountView, Ref, RefMut};
 pub use crate::pinocchio_runtime::instruction::AccountMeta;
 pub use crate::pinocchio_runtime::program_error::ProgramError;
 pub use crate::pinocchio_runtime::pubkey::Pubkey;
@@ -79,12 +79,9 @@ pub mod pinocchio_runtime {
         pub use pinocchio::error::*;
     }
 
-    pub mod account_info {
+    pub mod account_view {
         pub use pinocchio::account::*;
         pub type AccountView = pinocchio::account::AccountView;
-        // Back-compat alias for downstream crates that still reference `AccountInfo`
-        // in the Pinocchio runtime path. In V2, the canonical type is `AccountView`.
-        pub type AccountInfo = AccountView;
 
         pub fn next_account_info<I: Iterator<Item = AccountView>>(
             iter: &mut I,
@@ -92,6 +89,14 @@ pub mod pinocchio_runtime {
             iter.next()
                 .ok_or(pinocchio::error::ProgramError::NotEnoughAccountKeys)
         }
+    }
+
+    #[deprecated(
+        since = "1.0.0-rc.5",
+        note = "use `pinocchio_runtime::account_view` instead"
+    )]
+    pub mod account_info {
+        pub use super::account_view::*;
     }
 
     pub use {
@@ -240,7 +245,7 @@ pub fn deprecated_account_info_usage() {}
 ///     pub pda_1: u8,
 /// }
 /// ```
-pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos + Sized {
+pub trait Accounts<'info, B>: ToAccountMetas + ToAccountViews + Sized {
     /// Returns the validated accounts struct. What constitutes "valid" is
     /// program dependent. However, users of these types should never have to
     /// worry about account substitution attacks. For example, if a program
@@ -269,7 +274,7 @@ pub trait Bumps {
 
 /// The exit procedure for an account. Any cleanup or persistence to storage
 /// should be done here.
-pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos {
+pub trait AccountsExit<'info>: ToAccountMetas + ToAccountViews {
     /// `program_id` is the currently executing program.
     fn exit(&self, _program_id: &Pubkey) -> Result<()> {
         // no-op
@@ -285,7 +290,7 @@ pub trait DuplicateMutableAccountKeys {
 
 /// The close procedure to initiate garabage collection of an account, allowing
 /// one to retrieve the rent exemption.
-pub trait AccountsClose<'info>: ToAccountInfos {
+pub trait AccountsClose<'info>: ToAccountViews {
     fn close(&self, sol_destination: AccountView) -> Result<()>;
 }
 
@@ -302,22 +307,22 @@ pub trait ToAccountMetas {
 }
 
 /// Transformation to
-/// [`AccountView`](../pinocchio_runtime/account_info/struct.AccountView.html)
+/// [`AccountView`](../pinocchio_runtime/account_view/struct.AccountView.html)
 /// structs.
-pub trait ToAccountInfos {
-    fn to_account_infos(&self) -> Vec<AccountView>;
+pub trait ToAccountViews {
+    fn to_account_views(&self) -> Vec<AccountView>;
 }
 
 /// Transformation to an `AccountView` struct.
-pub trait ToAccountInfo {
-    fn to_account_info(&self) -> AccountView;
+pub trait ToAccountView {
+    fn to_account_view(&self) -> AccountView;
 }
 
-impl<T> ToAccountInfo for T
+impl<T> ToAccountView for T
 where
     T: AsRef<AccountView>,
 {
-    fn to_account_info(&self) -> AccountView {
+    fn to_account_view(&self) -> AccountView {
         *self.as_ref()
     }
 }
@@ -379,7 +384,7 @@ impl<T: AsRef<AccountView>> Lamports for T {}
 
 /// A data structure that can be serialized and stored into account storage,
 /// i.e. an
-/// [`AccountView`](../pinocchio_runtime/account_info/struct.AccountView.html#structfield.data)'s
+/// [`AccountView`](../pinocchio_runtime/account_view/struct.AccountView.html#structfield.data)'s
 /// mutable data slice.
 ///
 /// Implementors of this trait should ensure that any subsequent usage of the
@@ -397,7 +402,7 @@ pub trait AccountSerialize {
 
 /// A data structure that can be deserialized and stored into account storage,
 /// i.e. an
-/// [`AccountView`](../pinocchio_runtime/account_info/struct.AccountView.html#structfield.data)'s
+/// [`AccountView`](../pinocchio_runtime/account_view/struct.AccountView.html#structfield.data)'s
 /// mutable data slice.
 pub trait AccountDeserialize: Sized {
     /// Deserializes previously initialized account data. Should fail for all
@@ -564,10 +569,10 @@ pub mod prelude {
         require_keys_neq, require_neq, source, system_program::System, zero_copy,
         AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
         AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
-        ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+        ProgramData, Result, Space, ToAccountView, ToAccountViews, ToAccountMetas,
     };
     // V2: Using pinocchio_runtime types
-    pub use crate::pinocchio_runtime::account_info::{next_account_info, AccountView};
+    pub use crate::pinocchio_runtime::account_view::{next_account_info, AccountView};
     pub use crate::pinocchio_runtime::instruction::AccountMeta;
     pub use crate::pinocchio_runtime::program_error::{ProgramError, ProgramResult};
     pub use crate::pinocchio_runtime::pubkey::Pubkey;

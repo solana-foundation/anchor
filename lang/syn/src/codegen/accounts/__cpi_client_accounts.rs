@@ -66,12 +66,12 @@ pub fn generate(
                 if f.is_optional {
                     quote! {
                         #docs
-                        pub #name: Option<anchor_lang::pinocchio_runtime::account_info::AccountView>
+                        pub #name: Option<anchor_lang::pinocchio_runtime::account_view::AccountView>
                     }
                 } else {
                     quote! {
                         #docs
-                        pub #name: anchor_lang::pinocchio_runtime::account_info::AccountView
+                        pub #name: anchor_lang::pinocchio_runtime::account_view::AccountView
                     }
                 }
             }
@@ -138,7 +138,7 @@ pub fn generate(
         .map(|f: &AccountField| {
             let name = &f.ident();
             quote! {
-                account_infos.extend(anchor_lang::ToAccountInfos::to_account_infos(&self.#name));
+                account_infos.extend(anchor_lang::ToAccountViews::to_account_views(&self.#name));
             }
         })
         .collect();
@@ -216,8 +216,8 @@ pub fn generate(
             }
 
             #[automatically_derived]
-            impl anchor_lang::ToAccountInfos for #name #generics {
-                fn to_account_infos(&self) -> Vec<anchor_lang::pinocchio_runtime::account_info::AccountView> {
+            impl anchor_lang::ToAccountViews for #name #generics {
+                fn to_account_views(&self) -> Vec<anchor_lang::pinocchio_runtime::account_view::AccountView> {
                     let mut account_infos = vec![];
                     #(#account_struct_infos)*
                     account_infos

@@ -1,10 +1,10 @@
 //! Type validating that the account is a sysvar and deserializing it
 
-use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::account_view::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::pinocchio_runtime::sysvars::Sysvar as SolanaSysvar;
-use crate::{AccountsExit, Key, ToAccountInfos, ToAccountMetas};
+use crate::{AccountsExit, Key, ToAccountMetas, ToAccountViews};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
@@ -49,8 +49,8 @@ impl<T: SolanaSysvar> ToAccountMetas for Sysvar<'_, T> {
     }
 }
 
-impl<'info, T: SolanaSysvar> ToAccountInfos for Sysvar<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountView> {
+impl<'info, T: SolanaSysvar> ToAccountViews for Sysvar<'info, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
 }

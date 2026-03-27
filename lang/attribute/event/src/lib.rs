@@ -163,7 +163,7 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     proc_macro::TokenStream::from(quote! {
         {
-            let authority_info = ctx.accounts.#authority_name.to_account_info();
+            let authority_info = ctx.accounts.#authority_name.to_account_view();
 
             let disc = anchor_lang::event::EVENT_IX_TAG_LE;
             let inner_data = anchor_lang::Event::data(&#event_struct);

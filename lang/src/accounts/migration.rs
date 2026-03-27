@@ -8,7 +8,7 @@ use crate::solana_program::pubkey::Pubkey;
 use crate::solana_program::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Owner, Result,
-    ToAccountInfos, ToAccountMetas,
+    ToAccountMetas, ToAccountViews,
 };
 use std::collections::BTreeSet;
 use std::ops::{Deref, DerefMut};
@@ -403,12 +403,12 @@ where
     }
 }
 
-impl<'info, From, To> ToAccountInfos for Migration<'info, From, To>
+impl<'info, From, To> ToAccountViews for Migration<'info, From, To>
 where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn to_account_infos(&self) -> Vec<AccountView> {
+    fn to_account_views(&self) -> Vec<AccountView> {
         vec![*self.info]
     }
 }

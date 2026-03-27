@@ -13,10 +13,10 @@
 //! }
 //! ```
 
-use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::account_view::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas};
+use crate::{Accounts, AccountsClose, AccountsExit, Result, ToAccountMetas, ToAccountViews};
 use std::collections::BTreeSet;
 use std::ops::Deref;
 
@@ -38,9 +38,9 @@ impl<'info, T: AccountsExit<'info>> AccountsExit<'info> for Box<T> {
     }
 }
 
-impl<T: ToAccountInfos> ToAccountInfos for Box<T> {
-    fn to_account_infos(&self) -> Vec<AccountView> {
-        T::to_account_infos(self)
+impl<T: ToAccountViews> ToAccountViews for Box<T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        T::to_account_views(self)
     }
 }
 

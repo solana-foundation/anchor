@@ -2,20 +2,20 @@
 
 use crate::accounts::account::Account;
 use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::account_view::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::pinocchio_runtime::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CheckOwner, Key,
-    Owner, Owners, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    Owner, Owners, Result, ToAccountMetas, ToAccountView, ToAccountViews,
 };
 use std::collections::BTreeSet;
 use std::convert::AsRef;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_info::AccountView)
+/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_view::AccountView)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -194,7 +194,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> InterfaceAcco
     /// If you need discriminator validation on reload, use `Account<T>` with an Anchor
     /// #[account] type.
     pub fn reload(&mut self) -> Result<()> {
-        let info = self.account.to_account_info();
+        let info = self.account.to_account_view();
 
         // Enforce owner stability: must match the one validated at construction.
         if !info.owned_by(&self.owner) {
@@ -308,11 +308,11 @@ impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountMetas
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountInfos
+impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountViews
     for InterfaceAccount<'info, T>
 {
-    fn to_account_infos(&self) -> Vec<AccountView> {
-        self.account.to_account_infos()
+    fn to_account_views(&self) -> Vec<AccountView> {
+        self.account.to_account_views()
     }
 }
 

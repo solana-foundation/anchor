@@ -2,21 +2,21 @@
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::account_view::AccountView;
 use crate::pinocchio_runtime::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::pinocchio_runtime::system_program;
 use crate::{
     AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Id, Key, Owner,
-    Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    Result, ToAccountMetas, ToAccountView, ToAccountViews,
 };
 use std::collections::BTreeSet;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_info::AccountView)
+/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_view::AccountView)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -374,7 +374,7 @@ impl<'info, T: AccountChecks> AccountsExit<'info> for Account<'info, T> {
 
 impl<'info, T: AccountChecks> AccountsClose<'info> for Account<'info, T> {
     fn close(&self, sol_destination: AccountView) -> Result<()> {
-        crate::common::close(self.to_account_info(), sol_destination)
+        crate::common::close(self.to_account_view(), sol_destination)
     }
 }
 
@@ -391,8 +391,8 @@ impl<T: AccountChecks> ToAccountMetas for Account<'_, T> {
     }
 }
 
-impl<'info, T: AccountChecks> ToAccountInfos for Account<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountView> {
+impl<'info, T: AccountChecks> ToAccountViews for Account<'info, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
         vec![self.info]
     }
 }

@@ -233,7 +233,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             #[inline(never)]
             fn try_accounts(
                 __program_id: &anchor_lang::pinocchio_runtime::pubkey::Pubkey,
-                __accounts: &mut &#trait_generics [anchor_lang::pinocchio_runtime::account_info::AccountView],
+                __accounts: &mut &#trait_generics [anchor_lang::pinocchio_runtime::account_view::AccountView],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
                 __reallocs: &mut std::collections::BTreeSet<anchor_lang::pinocchio_runtime::pubkey::Pubkey>,

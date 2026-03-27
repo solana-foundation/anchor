@@ -64,15 +64,14 @@
 //!
 //! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/3.0.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
-use anchor_lang::pinocchio_runtime::instruction::{AccountMeta, InstructionView};
 use anchor_lang::pinocchio_runtime::program_error::ProgramError;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::prelude::instruction::InstructionView;
 use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
 use futures::{Future, StreamExt};
 use regex::Regex;
 use solana_account_decoder::{UiAccount, UiAccountEncoding};
 use solana_commitment_config::CommitmentConfig;
+use solana_instruction::{AccountMeta as SolanaAccountMeta, Instruction};
 use solana_program::hash::Hash;
 use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
 use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
@@ -499,12 +498,12 @@ impl AsSigner for Box<dyn Signer + '_> {
 
 /// `RequestBuilder` provides a builder interface to create and send
 /// transactions to a cluster.
-pub struct RequestBuilder<'a, 'b, 'c, 'd, C, S: 'a> {
+pub struct RequestBuilder<'a, C, S: 'a> {
     cluster: String,
     program_id: Pubkey,
-    accounts: Vec<AccountMeta<'a>>,
+    accounts: Vec<SolanaAccountMeta>,
     options: CommitmentConfig,
-    instructions: Vec<InstructionView<'a, 'b, 'c, 'd>>,
+    instructions: Vec<Instruction>,
     payer: C,
     instruction_data: Option<Vec<u8>>,
     signers: Vec<S>,
@@ -515,7 +514,7 @@ pub struct RequestBuilder<'a, 'b, 'c, 'd, C, S: 'a> {
 }
 
 // Shared implementation for all RequestBuilders
-impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_, '_, '_, C, S> {
+impl<'a, C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'a, C, S> {
     #[must_use]
     pub fn payer(mut self, payer: C) -> Self {
         self.payer = payer;
@@ -529,7 +528,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_,
     }
 
     #[must_use]
-    pub fn instruction(mut self, ix: InstructionView<'_, '_, '_, '_>) -> Self {
+    pub fn instruction(mut self, ix: Instruction) -> Self {
         self.instructions.push(ix);
         self
     }
@@ -571,9 +570,18 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_,
     ///     .send()?;
     /// ```
     #[must_use]
-    pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
-        let mut metas = accounts.to_account_metas(None);
-        self.accounts.append(&mut metas);
+    pub fn accounts(mut self, accounts: impl ToAccountMetas + 'a) -> Self {
+        self.accounts
+            .extend(
+                accounts
+                    .to_account_metas(None)
+                    .into_iter()
+                    .map(|meta| SolanaAccountMeta {
+                        pubkey: *meta.address,
+                        is_signer: meta.is_signer,
+                        is_writable: meta.is_writable,
+                    }),
+            );
         self
     }
 
@@ -589,10 +597,10 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_,
         self
     }
 
-    pub fn instructions(&self) -> Vec<InstructionView> {
+    pub fn instructions(&self) -> Vec<Instruction> {
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
-            instructions.push(InstructionView {
+            instructions.push(Instruction {
                 program_id: self.program_id,
                 data: ix_data.clone(),
                 accounts: self.accounts.clone(),

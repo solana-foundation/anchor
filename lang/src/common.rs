@@ -1,6 +1,6 @@
 use pinocchio::Resize;
 
-use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::account_view::AccountView;
 use crate::pinocchio_runtime::system_program;
 use crate::prelude::{Id, System};
 use crate::Result;

@@ -5,7 +5,7 @@ use std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc};
 use crate::{
     error::{Error, ErrorCode},
     AccountMeta, AccountSerialize, AccountView, Accounts, AccountsClose, Discriminator, Key, Owner,
-    Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    Pubkey, Result, ToAccountMetas, ToAccountView, ToAccountViews,
 };
 
 /// Deserialize account data lazily (on-demand).
@@ -292,7 +292,7 @@ where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     fn close(&self, sol_destination: AccountView) -> Result<()> {
-        crate::common::close(self.to_account_info(), sol_destination)
+        crate::common::close(self.to_account_view(), sol_destination)
     }
 }
 
@@ -312,12 +312,12 @@ where
     }
 }
 
-impl<'info, T> ToAccountInfos for LazyAccount<'info, T>
+impl<'info, T> ToAccountViews for LazyAccount<'info, T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn to_account_infos(&self) -> Vec<AccountView> {
-        vec![self.to_account_info()]
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![self.to_account_view()]
     }
 }
 

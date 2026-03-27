@@ -32,7 +32,7 @@ fn reload_owner_unchanged_updates_data() {
     assert_eq!(acc.val, 10);
 
     let new_bytes = serialize_dummy(42);
-    assert_eq!(new_bytes.len(), acc.to_account_info().data_len());
+    assert_eq!(new_bytes.len(), acc.to_account_view().data_len());
 
     {
         let mut d: RefMut<'_, [u8]> = owned.info.try_borrow_mut().unwrap();

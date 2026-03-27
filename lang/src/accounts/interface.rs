@@ -3,11 +3,11 @@
 use crate::accounts::account::AnyProgram;
 use crate::accounts::program::Program;
 use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::account_view::AccountView;
 use crate::pinocchio_runtime::instruction::AccountMeta;
 use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{
-    AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
+    AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountViews,
     ToAccountMetas,
 };
 use std::collections::BTreeSet;
@@ -134,9 +134,9 @@ impl<T> ToAccountMetas for Interface<'_, T> {
     }
 }
 
-impl<'info, T> ToAccountInfos for Interface<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountView> {
-        self.program.to_account_infos()
+impl<'info, T> ToAccountViews for Interface<'info, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        self.program.to_account_views()
     }
 }
 
