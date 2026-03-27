@@ -6,6 +6,7 @@ import {
   Transaction,
   TransactionInstruction,
   TransactionSignature,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
 import {
   Idl,
@@ -417,17 +418,48 @@ export class MethodsBuilder<
   }
 
   /**
-   * Send and confirm the configured transaction.
+   * Send and confirm the configured transaction with optional priority fees.
    *
    * See {@link rpcAndKeys} to both send the transaction and get the resolved
    * account public keys.
    *
-   * @param options confirmation options
+   * @param options confirmation options with priority configuration
    * @returns the transaction signature
    */
-  public async rpc(options?: ConfirmOptions): Promise<TransactionSignature> {
+  public async rpc(
+    options?: ConfirmOptions & {
+      priority?: "High" | "Medium" | "Low" | number;
+      priorityLevels?: {
+        High?: number;
+        Medium?: number;
+        Low?: number;
+      };
+    }
+  ): Promise<TransactionSignature> {
     if (this._resolveAccounts) {
       await this._accountsResolver.resolve();
+    }
+
+    const { priority, priorityLevels, ...confirmOptions } = options || {};
+    let priorityIx: TransactionInstruction | null = null;
+
+    if (priority !== undefined) {
+      const defaultLevels = {
+        High: 100000,
+        Medium: 50000,
+        Low: 10000
+      };
+
+      const mergedLevels = { ...defaultLevels, ...priorityLevels };
+      const microLamports = typeof priority === "string" 
+        ? (mergedLevels[priority] || 0)
+        : priority;
+
+      if (microLamports > 0) {
+        priorityIx = ComputeBudgetProgram.setComputeUnitPrice({ 
+          microLamports 
+        });
+      }
     }
 
     // @ts-ignore
@@ -435,9 +467,12 @@ export class MethodsBuilder<
       accounts: this._accounts,
       signers: this._signers,
       remainingAccounts: this._remainingAccounts,
-      preInstructions: this._preInstructions,
+      preInstructions: [
+        ...(priorityIx ? [priorityIx] : []),
+        ...this._preInstructions
+      ],
       postInstructions: this._postInstructions,
-      options,
+      options: confirmOptions,
     });
   }
 
