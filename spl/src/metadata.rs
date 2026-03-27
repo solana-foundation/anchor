@@ -1,13 +1,12 @@
-pub use mpl_token_metadata::{self, ID};
-use {
-    anchor_lang::{
-        context::CpiContext,
-        error::ErrorCode,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        system_program, Accounts, Result, ToAccountInfos,
-    },
-    std::ops::Deref,
-};
+use anchor_lang::context::CpiContext;
+use anchor_lang::error::ErrorCode;
+use anchor_lang::solana_program::account_info::AccountView;
+use anchor_lang::solana_program::pubkey::Pubkey;
+use anchor_lang::{system_program, Accounts, Result, ToAccountViews};
+use std::ops::Deref;
+
+pub use mpl_token_metadata;
+pub use mpl_token_metadata::ID;
 
 pub fn approve_collection_authority(
     ctx: CpiContext<'_, '_, ApproveCollectionAuthority>,
@@ -25,7 +24,7 @@ pub fn approve_collection_authority(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -50,7 +49,7 @@ pub fn bubblegum_set_collection_size(
     );
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -72,7 +71,7 @@ pub fn burn_edition_nft(ctx: CpiContext<'_, '_, BurnEditionNft>) -> Result<()> {
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -109,7 +108,7 @@ pub fn burn_nft(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -143,7 +142,7 @@ pub fn create_metadata_accounts_v3(
     );
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -170,7 +169,7 @@ pub fn update_metadata_accounts_v2(
     );
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -196,7 +195,7 @@ pub fn create_master_edition_v3(
     );
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -230,7 +229,7 @@ pub fn mint_new_edition_from_master_edition_via_token(
     );
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -249,7 +248,7 @@ pub fn revoke_collection_authority(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -273,7 +272,7 @@ pub fn set_collection_size(
     );
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -295,7 +294,7 @@ pub fn verify_collection(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -317,7 +316,7 @@ pub fn verify_sized_collection_item(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -340,7 +339,7 @@ pub fn set_and_verify_collection(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -363,7 +362,7 @@ pub fn set_and_verify_sized_collection_item(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -380,7 +379,7 @@ pub fn freeze_delegated_account(ctx: CpiContext<'_, '_, FreezeDelegatedAccount>)
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -397,7 +396,7 @@ pub fn thaw_delegated_account(ctx: CpiContext<'_, '_, ThawDelegatedAccount>) -> 
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -414,7 +413,7 @@ pub fn update_primary_sale_happened_via_token(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )?;
     Ok(())
@@ -433,7 +432,7 @@ pub fn set_token_standard(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -447,7 +446,7 @@ pub fn sign_metadata(ctx: CpiContext<'_, '_, SignMetadata>) -> Result<()> {
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )?;
     Ok(())
@@ -463,7 +462,7 @@ pub fn remove_creator_verification(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )?;
     Ok(())
@@ -491,7 +490,7 @@ pub fn utilize(
     .instruction(mpl_token_metadata::instructions::UtilizeInstructionArgs { number_of_uses });
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -512,7 +511,7 @@ pub fn unverify_collection(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -534,7 +533,7 @@ pub fn unverify_sized_collection_item(
     .instruction();
     anchor_lang::solana_program::program::invoke_signed(
         &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
+        &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
@@ -542,92 +541,92 @@ pub fn unverify_sized_collection_item(
 
 #[derive(Accounts)]
 pub struct ApproveCollectionAuthority {
-    pub collection_authority_record: AccountInfo,
-    pub new_collection_authority: AccountInfo,
-    pub update_authority: AccountInfo,
-    pub payer: AccountInfo,
-    pub metadata: AccountInfo,
-    pub mint: AccountInfo,
+    pub collection_authority_record: AccountView,
+    pub new_collection_authority: AccountView,
+    pub update_authority: AccountView,
+    pub payer: AccountView,
+    pub metadata: AccountView,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct BubblegumSetCollectionSize {
-    pub metadata_account: AccountInfo,
-    pub update_authority: AccountInfo,
-    pub mint: AccountInfo,
-    pub bubblegum_signer: AccountInfo,
+    pub metadata_account: AccountView,
+    pub update_authority: AccountView,
+    pub mint: AccountView,
+    pub bubblegum_signer: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct BurnEditionNft {
-    pub metadata: AccountInfo,
-    pub owner: AccountInfo,
-    pub print_edition_mint: AccountInfo,
-    pub master_edition_mint: AccountInfo,
-    pub print_edition_token: AccountInfo,
-    pub master_edition_token: AccountInfo,
-    pub master_edition: AccountInfo,
-    pub print_edition: AccountInfo,
-    pub edition_marker: AccountInfo,
-    pub spl_token: AccountInfo,
+    pub metadata: AccountView,
+    pub owner: AccountView,
+    pub print_edition_mint: AccountView,
+    pub master_edition_mint: AccountView,
+    pub print_edition_token: AccountView,
+    pub master_edition_token: AccountView,
+    pub master_edition: AccountView,
+    pub print_edition: AccountView,
+    pub edition_marker: AccountView,
+    pub spl_token: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct BurnNft {
-    pub metadata: AccountInfo,
-    pub owner: AccountInfo,
-    pub mint: AccountInfo,
-    pub token: AccountInfo,
-    pub edition: AccountInfo,
-    pub spl_token: AccountInfo,
+    pub metadata: AccountView,
+    pub owner: AccountView,
+    pub mint: AccountView,
+    pub token: AccountView,
+    pub edition: AccountView,
+    pub spl_token: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct CreateMetadataAccountsV3 {
-    pub metadata: AccountInfo,
-    pub mint: AccountInfo,
-    pub mint_authority: AccountInfo,
-    pub payer: AccountInfo,
-    pub update_authority: AccountInfo,
-    pub system_program: AccountInfo,
-    pub rent: AccountInfo,
+    pub metadata: AccountView,
+    pub mint: AccountView,
+    pub mint_authority: AccountView,
+    pub payer: AccountView,
+    pub update_authority: AccountView,
+    pub system_program: AccountView,
+    pub rent: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct UpdateMetadataAccountsV2 {
-    pub metadata: AccountInfo,
-    pub update_authority: AccountInfo,
+    pub metadata: AccountView,
+    pub update_authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct CreateMasterEditionV3 {
-    pub edition: AccountInfo,
-    pub mint: AccountInfo,
-    pub update_authority: AccountInfo,
-    pub mint_authority: AccountInfo,
-    pub payer: AccountInfo,
-    pub metadata: AccountInfo,
-    pub token_program: AccountInfo,
-    pub system_program: AccountInfo,
-    pub rent: AccountInfo,
+    pub edition: AccountView,
+    pub mint: AccountView,
+    pub update_authority: AccountView,
+    pub mint_authority: AccountView,
+    pub payer: AccountView,
+    pub metadata: AccountView,
+    pub token_program: AccountView,
+    pub system_program: AccountView,
+    pub rent: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct MintNewEditionFromMasterEditionViaToken {
-    pub new_metadata: AccountInfo,
-    pub new_edition: AccountInfo,
-    pub master_edition: AccountInfo,
-    pub new_mint: AccountInfo,
-    pub edition_mark_pda: AccountInfo,
-    pub new_mint_authority: AccountInfo,
-    pub payer: AccountInfo,
-    pub token_account_owner: AccountInfo,
-    pub token_account: AccountInfo,
-    pub new_metadata_update_authority: AccountInfo,
-    pub metadata: AccountInfo,
-    pub token_program: AccountInfo,
-    pub system_program: AccountInfo,
-    pub rent: AccountInfo,
+    pub new_metadata: AccountView,
+    pub new_edition: AccountView,
+    pub master_edition: AccountView,
+    pub new_mint: AccountView,
+    pub edition_mark_pda: AccountView,
+    pub new_mint_authority: AccountView,
+    pub payer: AccountView,
+    pub token_account_owner: AccountView,
+    pub token_account: AccountView,
+    pub new_metadata_update_authority: AccountView,
+    pub metadata: AccountView,
+    pub token_program: AccountView,
+    pub system_program: AccountView,
+    pub rent: AccountView,
     //
     // Not actually used by the program but still needed because it's needed
     // for the pda calculation in the helper. :/
@@ -635,140 +634,140 @@ pub struct MintNewEditionFromMasterEditionViaToken {
     // The better thing to do would be to remove this and have the instruction
     // helper pass in the `edition_mark_pda` directly.
     //
-    pub metadata_mint: AccountInfo,
+    pub metadata_mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct RevokeCollectionAuthority {
-    pub collection_authority_record: AccountInfo,
-    pub delegate_authority: AccountInfo,
-    pub revoke_authority: AccountInfo,
-    pub metadata: AccountInfo,
-    pub mint: AccountInfo,
+    pub collection_authority_record: AccountView,
+    pub delegate_authority: AccountView,
+    pub revoke_authority: AccountView,
+    pub metadata: AccountView,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SetCollectionSize {
-    pub metadata: AccountInfo,
-    pub mint: AccountInfo,
-    pub update_authority: AccountInfo,
-    pub system_program: AccountInfo,
+    pub metadata: AccountView,
+    pub mint: AccountView,
+    pub update_authority: AccountView,
+    pub system_program: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SetTokenStandard {
-    pub metadata_account: AccountInfo,
-    pub update_authority: AccountInfo,
-    pub mint_account: AccountInfo,
+    pub metadata_account: AccountView,
+    pub update_authority: AccountView,
+    pub mint_account: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct VerifyCollection {
-    pub payer: AccountInfo,
-    pub metadata: AccountInfo,
-    pub collection_authority: AccountInfo,
-    pub collection_mint: AccountInfo,
-    pub collection_metadata: AccountInfo,
-    pub collection_master_edition: AccountInfo,
+    pub payer: AccountView,
+    pub metadata: AccountView,
+    pub collection_authority: AccountView,
+    pub collection_mint: AccountView,
+    pub collection_metadata: AccountView,
+    pub collection_master_edition: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct VerifySizedCollectionItem {
-    pub payer: AccountInfo,
-    pub metadata: AccountInfo,
-    pub collection_authority: AccountInfo,
-    pub collection_mint: AccountInfo,
-    pub collection_metadata: AccountInfo,
-    pub collection_master_edition: AccountInfo,
+    pub payer: AccountView,
+    pub metadata: AccountView,
+    pub collection_authority: AccountView,
+    pub collection_mint: AccountView,
+    pub collection_metadata: AccountView,
+    pub collection_master_edition: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SetAndVerifyCollection {
-    pub metadata: AccountInfo,
-    pub collection_authority: AccountInfo,
-    pub payer: AccountInfo,
-    pub update_authority: AccountInfo,
-    pub collection_mint: AccountInfo,
-    pub collection_metadata: AccountInfo,
-    pub collection_master_edition: AccountInfo,
+    pub metadata: AccountView,
+    pub collection_authority: AccountView,
+    pub payer: AccountView,
+    pub update_authority: AccountView,
+    pub collection_mint: AccountView,
+    pub collection_metadata: AccountView,
+    pub collection_master_edition: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SetAndVerifySizedCollectionItem {
-    pub metadata: AccountInfo,
-    pub collection_authority: AccountInfo,
-    pub payer: AccountInfo,
-    pub update_authority: AccountInfo,
-    pub collection_mint: AccountInfo,
-    pub collection_metadata: AccountInfo,
-    pub collection_master_edition: AccountInfo,
+    pub metadata: AccountView,
+    pub collection_authority: AccountView,
+    pub payer: AccountView,
+    pub update_authority: AccountView,
+    pub collection_mint: AccountView,
+    pub collection_metadata: AccountView,
+    pub collection_master_edition: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct FreezeDelegatedAccount {
-    pub metadata: AccountInfo,
-    pub delegate: AccountInfo,
-    pub token_account: AccountInfo,
-    pub edition: AccountInfo,
-    pub mint: AccountInfo,
-    pub token_program: AccountInfo,
+    pub metadata: AccountView,
+    pub delegate: AccountView,
+    pub token_account: AccountView,
+    pub edition: AccountView,
+    pub mint: AccountView,
+    pub token_program: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct ThawDelegatedAccount {
-    pub metadata: AccountInfo,
-    pub delegate: AccountInfo,
-    pub token_account: AccountInfo,
-    pub edition: AccountInfo,
-    pub mint: AccountInfo,
-    pub token_program: AccountInfo,
+    pub metadata: AccountView,
+    pub delegate: AccountView,
+    pub token_account: AccountView,
+    pub edition: AccountView,
+    pub mint: AccountView,
+    pub token_program: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct UpdatePrimarySaleHappenedViaToken {
-    pub metadata: AccountInfo,
-    pub owner: AccountInfo,
-    pub token: AccountInfo,
+    pub metadata: AccountView,
+    pub owner: AccountView,
+    pub token: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SignMetadata {
-    pub creator: AccountInfo,
-    pub metadata: AccountInfo,
+    pub creator: AccountView,
+    pub metadata: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct RemoveCreatorVerification {
-    pub creator: AccountInfo,
-    pub metadata: AccountInfo,
+    pub creator: AccountView,
+    pub metadata: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Utilize {
-    pub metadata: AccountInfo,
-    pub token_account: AccountInfo,
-    pub mint: AccountInfo,
-    pub use_authority: AccountInfo,
-    pub owner: AccountInfo,
+    pub metadata: AccountView,
+    pub token_account: AccountView,
+    pub mint: AccountView,
+    pub use_authority: AccountView,
+    pub owner: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct UnverifyCollection {
-    pub metadata: AccountInfo,
-    pub collection_authority: AccountInfo,
-    pub collection_mint: AccountInfo,
-    pub collection: AccountInfo,
-    pub collection_master_edition_account: AccountInfo,
+    pub metadata: AccountView,
+    pub collection_authority: AccountView,
+    pub collection_mint: AccountView,
+    pub collection: AccountView,
+    pub collection_master_edition_account: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct UnverifySizedCollectionItem {
-    pub metadata: AccountInfo,
-    pub collection_authority: AccountInfo,
-    pub payer: AccountInfo,
-    pub collection_mint: AccountInfo,
-    pub collection: AccountInfo,
-    pub collection_master_edition_account: AccountInfo,
+    pub metadata: AccountView,
+    pub collection_authority: AccountView,
+    pub payer: AccountView,
+    pub collection_mint: AccountView,
+    pub collection: AccountView,
+    pub collection_master_edition_account: AccountView,
 }
 
 #[derive(Clone, Debug, PartialEq)]

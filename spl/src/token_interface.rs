@@ -1,5 +1,5 @@
 use anchor_lang::__private::bytemuck::Pod;
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use std::ops::Deref;
 
@@ -90,7 +90,7 @@ pub fn find_mint_account_size(extensions: Option<&ExtensionsVec>) -> anchor_lang
 }
 
 pub fn get_mint_extension_data<T: Extension + Pod>(
-    account: &AccountInfo,
+    account: &AccountView,
 ) -> anchor_lang::Result<T> {
     let mint_data = unsafe { account.borrow_unchecked() };
     let mint_with_extension =

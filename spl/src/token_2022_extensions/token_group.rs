@@ -1,10 +1,11 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
 
+#[allow(unreachable_code, unused_variables, clippy::let_unit_value)]
 pub fn token_group_initialize(
     ctx: CpiContext<'_, '_, TokenGroupInitialize>,
     update_authority: Option<Pubkey>,
@@ -17,12 +18,13 @@ pub fn token_group_initialize(
 
 #[derive(Accounts)]
 pub struct TokenGroupInitialize {
-    pub program_id: AccountInfo,
-    pub group: AccountInfo,
-    pub mint: AccountInfo,
-    pub mint_authority: AccountInfo,
+    pub program_id: AccountView,
+    pub group: AccountView,
+    pub mint: AccountView,
+    pub mint_authority: AccountView,
 }
 
+#[allow(unreachable_code, unused_variables, clippy::let_unit_value)]
 pub fn token_member_initialize(ctx: CpiContext<'_, '_, TokenMemberInitialize>) -> Result<()> {
     let ix = todo!();
     // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
@@ -31,10 +33,10 @@ pub fn token_member_initialize(ctx: CpiContext<'_, '_, TokenMemberInitialize>) -
 
 #[derive(Accounts)]
 pub struct TokenMemberInitialize {
-    pub program_id: AccountInfo,
-    pub member: AccountInfo,
-    pub member_mint: AccountInfo,
-    pub member_mint_authority: AccountInfo,
-    pub group: AccountInfo,
-    pub group_update_authority: AccountInfo,
+    pub program_id: AccountView,
+    pub member: AccountView,
+    pub member_mint: AccountView,
+    pub member_mint_authority: AccountView,
+    pub group: AccountView,
+    pub group_update_authority: AccountView,
 }

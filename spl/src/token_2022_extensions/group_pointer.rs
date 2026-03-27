@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -21,15 +21,15 @@ pub fn group_pointer_initialize(
 
 #[derive(Accounts)]
 pub struct GroupPointerInitialize {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
 }
 
 pub fn group_pointer_update(
     ctx: CpiContext<'_, '_, GroupPointerUpdate>,
     group_address: Option<&Pubkey>,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
 
     let ix = pinocchio_token_2022::instructions::group_pointer::Update {
         token_program: ctx.accounts.token_program_id.address(),
@@ -43,7 +43,7 @@ pub fn group_pointer_update(
 
 #[derive(Accounts)]
 pub struct GroupPointerUpdate {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }

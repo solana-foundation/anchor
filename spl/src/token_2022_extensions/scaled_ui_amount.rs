@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -12,8 +12,8 @@ pub fn scaled_ui_amount_initialize(
 ) -> Result<()> {
     let ix = pinocchio_token_2022::instructions::scaled_ui_amount::Initialize {
         mint_account: &ctx.accounts.mint_account,
-        authority: authority,
-        multiplier: multiplier,
+        authority,
+        multiplier,
         token_program: ctx.accounts.token_program_id.address(),
     };
     ix.invoke().map_err(Into::into)
@@ -21,8 +21,8 @@ pub fn scaled_ui_amount_initialize(
 
 #[derive(Accounts)]
 pub struct ScaledUiAmountInitialize {
-    pub token_program_id: AccountInfo,
-    pub mint_account: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint_account: AccountView,
 }
 
 pub fn scaled_ui_amount_update(
@@ -30,13 +30,13 @@ pub fn scaled_ui_amount_update(
     multiplier: f64,
     effective_timestamp: i64,
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
 
     let ix = pinocchio_token_2022::instructions::scaled_ui_amount::UpdateMultiplier {
         mint: &ctx.accounts.mint_account,
         authority: &ctx.accounts.authority,
-        multiplier: multiplier,
-        effective_timestamp: effective_timestamp,
+        multiplier,
+        effective_timestamp,
         multisig_signers: &signers,
         token_program: ctx.accounts.token_program_id.address(),
     };
@@ -45,7 +45,7 @@ pub fn scaled_ui_amount_update(
 
 #[derive(Accounts)]
 pub struct ScaledUiAmountUpdate {
-    pub token_program_id: AccountInfo,
-    pub mint_account: AccountInfo,
-    pub authority: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint_account: AccountView,
+    pub authority: AccountView,
 }

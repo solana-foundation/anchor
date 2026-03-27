@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -33,12 +33,12 @@ pub fn create_idempotent(ctx: CpiContext<'_, '_, CreateIdempotent>) -> Result<()
 
 #[derive(Accounts)]
 pub struct Create {
-    pub payer: AccountInfo,
-    pub associated_token: AccountInfo,
-    pub authority: AccountInfo,
-    pub mint: AccountInfo,
-    pub system_program: AccountInfo,
-    pub token_program: AccountInfo,
+    pub payer: AccountView,
+    pub associated_token: AccountView,
+    pub authority: AccountView,
+    pub mint: AccountView,
+    pub system_program: AccountView,
+    pub token_program: AccountView,
 }
 
 type CreateIdempotent = Create;

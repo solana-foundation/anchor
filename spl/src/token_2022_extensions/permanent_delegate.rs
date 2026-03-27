@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -19,6 +19,6 @@ pub fn permanent_delegate_initialize(
 
 #[derive(Accounts)]
 pub struct PermanentDelegateInitialize {
-    pub token_program_id: AccountInfo,
-    pub mint: AccountInfo,
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
 }

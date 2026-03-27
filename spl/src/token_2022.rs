@@ -1,6 +1,6 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_info::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_view::AccountView;
 use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
 use anchor_lang::{context::CpiContext, Accounts};
 use anchor_lang::{Key, Result};
@@ -257,7 +257,7 @@ pub fn reallocate(
     ctx: CpiContext<'_, '_, Reallocate>,
     extensions: &[ExtensionDiscriminator],
 ) -> Result<()> {
-    let signers: Vec<&AccountInfo> = ctx.remaining_accounts.iter().collect();
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
     let ix = pinocchio_token_2022::instructions::Reallocate {
         payer: &ctx.accounts.payer,
         account: &ctx.accounts.account,
@@ -275,7 +275,7 @@ pub fn unwrap_lamports(ctx: CpiContext<'_, '_, UnwrapLamports>, amount: Option<u
         source: &ctx.accounts.account,
         destination: &ctx.accounts.destination,
         authority: &ctx.accounts.authority,
-        multisig_signers: &ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>(),
+        multisig_signers: &ctx.remaining_accounts.iter().collect::<Vec<&AccountView>>(),
         amount,
         token_program: &ctx.program_id,
     };
@@ -286,7 +286,7 @@ pub fn withdraw_excess_lamports(ctx: CpiContext<'_, '_, WidthdrawExcessLamports>
     let ix = pinocchio_token_2022::instructions::WidthdrawExcessLamports {
         source: &ctx.accounts.source,
         destination: &ctx.accounts.destination,
-        multisig_signers: &ctx.remaining_accounts.iter().collect::<Vec<&AccountInfo>>(),
+        multisig_signers: &ctx.remaining_accounts.iter().collect::<Vec<&AccountView>>(),
         authority: &ctx.accounts.authority,
         token_program: &ctx.program_id,
     };
@@ -362,178 +362,178 @@ pub fn initialize_immutable_owner(ctx: CpiContext<'_, '_, InitializeImmutableOwn
 
 #[derive(Accounts)]
 pub struct Transfer {
-    pub from: AccountInfo,
-    pub to: AccountInfo,
-    pub authority: AccountInfo,
+    pub from: AccountView,
+    pub to: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct TransferChecked {
-    pub from: AccountInfo,
-    pub mint: AccountInfo,
-    pub to: AccountInfo,
-    pub authority: AccountInfo,
+    pub from: AccountView,
+    pub mint: AccountView,
+    pub to: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct MintTo {
-    pub mint: AccountInfo,
-    pub to: AccountInfo,
-    pub authority: AccountInfo,
+    pub mint: AccountView,
+    pub to: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct MintToChecked {
-    pub mint: AccountInfo,
-    pub to: AccountInfo,
-    pub authority: AccountInfo,
+    pub mint: AccountView,
+    pub to: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Burn {
-    pub mint: AccountInfo,
-    pub from: AccountInfo,
-    pub authority: AccountInfo,
+    pub mint: AccountView,
+    pub from: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct BurnChecked {
-    pub mint: AccountInfo,
-    pub from: AccountInfo,
-    pub authority: AccountInfo,
+    pub mint: AccountView,
+    pub from: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Approve {
-    pub to: AccountInfo,
-    pub delegate: AccountInfo,
-    pub authority: AccountInfo,
+    pub to: AccountView,
+    pub delegate: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct ApproveChecked {
-    pub to: AccountInfo,
-    pub mint: AccountInfo,
-    pub delegate: AccountInfo,
-    pub authority: AccountInfo,
+    pub to: AccountView,
+    pub mint: AccountView,
+    pub delegate: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Revoke {
-    pub source: AccountInfo,
-    pub authority: AccountInfo,
+    pub source: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeAccount {
-    pub account: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
-    pub rent: AccountInfo,
+    pub account: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
+    pub rent: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeAccount3 {
-    pub account: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct CloseAccount {
-    pub account: AccountInfo,
-    pub destination: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub destination: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct FreezeAccount {
-    pub account: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct ThawAccount {
-    pub account: AccountInfo,
-    pub mint: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeMint {
-    pub mint: AccountInfo,
-    pub rent: AccountInfo,
+    pub mint: AccountView,
+    pub rent: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeMint2 {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeNonTransferableMint {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SetAuthority {
-    pub current_authority: AccountInfo,
-    pub account_or_mint: AccountInfo,
+    pub current_authority: AccountView,
+    pub account_or_mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct SyncNative {
-    pub account: AccountInfo,
+    pub account: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct CreateNativeMint {
-    pub payer: AccountInfo,
-    pub native_mint: AccountInfo,
-    pub system_program: AccountInfo,
+    pub payer: AccountView,
+    pub native_mint: AccountView,
+    pub system_program: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct UnwrapLamports {
-    pub account: AccountInfo,
-    pub destination: AccountInfo,
-    pub authority: AccountInfo,
+    pub account: AccountView,
+    pub destination: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct WidthdrawExcessLamports {
-    pub source: AccountInfo,
-    pub destination: AccountInfo,
-    pub authority: AccountInfo,
+    pub source: AccountView,
+    pub destination: AccountView,
+    pub authority: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Reallocate {
-    pub payer: AccountInfo,
-    pub account: AccountInfo,
-    pub owner: AccountInfo,
-    pub system_program: AccountInfo,
+    pub payer: AccountView,
+    pub account: AccountView,
+    pub owner: AccountView,
+    pub system_program: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct UiAmountToAmount {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct GetAccountDataSize {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct AmountToUiAmount {
-    pub mint: AccountInfo,
+    pub mint: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct InitializeImmutableOwner {
-    pub account: AccountInfo,
+    pub account: AccountView,
 }
 
 #[derive(Clone)]
