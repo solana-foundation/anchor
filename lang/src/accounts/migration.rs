@@ -2,7 +2,7 @@
 
 use crate::bpf_writer::BpfWriter;
 use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
+use crate::solana_program::account_info::AccountView;
 use crate::solana_program::instruction::AccountMeta;
 use crate::solana_program::pubkey::Pubkey;
 use crate::solana_program::system_program;
@@ -22,7 +22,7 @@ pub enum MigrationInner<From, To> {
     To(To),
 }
 
-/// Wrapper around [`AccountInfo`]
+/// Wrapper around [`AccountView`]
 /// that handles account schema migrations from one type to another.
 ///
 /// # Table of Contents
@@ -154,7 +154,7 @@ where
     To: AccountSerialize,
 {
     /// Account info reference
-    info: &'info AccountInfo<'info>,
+    info: &'info AccountView,
     /// Internal migration state
     inner: MigrationInner<From, To>,
 }
@@ -165,7 +165,7 @@ where
     To: AccountSerialize + Owner,
 {
     /// Creates a new Migration in the From (unmigrated) state.
-    fn new(info: &'info AccountInfo<'info>, account: From) -> Self {
+    fn new(info: &'info AccountView, account: From) -> Self {
         Self {
             info,
             inner: MigrationInner::From(account),
@@ -293,17 +293,17 @@ where
     /// Only accepts accounts in the `From` format. Accounts already in the `To`
     /// format will be rejected.
     #[inline(never)]
-    pub fn try_from(info: &'info AccountInfo<'info>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
+    pub fn try_from(info: &'info AccountView) -> Result<Self> {
+        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
 
-        if info.owner != &From::owner() {
+        if !info.owned_by(&From::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, From::owner())));
+                .with_pubkeys((*info.owner(), From::owner())));
         }
 
-        let mut data: &[u8] = &info.try_borrow_data()?;
+        let mut data: &[u8] = &info.try_borrow()?;
         Ok(Self::new(info, From::try_deserialize(&mut data)?))
     }
 
@@ -312,17 +312,17 @@ where
     ///
     /// **Warning:** Use with caution. This skips discriminator validation.
     #[inline(never)]
-    pub fn try_from_unchecked(info: &'info AccountInfo<'info>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
+    pub fn try_from_unchecked(info: &'info AccountView) -> Result<Self> {
+        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
 
-        if info.owner != &From::owner() {
+        if !info.owned_by(&From::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, From::owner())));
+                .with_pubkeys((*info.owner(), From::owner())));
         }
 
-        let mut data: &[u8] = &info.try_borrow_data()?;
+        let mut data: &[u8] = &info.try_borrow()?;
         Ok(Self::new(info, From::try_deserialize_unchecked(&mut data)?))
     }
 }
@@ -335,7 +335,7 @@ where
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -374,7 +374,8 @@ where
                 }
 
                 // Serialize the migrated data
-                let mut data = self.info.try_borrow_mut_data()?;
+                let mut account = *self.info;
+                let mut data = account.try_borrow_mut()?;
                 let dst: &mut [u8] = &mut data;
                 let mut writer = BpfWriter::new(dst);
                 to.try_serialize(&mut writer)?;
@@ -390,32 +391,34 @@ where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.info.is_signer);
-        let meta = match self.info.is_writable {
-            false => AccountMeta::new_readonly(*self.info.key, is_signer),
-            true => AccountMeta::new(*self.info.key, is_signer),
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        let is_signer = is_signer.unwrap_or(self.info.is_signer());
+        let meta = match (self.info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.info.address()),
+            (true, false) => AccountMeta::writable(self.info.address()),
+            (true, true) => AccountMeta::writable_signer(self.info.address()),
         };
         vec![meta]
     }
 }
 
-impl<'info, From, To> ToAccountInfos<'info> for Migration<'info, From, To>
+impl<'info, From, To> ToAccountInfos for Migration<'info, From, To>
 where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.info.clone()]
+    fn to_account_infos(&self) -> Vec<AccountView> {
+        vec![*self.info]
     }
 }
 
-impl<'info, From, To> AsRef<AccountInfo<'info>> for Migration<'info, From, To>
+impl<'info, From, To> AsRef<AccountView> for Migration<'info, From, To>
 where
     From: AccountDeserialize,
     To: AccountSerialize,
 {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+    fn as_ref(&self) -> &AccountView {
         self.info
     }
 }
@@ -426,7 +429,7 @@ where
     To: AccountSerialize,
 {
     fn key(&self) -> Pubkey {
-        *self.info.key
+        *self.info.address()
     }
 }
 
@@ -471,7 +474,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED};
     use crate::{AnchorDeserialize, AnchorSerialize, Discriminator};
+    use std::mem::size_of;
+    use std::ptr;
 
     const TEST_DISCRIMINATOR_V1: [u8; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
     const TEST_DISCRIMINATOR_V2: [u8; 8] = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -562,13 +568,36 @@ mod tests {
         }
     }
 
-    fn create_account_info<'a>(
-        key: &'a Pubkey,
-        owner: &'a Pubkey,
-        lamports: &'a mut u64,
-        data: &'a mut [u8],
-    ) -> AccountInfo<'a> {
-        AccountInfo::new(key, false, true, lamports, data, owner, false)
+    fn create_account_info(
+        key: &Pubkey,
+        owner: &Pubkey,
+        lamports: &mut u64,
+        data: &mut [u8],
+    ) -> AccountView {
+        let header_len = size_of::<RuntimeAccount>();
+        let total = header_len + data.len();
+        let storage = Box::leak(vec![0u8; total].into_boxed_slice());
+        let header_ptr = storage.as_mut_ptr().cast::<RuntimeAccount>();
+        let acc = RuntimeAccount {
+            borrow_state: NOT_BORROWED,
+            is_signer: 0,
+            is_writable: 1,
+            executable: 0,
+            padding: [0; 4],
+            address: *key,
+            owner: *owner,
+            lamports: *lamports,
+            data_len: data.len() as u64,
+        };
+        unsafe {
+            ptr::write(header_ptr, acc);
+            ptr::copy_nonoverlapping(
+                data.as_ptr(),
+                storage.as_mut_ptr().add(header_len),
+                data.len(),
+            );
+            AccountView::new_unchecked(header_ptr)
+        }
     }
 
     // Verifies that a freshly deserialized Migration account reports

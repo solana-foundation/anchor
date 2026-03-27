@@ -2,9 +2,9 @@
 
 use crate::accounts::program::Program;
 use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
+use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
 use crate::{
     AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
     ToAccountMetas,
@@ -75,33 +75,33 @@ use std::ops::Deref;
 #[derive(Clone)]
 pub struct Interface<'info, T>(Program<'info, T>);
 impl<'a, T> Interface<'a, T> {
-    pub(crate) fn new(info: &'a AccountInfo<'a>) -> Self {
+    pub(crate) fn new(info: &'a AccountView) -> Self {
         Self(Program::new(info))
     }
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
         self.0.programdata_address()
     }
 }
-impl<'a, T: CheckId> TryFrom<&'a AccountInfo<'a>> for Interface<'a, T> {
+impl<'a, T: CheckId> TryFrom<&'a AccountView> for Interface<'a, T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
-    fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
-        T::check_id(info.key)?;
-        if !info.executable {
+    fn try_from(info: &'a AccountView) -> Result<Self> {
+        T::check_id(info.address())?;
+        if !info.executable() {
             return Err(ErrorCode::InvalidProgramExecutable.into());
         }
         Ok(Self::new(info))
     }
 }
 impl<'info, T> Deref for Interface<'info, T> {
-    type Target = AccountInfo<'info>;
+    type Target = AccountView;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0.as_ref()
     }
 }
-impl<'info, T> AsRef<AccountInfo<'info>> for Interface<'info, T> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
-        &self.0
+impl<'info, T> AsRef<AccountView> for Interface<'info, T> {
+    fn as_ref(&self) -> &AccountView {
+        self.0.as_ref()
     }
 }
 
@@ -109,7 +109,7 @@ impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -124,13 +124,13 @@ impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
 }
 
 impl<T> ToAccountMetas for Interface<'_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         self.0.to_account_metas(is_signer)
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for Interface<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+impl<'info, T> ToAccountInfos for Interface<'info, T> {
+    fn to_account_infos(&self) -> Vec<AccountView> {
         self.0.to_account_infos()
     }
 }
