@@ -338,64 +338,100 @@ impl FromStr for IdlType {
             "Pubkey" => IdlType::Pubkey,
             _ => {
                 if let Some(inner) = s.strip_prefix("Option<") {
-                    let inner_ty = Self::from_str(
-                        inner
-                            .strip_suffix('>')
-                            .ok_or_else(|| anyhow!("Invalid Option"))?,
-                    )?;
+                    let inner = inner
+                        .strip_suffix('>')
+                        .ok_or_else(|| anyhow!("Invalid Option type '{s}': missing closing '>'"))?;
+
+                    if inner.is_empty() {
+                        return Err(anyhow!("Invalid Option type '{s}': empty inner type"));
+                    }
+
+                    let inner_ty = Self::from_str(inner)
+                        .map_err(|e| anyhow!("Invalid Option inner type '{inner}' in '{s}': {e}"))?;
+
                     return Ok(IdlType::Option(Box::new(inner_ty)));
                 }
 
                 if let Some(inner) = s.strip_prefix("Vec<") {
-                    let inner_ty = Self::from_str(
-                        inner
-                            .strip_suffix('>')
-                            .ok_or_else(|| anyhow!("Invalid Vec"))?,
-                    )?;
+                    let inner = inner
+                        .strip_suffix('>')
+                        .ok_or_else(|| anyhow!("Invalid Vec type '{s}': missing closing '>'"))?;
+
+                    if inner.is_empty() {
+                        return Err(anyhow!("Invalid Vec type '{s}': empty inner type"));
+                    }
+
+                    let inner_ty = Self::from_str(inner)
+                        .map_err(|e| anyhow!("Invalid Vec inner type '{inner}' in '{s}': {e}"))?;
+
                     return Ok(IdlType::Vec(Box::new(inner_ty)));
                 }
 
                 if s.starts_with('[') {
-                    fn array_from_str(inner: &str) -> IdlType {
+                    fn array_from_str(inner: &str) -> Result<IdlType, anyhow::Error> {
                         match inner.strip_suffix(']') {
                             Some(nested_inner) => array_from_str(&nested_inner[1..]),
                             None => {
-                                let (raw_type, raw_length) = inner.rsplit_once(';').unwrap();
-                                let ty = IdlType::from_str(raw_type).unwrap();
+                                let (raw_type, raw_length) = inner.rsplit_once(';').ok_or_else(|| {
+                                    anyhow!(
+                                        "Invalid array type syntax: expected '[type; length]', found '{inner}'"
+                                    )
+                                })?;
+
+                                let ty = IdlType::from_str(raw_type).map_err(|e| {
+                                    anyhow!(
+                                        "Invalid array element type '{raw_type}' in '{inner}': {e}"
+                                    )
+                                })?;
+
                                 let len = match raw_length.replace('_', "").parse::<usize>() {
                                     Ok(len) => IdlArrayLen::Value(len),
                                     Err(_) => IdlArrayLen::Generic(raw_length.to_owned()),
                                 };
-                                IdlType::Array(Box::new(ty), len)
+
+                                Ok(IdlType::Array(Box::new(ty), len))
                             }
                         }
                     }
-                    return Ok(array_from_str(&s));
+                    return array_from_str(&s);
                 }
 
                 // Defined
                 let (name, generics) = if let Some(i) = s.find('<') {
-                    (
-                        s.get(..i).unwrap().to_owned(),
-                        s.get(i + 1..)
-                            .unwrap()
-                            .strip_suffix('>')
-                            .unwrap()
-                            .split(',')
-                            .map(|g| g.trim().to_owned())
-                            .map(|g| {
-                                if g.parse::<bool>().is_ok()
-                                    || g.parse::<u128>().is_ok()
-                                    || g.parse::<i128>().is_ok()
-                                    || g.parse::<char>().is_ok()
-                                {
-                                    Ok(IdlGenericArg::Const { value: g })
-                                } else {
-                                    Self::from_str(&g).map(|ty| IdlGenericArg::Type { ty })
-                                }
-                            })
-                            .collect::<Result<Vec<_>, _>>()?,
-                    )
+                    // `i` comes from `s.find('<')`, so it is always a valid UTF-8 boundary.
+                    let name = s[..i].to_owned();
+
+                    let generics_str = s[i + 1..]
+                        .strip_suffix('>')
+                        .ok_or_else(|| anyhow!("Invalid defined type '{s}': missing closing '>'"))?;
+
+                    if generics_str.is_empty() {
+                        return Err(anyhow!("Invalid defined type '{s}': empty generics list"));
+                    }
+
+                    let generics = generics_str
+                        .split(',')
+                        .map(|g| g.trim().to_owned())
+                        .map(|g| {
+                            if g.is_empty() {
+                                return Err(anyhow!(
+                                    "Invalid defined type '{s}': empty generic argument"
+                                ));
+                            }
+
+                            if g.parse::<bool>().is_ok()
+                                || g.parse::<u128>().is_ok()
+                                || g.parse::<i128>().is_ok()
+                                || g.parse::<char>().is_ok()
+                            {
+                                Ok(IdlGenericArg::Const { value: g })
+                            } else {
+                                Self::from_str(&g).map(|ty| IdlGenericArg::Type { ty })
+                            }
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    (name, generics)
                 } else {
                     (s.to_owned(), vec![])
                 };
@@ -427,11 +463,31 @@ mod tests {
     }
 
     #[test]
+    fn malformed_option_missing_closing_angle_returns_err() {
+        assert!(IdlType::from_str("Option<bool").is_err());
+    }
+
+    #[test]
+    fn malformed_option_empty_inner_returns_err() {
+        assert!(IdlType::from_str("Option<>").is_err());
+    }
+
+    #[test]
     fn vector() {
         assert_eq!(
             IdlType::from_str("Vec<bool>").unwrap(),
             IdlType::Vec(Box::new(IdlType::Bool))
         )
+    }
+
+    #[test]
+    fn malformed_vec_missing_closing_angle_returns_err() {
+        assert!(IdlType::from_str("Vec<bool").is_err());
+    }
+
+    #[test]
+    fn malformed_vec_empty_inner_returns_err() {
+        assert!(IdlType::from_str("Vec<>").is_err());
     }
 
     #[test]
@@ -465,11 +521,29 @@ mod tests {
     }
 
     #[test]
+    fn malformed_multidimensional_array_missing_closing_bracket_returns_err() {
+        assert!(IdlType::from_str("[[u8; 16]; 32").is_err());
+    }
+
+    #[test]
     fn generic_array() {
         assert_eq!(
             IdlType::from_str("[u64; T]").unwrap(),
             IdlType::Array(Box::new(IdlType::U64), IdlArrayLen::Generic("T".into()))
         );
+    }
+
+    #[test]
+    fn malformed_array_missing_semicolon_returns_err() {
+        // Previously this would panic due to `.rsplit_once(';').unwrap()`.
+        assert!(IdlType::from_str("[u8 32]").is_err());
+    }
+
+    #[test]
+    fn malformed_array_invalid_element_type_returns_err() {
+        // Previously this would panic due to `IdlType::from_str(raw_type).unwrap()`.
+        // Use a type that is *syntactically* invalid (missing '>') so `from_str` returns Err.
+        assert!(IdlType::from_str("[Option<Pubkey; 32]").is_err());
     }
 
     #[test]
@@ -498,5 +572,28 @@ mod tests {
                 ],
             }
         )
+    }
+
+    #[test]
+    fn malformed_defined_missing_closing_angle_returns_err() {
+        // Previously this would panic due to `.strip_suffix('>').unwrap()`.
+        assert!(IdlType::from_str("MyStruct<Pubkey").is_err());
+    }
+
+    #[test]
+    fn malformed_defined_empty_generics_returns_err() {
+        // Previously this would panic due to `.strip_suffix('>').unwrap()` (and/or parse weirdly).
+        assert!(IdlType::from_str("MyStruct<>").is_err());
+    }
+
+    #[test]
+    fn malformed_defined_trailing_comma_returns_err() {
+        assert!(IdlType::from_str("MyStruct<Pubkey,>").is_err());
+    }
+
+    #[test]
+    fn malformed_defined_nested_missing_closing_angles_returns_err() {
+        // Ensure recursive parsing of generic arguments propagates syntax errors from nested generics.
+        assert!(IdlType::from_str("MyStruct<Option<Pubkey>").is_err());
     }
 }
