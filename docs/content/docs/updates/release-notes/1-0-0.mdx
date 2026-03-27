@@ -67,10 +67,10 @@ sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.10/install)"
 ### TypeScript package rename
 
 The TypeScript package has been moved from `@coral-xyz/anchor` to
-`@anchor-lang/anchor`:
+`@anchor-lang/core`:
 
 ```sh
-npm install @anchor-lang/anchor
+npm install @anchor-lang/core
 ```
 
 Update every import in your project:
@@ -78,8 +78,8 @@ Update every import in your project:
 ```diff
 - import * as anchor from "@coral-xyz/anchor";
 - import { Program } from "@coral-xyz/anchor";
-+ import * as anchor from "@anchor-lang/anchor";
-+ import { Program } from "@anchor-lang/anchor";
++ import * as anchor from "@anchor-lang/core";
++ import { Program } from "@anchor-lang/core";
 ```
 
 IDL types that were previously imported from `@coral-xyz/anchor/dist/cjs/idl`
@@ -106,8 +106,7 @@ longer needs to be on your `PATH` for Anchor commands to work.
 
 [Surfpool](https://github.com/txtx/surfpool) replaces the local validator as
 the default backend for `anchor test` and `anchor localnet`. If you want to
-keep using the local validator, pass `--provider.cluster localnet` or set it in
-`Anchor.toml`.
+keep using the `solana-test-validator`, pass `--validator legacy`.
 
 ### Duplicate mutable accounts disallowed by default
 
@@ -136,6 +135,11 @@ only the underlying mechanism has changed.
 As a consequence, the program-id arguments of `idl init` and `idl upgrade` have
 been removed — the program ID is now derived from context.
 
+If you are migrating an existing deployed program with IDL, you will need to
+close existing IDL accounts before deploying the new program based on anchor 
+v1.0.0 as this will remove the IDL management instructions. This also depends 
+on the previous v0.32.1 anchor cli.
+
 ### Remove program account info from CPI context
 
 The `program` field in `CpiContext` previously held a redundant copy of the
@@ -149,12 +153,12 @@ program `AccountInfo`. It has been removed:
 ### `interface-instructions` feature removed
 
 The `interface-instructions` feature flag and the `#[interface]` attribute have
-been removed. Use `declare_program!` for cross-program interface definitions
-instead.
+been removed. Use `#[instruction(discriminator = <EXPR>)]!` to specify custom 
+discriminators.
 
 ### `Anchor.toml` cleanup
 
-- The `[registry]` section is no longer recognised and should be removed.
+- The `[registry]` section is no longer recognized and should be removed.
 - The program `arch` build options have been removed from the CLI.
 
 ### `#[error_code]` may only appear once per program
@@ -223,12 +227,12 @@ Supported hooks: `pre_build`, `post_build`, `pre_test`, `post_test`,
 ### LiteSVM test template is now the default
 
 `anchor init` now generates a [LiteSVM](https://github.com/LiteSVM/litesvm)
-test template by default, replacing the previous `anchor-tests` default. You
+test template by default, replacing the previous TypeScript based default. You
 can still pick a different template explicitly:
 
 ```sh
 anchor init my-program --test-template mollusk
-anchor init my-program --test-template anchor
+anchor init my-program --test-template mocha
 ```
 
 ### Program ID mismatch check
