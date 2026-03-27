@@ -200,10 +200,7 @@ pub fn account(
 
                     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
                         let data: &[u8] = &buf[#disc.len()..];
-                        // Re-interpret raw bytes into the POD data structure.
-                        let account = anchor_lang::__private::bytemuck::from_bytes(data);
-                        // Copy out the bytes into a new, owned data structure.
-                        Ok(*account)
+                        Ok(anchor_lang::__private::bytemuck::pod_read_unaligned(data))
                     }
                 }
 
@@ -443,6 +440,12 @@ pub fn zero_copy(
     }
 
     let account_strct = parse_macro_input!(item as syn::ItemStruct);
+    let host_sized_int_errors = if is_unsafe {
+        quote! {}
+    } else {
+        let errors = zero_copy_host_sized_int_errors(&account_strct);
+        quote! { #(#errors)* }
+    };
 
     // Takes the first repr. It's assumed that more than one are not on the
     // struct.
@@ -491,6 +494,7 @@ pub fn zero_copy(
     };
 
     let ret = quote! {
+        #host_sized_int_errors
         #[derive(anchor_lang::__private::ZeroCopyAccessor, Copy, Clone)]
         #repr
         #pod
@@ -520,6 +524,120 @@ pub fn zero_copy(
 
     #[allow(unreachable_code)]
     proc_macro::TokenStream::from(ret)
+}
+
+fn zero_copy_host_sized_int_errors(
+    account_strct: &syn::ItemStruct,
+) -> Vec<proc_macro2::TokenStream> {
+    let fields: Vec<&syn::Field> = match &account_strct.fields {
+        syn::Fields::Named(fields) => fields.named.iter().collect(),
+        syn::Fields::Unnamed(fields) => fields.unnamed.iter().collect(),
+        syn::Fields::Unit => Vec::new(),
+    };
+
+    fields
+        .into_iter()
+        .filter(|field| type_contains_host_sized_int(&field.ty))
+        .map(|field| {
+            syn::Error::new_spanned(
+                &field.ty,
+                "safe zero_copy does not support `usize` or `isize`; use a fixed-width integer instead",
+            )
+            .to_compile_error()
+        })
+        .collect()
+}
+
+fn type_contains_host_sized_int(ty: &syn::Type) -> bool {
+    match ty {
+        syn::Type::Array(array) => type_contains_host_sized_int(&array.elem),
+        syn::Type::BareFn(fun) => {
+            fun.inputs
+                .iter()
+                .any(|arg| type_contains_host_sized_int(&arg.ty))
+                || matches!(
+                    &fun.output,
+                    syn::ReturnType::Type(_, ty) if type_contains_host_sized_int(ty)
+                )
+        }
+        syn::Type::Group(group) => type_contains_host_sized_int(&group.elem),
+        syn::Type::Paren(paren) => type_contains_host_sized_int(&paren.elem),
+        syn::Type::Path(type_path) => {
+            path_is_host_sized_int(&type_path.path)
+                || type_path
+                    .path
+                    .segments
+                    .iter()
+                    .any(|segment| match &segment.arguments {
+                        syn::PathArguments::AngleBracketed(args) => {
+                            args.args.iter().any(|arg| match arg {
+                                syn::GenericArgument::Type(ty) => type_contains_host_sized_int(ty),
+                                syn::GenericArgument::Binding(binding) => {
+                                    type_contains_host_sized_int(&binding.ty)
+                                }
+                                syn::GenericArgument::Constraint(_) => false,
+                                syn::GenericArgument::Lifetime(_)
+                                | syn::GenericArgument::Const(_) => false,
+                            })
+                        }
+                        syn::PathArguments::Parenthesized(args) => {
+                            args.inputs.iter().any(type_contains_host_sized_int)
+                                || matches!(
+                                    &args.output,
+                                    syn::ReturnType::Type(_, ty) if type_contains_host_sized_int(ty)
+                                )
+                        }
+                        syn::PathArguments::None => false,
+                    })
+        }
+        syn::Type::Ptr(ptr) => type_contains_host_sized_int(&ptr.elem),
+        syn::Type::Reference(reference) => type_contains_host_sized_int(&reference.elem),
+        syn::Type::Slice(slice) => type_contains_host_sized_int(&slice.elem),
+        syn::Type::Tuple(tuple) => tuple.elems.iter().any(type_contains_host_sized_int),
+        syn::Type::ImplTrait(_)
+        | syn::Type::Infer(_)
+        | syn::Type::Macro(_)
+        | syn::Type::Never(_)
+        | syn::Type::TraitObject(_)
+        | syn::Type::Verbatim(_) => false,
+        _ => false,
+    }
+}
+
+fn path_is_host_sized_int(path: &syn::Path) -> bool {
+    matches!(
+        path.segments.last().map(|segment| segment.ident.to_string()),
+        Some(ident) if ident == "usize" || ident == "isize"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::type_contains_host_sized_int;
+    use syn::parse_quote;
+
+    #[test]
+    fn detects_host_sized_ints() {
+        assert!(type_contains_host_sized_int(&parse_quote!(usize)));
+        assert!(type_contains_host_sized_int(&parse_quote!(
+            core::primitive::isize
+        )));
+        assert!(type_contains_host_sized_int(&parse_quote!([usize; 4])));
+        assert!(type_contains_host_sized_int(&parse_quote!(Option<usize>)));
+        assert!(type_contains_host_sized_int(&parse_quote!((u64, isize))));
+    }
+
+    #[test]
+    fn allows_fixed_width_types() {
+        assert!(!type_contains_host_sized_int(&parse_quote!(u64)));
+        assert!(!type_contains_host_sized_int(&parse_quote!(
+            core::primitive::u128
+        )));
+        assert!(!type_contains_host_sized_int(&parse_quote!([u8; 32])));
+        assert!(!type_contains_host_sized_int(
+            &parse_quote!(Result<u64, u32>)
+        ));
+    }
 }
 
 /// Convenience macro to define a static public key.
