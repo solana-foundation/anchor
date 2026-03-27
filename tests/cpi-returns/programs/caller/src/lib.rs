@@ -51,6 +51,19 @@ pub mod caller {
         Ok(())
     }
 
+    pub fn cpi_call_return_u64_unchecked(ctx: Context<CpiReturnContext>) -> Result<()> {
+        let cpi_program_id = ctx.accounts.cpi_return_program.key();
+        let cpi_accounts = CpiReturn {
+            account: ctx.accounts.cpi_return.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(cpi_program_id, cpi_accounts);
+        // Test the _unchecked variant
+        let result = callee::cpi::return_u64_unchecked(cpi_ctx)?;
+        let solana_return = result.get();
+        anchor_lang::solana_program::log::sol_log_data(&[&borsh::to_vec(&solana_return).unwrap()]);
+        Ok(())
+    }
+
     pub fn return_u64(ctx: Context<ReturnContext>) -> Result<u64> {
         Ok(99)
     }
