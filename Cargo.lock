@@ -195,6 +195,7 @@ dependencies = [
  "anchor-client",
  "anchor-lang",
  "anchor-lang-idl",
+ "anstyle-hyperlink",
  "anyhow",
  "base64 0.21.7",
  "bincode",
@@ -207,10 +208,12 @@ dependencies = [
  "ed25519-dalek",
  "flate2",
  "heck 0.4.1",
+ "object",
  "pathdiff",
  "portpicker",
  "regex",
  "reqwest 0.11.27",
+ "rustc-demangle",
  "semver",
  "serde",
  "serde_json",
@@ -219,6 +222,7 @@ dependencies = [
  "solana-client",
  "solana-clock",
  "solana-commitment-config",
+ "solana-compute-budget",
  "solana-compute-budget-interface",
  "solana-faucet",
  "solana-instruction",
@@ -230,6 +234,7 @@ dependencies = [
  "solana-pubsub-client",
  "solana-rpc-client",
  "solana-rpc-client-api",
+ "solana-sbpf",
  "solana-sdk-ids",
  "solana-signature",
  "solana-signer",
@@ -449,6 +454,16 @@ name = "anstyle"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "940b3a0ca603d1eade50a4846a2afffd5ef57a9feac2c0e2ec2e14f9ead76000"
+
+[[package]]
+name = "anstyle-hyperlink"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a14cad0fa1d1fb02de486a95ea7fd8dd28567b82f65b4ca34bffa7da81823e4"
+dependencies = [
+ "libc",
+ "percent-encoding",
+]
 
 [[package]]
 name = "anstyle-parse"
@@ -3003,6 +3018,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.37.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff76201f031d8863c38aa7f905eca4f53abbfa15f609db4277d44cd8938f33fe"
+dependencies = [
+ "flate2",
+ "memchr",
+ "ruzstd",
+]
+
+[[package]]
 name = "oid-registry"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3814,6 +3840,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
+name = "ruzstd"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5ff0cc5e135c8870a775d3320910cd9b564ec036b4dc0b8741629020be63f01"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4542,6 +4577,16 @@ checksum = "1517aa49dcfa9cb793ef90e7aac81346d62ca4a546bb1a754030a033e3972e1c"
 dependencies = [
  "serde",
  "serde_derive",
+]
+
+[[package]]
+name = "solana-compute-budget"
+version = "3.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c346408840a596e128b1b5214fd72a2c1cf8484cc96965e10333f6a18fcb897b"
+dependencies = [
+ "solana-fee-structure",
+ "solana-program-runtime",
 ]
 
 [[package]]
@@ -6993,6 +7038,12 @@ dependencies = [
  "utf-8",
  "webpki-roots 0.26.11",
 ]
+
+[[package]]
+name = "twox-hash"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
 
 [[package]]
 name = "typenum"

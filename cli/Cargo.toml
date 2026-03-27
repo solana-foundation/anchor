@@ -13,7 +13,15 @@ name = "anchor"
 path = "src/bin/main.rs"
 
 [features]
+default = ["flamegraph"]
 dev = []
+flamegraph = [
+    "dep:anstyle-hyperlink",
+    "dep:object",
+    "dep:rustc-demangle",
+    "dep:solana-compute-budget",
+    "dep:solana-sbpf",
+]
 # For development/CI testing purposes only - allows IDL commands to run against localnet
 idl-localnet-testing = []
 
@@ -21,6 +29,7 @@ idl-localnet-testing = []
 anchor-client = { path = "../client", version = "1.0.0-rc.5" }
 anchor-lang = { path = "../lang", version = "1.0.0-rc.5" }
 anchor-lang-idl = { path = "../idl", version = "0.1.2", features = ["build", "convert"] }
+anstyle-hyperlink = { version = "1.0.1", features = ["file"], optional = true }
 anyhow = "1.0.32"
 base64 = "0.21"
 bincode = "1.3.3"
@@ -33,10 +42,12 @@ dirs = "4.0"
 ed25519-dalek = "2"
 flate2 = "1.0.19"
 heck = "0.4.0"
+object = { version = "0.37.3", features = ["read_core", "elf"], optional = true }
 pathdiff = "0.2.0"
 portpicker = "0.1.1"
 regex = "1.8.3"
 reqwest = { version = "0.11.4", default-features = false, features = ["multipart", "blocking", "rustls-tls"] }
+rustc-demangle = { version = "0.1", optional = true }
 semver = "1.0.4"
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0"
@@ -45,6 +56,7 @@ solana-cli-config.workspace = true
 solana-client.workspace = true
 solana-clock.workspace = true
 solana-commitment-config.workspace = true
+solana-compute-budget = { workspace = true, optional = true }
 solana-compute-budget-interface.workspace = true
 solana-faucet = { workspace = true, features = ["agave-unstable-api"] }
 solana-instruction.workspace = true
@@ -56,6 +68,7 @@ solana-pubkey.workspace = true
 solana-sdk-ids.workspace = true
 solana-signature.workspace = true
 solana-signer.workspace = true
+solana-sbpf = { workspace = true, optional = true }
 solana-system-interface.workspace = true
 solana-transaction.workspace = true
 solana-rpc-client.workspace = true
