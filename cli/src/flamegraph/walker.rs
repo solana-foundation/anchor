@@ -2,6 +2,8 @@ use crate::config::Program;
 use anyhow::{anyhow, Context, Result};
 use object::{Object, ObjectSection, ObjectSymbol, SymbolKind};
 use rustc_demangle::demangle;
+#[allow(deprecated)]
+use solana_compute_budget::compute_budget::ComputeBudget;
 use solana_sbpf::{
     ebpf,
     elf::Executable,
@@ -84,6 +86,7 @@ struct InstructionWalker<'a> {
     instructions: HashMap<usize, ebpf::Insn>,
     function_labels: BTreeMap<usize, String>,
     sbpf_version: solana_sbpf::program::SBPFVersion,
+    cost_model: CostModel,
     visited_states: HashSet<WalkerState>,
     folded_stacks: BTreeMap<Vec<String>, u64>,
     total_cu: u64,
@@ -94,6 +97,12 @@ struct InstructionWalker<'a> {
 struct WalkerState {
     pc: usize,
     frames: Vec<usize>,
+}
+
+/// Encapsulates the default Solana compute costs used by the flamegraph walker.
+#[allow(deprecated)]
+struct CostModel {
+    compute_budget: ComputeBudget,
 }
 
 impl<'a> InstructionWalker<'a> {
@@ -123,6 +132,7 @@ impl<'a> InstructionWalker<'a> {
             instructions,
             function_labels,
             sbpf_version: executable.get_sbpf_version(),
+            cost_model: CostModel::new(),
             visited_states: HashSet::new(),
             folded_stacks: BTreeMap::new(),
             total_cu: 0,
@@ -154,7 +164,10 @@ impl<'a> InstructionWalker<'a> {
             return;
         };
 
-        self.record_instruction(&frames);
+        let cost = self
+            .cost_model
+            .instruction_cost(&insn, self.resolve_syscall_name(&insn).as_deref());
+        self.record_instruction(&frames, cost);
 
         match insn.opc {
             ebpf::CALL_IMM => {
@@ -211,6 +224,23 @@ impl<'a> InstructionWalker<'a> {
         self.walk_pc(self.next_pc(insn), frames);
     }
 
+    /// Resolves the symbolic name of a syscall or helper invoked by an instruction.
+    fn resolve_syscall_name(&self, insn: &ebpf::Insn) -> Option<String> {
+        match insn.opc {
+            ebpf::CALL_IMM if !self.sbpf_version.static_syscalls() => {
+                if self.resolve_call_target(insn).is_some() {
+                    return None;
+                }
+
+                self.loader_symbol_name(insn.imm as u32)
+            }
+            ebpf::SYSCALL if self.sbpf_version.static_syscalls() => {
+                self.loader_symbol_name(insn.imm as u32)
+            }
+            _ => None,
+        }
+    }
+
     /// Resolves an immediate call target to a local instruction address.
     fn resolve_call_target(&self, insn: &ebpf::Insn) -> Option<usize> {
         let key = self
@@ -223,15 +253,25 @@ impl<'a> InstructionWalker<'a> {
             .filter(|target_pc| self.instructions.contains_key(target_pc))
     }
 
-    /// Records one compute unit against the current symbolic stack.
-    fn record_instruction(&mut self, frames: &[usize]) {
+    /// Resolves a loader-registered helper name for legacy or static syscalls.
+    fn loader_symbol_name(&self, key: u32) -> Option<String> {
+        self.executable
+            .get_loader()
+            .get_function_registry()
+            .lookup_by_key(key)
+            .and_then(|(name, _)| std::str::from_utf8(name).ok())
+            .map(|name| normalize_symbol(name, key as usize))
+    }
+
+    /// Records compute units against the current symbolic stack.
+    fn record_instruction(&mut self, frames: &[usize], cost: u64) {
         let stack = frames
             .iter()
             .map(|pc| self.frame_label(*pc))
             .collect::<Vec<_>>();
 
-        *self.folded_stacks.entry(stack).or_default() += 1;
-        self.total_cu += 1;
+        *self.folded_stacks.entry(stack).or_default() += cost;
+        self.total_cu += cost;
     }
 
     /// Maps a function entry PC to the display label used in the flamegraph.
@@ -250,6 +290,50 @@ impl<'a> InstructionWalker<'a> {
     /// Computes the next sequential program counter after an instruction.
     fn next_pc(&self, insn: &ebpf::Insn) -> usize {
         insn.ptr + instruction_width(insn)
+    }
+}
+
+#[allow(deprecated)]
+impl CostModel {
+    /// Creates a cost model using Solana's current default compute budget values.
+    fn new() -> Self {
+        Self {
+            compute_budget: ComputeBudget::new_with_defaults(false, false),
+        }
+    }
+
+    /// Returns the static CU charge for a reachable instruction.
+    fn instruction_cost(&self, insn: &ebpf::Insn, syscall_name: Option<&str>) -> u64 {
+        let base_cost = 1;
+        let extra_cost = match insn.opc {
+            ebpf::CALL_IMM | ebpf::SYSCALL => syscall_name
+                .map(|name| self.syscall_cost(name))
+                .unwrap_or_default(),
+            _ => 0,
+        };
+
+        base_cost + extra_cost
+    }
+
+    /// Returns the default CU charge for a known syscall helper.
+    fn syscall_cost(&self, name: &str) -> u64 {
+        if is_invoke_syscall(name) {
+            self.compute_budget.invoke_units
+        } else if is_log_64_syscall(name) {
+            self.compute_budget.log_64_units
+        } else if is_log_pubkey_syscall(name) {
+            self.compute_budget.log_pubkey_units
+        } else if is_create_program_address_syscall(name) {
+            self.compute_budget.create_program_address_units
+        } else if is_sysvar_syscall(name) {
+            self.compute_budget.sysvar_base_cost
+        } else if is_mem_op_syscall(name) {
+            self.compute_budget.mem_op_base_cost
+        } else if is_get_remaining_compute_units_syscall(name) {
+            self.compute_budget.get_remaining_compute_units_cost
+        } else {
+            self.compute_budget.syscall_base_cost
+        }
     }
 }
 
@@ -287,6 +371,56 @@ fn strip_rust_hash_suffix(symbol: &str) -> &str {
     } else {
         symbol
     }
+}
+
+/// Returns whether a syscall performs a cross-program invocation.
+fn is_invoke_syscall(name: &str) -> bool {
+    name.starts_with("sol_invoke")
+}
+
+/// Returns whether a syscall uses the fixed `log_u64` pricing bucket.
+fn is_log_64_syscall(name: &str) -> bool {
+    matches!(name, "sol_log_64_" | "sol_log_compute_units_")
+}
+
+/// Returns whether a syscall logs a public key.
+fn is_log_pubkey_syscall(name: &str) -> bool {
+    name == "sol_log_pubkey"
+}
+
+/// Returns whether a syscall derives a program address.
+fn is_create_program_address_syscall(name: &str) -> bool {
+    matches!(
+        name,
+        "sol_create_program_address" | "sol_try_find_program_address"
+    )
+}
+
+/// Returns whether a syscall loads a sysvar via the runtime.
+fn is_sysvar_syscall(name: &str) -> bool {
+    matches!(
+        name,
+        "sol_get_clock_sysvar"
+            | "sol_get_epoch_rewards_sysvar"
+            | "sol_get_epoch_schedule_sysvar"
+            | "sol_get_fees_sysvar"
+            | "sol_get_last_restart_slot"
+            | "sol_get_rent_sysvar"
+            | "sol_get_sysvar"
+    )
+}
+
+/// Returns whether a syscall is a memory helper with a shared base cost.
+fn is_mem_op_syscall(name: &str) -> bool {
+    matches!(
+        name,
+        "sol_memcmp_" | "sol_memcpy_" | "sol_memmove_" | "sol_memset_"
+    )
+}
+
+/// Returns whether a syscall reads the remaining compute units.
+fn is_get_remaining_compute_units_syscall(name: &str) -> bool {
+    name == "sol_get_remaining_compute_units"
 }
 
 /// Loads text symbols from an ELF file and maps them to SBPF PCs.

@@ -19,6 +19,7 @@ flamegraph = [
     "dep:anstyle-hyperlink",
     "dep:object",
     "dep:rustc-demangle",
+    "dep:solana-compute-budget",
     "dep:solana-sbpf",
 ]
 # For development/CI testing purposes only - allows IDL commands to run against localnet
@@ -55,6 +56,7 @@ solana-cli-config.workspace = true
 solana-client.workspace = true
 solana-clock.workspace = true
 solana-commitment-config.workspace = true
+solana-compute-budget = { workspace = true, optional = true }
 solana-compute-budget-interface.workspace = true
 solana-faucet = { workspace = true, features = ["agave-unstable-api"] }
 solana-instruction.workspace = true

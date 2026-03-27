@@ -222,6 +222,7 @@ dependencies = [
  "solana-client",
  "solana-clock",
  "solana-commitment-config",
+ "solana-compute-budget",
  "solana-compute-budget-interface",
  "solana-faucet",
  "solana-instruction",
@@ -4576,6 +4577,16 @@ checksum = "1517aa49dcfa9cb793ef90e7aac81346d62ca4a546bb1a754030a033e3972e1c"
 dependencies = [
  "serde",
  "serde_derive",
+]
+
+[[package]]
+name = "solana-compute-budget"
+version = "3.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c346408840a596e128b1b5214fd72a2c1cf8484cc96965e10333f6a18fcb897b"
+dependencies = [
+ "solana-fee-structure",
+ "solana-program-runtime",
 ]
 
 [[package]]
