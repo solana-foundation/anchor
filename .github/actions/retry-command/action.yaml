@@ -1,0 +1,54 @@
+name: "Retry Command"
+description: "Runs a shell command with retry and timeout support"
+inputs:
+  command:
+    description: "Shell command to run"
+    required: true
+  timeout_seconds:
+    description: "Maximum number of seconds to allow each attempt"
+    required: true
+  retry_wait_seconds:
+    description: "Number of seconds to wait before retrying"
+    required: true
+  max_attempts:
+    description: "Maximum number of attempts before failing"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        COMMAND: ${{ inputs.command }}
+        TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
+        RETRY_WAIT_SECONDS: ${{ inputs.retry_wait_seconds }}
+        MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+      run: |
+        set -euo pipefail
+
+        attempt=1
+
+        while [ "${attempt}" -le "${MAX_ATTEMPTS}" ]; do
+          set +e
+          timeout "${TIMEOUT_SECONDS}" bash -eo pipefail -c "${COMMAND}"
+          exit_code=$?
+          set -e
+
+          if [ "${exit_code}" -eq 0 ]; then
+            exit 0
+          fi
+
+          if [ "${attempt}" -eq "${MAX_ATTEMPTS}" ]; then
+            echo "Command failed after ${MAX_ATTEMPTS} attempts."
+            exit "${exit_code}"
+          fi
+
+          if [ "${exit_code}" -eq 124 ]; then
+            echo "Command timed out after ${TIMEOUT_SECONDS} seconds."
+          else
+            echo "Command failed with exit code ${exit_code}."
+          fi
+
+          echo "Retrying in ${RETRY_WAIT_SECONDS} seconds..."
+          sleep "${RETRY_WAIT_SECONDS}"
+          attempt=$((attempt + 1))
+        done

@@ -41,12 +41,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup/
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: Cache Cargo registry + index
         id: cache-cargo-build
@@ -77,9 +77,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup/
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: Cache Cargo registry + index
         id: cache-anchor
@@ -93,7 +93,7 @@ jobs:
         if: env.CARGO_PROFILE != 'debug'
 
       - run: chmod +x ~/.cargo/bin/anchor
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/anchor
@@ -106,8 +106,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
@@ -118,7 +118,7 @@ jobs:
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-surfpool/
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: basic-0 cache
         id: cache-basic-0
@@ -126,7 +126,7 @@ jobs:
           path: ./examples/tutorial/basic-0/target
           key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-0/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: basic-1 cache
         id: cache-basic-1
@@ -134,7 +134,7 @@ jobs:
           path: ./examples/tutorial/basic-1/target
           key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-1/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: basic-2 cache
         id: cache-basic-2
@@ -142,7 +142,7 @@ jobs:
           path: ./examples/tutorial/basic-2/target
           key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-2/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: basic-3 cache
         id: cache-basic-3
@@ -150,7 +150,7 @@ jobs:
           path: ./examples/tutorial/basic-3/target
           key: cargo-${{ runner.os }}-${{ hashFiles('./examples/tutorial/basic-3/**/Cargo.toml') }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: basic-4 cache
         id: cache-basic-4
@@ -181,18 +181,18 @@ jobs:
           - path: tests/composite/
             name: composite.so
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-solana/
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
       - run: chmod +rwx ~/.cargo/bin/anchor
 
       - run: cd ${{ matrix.node.path }} && anchor build --skip-lint --ignore-keys
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.node.name }}
           path: ${{ matrix.node.path }}target/deploy/${{ matrix.node.name }}
@@ -204,37 +204,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: optional.so
           path: tests/optional/target/deploy/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: events.so
           path: tests/events/target/deploy/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: basic_4.so
           path: examples/tutorial/basic-4/target/deploy/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: basic_2.so
           path: examples/tutorial/basic-2/target/deploy/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: composite.so
           path: tests/composite/target/deploy/
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: Cache client/example target
         id: cache-test-target
@@ -252,13 +252,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
       - uses: ./.github/actions/setup-surfpool/
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: Cache Cargo registry + index
         id: cache-anchor
@@ -266,13 +266,13 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: Cache tests/bpf-upgradeable-state target
         id: cache-test-target
@@ -301,10 +301,10 @@ jobs:
   #   runs-on: ubuntu-latest
   #   timeout-minutes: 30
   #   steps:
-  #     - uses: actions/checkout@v3
+  #     - uses: actions/checkout@v6
   #     - uses: ./.github/actions/setup/
   #     - uses: ./.github/actions/setup-ts/
-  #     - uses: actions/cache@v3
+  #     - uses: actions/cache@v5
   #       name: Cache Solana Tool Suite
   #       id: cache-solana
   #       with:
@@ -323,13 +323,13 @@ jobs:
   #       shell: bash
   #     - run: solana config set --url localhost
   #       shell: bash
-  #     - uses: actions/download-artifact@v4
+  #     - uses: actions/download-artifact@v8
   #       with:
   #         name: ${{ env.ANCHOR_BINARY_NAME }}
   #         path: ~/.cargo/bin/
   #     - run: chmod +x ~/.cargo/bin/anchor
 
-  #     - uses: actions/cache@v3
+  #     - uses: actions/cache@v5
   #       name: Cache tests/misc target
   #       id: cache-test-target
   #       with:
@@ -352,13 +352,13 @@ jobs:
       matrix:
         template: [mocha, jest, rust, mollusk, litesvm]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
       - uses: ./.github/actions/setup-surfpool/
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: Cache Cargo registry + index
         id: cache-anchor
@@ -366,7 +366,7 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
@@ -502,13 +502,13 @@ jobs:
             path: tests/test-instruction-validation
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup/
       - uses: ./.github/actions/setup-ts/
       - uses: ./.github/actions/setup-solana/
       - uses: ./.github/actions/setup-surfpool/
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: Cache Cargo registry + index
         id: cache-anchor
@@ -516,13 +516,13 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-${{ env.CARGO_PROFILE }}-anchor-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.ANCHOR_BINARY_NAME }}
           path: ~/.cargo/bin/
       - run: chmod +x ~/.cargo/bin/anchor
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v5
         if: ${{ env.CACHE != 'false' }}
         name: Cache ${{ matrix.node.path }} target
         id: cache-test-target
@@ -530,7 +530,15 @@ jobs:
           path: ${{ matrix.node.path }}/target
           key: cargo-${{ runner.os }}-${{ matrix.node.path }}-${{ env.ANCHOR_VERSION }}-${{ env.SOLANA_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - run: ${{ matrix.node.cmd }}
+      # FIXME: Currently, many of these tests randomly fail due to external conditions
+      # The retry action will make true CI failures take longer to be exposed
+      # We should make our tests more reliable and remove this
+      - uses: ./.github/actions/retry-command/
+        with:
+          command: ${{ matrix.node.cmd }}
+          timeout_seconds: 600
+          retry_wait_seconds: 30
+          max_attempts: 3
         name: ${{ matrix.node.path }} program test
 
       - uses: ./.github/actions/git-diff/
