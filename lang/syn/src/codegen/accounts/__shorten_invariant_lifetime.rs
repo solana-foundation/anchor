@@ -15,7 +15,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     let shorten_invariant_lifetime = if accs.generics.lt_token.is_some() {
         quote! {
-            unsafe fn __shorten_invariant_lifetime<'__a, '__info: '__a>(
+            pub unsafe fn __shorten_invariant_lifetime<'__a, '__info: '__a>(
                 value: &'__a mut #name<'__info>,
             ) -> &'__a mut #name<'__a> {
                 unsafe { ::core::mem::transmute(value) }
@@ -23,7 +23,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
         }
     } else {
         quote! {
-            fn __shorten_invariant_lifetime(value: &mut Self) -> &mut Self {
+            pub fn __shorten_invariant_lifetime(value: &mut Self) -> &mut Self {
                 value
             }
         }
