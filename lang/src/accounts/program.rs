@@ -1,4 +1,17 @@
-//! Program account alias backed by generic `Account`.
+//! Type validating that the account is the given Program
+
+use crate::error::{Error, ErrorCode};
+use crate::pinocchio_runtime::account_info::AccountView;
+use crate::pinocchio_runtime::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
+use crate::pinocchio_runtime::instruction::AccountMeta;
+use crate::pinocchio_runtime::pubkey::Pubkey;
+use crate::{
+    AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountMetas, ToAccountViews,
+};
+use std::collections::BTreeSet;
+use std::fmt;
+use std::marker::PhantomData;
+use std::ops::Deref;
 
 /// Type validating that the account is the given Program
 ///
@@ -80,5 +93,140 @@
 /// - [`AssociatedToken`](https://docs.rs/anchor-spl/latest/anchor_spl/associated_token/struct.AssociatedToken.html)
 /// - [`Token`](https://docs.rs/anchor-spl/latest/anchor_spl/token/struct.Token.html)
 ///
-pub type Program<'info, T = crate::accounts::account::AnyProgram> =
-    crate::accounts::account::Account<'info, crate::accounts::account::Program<T>>;
+#[derive(Clone)]
+pub struct Program<'info, T = ()> {
+    info: &'info AccountView,
+    _phantom: PhantomData<T>,
+}
+
+impl<T: fmt::Debug> fmt::Debug for Program<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Program").field("info", &self.info).finish()
+    }
+}
+
+impl<'a, T> Program<'a, T> {
+    pub(crate) fn new(info: &'a AccountView) -> Program<'a, T> {
+        Self {
+            info,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
+        if self.info.owned_by(&bpf_loader_upgradeable::ID) {
+            let mut data: &[u8] = &self.info.try_borrow()?;
+            let upgradable_loader_state =
+                UpgradeableLoaderState::try_deserialize_unchecked(&mut data)?;
+
+            match upgradable_loader_state {
+                UpgradeableLoaderState::Uninitialized
+                | UpgradeableLoaderState::Buffer {
+                    authority_address: _,
+                }
+                | UpgradeableLoaderState::ProgramData {
+                    slot: _,
+                    upgrade_authority_address: _,
+                } => {
+                    // Unreachable because check in try_from
+                    // ensures that program is executable
+                    // and therefore a program account.
+                    unreachable!()
+                }
+                UpgradeableLoaderState::Program {
+                    programdata_address,
+                } => Ok(Some(programdata_address)),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl<'a, T: Id> TryFrom<&'a AccountView> for Program<'a, T> {
+    type Error = Error;
+    /// Deserializes the given `info` into a `Program`.
+    fn try_from(info: &'a AccountView) -> Result<Self> {
+        // Special handling for unit type () - only check executable, not program ID
+        let is_unit_type = T::id() == Pubkey::default();
+
+        if !is_unit_type && info.address() != &T::id() {
+            return Err(
+                Error::from(ErrorCode::InvalidProgramId).with_pubkeys((info.key(), T::id()))
+            );
+        }
+        if !info.executable() {
+            return Err(ErrorCode::InvalidProgramExecutable.into());
+        }
+        Ok(Program::new(info))
+    }
+}
+
+impl<'info, B, T: Id> Accounts<'info, B> for Program<'info, T> {
+    #[inline(never)]
+    fn try_accounts(
+        _program_id: &Pubkey,
+        accounts: &mut &'info [AccountView],
+        _ix_data: &[u8],
+        _bumps: &mut B,
+        _reallocs: &mut BTreeSet<Pubkey>,
+    ) -> Result<Self> {
+        if accounts.is_empty() {
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
+        }
+        let account = &accounts[0];
+        *accounts = &accounts[1..];
+        Program::try_from(account)
+    }
+}
+
+impl<T> ToAccountMetas for Program<'_, T> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        let is_signer = is_signer.unwrap_or(self.info.is_signer());
+        let meta = match (self.info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.info.address()),
+            (true, false) => AccountMeta::writable(self.info.address()),
+            (true, true) => AccountMeta::writable_signer(self.info.address()),
+        };
+        vec![meta]
+    }
+}
+
+impl<T> ToAccountViews for Program<'_, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![*self.info]
+    }
+}
+
+impl<'info, T> AsRef<AccountView> for Program<'info, T> {
+    fn as_ref(&self) -> &AccountView {
+        self.info
+    }
+}
+
+impl<'info, T> Deref for Program<'info, T> {
+    type Target = AccountView;
+
+    fn deref(&self) -> &Self::Target {
+        self.info
+    }
+}
+
+impl<'info, T: AccountDeserialize> AccountsExit<'info> for Program<'info, T> {}
+
+impl<T: AccountDeserialize> Key for Program<'_, T> {
+    fn key(&self) -> Pubkey {
+        *self.info.address()
+    }
+}
+
+// Implement Id trait for unit type to support Program<'info> without type parameter
+impl crate::Id for () {
+    fn id() -> Pubkey {
+        // For generic programs, this should never be called since they don't validate specific program IDs.
+        // However, we need to implement it to satisfy the trait bounds.
+        // Using a special marker value that indicates "any program"
+        Pubkey::default()
+    }
+}
