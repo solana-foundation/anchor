@@ -246,9 +246,9 @@ pub mod example_cpi {
         let cpi_ctx = CpiContext::new(
             ctx.accounts.example_program.key(),
             Initialize {
-                payer: ctx.accounts.payer.to_account_info(),
-                counter: ctx.accounts.counter.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
+                payer: ctx.accounts.payer.to_account_view(),
+                counter: ctx.accounts.counter.to_account_view(),
+                system_program: ctx.accounts.system_program.to_account_view(),
             },
         );
 
@@ -262,7 +262,7 @@ pub mod example_cpi {
         let cpi_ctx = CpiContext::new(
             ctx.accounts.example_program.key(),
             Increment {
-                counter: ctx.accounts.counter.to_account_info(),
+                counter: ctx.accounts.counter.to_account_view(),
             },
         );
 
@@ -406,9 +406,9 @@ pub fn initialize_cpi(ctx: Context<InitializeCpi>) -> Result<()> {
     let cpi_ctx = CpiContext::new(
         ctx.accounts.example_program.key(),
         Initialize {
-            payer: ctx.accounts.payer.to_account_info(),
-            counter: ctx.accounts.counter.to_account_info(),
-            system_program: ctx.accounts.system_program.to_account_info(),
+            payer: ctx.accounts.payer.to_account_view(),
+            counter: ctx.accounts.counter.to_account_view(),
+            system_program: ctx.accounts.system_program.to_account_view(),
         },
     );
 
@@ -425,7 +425,7 @@ pub fn increment_cpi(ctx: Context<IncrementCpi>) -> Result<()> {
     let cpi_ctx = CpiContext::new(
         ctx.accounts.example_program.key(),
         Increment {
-            counter: ctx.accounts.counter.to_account_info(),
+            counter: ctx.accounts.counter.to_account_view(),
         },
     );
 
