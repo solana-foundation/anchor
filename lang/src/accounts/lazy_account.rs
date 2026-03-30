@@ -171,13 +171,13 @@ use {
 /// [`borsh`]: crate::prelude::borsh
 /// [`Account`]: crate::prelude::Account
 /// [SIMD-0166]: https://github.com/solana-foundation/solana-improvement-documents/pull/166
-pub struct LazyAccount<'info, T>
+pub struct LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
-    pub __info: &'info AccountView,
+    pub __info: AccountView,
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
     pub __account: Rc<RefCell<MaybeUninit<T>>>,
@@ -186,7 +186,7 @@ where
     pub __fields: Rc<RefCell<Option<Vec<bool>>>>,
 }
 
-impl<T> fmt::Debug for LazyAccount<'_, T>
+impl<T> fmt::Debug for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone + fmt::Debug,
 {
@@ -199,11 +199,11 @@ where
     }
 }
 
-impl<'info, T> LazyAccount<'info, T>
+impl<T> LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn new(info: &'info AccountView) -> LazyAccount<'info, T> {
+    fn new(info: AccountView) -> LazyAccount<T> {
         Self {
             __info: info,
             __account: Rc::new(RefCell::new(MaybeUninit::uninit())),
@@ -212,8 +212,9 @@ where
     }
 
     /// Check both the owner and the discriminator.
-    pub fn try_from(info: &'info AccountView) -> Result<LazyAccount<'info, T>> {
-        let data = &info.try_borrow_data()?;
+    pub fn try_from(info: AccountView) -> Result<LazyAccount<T>> {
+        let mut info_ref = info;
+        let data = &info_ref.try_borrow_data()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
@@ -228,7 +229,7 @@ where
     }
 
     /// Check the owner but **not** the discriminator.
-    pub fn try_from_unchecked(info: &'info AccountView) -> Result<LazyAccount<'info, T>> {
+    pub fn try_from_unchecked(info: AccountView) -> Result<LazyAccount<T>> {
         if info.owner() != &T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner(), T::owner())));
@@ -267,7 +268,7 @@ where
     }
 }
 
-impl<'info, B, T> Accounts<'info, B> for LazyAccount<'info, T>
+impl<'info, B, T> Accounts<'info, B> for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
@@ -282,13 +283,13 @@ where
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         LazyAccount::try_from(account)
     }
 }
 
-impl<'info, T> AccountsClose<'info> for LazyAccount<'info, T>
+impl<T> AccountsClose for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
@@ -297,7 +298,7 @@ where
     }
 }
 
-impl<T> ToAccountMetas for LazyAccount<'_, T>
+impl<T> ToAccountMetas for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
@@ -313,7 +314,7 @@ where
     }
 }
 
-impl<'info, T> ToAccountViews for LazyAccount<'info, T>
+impl<T> ToAccountViews for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
@@ -322,16 +323,16 @@ where
     }
 }
 
-impl<'info, T> AsRef<AccountView> for LazyAccount<'info, T>
+impl<T> AsRef<AccountView> for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     fn as_ref(&self) -> &AccountView {
-        self.__info
+        &self.__info
     }
 }
 
-impl<T> Key for LazyAccount<'_, T>
+impl<T> Key for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {

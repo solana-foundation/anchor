@@ -371,16 +371,52 @@ fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
     let ty = match ident.as_str() {
         "Sysvar" => Ty::Sysvar(parse_sysvar(&path)?),
         "AccountView" => Ty::AccountView,
-        "UncheckedAccount" => Ty::UncheckedAccount,
-        "AccountLoader" => Ty::AccountLoader(parse_program_account_loader(&path)?),
+        "UncheckedAccount" => {
+            return Err(ParseError::new(
+                f.ty.span(),
+                "unchecked wrapper removed: use `Account<()>`",
+            ))
+        }
+        "AccountLoader" => {
+            return Err(ParseError::new(
+                f.ty.span(),
+                "AccountLoader wrapper removed: use `Account<T>`",
+            ))
+        }
         "Account" => Ty::Account(parse_account_ty(&path)?),
-        "LazyAccount" => Ty::LazyAccount(parse_lazy_account_ty(&path)?),
+        "LazyAccount" => {
+            return Err(ParseError::new(
+                f.ty.span(),
+                "LazyAccount wrapper removed: use `Account<T>`",
+            ))
+        }
         "Migration" => Ty::Migration(parse_migration_ty(&path)?),
-        "Program" => Ty::Program(parse_program_ty(&path)?),
+        "Program" => {
+            return Err(ParseError::new(
+                f.ty.span(),
+                "Program wrapper removed: use `Account<Program<T>>` or \
+                 `Account<Program<AnyProgram>>`",
+            ))
+        }
         "Interface" => Ty::Interface(parse_interface_ty(&path)?),
-        "InterfaceAccount" => Ty::InterfaceAccount(parse_interface_account_ty(&path)?),
-        "Signer" => Ty::Signer,
-        "SystemAccount" => Ty::SystemAccount,
+        "InterfaceAccount" => {
+            return Err(ParseError::new(
+                f.ty.span(),
+                "InterfaceAccount wrapper removed: use `Account<T>`",
+            ))
+        }
+        "Signer" => {
+            return Err(ParseError::new(
+                f.ty.span(),
+                "Signer wrapper removed: use `Account<Wallet>`",
+            ))
+        }
+        "SystemAccount" => {
+            return Err(ParseError::new(
+                f.ty.span(),
+                "SystemAccount wrapper removed: use `Account<System>`",
+            ))
+        }
         "ProgramData" => Ty::ProgramData,
         _ => return Err(ParseError::new(f.ty.span(), "invalid account type given")),
     };
@@ -401,14 +437,14 @@ fn option_to_inner_path(path: &Path) -> ParseResult<Path> {
             match &args.args[0] {
                 syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.path.clone()),
                 _ => Err(ParseError::new(
-                    args.args[1].span(),
-                    "first bracket argument must be a lifetime",
+                    args.args[0].span(),
+                    "option bracket argument must be a type",
                 )),
             }
         }
         _ => Err(ParseError::new(
             segment_0.arguments.span(),
-            "expected angle brackets with a lifetime and type",
+            "expected angle brackets with a type",
         )),
     }
 }
@@ -450,6 +486,7 @@ fn ident_string(f: &syn::Field) -> ParseResult<(String, bool, Path)> {
     Ok((segments.ident.to_string(), optional, path))
 }
 
+#[allow(dead_code)]
 fn parse_program_account_loader(path: &syn::Path) -> ParseResult<AccountLoaderTy> {
     let account_ident = parse_account(path)?;
     Ok(AccountLoaderTy {
@@ -468,6 +505,7 @@ fn parse_account_ty(path: &syn::Path) -> ParseResult<AccountTy> {
     })
 }
 
+#[allow(dead_code)]
 fn parse_lazy_account_ty(path: &syn::Path) -> ParseResult<LazyAccountTy> {
     let account_type_path = parse_account(path)?;
     Ok(LazyAccountTy { account_type_path })
@@ -516,6 +554,7 @@ fn parse_migration_ty(path: &syn::Path) -> ParseResult<MigrationTy> {
     }
 }
 
+#[allow(dead_code)]
 fn parse_interface_account_ty(path: &syn::Path) -> ParseResult<InterfaceAccountTy> {
     let account_type_path = parse_account(path)?;
     let boxed = parser::tts_to_string(path)
@@ -527,6 +566,7 @@ fn parse_interface_account_ty(path: &syn::Path) -> ParseResult<InterfaceAccountT
     })
 }
 
+#[allow(dead_code)]
 fn parse_program_ty(path: &syn::Path) -> ParseResult<ProgramTy> {
     let account_type_path = parse_program_account(path)?;
     Ok(ProgramTy { account_type_path })
@@ -537,31 +577,41 @@ fn parse_interface_ty(path: &syn::Path) -> ParseResult<InterfaceTy> {
     Ok(InterfaceTy { account_type_path })
 }
 
-// Special parsing function for Program that handles both Program<'info> and Program<'info, T>
+#[allow(dead_code)]
+// Special parsing function for Program that handles Program<T>, Program<'info>,
+// and Program<'info, T>.
 fn parse_program_account(path: &syn::Path) -> ParseResult<syn::TypePath> {
     let segments = &path.segments[0];
     match &segments.arguments {
         syn::PathArguments::AngleBracketed(args) => {
             match args.args.len() {
-                // Program<'info> - only lifetime, no type parameter
+                // Program<T> or Program<'info>
                 1 => {
-                    // Create a special marker for unit type that gets handled later
-                    use syn::{Path, PathArguments, PathSegment};
-                    let path_segment = PathSegment {
-                        ident: syn::Ident::new(
-                            "__SolanaProgramUnitType",
-                            proc_macro2::Span::call_site(),
-                        ),
-                        arguments: PathArguments::None,
-                    };
-
-                    Ok(syn::TypePath {
-                        qself: None,
-                        path: Path {
-                            leading_colon: None,
-                            segments: std::iter::once(path_segment).collect(),
-                        },
-                    })
+                    match &args.args[0] {
+                        syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.clone()),
+                        syn::GenericArgument::Lifetime(_) => {
+                            // Program<'info> - generic executable program marker
+                            use syn::{Path, PathArguments, PathSegment};
+                            let path_segment = PathSegment {
+                                ident: syn::Ident::new(
+                                    "__SolanaProgramUnitType",
+                                    proc_macro2::Span::call_site(),
+                                ),
+                                arguments: PathArguments::None,
+                            };
+                            Ok(syn::TypePath {
+                                qself: None,
+                                path: Path {
+                                    leading_colon: None,
+                                    segments: std::iter::once(path_segment).collect(),
+                                },
+                            })
+                        }
+                        _ => Err(ParseError::new(
+                            args.args[0].span(),
+                            "program bracket argument must be a type or lifetime",
+                        )),
+                    }
                 }
                 // Program<'info, T> - lifetime and type
                 2 => match &args.args[1] {
@@ -573,14 +623,13 @@ fn parse_program_account(path: &syn::Path) -> ParseResult<syn::TypePath> {
                 },
                 _ => Err(ParseError::new(
                     args.args.span(),
-                    "Program must have either just a lifetime (Program<'info>) or a lifetime and \
-                     type (Program<'info, T>)",
+                    "Program must be one of `Program<T>`, `Program<'info>`, or `Program<'info, T>`",
                 )),
             }
         }
         _ => Err(ParseError::new(
             segments.arguments.span(),
-            "expected angle brackets with lifetime or lifetime and type",
+            "expected angle brackets with a type, lifetime, or lifetime and type",
         )),
     }
 }
@@ -623,24 +672,32 @@ fn parse_account(mut path: &syn::Path) -> ParseResult<syn::TypePath> {
     let segments = &path.segments[0];
     match &segments.arguments {
         syn::PathArguments::AngleBracketed(args) => {
-            // Expected: <'info, MyType>.
-            if args.args.len() != 2 {
-                return Err(ParseError::new(
-                    args.args.span(),
-                    "bracket arguments must be the lifetime and type",
-                ));
-            }
-            match &args.args[1] {
-                syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.clone()),
+            match args.args.len() {
+                // Account<T>
+                1 => match &args.args[0] {
+                    syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.clone()),
+                    _ => Err(ParseError::new(
+                        args.args[0].span(),
+                        "bracket argument must be a type",
+                    )),
+                },
+                // Account<'info, T>
+                2 => match &args.args[1] {
+                    syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.clone()),
+                    _ => Err(ParseError::new(
+                        args.args[1].span(),
+                        "second bracket argument must be a type",
+                    )),
+                },
                 _ => Err(ParseError::new(
-                    args.args[1].span(),
-                    "first bracket argument must be a lifetime",
+                    args.args.span(),
+                    "bracket arguments must be either `<T>` or `<'info, T>`",
                 )),
             }
         }
         _ => Err(ParseError::new(
             segments.arguments.span(),
-            "expected angle brackets with a lifetime and type",
+            "expected angle brackets with a type",
         )),
     }
 }
@@ -649,14 +706,18 @@ fn parse_sysvar(path: &syn::Path) -> ParseResult<SysvarTy> {
     let segments = &path.segments[0];
     let account_ident = match &segments.arguments {
         syn::PathArguments::AngleBracketed(args) => {
-            // Expected: <'info, MyType>.
-            if args.args.len() != 2 {
-                return Err(ParseError::new(
-                    args.args.span(),
-                    "bracket arguments must be the lifetime and type",
-                ));
-            }
-            match &args.args[1] {
+            // Accept Sysvar<T> and legacy Sysvar<'info, T>.
+            let type_arg = match args.args.len() {
+                1 => &args.args[0],
+                2 => &args.args[1],
+                _ => {
+                    return Err(ParseError::new(
+                        args.args.span(),
+                        "bracket arguments must be either `<T>` or `<'info, T>`",
+                    ))
+                }
+            };
+            match type_arg {
                 syn::GenericArgument::Type(syn::Type::Path(ty_path)) => {
                     // TODO: allow segmented paths.
                     if ty_path.path.segments.len() != 1 {
@@ -670,8 +731,8 @@ fn parse_sysvar(path: &syn::Path) -> ParseResult<SysvarTy> {
                 }
                 _ => {
                     return Err(ParseError::new(
-                        args.args[1].span(),
-                        "first bracket argument must be a lifetime",
+                        type_arg.span(),
+                        "sysvar bracket argument must be a type",
                     ))
                 }
             }
@@ -679,7 +740,7 @@ fn parse_sysvar(path: &syn::Path) -> ParseResult<SysvarTy> {
         _ => {
             return Err(ParseError::new(
                 segments.arguments.span(),
-                "expected angle brackets with a lifetime and type",
+                "expected angle brackets with a type",
             ))
         }
     };

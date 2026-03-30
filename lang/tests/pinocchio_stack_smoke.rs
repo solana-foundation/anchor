@@ -1,12 +1,15 @@
-//! Regression smoke tests for the Pinocchio stack: `CpiContext` lifetimes (task2) and
-//! lifetime-free `Account` / `InterfaceAccount` usage (task3).
+//! Regression smoke tests for the Pinocchio stack: `CpiContext` lifetimes and
+//! lifetime-free unified `Account` usage
 #[path = "support/mod.rs"]
 mod support;
 
-use anchor_lang::prelude::*;
-use anchor_lang::system_program::{self, CreateAccount, Transfer};
-
-use support::OwnedPinocchioAccount;
+use {
+    anchor_lang::{
+        prelude::*,
+        system_program::{self, CreateAccount, Transfer},
+    },
+    support::OwnedPinocchioAccount,
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -73,15 +76,13 @@ fn account_try_from_set_inner_key_matches_view() {
 
 #[test]
 fn interface_account_deref_and_key() {
-    use anchor_lang::accounts::interface_account::InterfaceAccount;
-
     let owner = crate::ID;
     let key = Pubkey::new_unique();
     let mut buf = vec![];
     DataAcc { v: 11 }.try_serialize(&mut buf).unwrap();
 
     let owned = OwnedPinocchioAccount::new(key, owner, 1, &buf);
-    let iface: InterfaceAccount<DataAcc> = InterfaceAccount::try_from(owned.info).unwrap();
+    let iface: Account<DataAcc> = Account::try_from(owned.info).unwrap();
     assert_eq!(iface.v, 11);
     assert_eq!(Key::key(&iface), key);
 }

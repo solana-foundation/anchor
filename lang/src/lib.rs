@@ -19,7 +19,7 @@
 //!
 //! For detailed tutorials and examples on how to use Anchor, see the guided
 //! [tutorials](https://anchor-lang.com) or examples in the GitHub
-//! [repository](https://github.com/coral-xyz/anchor).
+//! [repository](https://github.com/solana-foundation/anchor).
 //!
 //! Presented here are the Rust primitives for building on Solana.
 
@@ -295,7 +295,7 @@ pub trait DuplicateMutableAccountKeys {
 
 /// The close procedure to initiate garabage collection of an account, allowing
 /// one to retrieve the rent exemption.
-pub trait AccountsClose<'info>: ToAccountViews {
+pub trait AccountsClose: ToAccountViews {
     fn close(&self, sol_destination: AccountView) -> Result<()>;
 }
 
@@ -562,8 +562,6 @@ impl Key for Pubkey {
 /// The prelude contains all commonly used components of the crate.
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
-    #[cfg(feature = "lazy-account")]
-    pub use super::accounts::lazy_account::LazyAccount;
     #[cfg(feature = "idl-build")]
     pub use super::idl::IdlBuild;
     #[cfg(feature = "event-cpi")]
@@ -573,11 +571,7 @@ pub mod prelude {
     pub use {
         super::{
             access_control, account,
-            accounts::{
-                account::Account, account_loader::AccountLoader, interface::Interface,
-                interface_account::InterfaceAccount, program::Program, signer::Signer,
-                system_account::SystemAccount, sysvar::Sysvar, unchecked_account::UncheckedAccount,
-            },
+            accounts::{account::Account, interface::Interface, sysvar::Sysvar},
             constant,
             context::{Context, CpiContext},
             declare_id, declare_program, emit, err, error, event, instruction,

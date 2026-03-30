@@ -1,14 +1,18 @@
-//! Account container that checks ownership on deserialization.
+//! Generic account container driven by check policies.
 
 use {
     crate::{
         bpf_writer::BpfWriter,
         error::{Error, ErrorCode},
         pinocchio_runtime::{
-            account_info::AccountView, instruction::AccountMeta, pubkey::Pubkey, system_program,
+            account_view::AccountView,
+            bpf_loader_upgradeable::{self, UpgradeableLoaderState},
+            instruction::AccountMeta,
+            pubkey::Pubkey,
+            system_program,
         },
-        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
-        Result, ToAccountMetas, ToAccountView, ToAccountViews,
+        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Id, Key,
+        Owner, Result, ToAccountMetas, ToAccountView, ToAccountViews,
     },
     std::{
         collections::BTreeSet,
@@ -18,7 +22,7 @@ use {
     },
 };
 
-/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_info::AccountView)
+/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_view::AccountView)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -95,7 +99,7 @@ use {
 /// functions `#[account]` generates. See the example below for the code you have
 /// to write.
 ///
-/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/coral-xyz/anchor/blob/master/spl/src/token.rs))
+/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/solana-foundation/anchor/blob/master/spl/src/token.rs))
 /// ```ignore
 /// #[derive(Clone)]
 /// pub struct Mint(spl_token::state::Mint);
@@ -227,20 +231,59 @@ use {
 /// }
 /// ```
 /// to access mint accounts.
-#[derive(Clone)]
-pub struct Account<'info, T: AccountSerialize + AccountDeserialize + Clone> {
-    account: T,
-    info: AccountView,
-    _marker: PhantomData<&'info ()>,
+pub trait AccountChecks {
+    type Target: Clone;
+    fn check(info: &AccountView) -> Result<()>;
+    fn load(info: &AccountView) -> Result<Self::Target>;
+    fn reload(_current: &Self::Target, info: &AccountView) -> Result<Self::Target> {
+        Self::load(info)
+    }
+    fn persist(_value: &Self::Target, _info: &AccountView, _program_id: &Pubkey) -> Result<()> {
+        Ok(())
+    }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug for Account<'_, T> {
+pub trait AccountData: AccountChecks {
+    fn as_target_ref(value: &Self::Target) -> &Self;
+    fn as_target_mut(value: &mut Self::Target) -> &mut Self;
+    fn set_target(value: &mut Self::Target, next: Self);
+    fn into_target(value: Self::Target) -> Self;
+}
+
+#[derive(Clone, Debug)]
+pub struct Wallet;
+
+#[derive(Clone, Debug)]
+pub struct System;
+
+#[derive(Clone, Debug)]
+pub struct Program<T>(PhantomData<T>);
+
+#[derive(Clone, Debug)]
+pub struct AnyProgram;
+
+#[derive(Clone)]
+pub struct Account<T: AccountChecks = ()> {
+    account: T::Target,
+    info: AccountView,
+    _marker: PhantomData<T>,
+}
+
+impl<T> fmt::Debug for Account<T>
+where
+    T: AccountChecks,
+    T::Target: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.fmt_with_name("Account", f)
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<'_, T> {
+impl<T> Account<T>
+where
+    T: AccountChecks,
+    T::Target: fmt::Debug,
+{
     pub(crate) fn fmt_with_name(&self, name: &str, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct(name)
             .field("account", &self.account)
@@ -249,8 +292,8 @@ impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> Account<'_, 
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
-    pub(crate) fn new(info: AccountView, account: T) -> Account<'a, T> {
+impl<T: AccountChecks> Account<T> {
+    pub(crate) fn new(info: AccountView, account: T::Target) -> Account<T> {
         Self {
             info,
             account,
@@ -260,102 +303,58 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
 
     pub(crate) fn exit_with_expected_owner(
         &self,
-        expected_owner: &Pubkey,
+        _expected_owner: &Pubkey,
         program_id: &Pubkey,
     ) -> Result<()> {
-        // Only persist if the owner is the current program and the account is not closed.
-        if expected_owner == program_id && !crate::common::is_closed(&self.info) {
-            let mut info = self.info;
-            let mut data = info.try_borrow_mut()?;
-            let dst: &mut [u8] = &mut data;
-            let mut writer = BpfWriter::new(dst);
-            self.account.try_serialize(&mut writer)?;
-        }
-        Ok(())
+        T::persist(&self.account, &self.info, program_id)
     }
 
-    pub fn into_inner(self) -> T {
-        self.account
+    pub fn view(&self) -> &AccountView {
+        &self.info
     }
 
-    /// Sets the inner account.
-    ///
-    /// Instead of this:
-    /// ```ignore
-    /// pub fn new_user(ctx: Context<CreateUser>, new_user:User) -> Result<()> {
-    ///     (*ctx.accounts.user_to_create).name = new_user.name;
-    ///     (*ctx.accounts.user_to_create).age = new_user.age;
-    ///     (*ctx.accounts.user_to_create).address = new_user.address;
-    /// }
-    /// ```
-    /// You can do this:
-    /// ```ignore
-    /// pub fn new_user(ctx: Context<CreateUser>, new_user:User) -> Result<()> {
-    ///     ctx.accounts.user_to_create.set_inner(new_user);
-    /// }
-    /// ```
-    pub fn set_inner(&mut self, inner: T) {
-        self.account = inner;
+    pub fn lamports(&self) -> u64 {
+        self.info.lamports()
+    }
+
+    pub fn is_writable(&self) -> bool {
+        self.info.is_writable()
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T> {
-    /// Reloads the account from storage. This is useful, for example, when
-    /// observing side effects after CPI.
-    ///
-    /// This method also re-validates that the program owner has not
-    /// changed since the initial validation
-    pub fn reload(&mut self) -> Result<()> {
-        let owner_pubkey = *self.info.owner();
-        if owner_pubkey != T::owner() {
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((owner_pubkey, T::owner())));
-        }
-
-        let data = self.info.try_borrow()?;
-        let mut data: &[u8] = &data;
-        self.account = T::try_deserialize(&mut data)?;
-        Ok(())
-    }
-
-    /// Deserializes the given `info` into a `Account`.
-    #[inline(never)]
-    pub fn try_from(info: AccountView) -> Result<Account<'a, T>> {
-        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-        if info.owned_by(&T::owner()) {
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner(), T::owner())));
-        }
-        let data = info.try_borrow()?;
-        let mut data: &[u8] = &data;
-        Ok(Account::new(info, T::try_deserialize(&mut data)?))
-    }
-
-    /// Deserializes the given `info` into a `Account` without checking
-    /// the account discriminator. Be careful when using this and avoid it if
-    /// possible.
-    #[inline(never)]
-    pub fn try_from_unchecked(info: AccountView) -> Result<Account<'a, T>> {
-        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-        if info.owned_by(&T::owner()) {
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner(), T::owner())));
-        }
-        let data = info.try_borrow()?;
-        let mut data: &[u8] = &data;
-        Ok(Account::new(info, T::try_deserialize_unchecked(&mut data)?))
-    }
-}
-
-impl<'info, B, T: AccountSerialize + AccountDeserialize + Owner + Clone> Accounts<'info, B>
-    for Account<'info, T>
+impl<T> Account<T>
 where
-    T: AccountSerialize + AccountDeserialize + Owner + Clone,
+    T: AccountData,
 {
+    pub fn into_inner(self) -> T {
+        T::into_target(self.account)
+    }
+
+    pub fn set_inner(&mut self, inner: T) {
+        T::set_target(&mut self.account, inner);
+    }
+}
+
+impl<T: AccountChecks> Account<T> {
+    pub fn reload(&mut self) -> Result<()> {
+        T::check(&self.info)?;
+        self.account = T::reload(&self.account, &self.info)?;
+        Ok(())
+    }
+
+    #[inline(never)]
+    pub fn try_from(info: AccountView) -> Result<Account<T>> {
+        T::check(&info)?;
+        Ok(Account::new(info, T::load(&info)?))
+    }
+
+    #[inline(never)]
+    pub fn try_from_unchecked(info: AccountView) -> Result<Account<T>> {
+        Self::try_from(info)
+    }
+}
+
+impl<'info, B, T: AccountChecks> Accounts<'info, B> for Account<T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
@@ -373,23 +372,19 @@ where
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsExit<'info>
-    for Account<'info, T>
-{
+impl<'info, T: AccountChecks> AccountsExit<'info> for Account<T> {
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
-        self.exit_with_expected_owner(&T::owner(), program_id)
+        T::persist(&self.account, &self.info, program_id)
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
-    for Account<'info, T>
-{
+impl<T: AccountChecks> AccountsClose for Account<T> {
     fn close(&self, sol_destination: AccountView) -> Result<()> {
         crate::common::close(self.to_account_view(), sol_destination)
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Account<'_, T> {
+impl<T: AccountChecks> ToAccountMetas for Account<T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.info.is_signer());
         let meta = match (self.info.is_writable(), is_signer) {
@@ -402,47 +397,197 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for Accoun
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountViews for Account<'_, T> {
+impl<T: AccountChecks> ToAccountViews for Account<T> {
     fn to_account_views(&self) -> Vec<AccountView> {
         vec![self.info]
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountView>
-    for Account<'info, T>
-{
+impl<T: AccountChecks> AsRef<AccountView> for Account<T> {
     fn as_ref(&self) -> &AccountView {
         &self.info
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for Account<'_, T> {
+impl<T> AsRef<T> for Account<T>
+where
+    T: AccountData,
+{
     fn as_ref(&self) -> &T {
-        &self.account
+        T::as_target_ref(&self.account)
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'_, T> {
+impl<T> Deref for Account<T>
+where
+    T: AccountData,
+{
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &(self).account
+        T::as_target_ref(&self.account)
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, T> {
+impl<T> DerefMut for Account<T>
+where
+    T: AccountData,
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable() {
             crate::pinocchio_runtime::msg!("The given Account is not mutable");
             panic!();
         }
-        &mut self.account
+        T::as_target_mut(&mut self.account)
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> Key for Account<'_, T> {
+impl<T: AccountChecks> Key for Account<T> {
     fn key(&self) -> Pubkey {
         *self.info.address()
+    }
+}
+
+impl AccountChecks for () {
+    type Target = ();
+    fn check(_info: &AccountView) -> Result<()> {
+        Ok(())
+    }
+    fn load(_info: &AccountView) -> Result<Self::Target> {
+        Ok(())
+    }
+}
+
+impl AccountChecks for Wallet {
+    type Target = ();
+    fn check(info: &AccountView) -> Result<()> {
+        if !info.is_signer() {
+            return Err(ErrorCode::AccountNotSigner.into());
+        }
+        Ok(())
+    }
+    fn load(_info: &AccountView) -> Result<Self::Target> {
+        Ok(())
+    }
+}
+
+impl AccountChecks for System {
+    type Target = ();
+    fn check(info: &AccountView) -> Result<()> {
+        if !info.owned_by(&system_program::ID) {
+            return Err(ErrorCode::AccountNotSystemOwned.into());
+        }
+        Ok(())
+    }
+    fn load(_info: &AccountView) -> Result<Self::Target> {
+        Ok(())
+    }
+}
+
+impl<P: Id> AccountChecks for Program<P> {
+    type Target = ();
+    fn check(info: &AccountView) -> Result<()> {
+        if info.address() != &P::id() {
+            return Err(
+                Error::from(ErrorCode::InvalidProgramId).with_pubkeys((info.key(), P::id()))
+            );
+        }
+        if !info.executable() {
+            return Err(ErrorCode::InvalidProgramExecutable.into());
+        }
+        Ok(())
+    }
+    fn load(_info: &AccountView) -> Result<Self::Target> {
+        Ok(())
+    }
+}
+
+impl AccountChecks for Program<AnyProgram> {
+    type Target = ();
+    fn check(info: &AccountView) -> Result<()> {
+        if !info.executable() {
+            return Err(ErrorCode::InvalidProgramExecutable.into());
+        }
+        Ok(())
+    }
+    fn load(_info: &AccountView) -> Result<Self::Target> {
+        Ok(())
+    }
+}
+
+impl<T> AccountChecks for T
+where
+    T: AccountSerialize + AccountDeserialize + Owner + Clone,
+{
+    type Target = T;
+    fn check(info: &AccountView) -> Result<()> {
+        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
+        if !info.owned_by(&T::owner()) {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner(), T::owner())));
+        }
+        Ok(())
+    }
+    fn load(info: &AccountView) -> Result<Self::Target> {
+        let data = info.try_borrow()?;
+        let mut data: &[u8] = &data;
+        T::try_deserialize(&mut data)
+    }
+    fn reload(_current: &Self::Target, info: &AccountView) -> Result<Self::Target> {
+        let data = info.try_borrow()?;
+        let mut data: &[u8] = &data;
+        T::try_deserialize(&mut data)
+    }
+    fn persist(value: &Self::Target, info: &AccountView, program_id: &Pubkey) -> Result<()> {
+        if &T::owner() == program_id && !crate::common::is_closed(info) {
+            let mut info = *info;
+            let mut data = info.try_borrow_mut()?;
+            let dst: &mut [u8] = &mut data;
+            let mut writer = BpfWriter::new(dst);
+            value.try_serialize(&mut writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl<T> AccountData for T
+where
+    T: AccountSerialize + AccountDeserialize + Owner + Clone,
+{
+    fn as_target_ref(value: &Self::Target) -> &Self {
+        value
+    }
+    fn as_target_mut(value: &mut Self::Target) -> &mut Self {
+        value
+    }
+    fn set_target(value: &mut Self::Target, next: Self) {
+        *value = next;
+    }
+    fn into_target(value: Self::Target) -> Self {
+        value
+    }
+}
+
+impl<P> Account<Program<P>>
+where
+    Program<P>: AccountChecks,
+{
+    pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
+        if self.info.owned_by(&bpf_loader_upgradeable::ID) {
+            let mut data: &[u8] = &self.info.try_borrow()?;
+            let upgradable_loader_state =
+                UpgradeableLoaderState::try_deserialize_unchecked(&mut data)?;
+            match upgradable_loader_state {
+                UpgradeableLoaderState::Program {
+                    programdata_address,
+                } => Ok(Some(programdata_address)),
+                _ => Ok(None),
+            }
+        } else {
+            Ok(None)
+        }
     }
 }

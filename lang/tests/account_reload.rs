@@ -1,9 +1,9 @@
 #[path = "support/mod.rs"]
 mod support;
-use anchor_lang::prelude::*;
-use anchor_lang::RefMut;
-
-use support::OwnedPinocchioAccount;
+use {
+    anchor_lang::{prelude::*, RefMut},
+    support::OwnedPinocchioAccount,
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -65,16 +65,13 @@ fn reload_owner_changed_fails() {
 
 #[test]
 fn interface_reload_owner_unchanged_updates_data() {
-    use anchor_lang::accounts::interface_account::InterfaceAccount;
-
     let data = serialize_dummy(5);
     let lamports: u64 = 1;
     let owner: Pubkey = crate::ID;
     let key: Pubkey = Pubkey::new_unique();
     let mut owned = OwnedPinocchioAccount::new(key, owner, lamports, &data);
 
-    let mut i_face: InterfaceAccount<Dummy> =
-        InterfaceAccount::<Dummy>::try_from(owned.info).unwrap();
+    let mut i_face: Account<Dummy> = Account::<Dummy>::try_from(owned.info).unwrap();
     assert_eq!(i_face.val, 5);
 
     let new_bytes = serialize_dummy(6);

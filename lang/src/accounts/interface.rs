@@ -2,13 +2,13 @@
 
 use {
     crate::{
-        accounts::program::Program,
+        accounts::account::{Account, AnyProgram, Program},
         error::{Error, ErrorCode},
-        pinocchio_runtime::{account_info::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
         AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountMetas,
         ToAccountViews,
     },
-    std::{collections::BTreeSet, ops::Deref},
+    std::{collections::BTreeSet, marker::PhantomData, ops::Deref},
 };
 
 /// Type validating that the account is one of a set of given Programs
@@ -72,39 +72,42 @@ use {
 /// - [`TokenInterface`](https://docs.rs/anchor-spl/latest/anchor_spl/token_interface/struct.TokenInterface.html)
 ///
 #[derive(Clone)]
-pub struct Interface<'info, T>(Program<'info, T>);
-impl<'a, T> Interface<'a, T> {
-    pub(crate) fn new(info: &'a AccountView) -> Self {
-        Self(Program::new(info))
+pub struct Interface<T> {
+    program: Account<Program<AnyProgram>>,
+    _marker: PhantomData<T>,
+}
+impl<T> Interface<T> {
+    pub(crate) fn new(program: Account<Program<AnyProgram>>) -> Self {
+        Self {
+            program,
+            _marker: PhantomData,
+        }
     }
     pub fn programdata_address(&self) -> Result<Option<Pubkey>> {
-        self.0.programdata_address()
+        self.program.programdata_address()
     }
 }
-impl<'a, T: CheckId> TryFrom<&'a AccountView> for Interface<'a, T> {
+impl<T: CheckId> TryFrom<&AccountView> for Interface<T> {
     type Error = Error;
     /// Deserializes the given `info` into a `Program`.
-    fn try_from(info: &'a AccountView) -> Result<Self> {
+    fn try_from(info: &AccountView) -> Result<Self> {
         T::check_id(info.address())?;
-        if !info.executable() {
-            return Err(ErrorCode::InvalidProgramExecutable.into());
-        }
-        Ok(Self::new(info))
+        Ok(Self::new(Account::try_from(*info)?))
     }
 }
-impl<'info, T> Deref for Interface<'info, T> {
+impl<T> Deref for Interface<T> {
     type Target = AccountView;
     fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
+        self.program.as_ref()
     }
 }
-impl<'info, T> AsRef<AccountView> for Interface<'info, T> {
+impl<T> AsRef<AccountView> for Interface<T> {
     fn as_ref(&self) -> &AccountView {
-        self.0.as_ref()
+        self.program.as_ref()
     }
 }
 
-impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
+impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<T> {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
@@ -122,22 +125,22 @@ impl<'info, B, T: CheckId> Accounts<'info, B> for Interface<'info, T> {
     }
 }
 
-impl<T> ToAccountMetas for Interface<'_, T> {
+impl<T> ToAccountMetas for Interface<T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
-        self.0.to_account_metas(is_signer)
+        self.program.to_account_metas(is_signer)
     }
 }
 
-impl<T> ToAccountViews for Interface<'_, T> {
+impl<T> ToAccountViews for Interface<T> {
     fn to_account_views(&self) -> Vec<AccountView> {
-        self.0.to_account_views()
+        self.program.to_account_views()
     }
 }
 
-impl<'info, T: AccountDeserialize> AccountsExit<'info> for Interface<'info, T> {}
+impl<'info, T: AccountDeserialize> AccountsExit<'info> for Interface<T> {}
 
-impl<T: AccountDeserialize> Key for Interface<'_, T> {
+impl<T: AccountDeserialize> Key for Interface<T> {
     fn key(&self) -> Pubkey {
-        self.0.key()
+        self.program.key()
     }
 }

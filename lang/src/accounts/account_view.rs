@@ -1,6 +1,5 @@
-//! AccountView can be used as a type but
-//! [Unchecked Account](crate::accounts::unchecked_account::UncheckedAccount)
-//! should be used instead.
+//! AccountView can be used as a type but [`Account<()>`](crate::accounts::account::Account)
+//! is preferred when you want the generic account container with no extra checks.
 
 use {
     crate::{

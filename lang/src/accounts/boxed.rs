@@ -51,7 +51,7 @@ impl<T: ToAccountMetas> ToAccountMetas for Box<T> {
     }
 }
 
-impl<'info, T: AccountsClose<'info>> AccountsClose<'info> for Box<T> {
+impl<T: AccountsClose> AccountsClose for Box<T> {
     fn close(&self, sol_destination: AccountView) -> Result<()> {
         T::close(self, sol_destination)
     }

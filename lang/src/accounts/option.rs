@@ -69,7 +69,7 @@ impl<T: ToAccountMetas> ToAccountMetas for Option<T> {
     }
 }
 
-impl<'info, T: AccountsClose<'info>> AccountsClose<'info> for Option<T> {
+impl<T: AccountsClose> AccountsClose for Option<T> {
     fn close(&self, sol_destination: AccountView) -> Result<()> {
         self.as_ref()
             .map_or(Ok(()), |t| T::close(t, sol_destination))
