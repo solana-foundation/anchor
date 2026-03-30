@@ -1,11 +1,12 @@
 //! Type validating that the account signed the transaction
-use crate::error::ErrorCode;
-use crate::pinocchio_runtime::account_info::AccountView;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{Accounts, AccountsExit, Key, Result, ToAccountMetas, ToAccountViews};
-use std::collections::BTreeSet;
-use std::ops::Deref;
+use {
+    crate::{
+        error::ErrorCode,
+        pinocchio_runtime::{account_info::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsExit, Key, Result, ToAccountMetas, ToAccountViews,
+    },
+    std::{collections::BTreeSet, ops::Deref},
+};
 
 /// Type validating that the account signed the transaction. No other ownership
 /// or type checks are done. If this is used, one should not try to access the

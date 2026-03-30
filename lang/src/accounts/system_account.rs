@@ -1,9 +1,9 @@
 //! Type validating that the account is owned by the system program
 
-use crate::error::ErrorCode;
-use crate::pinocchio_runtime::system_program;
-use crate::*;
-use std::ops::Deref;
+use {
+    crate::{error::ErrorCode, pinocchio_runtime::system_program, *},
+    std::ops::Deref,
+};
 
 /// Type validating that the account is owned by the system program
 ///
