@@ -1,18 +1,21 @@
 //! Account container that checks ownership on deserialization.
 
-use crate::bpf_writer::BpfWriter;
-use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountInfo;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::pinocchio_runtime::system_program;
-use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
-    Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        bpf_writer::BpfWriter,
+        error::{Error, ErrorCode},
+        pinocchio_runtime::{
+            account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey, system_program,
+        },
+        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
+        Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    },
+    std::{
+        collections::BTreeSet,
+        fmt,
+        ops::{Deref, DerefMut},
+    },
 };
-use std::collections::BTreeSet;
-use std::fmt;
-use std::ops::{Deref, DerefMut};
 
 /// Wrapper around [`AccountInfo`](crate::pinocchio_runtime::account_info::AccountInfo)
 /// that verifies program ownership and deserializes underlying data into a Rust type.

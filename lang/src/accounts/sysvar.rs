@@ -1,12 +1,18 @@
 //! Type validating that the account is a sysvar and deserializing it
 
-use crate::pinocchio_runtime::account_info::AccountInfo;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::pinocchio_runtime::sysvars::Sysvar as SolanaSysvar;
-use crate::{AccountsExit, Key, ToAccountInfos, ToAccountMetas};
-use std::fmt;
-use std::ops::{Deref, DerefMut};
+use {
+    crate::{
+        pinocchio_runtime::{
+            account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey,
+            sysvars::Sysvar as SolanaSysvar,
+        },
+        AccountsExit, Key, ToAccountInfos, ToAccountMetas,
+    },
+    std::{
+        fmt,
+        ops::{Deref, DerefMut},
+    },
+};
 
 /// Type validating that the account is a sysvar and deserializing it.
 ///

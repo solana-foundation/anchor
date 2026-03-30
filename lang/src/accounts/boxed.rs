@@ -13,12 +13,13 @@
 //! }
 //! ```
 
-use crate::pinocchio_runtime::account_info::AccountInfo;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas};
-use std::collections::BTreeSet;
-use std::ops::Deref;
+use {
+    crate::{
+        pinocchio_runtime::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
+    },
+    std::{collections::BTreeSet, ops::Deref},
+};
 
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Box<T> {
     fn try_accounts(

@@ -2,12 +2,14 @@
 //! [Unchecked Account](crate::accounts::unchecked_account::UncheckedAccount)
 //! should be used instead.
 
-use crate::error::ErrorCode;
-use crate::pinocchio_runtime::account_info::AccountInfo;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
-use std::collections::BTreeSet;
+use {
+    crate::{
+        error::ErrorCode,
+        pinocchio_runtime::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas,
+    },
+    std::collections::BTreeSet,
+};
 
 impl<'info, B> Accounts<'info, B> for AccountInfo {
     fn try_accounts(

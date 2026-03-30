@@ -1,21 +1,19 @@
 //! Type facilitating on demand zero copy deserialization.
 
-use crate::pinocchio_runtime::account_info::{AccountInfo, Ref, RefMut};
-
-use crate::bpf_writer::BpfWriter;
-use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{
-    Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
-    ToAccountMetas, ZeroCopy,
+use {
+    crate::{
+        bpf_writer::BpfWriter,
+        error::{Error, ErrorCode},
+        pinocchio_runtime::{
+            account_info::{AccountInfo, Ref, RefMut},
+            instruction::AccountMeta,
+            pubkey::Pubkey,
+        },
+        Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
+        ToAccountMetas, ZeroCopy,
+    },
+    std::{collections::BTreeSet, fmt, io::Write, marker::PhantomData, mem},
 };
-
-use std::collections::BTreeSet;
-use std::fmt;
-use std::io::Write;
-use std::marker::PhantomData;
-use std::mem;
 
 /// Type facilitating on demand zero copy deserialization.
 ///

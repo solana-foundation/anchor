@@ -1,17 +1,19 @@
 //! Type validating that the account is the given Program
 
-use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountInfo;
-use crate::pinocchio_runtime::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{
-    AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        error::{Error, ErrorCode},
+        pinocchio_runtime::{
+            account_info::AccountInfo,
+            bpf_loader_upgradeable::{self, UpgradeableLoaderState},
+            instruction::AccountMeta,
+            pubkey::Pubkey,
+        },
+        AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos,
+        ToAccountMetas,
+    },
+    std::{collections::BTreeSet, fmt, marker::PhantomData, ops::Deref},
 };
-use std::collections::BTreeSet;
-use std::fmt;
-use std::marker::PhantomData;
-use std::ops::Deref;
 
 /// Type validating that the account is the given Program
 ///
