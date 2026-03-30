@@ -14,13 +14,13 @@ mod bumps;
 mod constraints;
 mod duplicate_mutable_account_keys;
 mod exit;
-mod to_account_infos;
 mod to_account_metas;
+mod to_account_views;
 mod try_accounts;
 
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_try_accounts = try_accounts::generate(accs);
-    let impl_to_account_infos = to_account_infos::generate(accs);
+    let impl_to_account_views = to_account_views::generate(accs);
     let impl_to_account_metas = to_account_metas::generate(accs);
     let impl_exit = exit::generate(accs);
     let impl_dup_mutable_keys = duplicate_mutable_account_keys::generate(accs);
@@ -31,7 +31,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
     let ret = quote! {
         #impl_try_accounts
-        #impl_to_account_infos
+        #impl_to_account_views
         #impl_to_account_metas
         #impl_exit
         #impl_dup_mutable_keys
@@ -58,7 +58,7 @@ fn generics(accs: &AccountsStruct) -> ParsedGenerics {
     let has_lifetime = accs.generics.lifetimes().next().is_some();
     let all_account_info = accs.generics.lifetimes().next().is_none()
         && accs.fields.iter().all(|f| match f {
-            AccountField::Field(field) => matches!(field.ty, Ty::AccountInfo),
+            AccountField::Field(field) => matches!(field.ty, Ty::AccountView),
             AccountField::CompositeField(_) => false, // Composite fields need lifetimes
         });
 

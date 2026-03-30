@@ -1,9 +1,11 @@
-use std::mem::size_of;
-use std::ptr;
-
-use anchor_lang::pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED};
-use anchor_lang::prelude::*;
-use anchor_lang::RefMut;
+use {
+    anchor_lang::{
+        pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED},
+        prelude::*,
+        RefMut,
+    },
+    std::{mem::size_of, ptr},
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -61,14 +63,14 @@ fn reload_owner_unchanged_updates_data() {
     let key: Pubkey = Pubkey::new_unique();
     let owned = OwnedPinocchioAccount::new(key, crate::ID, 1, &init);
 
-    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(&owned.info).unwrap();
+    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(owned.info).unwrap();
     assert_eq!(acc.val, 10);
 
     let new_bytes = serialize_dummy(42);
-    assert_eq!(new_bytes.len(), acc.to_account_info().data_len());
+    assert_eq!(new_bytes.len(), acc.to_account_view().data_len());
 
     {
-        let mut info = acc.to_account_info();
+        let mut info = acc.to_account_view();
         let mut d: RefMut<'_, [u8]> = info.try_borrow_mut().unwrap();
         d.copy_from_slice(&new_bytes);
     }
@@ -83,9 +85,9 @@ fn reload_owner_changed_fails() {
     let key: Pubkey = Pubkey::new_unique();
     let owned = OwnedPinocchioAccount::new(key, crate::ID, 1, &init);
 
-    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(&owned.info).unwrap();
+    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(owned.info).unwrap();
     unsafe {
-        acc.to_account_info().assign(&Pubkey::new_unique());
+        acc.to_account_view().assign(&Pubkey::new_unique());
     }
 
     let err: anchor_lang::error::Error = acc.reload().unwrap_err();
@@ -104,12 +106,12 @@ fn interface_reload_owner_unchanged_updates_data() {
     let owned = OwnedPinocchioAccount::new(key, crate::ID, 1, &data);
 
     let mut iface: InterfaceAccount<Dummy> =
-        InterfaceAccount::<Dummy>::try_from(&owned.info).unwrap();
+        InterfaceAccount::<Dummy>::try_from(owned.info).unwrap();
     assert_eq!(iface.val, 5);
 
     let new_bytes = serialize_dummy(6);
     {
-        let mut info = iface.to_account_info();
+        let mut info = iface.to_account_view();
         let mut d: RefMut<'_, [u8]> = info.try_borrow_mut().unwrap();
         d.copy_from_slice(&new_bytes);
     }
@@ -124,11 +126,11 @@ fn reload_error_does_not_mutate_cached_state() {
     let key: Pubkey = Pubkey::new_unique();
     let owned = OwnedPinocchioAccount::new(key, crate::ID, 1, &data);
 
-    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(&owned.info).unwrap();
+    let mut acc: Account<Dummy> = Account::<Dummy>::try_from(owned.info).unwrap();
     assert_eq!(acc.val, 7);
 
     unsafe {
-        acc.to_account_info().assign(&Pubkey::new_unique());
+        acc.to_account_view().assign(&Pubkey::new_unique());
     }
 
     let err: anchor_lang::error::Error = acc.reload().unwrap_err();

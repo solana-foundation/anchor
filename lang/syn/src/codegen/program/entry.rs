@@ -1,6 +1,4 @@
-use crate::Program;
-use heck::CamelCase;
-use quote::quote;
+use {crate::Program, heck::CamelCase, quote::quote};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
@@ -39,7 +37,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// Anchor's generated entrypoint accepts [`AccountView`] values directly.
         ///
         /// The custom-entrypoint escape hatch documented in the performance section may still
-        /// receive `&[AccountInfo]` from the Solana runtime. In that case, wrap at the boundary
+        /// receive runtime account data from Solana. In that case, wrap at the boundary
         /// into `AccountView` before calling Anchor dispatch.
         ///
         /// This keeps all user-facing Anchor traits/structs/codegen on `AccountView` while still

@@ -553,6 +553,26 @@ pub struct ConstraintGroupBuilder<'ty> {
 }
 
 impl<'ty> ConstraintGroupBuilder<'ty> {
+    fn marker_name_for_unified_account(&self) -> Option<&'static str> {
+        let Ty::Account(account_ty) = self.f_ty? else {
+            return None;
+        };
+        let last = account_ty
+            .account_type_path
+            .path
+            .segments
+            .last()?
+            .ident
+            .to_string();
+        match last.as_str() {
+            "Wallet" => Some("Wallet"),
+            "System" => Some("System"),
+            "AnyProgram" => Some("AnyProgram"),
+            "Program" => Some("Program"),
+            _ => None,
+        }
+    }
+
     pub fn new(f_ty: Option<&'ty Ty>) -> Self {
         Self {
             f_ty,
@@ -600,6 +620,41 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
     }
 
     pub fn build(mut self) -> ParseResult<ConstraintGroup> {
+        if let Some(marker) = self.marker_name_for_unified_account() {
+            if !self.has_one.is_empty() {
+                return Err(ParseError::new(
+                    self.has_one[0].span(),
+                    format!(
+                        "has_one cannot be used with Account<{marker}> because marker accounts do \
+                         not expose typed data fields"
+                    ),
+                ));
+            }
+            if self.close.is_some() || self.realloc.is_some() || self.zeroed.is_some() {
+                let span = self
+                    .close
+                    .as_ref()
+                    .map(|c| c.span())
+                    .or_else(|| self.realloc.as_ref().map(|c| c.span()))
+                    .or_else(|| self.zeroed.as_ref().map(|c| c.span()))
+                    .expect("one of close/realloc/zeroed must exist");
+                return Err(ParseError::new(
+                    span,
+                    format!(
+                        "data-mutating constraints (close/realloc/zeroed) cannot be used with \
+                         Account<{marker}>"
+                    ),
+                ));
+            }
+            if marker == "Wallet" && self.executable.is_some() {
+                return Err(ParseError::new(
+                    self.executable.as_ref().expect("checked is_some").span(),
+                    "executable cannot be combined with Account<Wallet>; use Account<AnyProgram> \
+                     or Account<Program<T>>",
+                ));
+            }
+        }
+
         // Init.
         if let Some(i) = &self.init {
             if cfg!(not(feature = "init-if-needed")) && i.if_needed {
@@ -836,35 +891,40 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 .expect("bump must be provided with seeds"),
             program_seed: into_inner!(program_seed).map(|id| id.program_seed),
         });
-        let associated_token =
-            match (
-                associated_token_mint,
-                associated_token_authority,
-                &associated_token_token_program,
-            ) {
-                (Some(mint), Some(auth), _) => Some(ConstraintAssociatedToken {
-                    wallet: auth.into_inner().auth,
-                    mint: mint.into_inner().mint,
-                    token_program: associated_token_token_program
-                        .as_ref()
-                        .map(|a| a.clone().into_inner().token_program),
-                }),
-                (Some(mint), None, _) => return Err(ParseError::new(
+        let associated_token = match (
+            associated_token_mint,
+            associated_token_authority,
+            &associated_token_token_program,
+        ) {
+            (Some(mint), Some(auth), _) => Some(ConstraintAssociatedToken {
+                wallet: auth.into_inner().auth,
+                mint: mint.into_inner().mint,
+                token_program: associated_token_token_program
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().token_program),
+            }),
+            (Some(mint), None, _) => {
+                return Err(ParseError::new(
                     mint.span(),
                     "authority must be provided to specify an associated token program derived \
                      address",
-                )),
-                (None, Some(auth), _) => return Err(ParseError::new(
+                ))
+            }
+            (None, Some(auth), _) => {
+                return Err(ParseError::new(
                     auth.span(),
                     "mint must be provided to specify an associated token program derived address",
-                )),
-                (None, None, Some(token_program)) => return Err(ParseError::new(
+                ))
+            }
+            (None, None, Some(token_program)) => {
+                return Err(ParseError::new(
                     token_program.span(),
                     "mint and authority must be provided to specify an associated token program \
                      derived address",
-                )),
-                _ => None,
-            };
+                ))
+            }
+            _ => None,
+        };
         if let Some(associated_token) = &associated_token {
             if seeds.is_some() {
                 return Err(ParseError::new(

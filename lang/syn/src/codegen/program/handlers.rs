@@ -187,7 +187,7 @@ fn generate_event_cpi_mod() -> proc_macro2::TokenStream {
                     accounts: &[AccountView],
                     event_data: &[u8],
                 ) -> anchor_lang::Result<()> {
-                    let given_event_authority = next_account_info(&mut accounts.iter())?;
+                    let given_event_authority = next_account_view(&mut accounts.iter())?;
                     if !given_event_authority.is_signer {
                         return Err(anchor_lang::error::Error::from(
                             anchor_lang::error::ErrorCode::ConstraintSigner,

@@ -136,9 +136,9 @@ fn gen_internal_accounts_common(
                     };
 
                     let acc_expr = if acc.optional {
-                        quote! { Option<AccountInfo #generics> }
+                        quote! { Option<AccountView #generics> }
                     } else {
-                        quote! { AccountInfo #generics }
+                        quote! { AccountView #generics }
                     };
 
                     quote! {

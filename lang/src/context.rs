@@ -1,12 +1,13 @@
 //! Data structures that are used to provide non-argument inputs to program endpoints
 
-use pinocchio::cpi::Signer;
-
-use crate::pinocchio_runtime::account_info::AccountView;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{Accounts, Bumps, ToAccountInfos, ToAccountMetas};
-use std::fmt;
+use {
+    crate::{
+        pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, Bumps, ToAccountMetas, ToAccountViews,
+    },
+    pinocchio::cpi::Signer,
+    std::fmt,
+};
 
 /// Provides non-argument inputs to the program.
 ///
@@ -131,8 +132,8 @@ where
 ///     pub fn do_cpi(ctx: Context<DoCpi>, data: u64) -> Result<()> {
 ///         let callee_id = ctx.accounts.callee.key();
 ///         let callee_accounts = callee::cpi::accounts::SetData {
-///             data_acc: ctx.accounts.data_acc.to_account_info(),
-///             authority: ctx.accounts.callee_authority.to_account_info(),
+///             data_acc: ctx.accounts.data_acc.to_account_view(),
+///             authority: ctx.accounts.callee_authority.to_account_view(),
 ///         };
 ///         let cpi_ctx = CpiContext::new(callee_id, callee_accounts);
 ///         callee::cpi::set_data(cpi_ctx, data)
@@ -140,10 +141,10 @@ where
 ///
 ///     pub fn do_cpi_with_pda_authority(ctx: Context<DoCpiWithPDAAuthority>, bump: u8, data: u64) -> Result<()> {
 ///         let seeds = &[&[b"example_seed", bytemuck::bytes_of(&bump)][..]];
-///         let callee_id = ctx.accounts.callee.to_account_info();
+///         let callee_id = ctx.accounts.callee.to_account_view();
 ///         let callee_accounts = callee::cpi::accounts::SetData {
-///             data_acc: ctx.accounts.data_acc.to_account_info(),
-///             authority: ctx.accounts.callee_authority.to_account_info(),
+///             data_acc: ctx.accounts.data_acc.to_account_view(),
+///             authority: ctx.accounts.callee_authority.to_account_view(),
 ///         };
 ///         let cpi_ctx = CpiContext::new_with_signer(callee_id, callee_accounts, seeds);
 ///         callee::cpi::set_data(cpi_ctx, data)
@@ -172,7 +173,7 @@ where
 /// ```
 pub struct CpiContext<'a, 'b, T>
 where
-    T: ToAccountMetas + ToAccountInfos,
+    T: ToAccountMetas + ToAccountViews,
 {
     pub accounts: T,
     pub remaining_accounts: Vec<AccountView>,
@@ -182,7 +183,7 @@ where
 
 impl<'a, 'b, T> CpiContext<'a, 'b, T>
 where
-    T: ToAccountMetas + ToAccountInfos,
+    T: ToAccountMetas + ToAccountViews,
 {
     #[must_use]
     pub fn new(program_id: Pubkey, accounts: T) -> Self {
@@ -221,15 +222,15 @@ where
     }
 }
 
-impl<T: ToAccountInfos + ToAccountMetas> ToAccountInfos for CpiContext<'_, '_, T> {
-    fn to_account_infos(&self) -> Vec<AccountView> {
-        let mut infos = self.accounts.to_account_infos();
+impl<T: ToAccountViews + ToAccountMetas> ToAccountViews for CpiContext<'_, '_, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        let mut infos = self.accounts.to_account_views();
         infos.extend_from_slice(&self.remaining_accounts);
         infos
     }
 }
 
-impl<T: ToAccountInfos + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T> {
+impl<T: ToAccountViews + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let mut metas = self.accounts.to_account_metas(is_signer);
         metas.append(

@@ -43,7 +43,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             #close_target_optional_check
                             anchor_lang::AccountsClose::close(
                                 &self.#ident,
-                                #close_target.to_account_info(),
+                                #close_target.to_account_view(),
                             ).map_err(|e| e.with_account_name(#name_str))?;
                         }
                     }

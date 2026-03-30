@@ -56,7 +56,7 @@ impl CrateContext {
 
     // Perform Anchor safety checks on the parsed create
     pub fn safety_checks(&self) -> Result<()> {
-        // Check all structs for unsafe field types, i.e. AccountInfo and UncheckedAccount.
+        // Check all structs for unsafe field types, i.e. AccountView and UncheckedAccount.
         for ctx in self.modules.values() {
             for unsafe_field in ctx.unsafe_struct_fields() {
                 // Check if unsafe field type has been documented with a /// SAFETY: doc string.
@@ -251,7 +251,7 @@ impl ParsedModule {
                 }) => {
                     segments.len() == 1
                         && (segments[0].ident == "UncheckedAccount"
-                            || segments[0].ident == "AccountInfo"
+                            || segments[0].ident == "AccountView"
                             || segments[0].ident == "AccountView")
                 }
                 _ => false,
