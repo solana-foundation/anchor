@@ -37,9 +37,9 @@ pub mod cpi {
     // [!code word:sol_transfer]
     // [!code highlight]
     pub fn sol_transfer(ctx: Context<SolTransfer>, amount: u64) -> Result<()> {
-        let from_pubkey = ctx.accounts.sender.to_account_info();
-        let to_pubkey = ctx.accounts.recipient.to_account_info();
-        let program_id = ctx.accounts.system_program.to_account_info();
+        let from_pubkey = ctx.accounts.sender.to_account_view();
+        let to_pubkey = ctx.accounts.recipient.to_account_view();
+        let program_id = ctx.accounts.system_program.to_account_view();
 
         let cpi_context = CpiContext::new(
             program_id,
@@ -154,9 +154,9 @@ use anchor_lang::system_program::{transfer, Transfer};
 
 ```rust
 pub fn sol_transfer(ctx: Context<SolTransfer>, amount: u64) -> Result<()> {
-    let from_pubkey = ctx.accounts.sender.to_account_info();
-    let to_pubkey = ctx.accounts.recipient.to_account_info();
-    let program_id = ctx.accounts.system_program.to_account_info();
+    let from_pubkey = ctx.accounts.sender.to_account_view();
+    let to_pubkey = ctx.accounts.recipient.to_account_view();
+    let program_id = ctx.accounts.system_program.to_account_view();
 
     // [!code word:cpi_context]
     let cpi_context = CpiContext::new(
@@ -210,9 +210,9 @@ use anchor_lang::pinocchio_runtime::{program::invoke, system_instruction};
 
 ```rust
 pub fn sol_transfer(ctx: Context<SolTransfer>, amount: u64) -> Result<()> {
-    let from_pubkey = ctx.accounts.sender.to_account_info();
-    let to_pubkey = ctx.accounts.recipient.to_account_info();
-    let program_id = ctx.accounts.system_program.to_account_info();
+    let from_pubkey = ctx.accounts.sender.to_account_view();
+    let to_pubkey = ctx.accounts.recipient.to_account_view();
+    let program_id = ctx.accounts.system_program.to_account_view();
 
     // [!code word:instruction:1]
     let instruction =
@@ -239,9 +239,9 @@ System Program's transfer instruction.
 
 ```rust
 pub fn sol_transfer(ctx: Context<SolTransfer>, amount: u64) -> Result<()> {
-    let from_pubkey = ctx.accounts.sender.to_account_info();
-    let to_pubkey = ctx.accounts.recipient.to_account_info();
-    let program_id = ctx.accounts.system_program.to_account_info();
+    let from_pubkey = ctx.accounts.sender.to_account_view();
+    let to_pubkey = ctx.accounts.recipient.to_account_view();
+    let program_id = ctx.accounts.system_program.to_account_view();
 
     // Prepare instruction AccountMetas
     let account_metas = vec![
@@ -313,9 +313,9 @@ pub mod cpi {
     // [!code word:sol_transfer]
     // [!code highlight]
     pub fn sol_transfer(ctx: Context<SolTransfer>, amount: u64) -> Result<()> {
-        let from_pubkey = ctx.accounts.pda_account.to_account_info();
-        let to_pubkey = ctx.accounts.recipient.to_account_info();
-        let program_id = ctx.accounts.system_program.to_account_info();
+        let from_pubkey = ctx.accounts.pda_account.to_account_view();
+        let to_pubkey = ctx.accounts.recipient.to_account_view();
+        let program_id = ctx.accounts.system_program.to_account_view();
 
         let seed = to_pubkey.key();
         let bump_seed = ctx.bumps.pda_account;
@@ -479,9 +479,9 @@ instruction.
 
 ```rust
 pub fn sol_transfer(ctx: Context<SolTransfer>, amount: u64) -> Result<()> {
-    let from_pubkey = ctx.accounts.pda_account.to_account_info();
-    let to_pubkey = ctx.accounts.recipient.to_account_info();
-    let program_id = ctx.accounts.system_program.to_account_info();
+    let from_pubkey = ctx.accounts.pda_account.to_account_view();
+    let to_pubkey = ctx.accounts.recipient.to_account_view();
+    let program_id = ctx.accounts.system_program.to_account_view();
 
     let seed = to_pubkey.key();
     let bump_seed = ctx.bumps.pda_account;
@@ -554,9 +554,9 @@ use anchor_lang::pinocchio_runtime::{program::invoke_signed, system_instruction}
 
 ```rust
 pub fn sol_transfer(ctx: Context<SolTransfer>, amount: u64) -> Result<()> {
-    let from_pubkey = ctx.accounts.pda_account.to_account_info();
-    let to_pubkey = ctx.accounts.recipient.to_account_info();
-    let program_id = ctx.accounts.system_program.to_account_info();
+    let from_pubkey = ctx.accounts.pda_account.to_account_view();
+    let to_pubkey = ctx.accounts.recipient.to_account_view();
+    let program_id = ctx.accounts.system_program.to_account_view();
 
     let seed = to_pubkey.key();
     let bump_seed = ctx.bumps.pda_account;

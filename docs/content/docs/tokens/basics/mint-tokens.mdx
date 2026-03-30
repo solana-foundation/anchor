@@ -67,9 +67,9 @@ pub mod token_example {
 
     pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
         let cpi_accounts = MintTo {
-            mint: ctx.accounts.mint.to_account_info(),
-            to: ctx.accounts.token_account.to_account_info(),
-            authority: ctx.accounts.signer.to_account_info(),
+            mint: ctx.accounts.mint.to_account_view(),
+            to: ctx.accounts.token_account.to_account_view(),
+            authority: ctx.accounts.signer.to_account_view(),
         };
         let cpi_program_id = ctx.accounts.token_program.key();
         let cpi_context = CpiContext::new(cpi_program_id, cpi_accounts);
@@ -118,9 +118,9 @@ Within the instruction logic, use the:
 pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
     // Create the MintTo struct with the accounts required for the CPI
     let cpi_accounts = MintTo {
-        mint: ctx.accounts.mint.to_account_info(),
-        to: ctx.accounts.token_account.to_account_info(),
-        authority: ctx.accounts.signer.to_account_info(),
+        mint: ctx.accounts.mint.to_account_view(),
+        to: ctx.accounts.token_account.to_account_view(),
+        authority: ctx.accounts.signer.to_account_view(),
     };
 
     // The program being invoked in the CPI
@@ -168,9 +168,9 @@ pub mod token_example {
         let signer_seeds: &[&[&[u8]]] = &[&[b"mint", &[ctx.bumps.mint]]];
 
         let cpi_accounts = MintTo {
-            mint: ctx.accounts.mint.to_account_info(),
-            to: ctx.accounts.token_account.to_account_info(),
-            authority: ctx.accounts.mint.to_account_info(),
+            mint: ctx.accounts.mint.to_account_view(),
+            to: ctx.accounts.token_account.to_account_view(),
+            authority: ctx.accounts.mint.to_account_view(),
         };
         let cpi_program_id = ctx.accounts.token_program.key();
         let cpi_context = CpiContext::new(cpi_program_id, cpi_accounts).with_signer(signer_seeds);
@@ -339,11 +339,11 @@ pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
     let signer_seeds: &[&[&[u8]]] = &[&[b"mint", &[ctx.bumps.mint]]];
 
     let cpi_accounts = MintTo {
-        mint: ctx.accounts.mint.to_account_info(),
-        to: ctx.accounts.token_account.to_account_info(),
-        authority: ctx.accounts.mint.to_account_info(),
+        mint: ctx.accounts.mint.to_account_view(),
+        to: ctx.accounts.token_account.to_account_view(),
+        authority: ctx.accounts.mint.to_account_view(),
     };
-    let cpi_program = ctx.accounts.token_program.to_account_info();
+    let cpi_program = ctx.accounts.token_program.to_account_view();
     // [!code highlight:2]
     let cpi_context = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
     token_interface::mint_to(cpi_context, amount)?;
