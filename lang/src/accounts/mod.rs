@@ -1,8 +1,8 @@
 //! Account types that can be used in the account validation struct.
 
 pub mod account;
-pub mod account_view;
 pub mod account_loader;
+pub mod account_view;
 pub mod boxed;
 pub mod interface;
 pub mod interface_account;

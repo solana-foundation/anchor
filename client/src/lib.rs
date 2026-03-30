@@ -9,15 +9,10 @@
 //! ```ignore
 //! use std::rc::Rc;
 //!
-//! use anchor_client::{
-//!     solana_sdk::{
-//!         signature::{read_keypair_file, Keypair},
-//!         signer::Signer,
-//!         system_program,
-//!     },
-//!     Client, Cluster,
-//! };
+//! use anchor_client::{Client, Cluster, Signer};
 //! use my_program::{accounts, instruction, MyAccount};
+//! use solana_keypair::{read_keypair_file, Keypair};
+//! use solana_system_interface::program as system_program;
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create client
@@ -50,7 +45,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/coral-xyz/anchor/tree/v0.32.1/client/example/src
+//! [here]: https://github.com/solana-foundation/anchor/tree/v1.0.0-rc.5/client/example/src
 //!
 //! # Features
 //!
@@ -59,7 +54,7 @@
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
-//! anchor-client = { version = "0.32.1 ", features = ["async"] }
+//! anchor-client = { version = "1.0.0-rc.5 ", features = ["async"] }
 //! ````
 //!
 //! ## `mock`
@@ -69,49 +64,54 @@
 //!
 //! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/3.0.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
-use anchor_lang::pinocchio_runtime::program_error::ProgramError;
-use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::prelude::instruction::InstructionView;
-use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
-use futures::{Future, StreamExt};
-use regex::Regex;
-use solana_account_decoder::{UiAccount, UiAccountEncoding};
-use solana_commitment_config::CommitmentConfig;
-use anchor_lang::pinocchio_runtime::instruction::{AccountMeta, InstructionView};
-use solana_program::hash::Hash;
-use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
-use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
-use solana_rpc_client_api::{
-    client_error::Error as SolanaClientError,
-    config::{
-        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-        RpcTransactionLogsConfig, RpcTransactionLogsFilter,
-    },
-    filter::{Memcmp, RpcFilterType},
-    response::{Response as RpcResponse, RpcLogsResponse},
-};
-use solana_signature::Signature;
-use solana_signer::{Signer, SignerError};
-use solana_transaction::Transaction;
-use std::iter::Map;
-use std::marker::PhantomData;
-use std::ops::Deref;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::vec::IntoIter;
-use thiserror::Error;
-use tokio::sync::OnceCell;
-use tokio::{
-    runtime::Handle,
-    sync::mpsc::{unbounded_channel, UnboundedReceiver},
-    task::JoinHandle,
-};
-
-pub use anchor_lang;
-pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
-pub use solana_account_decoder;
+pub use {
+    anchor_lang,
+    cluster::Cluster,
+    solana_account_decoder,
+    solana_commitment_config::CommitmentConfig,
+    solana_instruction::Instruction,
+    solana_program::hash::Hash,
+    solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError,
+    solana_rpc_client_api::{
+        client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,
+        filter::RpcFilterType,
+    },
+    solana_signer::{Signer, SignerError},
+    solana_transaction::Transaction,
+};
+use {
+    anchor_lang::{
+        solana_program::{program_error::ProgramError, pubkey::Pubkey},
+        AccountDeserialize, Discriminator, InstructionData, ToAccountMetas,
+    },
+    futures::{Future, StreamExt},
+    regex::Regex,
+    solana_account_decoder::{UiAccount, UiAccountEncoding},
+    solana_instruction::AccountMeta,
+    solana_pubsub_client::nonblocking::pubsub_client::PubsubClient,
+    solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
+    solana_rpc_client_api::{
+        config::{
+            RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcTransactionLogsConfig,
+            RpcTransactionLogsFilter,
+        },
+        filter::Memcmp,
+        response::{Response as RpcResponse, RpcLogsResponse},
+    },
+    solana_signature::Signature,
+    std::{iter::Map, marker::PhantomData, ops::Deref, pin::Pin, sync::Arc, vec::IntoIter},
+    thiserror::Error,
+    tokio::{
+        runtime::Handle,
+        sync::{
+            mpsc::{unbounded_channel, UnboundedReceiver},
+            OnceCell,
+        },
+        task::JoinHandle,
+    },
+};
 
 mod cluster;
 
@@ -298,7 +298,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 
     async fn on_internal<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        f: impl Fn(&EventContext, T) + Send + 'static,
+        mut f: impl FnMut(&EventContext, T) + Send + 'static,
     ) -> Result<
         (
             JoinHandle<Result<(), ClientError>>,
@@ -375,9 +375,10 @@ pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize
     self_program_str: &str,
     l: &str,
 ) -> Result<(Option<T>, Option<String>, bool), ClientError> {
-    use anchor_lang::__private::base64;
-    use base64::engine::general_purpose::STANDARD;
-    use base64::Engine;
+    use {
+        anchor_lang::__private::base64,
+        base64::{engine::general_purpose::STANDARD, Engine},
+    };
 
     // Log emitted from the current program.
     if let Some(log) = l
@@ -504,12 +505,12 @@ impl AsSigner for Box<dyn Signer + '_> {
 
 /// `RequestBuilder` provides a builder interface to create and send
 /// transactions to a cluster.
-pub struct RequestBuilder<'a, 'b, 'c, 'd, C, S: 'a> {
+pub struct RequestBuilder<'a, C, S: 'a> {
     cluster: String,
     program_id: Pubkey,
-    accounts: Vec<AccountMeta<'a>>,
+    accounts: Vec<AccountMeta>,
     options: CommitmentConfig,
-    instructions: Vec<InstructionView<'a, 'b, 'c, 'd>>,
+    instructions: Vec<Instruction>,
     payer: C,
     instruction_data: Option<Vec<u8>>,
     signers: Vec<S>,
@@ -520,7 +521,7 @@ pub struct RequestBuilder<'a, 'b, 'c, 'd, C, S: 'a> {
 }
 
 // Shared implementation for all RequestBuilders
-impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_, '_, '_, C, S> {
+impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, S> {
     #[must_use]
     pub fn payer(mut self, payer: C) -> Self {
         self.payer = payer;
@@ -534,7 +535,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_,
     }
 
     #[must_use]
-    pub fn instruction(mut self, ix: InstructionView<'_, '_, '_, '_>) -> Self {
+    pub fn instruction(mut self, ix: Instruction) -> Self {
         self.instructions.push(ix);
         self
     }
@@ -577,7 +578,15 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_,
     /// ```
     #[must_use]
     pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
-        let mut metas = accounts.to_account_metas(None);
+        let mut metas = accounts
+            .to_account_metas(None)
+            .into_iter()
+            .map(|meta| AccountMeta {
+                pubkey: *meta.address,
+                is_signer: meta.is_signer,
+                is_writable: meta.is_writable,
+            })
+            .collect::<Vec<_>>();
         self.accounts.append(&mut metas);
         self
     }
@@ -594,10 +603,10 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, '_,
         self
     }
 
-    pub fn instructions(&self) -> Vec<InstructionView> {
+    pub fn instructions(&self) -> Vec<Instruction> {
         let mut instructions = self.instructions.clone();
         if let Some(ix_data) = &self.instruction_data {
-            instructions.push(InstructionView {
+            instructions.push(Instruction {
                 program_id: self.program_id,
                 data: ix_data.clone(),
                 accounts: self.accounts.clone(),
@@ -733,14 +742,15 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 
 #[cfg(test)]
 mod tests {
-    use futures::{SinkExt, StreamExt};
-    use solana_rpc_client_api::response::RpcResponseContext;
-    use std::sync::atomic::{AtomicU64, Ordering};
-    use tokio_tungstenite::tungstenite::Message;
-
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`
-    use anchor_lang::prelude::*;
+    use {
+        anchor_lang::prelude::*,
+        futures::{SinkExt, StreamExt},
+        solana_rpc_client_api::response::RpcResponseContext,
+        std::sync::atomic::{AtomicU64, Ordering},
+        tokio_tungstenite::tungstenite::Message,
+    };
     #[derive(Debug, Clone, Copy)]
     #[event]
     pub struct MockEvent {}
@@ -777,81 +787,95 @@ mod tests {
     fn test_parse_logs_response() -> Result<()> {
         // Mock logs received within an `RpcResponse`. These are based on a Jupiter transaction.
         let logs = vec![
-          "Program VeryCoolProgram invoke [1]", // Outer instruction #1 starts
-          "Program log: Instruction: VeryCoolEvent",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 664387 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program VeryCoolProgram consumed 42417 of 700000 compute units",
-          "Program VeryCoolProgram success", // Outer instruction #1 ends
-          "Program EvenCoolerProgram invoke [1]", // Outer instruction #2 starts
-          "Program log: Instruction: EvenCoolerEvent",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: TransferChecked",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6200 of 630919 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program log: INVARIANT: SWAP",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 539321 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 531933 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 84670 of 610768 compute units",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 523272 compute units",
-          "Program EvenCoolerProgram success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program log: INVARIANT: SWAP",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 418618 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 411230 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 102212 of 507607 compute units",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 402569 compute units",
-          "Program EvenCoolerProgram success",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 371140 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: MintTo",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4492 of 341800 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 334370 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP consumed 57610 of 386812 compute units",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 326438 compute units",
-          "Program EvenCoolerProgram success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: TransferChecked",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6173 of 319725 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program EvenCoolerProgram consumed 345969 of 657583 compute units",
-          "Program EvenCoolerProgram success", // Outer instruction #2 ends
-          "Program ComputeBudget111111111111111111111111111111 invoke [1]",
-          "Program ComputeBudget111111111111111111111111111111 success",
-          "Program ComputeBudget111111111111111111111111111111 invoke [1]",
-          "Program ComputeBudget111111111111111111111111111111 success"];
+            "Program VeryCoolProgram invoke [1]", // Outer instruction #1 starts
+            "Program log: Instruction: VeryCoolEvent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 664387 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program VeryCoolProgram consumed 42417 of 700000 compute units",
+            "Program VeryCoolProgram success", // Outer instruction #1 ends
+            "Program EvenCoolerProgram invoke [1]", // Outer instruction #2 starts
+            "Program log: Instruction: EvenCoolerEvent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6200 of 630919 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program log: INVARIANT: SWAP",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 539321 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 531933 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 84670 of 610768 \
+             compute units",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 523272 compute units",
+            "Program EvenCoolerProgram success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program log: INVARIANT: SWAP",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 418618 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 411230 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 102212 of 507607 \
+             compute units",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 402569 compute units",
+            "Program EvenCoolerProgram success",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 371140 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: MintTo",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4492 of 341800 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 334370 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP consumed 57610 of 386812 \
+             compute units",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 326438 compute units",
+            "Program EvenCoolerProgram success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6173 of 319725 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program EvenCoolerProgram consumed 345969 of 657583 compute units",
+            "Program EvenCoolerProgram success", // Outer instruction #2 ends
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+        ];
 
         // Converting to Vec<String> as expected in `RpcLogsResponse`
         let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
@@ -882,9 +906,10 @@ mod tests {
             "Program fake111111111111111111111111111111111111112 invoke [1]",
             "Program log: i logged success",
             "Program log: i logged success",
-            "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute units",
-            "Program fake111111111111111111111111111111111111112 success"
-          ];
+            "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute \
+             units",
+            "Program fake111111111111111111111111111111111111112 success",
+        ];
 
         // Converting to Vec<String> as expected in `RpcLogsResponse`
         let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
