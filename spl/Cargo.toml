@@ -1,7 +1,9 @@
 [package]
 name = "anchor-spl"
-version = "0.32.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
+repository = "https://github.com/solana-foundation/anchor"
 edition = "2021"
 license = "Apache-2.0"
 description = "CPI clients for SPL programs"
@@ -18,7 +20,7 @@ devnet = []
 governance = []
 idl-build = ["anchor-lang/idl-build"]
 memo = ["spl-memo-interface"]
-metadata = ["mpl-token-metadata", "dep:solana-sysvar", "dep:base64ct"]
+metadata = ["mpl-token-metadata", "dep:solana-sysvar"]
 mint = []
 stake = ["dep:borsh", "dep:solana-stake-interface"]
 token = ["spl-token-interface"]
@@ -32,11 +34,8 @@ token_2022_extensions = [
 
 [dependencies]
 anchor-lang = { path = "../lang", version = "1.0.0-rc.5", features = ["derive"] }
-# FIXME(edition2024): Not used directly, but upstream crates resolve to this version,
-# which uses Edition 2024
-base64ct = { version = "<1.8.0", optional = true }
 borsh = { version = "1.5.7", optional = true }
-mpl-token-metadata = { version = "=5.1.2-alpha.1", optional = true }
+mpl-token-metadata = { version = "=5.1.2-alpha.2", optional = true }
 solana-stake-interface = { workspace = true, features = ["borsh"], optional = true }
 solana-sysvar = { version = "3", optional = true }
 spl-associated-token-account-interface = { version = "2", optional = true }
@@ -46,8 +45,3 @@ spl-token-interface = { version = "2", optional = true }
 spl-token-2022-interface = { version = "2", optional = true }
 spl-token-group-interface = { version = "0.7", optional = true }
 spl-token-metadata-interface = { version = "0.8", optional = true }
-
-pinocchio-associated-token-account.workspace = true
-pinocchio-token-2022.workspace = true
-pinocchio-token.workspace = true
-pinocchio-memo.workspace = true

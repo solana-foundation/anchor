@@ -1,9 +1,11 @@
-use pinocchio::Resize;
-
-use crate::pinocchio_runtime::account_info::AccountInfo;
-use crate::pinocchio_runtime::system_program;
-use crate::prelude::{Id, System};
-use crate::Result;
+use {
+    crate::{
+        pinocchio_runtime::{account_info::AccountInfo, system_program},
+        prelude::{Id, System},
+        Result,
+    },
+    pinocchio::Resize,
+};
 
 pub fn close(mut info: AccountInfo, mut sol_destination: AccountInfo) -> Result<()> {
     // Transfer tokens from the account to the sol_destination.

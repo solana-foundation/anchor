@@ -1,9 +1,12 @@
-use crate::{AccountField, AccountsStruct, Ty};
-use quote::quote;
-use std::iter;
-use syn::punctuated::Punctuated;
-use syn::{ConstParam, LifetimeDef, Token, TypeParam};
-use syn::{GenericParam, PredicateLifetime, WhereClause, WherePredicate};
+use {
+    crate::{AccountField, AccountsStruct, Ty},
+    quote::quote,
+    std::iter,
+    syn::{
+        punctuated::Punctuated, ConstParam, GenericParam, LifetimeDef, PredicateLifetime, Token,
+        TypeParam, WhereClause, WherePredicate,
+    },
+};
 
 pub mod __client_accounts;
 pub mod __cpi_client_accounts;

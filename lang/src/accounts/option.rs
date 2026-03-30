@@ -8,14 +8,13 @@
 //! }
 //! ```
 
-use std::collections::BTreeSet;
-
-use crate::pinocchio_runtime::account_info::AccountInfo;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-
-use crate::{
-    error::ErrorCode, Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        error::ErrorCode,
+        pinocchio_runtime::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
+    },
+    std::collections::BTreeSet,
 };
 
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {

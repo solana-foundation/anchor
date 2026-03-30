@@ -1,10 +1,12 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
-use crate::pinocchio_runtime::account_info::AccountInfo;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
-use std::collections::BTreeSet;
+use {
+    crate::{
+        pinocchio_runtime::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, Result, ToAccountInfos, ToAccountMetas,
+    },
+    std::collections::BTreeSet,
+};
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo> {
@@ -39,11 +41,10 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::Key;
-
-    use crate::pinocchio_runtime::pubkey::Pubkey;
-
-    use super::*;
+    use {
+        super::*,
+        crate::{pinocchio_runtime::pubkey::Pubkey, Key},
+    };
 
     #[derive(Accounts)]
     pub struct Test {

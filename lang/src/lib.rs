@@ -26,8 +26,10 @@
 extern crate self as anchor_lang;
 
 // V2 migration: Using pinocchio_runtime types
-use bytemuck::{Pod, Zeroable};
-use std::{collections::BTreeSet, fmt::Debug, io::Write};
+use {
+    bytemuck::{Pod, Zeroable},
+    std::{collections::BTreeSet, fmt::Debug, io::Write},
+};
 
 mod account_meta;
 pub mod accounts;
@@ -46,26 +48,30 @@ mod vec;
 #[cfg(feature = "lazy-account")]
 mod lazy;
 
-pub use crate::bpf_upgradeable_state::*;
-pub use crate::pinocchio_runtime::account_info::{AccountInfo, Ref, RefMut};
-pub use crate::pinocchio_runtime::instruction::AccountMeta;
-pub use crate::pinocchio_runtime::program_error::ProgramError;
-pub use crate::pinocchio_runtime::pubkey::Pubkey;
-pub use anchor_attribute_access_control::access_control;
-pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
-pub use anchor_attribute_constant::constant;
-pub use anchor_attribute_error::*;
-pub use anchor_attribute_event::{emit, event};
-pub use anchor_attribute_program::{declare_program, instruction, program};
-pub use anchor_derive_accounts::Accounts;
-pub use anchor_derive_serde::__erase;
-pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
-pub use anchor_derive_space::InitSpace;
-pub use const_crypto::ed25519::derive_program_address;
-
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
-pub use borsh::ser::BorshSerialize as AnchorSerialize;
+pub use {
+    crate::{
+        bpf_upgradeable_state::*,
+        pinocchio_runtime::{
+            account_info::{AccountInfo, Ref, RefMut},
+            instruction::AccountMeta,
+            program_error::ProgramError,
+            pubkey::Pubkey,
+        },
+    },
+    anchor_attribute_access_control::access_control,
+    anchor_attribute_account::{account, declare_id, pubkey, zero_copy},
+    anchor_attribute_constant::constant,
+    anchor_attribute_error::*,
+    anchor_attribute_event::{emit, event},
+    anchor_attribute_program::{declare_program, instruction, program},
+    anchor_derive_accounts::Accounts,
+    anchor_derive_serde::{AnchorDeserialize, AnchorSerialize, __erase},
+    anchor_derive_space::InitSpace,
+    borsh::ser::BorshSerialize as AnchorSerialize,
+    const_crypto::ed25519::derive_program_address,
+};
 /// Pinocchio runtime module - replaces solana_program for V2
 pub mod pinocchio_runtime {
 
@@ -92,7 +98,7 @@ pub mod pinocchio_runtime {
     }
 
     pub use {
-        pinocchio::entrypoint, pinocchio::program_entrypoint, pinocchio::sysvars::clock,
+        pinocchio::{entrypoint, program_entrypoint, sysvars::clock},
         solana_msg::msg,
     };
 
@@ -199,7 +205,6 @@ pub mod solana_program {
 
 #[cfg(feature = "event-cpi")]
 pub use anchor_attribute_event::{emit_cpi, event_cpi};
-
 #[cfg(feature = "idl-build")]
 pub use idl::IdlBuild;
 
@@ -552,61 +557,63 @@ impl Key for Pubkey {
 /// The prelude contains all commonly used components of the crate.
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
-    pub use super::{
-        access_control, account, accounts::account::Account,
-        accounts::account_loader::AccountLoader, accounts::interface::Interface,
-        accounts::interface_account::InterfaceAccount, accounts::program::Program,
-        accounts::signer::Signer, accounts::system_account::SystemAccount,
-        accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
-        context::Context, context::CpiContext, declare_id, declare_program, emit, err, error,
-        event, instruction, pinocchio_runtime::bpf_loader_upgradeable::UpgradeableLoaderState,
-        program, pubkey, require, require_eq, require_gt, require_gte, require_keys_eq,
-        require_keys_neq, require_neq, source, system_program::System, zero_copy,
-        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
-        AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
-        ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
-    };
-    // V2: Using pinocchio_runtime types
-    pub use crate::pinocchio_runtime::account_info::{next_account_info, AccountInfo};
-    pub use crate::pinocchio_runtime::instruction::AccountMeta;
-    pub use crate::pinocchio_runtime::program_error::{ProgramError, ProgramResult};
-    pub use crate::pinocchio_runtime::pubkey::Pubkey;
-    pub use crate::pinocchio_runtime::*;
-    pub use anchor_attribute_error::*;
-    pub use borsh;
-    pub use error::*;
-    pub use pinocchio::sysvars::clock::Clock;
-    pub use pinocchio::sysvars::instructions::Instructions;
-    pub use pinocchio::sysvars::rent::Rent;
-    pub use pinocchio::sysvars::slot_hashes::SlotHashes;
-    pub use pinocchio::sysvars::Sysvar as SolanaSysvar;
-
-    pub use solana_stake_interface::stake_history::StakeHistory;
-    pub use solana_sysvar::epoch_schedule::EpochSchedule;
-    pub use solana_sysvar::rewards::Rewards;
-    pub use solana_sysvar::slot_history::SlotHistory;
-    pub use thiserror;
-
-    #[cfg(feature = "event-cpi")]
-    pub use super::{emit_cpi, event_cpi};
-
-    #[cfg(feature = "idl-build")]
-    pub use super::idl::IdlBuild;
-
     #[cfg(feature = "lazy-account")]
     pub use super::accounts::lazy_account::LazyAccount;
+    #[cfg(feature = "idl-build")]
+    pub use super::idl::IdlBuild;
+    #[cfg(feature = "event-cpi")]
+    pub use super::{emit_cpi, event_cpi};
+    // V2: Using pinocchio_runtime types
+    pub use crate::pinocchio_runtime::account_info::{next_account_info, AccountInfo};
+    pub use {
+        super::{
+            access_control, account,
+            accounts::{
+                account::Account, account_loader::AccountLoader, interface::Interface,
+                interface_account::InterfaceAccount, program::Program, signer::Signer,
+                system_account::SystemAccount, sysvar::Sysvar, unchecked_account::UncheckedAccount,
+            },
+            constant,
+            context::{Context, CpiContext},
+            declare_id, declare_program, emit, err, error, event, instruction,
+            pinocchio_runtime::bpf_loader_upgradeable::UpgradeableLoaderState,
+            program, pubkey, require, require_eq, require_gt, require_gte, require_keys_eq,
+            require_keys_neq, require_neq, source,
+            system_program::System,
+            zero_copy, AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
+            AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
+            ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+        },
+        crate::pinocchio_runtime::{
+            instruction::AccountMeta,
+            program_error::{ProgramError, ProgramResult},
+            pubkey::Pubkey,
+            *,
+        },
+        anchor_attribute_error::*,
+        borsh,
+        error::*,
+        pinocchio::sysvars::{
+            clock::Clock, instructions::Instructions, rent::Rent, slot_hashes::SlotHashes,
+            Sysvar as SolanaSysvar,
+        },
+        solana_stake_interface::stake_history::StakeHistory,
+        solana_sysvar::{
+            epoch_schedule::EpochSchedule, rewards::Rewards, slot_history::SlotHistory,
+        },
+        thiserror,
+    };
 }
 
 /// Internal module used by macros and unstable apis.
 #[doc(hidden)]
 pub mod __private {
-    pub use anchor_attribute_account::ZeroCopyAccessor;
-    pub use base64;
-    pub use bytemuck;
-
-    pub use crate::{bpf_writer::BpfWriter, common::is_closed};
-
     use crate::pinocchio_runtime::pubkey::Pubkey;
+    pub use {
+        crate::{bpf_writer::BpfWriter, common::is_closed},
+        anchor_attribute_account::ZeroCopyAccessor,
+        base64, bytemuck,
+    };
 
     // Used to calculate the maximum between two expressions.
     // It is necessary for the calculation of the enum space.
@@ -644,7 +651,8 @@ pub mod __private {
     /// Used to enforce that instruction argument types match the `#[instruction(...)]` attribute types.
     #[doc(hidden)]
     #[diagnostic::on_unimplemented(
-        message = "instruction handler argument type `{Self}` does not match `#[instruction(...)]` attribute type `{T}`",
+        message = "instruction handler argument type `{Self}` does not match \
+                   `#[instruction(...)]` attribute type `{T}`",
         label = "expected `{T}` here based on `#[instruction(...)]` attribute, found `{Self}`",
         note = "ensure `#[instruction(..)]` argument types match those of the instruction handler"
     )]
