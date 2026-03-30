@@ -1,16 +1,15 @@
 //! Type validating that the account is one of a set of given Programs
 
-use crate::accounts::program::Program;
-use crate::error::{Error, ErrorCode};
-use crate::pinocchio_runtime::account_info::AccountView;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-use crate::{
-    AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountViews,
-    ToAccountMetas,
+use {
+    crate::{
+        accounts::program::Program,
+        error::{Error, ErrorCode},
+        pinocchio_runtime::{account_info::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountMetas,
+        ToAccountViews,
+    },
+    std::{collections::BTreeSet, ops::Deref},
 };
-use std::collections::BTreeSet;
-use std::ops::Deref;
 
 /// Type validating that the account is one of a set of given Programs
 ///
