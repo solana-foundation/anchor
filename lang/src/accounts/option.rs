@@ -8,14 +8,13 @@
 //! }
 //! ```
 
-use std::collections::BTreeSet;
-
-use crate::pinocchio_runtime::account_info::AccountView;
-use crate::pinocchio_runtime::instruction::AccountMeta;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-
-use crate::{
-    error::ErrorCode, Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        error::ErrorCode,
+        pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsClose, AccountsExit, Result, ToAccountMetas, ToAccountViews,
+    },
+    std::collections::BTreeSet,
 };
 
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
@@ -55,10 +54,10 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     }
 }
 
-impl<T: ToAccountInfos> ToAccountInfos for Option<T> {
-    fn to_account_infos(&self) -> Vec<AccountView> {
+impl<T: ToAccountViews> ToAccountViews for Option<T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
         self.as_ref()
-            .map_or_else(Vec::new, |account| account.to_account_infos())
+            .map_or_else(Vec::new, |account| account.to_account_views())
     }
 }
 

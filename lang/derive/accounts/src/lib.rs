@@ -63,9 +63,9 @@ use {proc_macro::TokenStream, quote::ToTokens, syn::parse_macro_input};
 ///                 Example:
 ///                 <pre><code>
 /// #[account(signer)]
-/// pub authority: AccountInfo&lt;'info&gt;,
+/// pub authority: AccountView,
 /// #[account(signer @ MyError::MyErrorCode)]
-/// pub payer: AccountInfo&lt;'info&gt;
+/// pub payer: AccountView
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -190,13 +190,13 @@ use {proc_macro::TokenStream, quote::ToTokens, syn::parse_macro_input};
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer,
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;space = 8 + 8, owner = other_program.key()
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub account_for_other_program: AccountInfo&lt;'info&gt;,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub account_for_other_program: AccountView,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init, payer = payer, space = 8 + 8,
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;owner = other_program.key(),
 /// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seeds = [b"other_seed"], bump
 /// &nbsp;&nbsp;&nbsp;&nbsp;)]
-/// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_for_other_program: AccountInfo&lt;'info&gt;,
+/// &nbsp;&nbsp;&nbsp;&nbsp;pub pda_for_other_program: AccountView,
 /// &nbsp;&nbsp;&nbsp;&nbsp;#[account(mut)]
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub payer: Signer&lt;'info&gt;,
 /// &nbsp;&nbsp;&nbsp;&nbsp;pub system_program: Program&lt;'info, System&gt;,
@@ -271,21 +271,21 @@ use {proc_macro::TokenStream, quote::ToTokens, syn::parse_macro_input};
 /// #[instruction(first_bump: u8, second_bump: u8)]
 /// pub struct Example {
 ///     #[account(seeds = [b"example_seed"], bump)]
-///     pub canonical_pda: AccountInfo&lt;'info&gt;,
+///     pub canonical_pda: AccountView,
 ///     #[account(
 ///         seeds = [b"example_seed"],
 ///         bump,
 ///         seeds::program = other_program.key()
 ///     )]
-///     pub canonical_pda_two: AccountInfo&lt;'info&gt;,
+///     pub canonical_pda_two: AccountView,
 ///     #[account(seeds = [b"other_seed"], bump = first_bump)]
-///     pub arbitrary_pda: AccountInfo&lt;'info&gt;
+///     pub arbitrary_pda: AccountView
 ///     #[account(
 ///         seeds = [b"other_seed"],
 ///         bump = second_bump,
 ///         seeds::program = other_program.key()
 ///     )]
-///     pub arbitrary_pda_two: AccountInfo&lt;'info&gt;,
+///     pub arbitrary_pda_two: AccountView,
 ///     pub other_program: Program&lt;'info, OtherProgram&gt;
 /// }
 ///                 </code></pre>
@@ -354,7 +354,7 @@ use {proc_macro::TokenStream, quote::ToTokens, syn::parse_macro_input};
 ///                 Example:
 ///                 <pre><code>
 /// #[account(executable)]
-/// pub my_program: AccountInfo&lt;'info&gt;
+/// pub my_program: AccountView
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -373,7 +373,7 @@ use {proc_macro::TokenStream, quote::ToTokens, syn::parse_macro_input};
 /// #[account(zero, rent_exempt = skip)]
 /// pub skipped_account: Account&lt;'info, MyData&gt;,
 /// #[account(rent_exempt = enforce)]
-/// pub enforced_account: AccountInfo&lt;'info&gt;
+/// pub enforced_account: AccountView
 ///                 </code></pre>
 ///             </td>
 ///         </tr>
@@ -439,7 +439,7 @@ use {proc_macro::TokenStream, quote::ToTokens, syn::parse_macro_input};
 ///                 <code>#[account(realloc = &lt;space&gt;, realloc::payer = &lt;target&gt;, realloc::zero = &lt;bool&gt;)]</code>
 ///             </td>
 ///             <td>
-///                 Used to <a href="https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html#method.realloc" target = "_blank" rel = "noopener noreferrer">realloc</a>
+///                 Used to resize account data.
 ///                 program account space at the beginning of an instruction.
 ///                 <br><br>
 ///                 The account must be marked as <code>mut</code> and applied to either <code>Account</code> or <code>AccountLoader</code> types.
@@ -449,10 +449,10 @@ use {proc_macro::TokenStream, quote::ToTokens, syn::parse_macro_input};
 ///                 the program account back into the <code>realloc::payer</code>.
 ///                 <br><br>
 ///                 The <code>realloc::zero</code> constraint is required in order to determine whether the new memory should be zero initialized after
-///                 reallocation. Please read the documentation on the <code>AccountInfo::realloc</code> function linked above to understand the
+///                 reallocation. Please read the runtime account resize docs to understand the
 ///                 caveats regarding compute units when providing <code>true</code> or <code>false</code> to this flag.
 ///                 <br><br>
-///                 The manual use of `AccountInfo::realloc` is discouraged in favor of the `realloc` constraint group due to the lack of native runtime checks
+///                 The manual use of account resize is discouraged in favor of the `realloc` constraint group due to the lack of native runtime checks
 ///                 to prevent reallocation over the `MAX_PERMITTED_DATA_INCREASE` limit (which can unintentionally cause account data overwrite other accounts).
 ///                 The constraint group also ensure account reallocation idempotency but checking and restricting duplicate account reallocation within a single ix.
 ///                 <br><br>

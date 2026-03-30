@@ -293,8 +293,8 @@ impl Field {
         let account_ty = self.account_ty();
         let container_ty = self.container_ty();
         let inner_ty = match &self.ty {
-            Ty::AccountInfo => quote! {
-                AccountView
+            Ty::AccountView => quote! {
+                anchor_lang::AccountView
             },
             Ty::UncheckedAccount => quote! {
                 UncheckedAccount
@@ -393,7 +393,7 @@ impl Field {
             },
         };
         match &self.ty {
-            Ty::AccountInfo => quote! { #field.to_account_info() },
+            Ty::AccountView => quote! { #field.to_account_view() },
             Ty::UncheckedAccount => {
                 quote! { UncheckedAccount::try_from(&#field) }
             }
@@ -496,7 +496,7 @@ impl Field {
             Ty::InterfaceAccount(_) => {
                 quote! { anchor_lang::accounts::interface_account::InterfaceAccount }
             }
-            Ty::AccountInfo => quote! {},
+            Ty::AccountView => quote! {},
             Ty::UncheckedAccount => quote! {},
             Ty::Signer => quote! {},
             Ty::SystemAccount => quote! {},
@@ -507,8 +507,8 @@ impl Field {
     // Returns the inner account struct type.
     pub fn account_ty(&self) -> proc_macro2::TokenStream {
         match &self.ty {
-            Ty::AccountInfo => quote! {
-                AccountView
+            Ty::AccountView => quote! {
+                anchor_lang::AccountView
             },
             Ty::UncheckedAccount => quote! {
                 UncheckedAccount
@@ -600,7 +600,7 @@ pub struct CompositeField {
 // A type of an account field.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Ty {
-    AccountInfo,
+    AccountView,
     UncheckedAccount,
     AccountLoader(AccountLoaderTy),
     Sysvar(SysvarTy),
@@ -1084,7 +1084,7 @@ pub enum InitKind {
         owner: Option<Expr>,
     },
     // Owner for token and mint represents the authority. Not to be confused
-    // with the owner of the AccountInfo.
+    // with the owner of the AccountView.
     Token {
         owner: Expr,
         mint: Expr,

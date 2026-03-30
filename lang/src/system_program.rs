@@ -1,10 +1,7 @@
 // Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use crate::prelude::*;
-use crate::pinocchio_runtime::pubkey::Pubkey;
-
-use crate::pinocchio_runtime::pubkey::Pubkey;
 pub use crate::pinocchio_runtime::system_program::ID;
+use crate::{pinocchio_runtime::pubkey::Pubkey, prelude::*};
 
 #[derive(Debug, Clone)]
 pub struct System;
@@ -256,9 +253,7 @@ pub fn initialize_nonce_account(
         rent_sysvar: &ctx.accounts.rent,
         authority,
     };
-    instruction
-        .invoke()
-        .map_err(error::Error::from)
+    instruction.invoke().map_err(error::Error::from)
 }
 
 #[derive(Accounts)]
@@ -326,7 +321,7 @@ pub fn withdraw_nonce_account(
         authority: &ctx.accounts.authorized,
         lamports,
     };
-    
+
     instruction
         .invoke_signed(ctx.signer_seeds)
         .map_err(error::Error::from)

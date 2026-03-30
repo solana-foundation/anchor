@@ -38,20 +38,20 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
         pub struct IdlCreateAccounts<'info> {
             // Payer of the transaction.
             #[account(signer)]
-            pub from: AccountInfo<'info>,
+            pub from: AccountView,
             // The deterministically defined "state" account being created via
             // `create_account_with_seed`.
             #[account(mut)]
-            pub to: AccountInfo<'info>,
+            pub to: AccountView,
             // The program-derived-address signing off on the account creation.
             // Seeds = &[] + bump seed.
             #[account(seeds = [], bump)]
-            pub base: AccountInfo<'info>,
+            pub base: AccountView,
             // The system program.
             pub system_program: Program<'info, System>,
             // The program whose state is being constructed.
             #[account(executable)]
-            pub program: AccountInfo<'info>,
+            pub program: AccountView,
         }
 
         // Accounts for Idl instructions.
@@ -103,7 +103,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
             #[account(constraint = authority.key != &ERASED_AUTHORITY)]
             pub authority: Signer<'info>,
             #[account(mut)]
-            pub sol_destination: AccountInfo<'info>,
+            pub sol_destination: AccountView,
         }
 
 
@@ -116,11 +116,11 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
 
         impl<'a, 'info: 'a> IdlTrailingData<'a> for &'a Account<'info, IdlAccount> {
             fn trailing_data(self) -> Ref<'a, [u8]> {
-                let info: &AccountInfo<'info> = self.as_ref();
+                let info: &AccountView = self.as_ref();
                 Ref::map(info.try_borrow_data().unwrap(), |d| &d[44..])
             }
             fn trailing_data_mut(self) -> RefMut<'a, [u8]> {
-                let info: &AccountInfo<'info> = self.as_ref();
+                let info: &AccountView = self.as_ref();
                 RefMut::map(info.try_borrow_mut_data().unwrap(), |d| &mut d[44..])
             }
         }
@@ -169,7 +169,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                     accounts.from.clone(),
                     accounts.to.clone(),
                     accounts.base.clone(),
-                    accounts.system_program.to_account_info(),
+                    accounts.system_program.to_account_view(),
                 ],
                 &[seeds],
             )?;
@@ -212,7 +212,7 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                 return Err(anchor_lang::error::ErrorCode::IdlAccountNotEmpty.into());
             }
 
-            let idl_ref = AsRef::<AccountInfo>::as_ref(&accounts.idl);
+            let idl_ref = AsRef::<AccountView>::as_ref(&accounts.idl);
             let new_account_space = idl_ref.data_len().checked_add(std::cmp::min(
                 data_len
                     .checked_sub(idl_ref.data_len())
@@ -228,8 +228,8 @@ pub fn idl_accounts_and_functions() -> proc_macro2::TokenStream {
                     anchor_lang::context::CpiContext::new(
                         accounts.system_program.key(),
                         anchor_lang::system_program::Transfer {
-                            from: accounts.authority.to_account_info(),
-                            to: accounts.idl.to_account_info(),
+                            from: accounts.authority.to_account_view(),
+                            to: accounts.idl.to_account_view(),
                         },
                     ),
                     new_rent_minimum
