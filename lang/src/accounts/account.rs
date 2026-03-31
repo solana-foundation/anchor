@@ -1,4 +1,15 @@
 //! Generic account container driven by check policies.
+//!
+//! ## Coherence and blankets
+//!
+//! `AccountChecks` deliberately supports **one** blanket implementation for Anchor account payloads
+//! (`AccountSerialize` + `AccountDeserialize` + `Owner` + `Clone`) and **explicit** implementations
+//! for marker types (`Wallet`, `System`, [`Program`], etc.). Marker types are not meant to satisfy
+//! that payload bound, so there is no overlap (see [`AccountChecks`]).
+//!
+//! Sysvars stay on the dedicated [`crate::accounts::sysvar::Sysvar`] type today; if they are ever
+//! expressed as [`Account`], they should use **their own** marker newtypes (same pattern as programs
+//! and signers), not additional competing blankets on the same `T`.
 
 use {
     crate::{
@@ -21,6 +32,13 @@ use {
         ops::{Deref, DerefMut},
     },
 };
+
+mod private {
+    /// [`super::AccountChecks`] is sealed so downstream crates cannot add conflicting
+    /// implementations; supported kinds are the marker types in this module and the
+    /// [`AccountSerialize`]/[`AccountDeserialize`]/[`Owner`] blanket (see [`super::AccountChecks`]).
+    pub trait Sealed {}
+}
 
 /// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_view::AccountView)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
@@ -231,7 +249,37 @@ use {
 /// }
 /// ```
 /// to access mint accounts.
-pub trait AccountChecks {
+///
+/// # Blanket implementations and categories
+///
+/// Assigning accounts to categories (signer, executable program, sysvar, typed payload, …) with
+/// **multiple** unconstrained blanket `AccountChecks` impls (e.g. “for every `T: IsSigner`” *and*
+/// “for every `T: IsProgram`”) risks **overlapping** implementations in Rust whenever a `T` could
+/// satisfy both predicates—or simply makes future extensions unimplementable. Review discussion on
+/// [issue \#4273](https://github.com/solana-foundation/anchor/issues/4273) called out exactly this.
+///
+/// **Resolution here:** each category is a **distinct Rust type** used as `Account<T>`’s `T`:
+///
+/// - **Signers** use the marker [`Wallet`].
+/// - **System-owned** accounts use [`System`].
+/// - **Programs** use `Program<P>` with `P: `[`Id`], or `Program<AnyProgram>` for any executable.
+/// - **Unchecked / pass-through** uses `()` as the type parameter.
+/// - **Anchor account data** uses the user’s `#[account]` (or compatible) type `T`, which hits the
+///   **single** blanket implementation below via `AccountSerialize` + `AccountDeserialize` + `Owner` +
+///   `Clone`.
+///
+/// Markers intentionally **do not** implement that payload trait bundle (and `#[account]` types are
+/// not the same as `Wallet` / `Program<_>`), so the blanket never applies to marker `T`s and there
+/// is no ambiguity at coherence time.
+///
+/// **Future sysvars:** prefer syscall access where possible ([`crate::accounts::sysvar::Sysvar`]).
+/// If `Account<…>` ever covers sysvars, introduce a dedicated sysvar marker (same “one type per
+/// category” rule) instead of another open blanket.
+///
+/// A crate-private `Sealed` supertrait ensures [`AccountChecks`] is only implemented via the
+/// marker types and the payload blanket **in this file**—not by adding a conflicting impl in another
+/// crate.
+pub trait AccountChecks: private::Sealed {
     type Target: Clone;
     fn check(info: &AccountView) -> Result<()>;
     fn load(info: &AccountView) -> Result<Self::Target>;
@@ -311,6 +359,10 @@ impl<T: AccountChecks> Account<T> {
 
     pub fn view(&self) -> &AccountView {
         &self.info
+    }
+
+    pub fn key(&self) -> Pubkey {
+        *self.info.address()
     }
 
     pub fn lamports(&self) -> u64 {
@@ -445,9 +497,21 @@ where
 
 impl<T: AccountChecks> Key for Account<T> {
     fn key(&self) -> Pubkey {
-        *self.info.address()
+        Account::key(self)
     }
 }
+
+impl private::Sealed for () {}
+
+impl private::Sealed for Wallet {}
+
+impl private::Sealed for System {}
+
+impl private::Sealed for AnyProgram {}
+
+impl<P> private::Sealed for Program<P> {}
+
+impl<T> private::Sealed for T where T: AccountSerialize + AccountDeserialize + Owner + Clone {}
 
 impl AccountChecks for () {
     type Target = ();
