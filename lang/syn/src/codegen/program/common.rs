@@ -18,7 +18,10 @@ pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
 
 pub fn gen_discriminator(namespace: &str, name: impl ToString) -> proc_macro2::TokenStream {
     let discriminator = sighash(namespace, name.to_string().as_str());
-    #[allow(clippy::disallowed_methods)] // safe: debug-formatted array literal is always valid Rust
+    #[allow(
+        clippy::unwrap_used,
+        reason = "debug-formatted array literal is always valid Rust token syntax"
+    )]
     let ts = format!("&{discriminator:?}").parse().unwrap();
     ts
 }

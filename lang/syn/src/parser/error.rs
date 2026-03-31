@@ -67,6 +67,10 @@ fn parse_error_attribute(variant: &syn::Variant) -> Result<Option<String>, syn::
     match attrs.len() {
         0 => Ok(None),
         1 => {
+            #[allow(
+                clippy::indexing_slicing,
+                reason = "inside match arm where attrs.len() == 1"
+            )]
             let attr = &attrs[0];
             let attr_str = attr.path.segments[0].ident.to_string();
             if attr_str != "msg" {

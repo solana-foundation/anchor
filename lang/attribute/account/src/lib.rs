@@ -376,31 +376,55 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                 .map(|attr| {
                     let mut tts = attr.tokens.clone().into_iter();
                     // if user writes #[accessor] with no arguments on a field, tts.next() returns None
-                    // safe-unwrap: named fields always have idents   
+                    // safe-unwrap: named fields always have idents
                     let g_stream = match tts.next() {
                         Some(proc_macro2::TokenTree::Group(g)) => g.stream(),
                         Some(_) => {
                             // safe-unwrap: valid field name always tokenizes
-                            return syn::Error::new_spanned(&attr.tokens,  "invalid `#[accessor]` syntax, expected `#[accessor(Type)]`").into_compile_error()
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "invalid `#[accessor]` syntax, expected `#[accessor(Type)]`",
+                            )
+                            .into_compile_error();
                         }
                         None => {
                             // safe-unwrap: valid field name always tokenizes
-                            return syn::Error::new_spanned(&attr.tokens, "`#[accessor]` requires a type argument, e.g `#[accessor(MyType)]`").into_compile_error()
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "`#[accessor]` requires a type argument, e.g `#[accessor(MyType)]`",
+                            )
+                            .into_compile_error();
                         }
                     };
                     let accessor_ty = match g_stream.into_iter().next() {
                         Some(token) => token,
                         None => {
-                            return syn::Error::new_spanned(&attr.tokens, "`#[accessor]` requires a type inside the parantheses e.g `#[accessor(MyType)]`").into_compile_error()
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "`#[accessor]` requires a type inside the parantheses e.g \
+                                 `#[accessor(MyType)]`",
+                            )
+                            .into_compile_error()
                         }
                     };
 
-                    #[allow(clippy::disallowed_methods)]
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "accessor fields always have idents (named struct fields)"
+                    )]
                     let field_name = field.ident.as_ref().unwrap();
-                    #[allow(clippy::disallowed_methods)]
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "get_<field_name> formed from a valid Rust identifier is always \
+                                  valid TokenStream"
+                    )]
                     let get_field: proc_macro2::TokenStream =
                         format!("get_{field_name}").parse().unwrap();
-                    #[allow(clippy::disallowed_methods)]
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "set_<field_name> formed from a valid Rust identifier is always \
+                                  valid TokenStream"
+                    )]
                     let set_field: proc_macro2::TokenStream =
                         format!("set_{field_name}").parse().unwrap();
 

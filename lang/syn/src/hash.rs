@@ -30,8 +30,10 @@ impl Hasher {
     pub fn result(self) -> Hash {
         // At the time of this writing, the sha2 library is stuck on an old version
         // of generic_array (0.9.0). Decouple ourselves with a clone to our version.
-        #[allow(clippy::disallowed_methods)]
-        // safe: SHA256 always produces exactly HASH_BYTES (32) bytes
+        #[allow(
+            clippy::unwrap_used,
+            reason = "SHA256 always produces exactly HASH_BYTES (32) bytes"
+        )]
         let hash = Hash(<[u8; HASH_BYTES]>::try_from(self.hasher.finalize().as_slice()).unwrap());
         hash
     }
@@ -80,8 +82,10 @@ impl FromStr for Hash {
 
 impl Hash {
     pub fn new(hash_slice: &[u8]) -> Self {
-        #[allow(clippy::disallowed_methods)]
-        // safe: SHA256 always produces exactly HASH_BYTES (32) bytes
+        #[allow(
+            clippy::unwrap_used,
+            reason = "SHA256 always produces exactly HASH_BYTES (32) bytes"
+        )]
         let hash = Hash(<[u8; HASH_BYTES]>::try_from(hash_slice).unwrap());
         hash
     }

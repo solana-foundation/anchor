@@ -13,8 +13,11 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lints.clippy]
-disallowed-methods = "deny"
-disallowed-macros = "deny"
+unwrap-used = "deny"
+expect-used = "deny"
+panic = "deny"
+unimplemented = "deny"
+indexing-slicing = "deny"
 
 [features]
 allow-missing-optionals = []

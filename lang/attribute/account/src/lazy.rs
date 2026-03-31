@@ -43,8 +43,10 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             let offset_of_ident = to_private_ident(format!("offset_of_{field_ident}"));
             let size_of_ident = to_private_ident(format!("size_of_{field_ident}"));
 
-            #[allow(clippy::disallowed_methods)]
-            // safe: field i-1 always exists when iterating field i
+            #[allow(
+                clippy::unwrap_used,
+                reason = "field i-1 always exists when iterating field i"
+            )]
             let offset = i.eq(&0).then(|| quote!(#disc_len)).unwrap_or_else(|| {
                 // Current offset is the previous field's offset + size
                 strct
@@ -57,7 +59,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                         let size_of_ident = to_private_ident(format!("size_of_{field_ident}"));
                         quote! { self.#offset_of_ident() + self.#size_of_ident() }
                     })
-                    .expect("Previous field should always exist when i > 0") // safe-unwrap: i is enumerate() index over same field list
+                    .expect("Previous field should always exist when i > 0")
             });
 
             let ty = &field.ty;
@@ -120,7 +122,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                     self.#initialize_fields();
 
                     // Return early if initialized
-                    if self.__fields.borrow().as_ref().unwrap()[#i] { // safe-unwrap: generated runtime code, not proc-macro expansion
+                    if self.__fields.borrow().as_ref().unwrap()[#i] {
                         return Ok(f());
                     }
 
@@ -138,7 +140,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                      };
 
                     // Set initialized
-                    self.__fields.borrow_mut().as_mut().unwrap()[#i] = true; // safe-unwrap: generated runtime code, not proc-macro expansion
+                    self.__fields.borrow_mut().as_mut().unwrap()[#i] = true;
 
                     Ok(f())
                 }
@@ -226,7 +228,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 let all_uninit = {
                     // Return early if all fields are initialized
                     let fields = self.__fields.borrow();
-                    let fields = fields.as_ref().unwrap(); // safe-unwrap: generated runtime code, not proc-macro expansion
+                    let fields = fields.as_ref().unwrap();
                     if !fields.contains(&false) {
                         return Ok(f());
                     }
@@ -243,7 +245,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
 
                     // Set fields to initialized
                     let mut fields = self.__fields.borrow_mut();
-                    let fields = fields.as_mut().unwrap(); // safe-unwrap: generated runtime code, not proc-macro expansion
+                    let fields = fields.as_mut().unwrap();
                     for field in fields {
                         *field = true;
                     }

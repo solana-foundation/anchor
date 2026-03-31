@@ -148,8 +148,10 @@ fn gen_internal_accounts_common(
                 }
                 IdlInstructionAccountItem::Composite(accs) => {
                     let name = format_ident!("{}", accs.name);
-                    #[allow(clippy::disallowed_methods)]
-                    // safe: accounts are guaranteed to exist by prior deduplication pass
+                    #[allow(
+                        clippy::expect_used,
+                        reason = "accounts are guaranteed to exist by prior deduplication pass"
+                    )]
                     let ty_name = all_ix_accs
                         .iter()
                         .find(|a| a.accounts == accs.accounts)
@@ -170,10 +172,15 @@ fn gen_internal_accounts_common(
             }
         })
         .map(|accs_struct| {
-            #[allow(clippy::disallowed_methods)] // safe: quote-generated tokens always parse
+            #[allow(
+                clippy::expect_used,
+                reason = "quote-generated tokens always produce valid syn::ItemStruct"
+            )]
             let accs_struct = syn::parse2(accs_struct).expect("Failed to parse as syn::ItemStruct");
-            #[allow(clippy::disallowed_methods)]
-            // safe: quote-generated struct is always valid accounts syntax
+            #[allow(
+                clippy::expect_used,
+                reason = "quote-generated struct is always valid accounts syntax"
+            )]
             let accs_struct =
                 accounts::parse(&accs_struct).expect("Failed to parse accounts struct");
             gen_accounts(&accs_struct, get_canonical_program_id())

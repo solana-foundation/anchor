@@ -12,8 +12,11 @@ edition = "2021"
 proc-macro = true
 
 [lints.clippy]
-disallowed-methods = "deny"
-disallowed-macros = "deny"
+unwrap-used = "deny"
+expect-used = "deny"
+panic = "deny"
+unimplemented = "deny"
+indexing-slicing = "deny"
 
 [features]
 idl-build = ["anchor-syn/idl-build"]

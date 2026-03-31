@@ -12,6 +12,11 @@ pub fn generate(error: Error) -> proc_macro2::TokenStream {
         .enumerate()
         .map(|(idx, variant)| {
             let ident = &variant.ident;
+            #[allow(
+                clippy::indexing_slicing,
+                reason = "idx from enumerate() over variants; codes built from same variants so \
+                          indices align"
+            )]
             let error_code = &error.codes[idx];
             let display_msg = match &error_code.msg {
                 None => {

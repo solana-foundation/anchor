@@ -42,7 +42,10 @@ pub fn gen_accounts_common(idl: &Idl, prefix: &str) -> proc_macro2::TokenStream 
 }
 
 pub fn convert_idl_type_to_syn_type(ty: &IdlType) -> syn::Type {
-    #[allow(clippy::disallowed_methods)] // safe: compile_error! is always valid syn::Type syntax
+    #[allow(
+        clippy::unwrap_used,
+        reason = "compile_error! token stream is always valid syn::Type syntax"
+    )]
     let result = convert_idl_type_to_str(ty, false)
         .and_then(|s| {
             syn::parse_str(&s)
@@ -339,8 +342,10 @@ fn can_derive_copy_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
                 IdlArrayLen::Generic(_) => false,
             }
         }
-        #[allow(clippy::disallowed_methods)]
-        // safe: IDL cross-references are guaranteed consistent by Anchor tooling
+        #[allow(
+            clippy::expect_used,
+            reason = "IDL cross-references are guaranteed consistent by Anchor tooling"
+        )]
         IdlType::Defined { name, .. } => ty_defs
             .iter()
             .find(|ty_def| &ty_def.name == name)
@@ -365,8 +370,10 @@ fn can_derive_default_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
                 IdlArrayLen::Generic(_) => false,
             }
         }
-        #[allow(clippy::disallowed_methods)]
-        // safe: IDL cross-references are guaranteed consistent by Anchor tooling
+        #[allow(
+            clippy::expect_used,
+            reason = "IDL cross-references are guaranteed consistent by Anchor tooling"
+        )]
         IdlType::Defined { name, .. } => ty_defs
             .iter()
             .find(|ty_def| &ty_def.name == name)
@@ -454,8 +461,10 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
                     accs.name.to_owned()
                 } else {
                     // Append numbers to the field name until we find a unique name
-                    #[allow(clippy::disallowed_methods)]
-                    // safe: unbounded integer search always finds a free slot
+                    #[allow(
+                        clippy::expect_used,
+                        reason = "unbounded integer search always finds a free slot"
+                    )]
                     let unique = (2..)
                         .find_map(|i| {
                             let name = format!("{}{i}", accs.name);
