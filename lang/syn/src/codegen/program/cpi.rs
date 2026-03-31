@@ -13,7 +13,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .ixs
         .iter()
         .map(|ix| {
-            let accounts_ident: proc_macro2::TokenStream = format!("crate::cpi::accounts::{}", &ix.anchor_ident.to_string()).parse().unwrap();
+            let accounts_ident: proc_macro2::TokenStream =
+                format!("crate::cpi::accounts::{}Cpi", &ix.anchor_ident.to_string())
+                    .parse()
+                    .unwrap();
             let cpi_method = {
                 let name = &ix.raw_method.sig.ident;
                 let name_str = name.to_string();
@@ -45,8 +48,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                 quote! {
                     #(#ix_cfgs)*
-                    pub fn #method_name<'a, 'b, 'c, 'info>(
-                        ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
+                    pub fn #method_name<'a, 'b>(
+                        ctx: anchor_lang::context::CpiContext<'a, 'b, #accounts_ident<'static, 'a>>,
                         #(#args),*
                     ) -> #method_ret {
                         let ix = {

@@ -736,8 +736,8 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 mod tests {
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`
-    use anchor_lang::prelude::*;
     use {
+        anchor_lang::prelude::*,
         futures::{SinkExt, StreamExt},
         solana_rpc_client_api::response::RpcResponseContext,
         std::sync::atomic::{AtomicU64, Ordering},

@@ -14,6 +14,7 @@
 use {
     crate::{
         bpf_writer::BpfWriter,
+        context::{CpiAccountMut, CpiAccountRef},
         error::{Error, ErrorCode},
         pinocchio_runtime::{
             account_view::AccountView,
@@ -371,6 +372,22 @@ impl<T: AccountChecks> Account<T> {
 
     pub fn is_writable(&self) -> bool {
         self.info.is_writable()
+    }
+
+    /// Convert this account into a CPI wrapper tied to a mutable borrow.
+    pub fn for_cpi_mut<'cpi>(&'cpi mut self) -> CpiAccountMut<'cpi, T> {
+        CpiAccountMut {
+            view: self.info,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Convert this account into a CPI wrapper tied to an immutable borrow.
+    pub fn for_cpi_ref<'cpi>(&'cpi self) -> CpiAccountRef<'cpi, T> {
+        CpiAccountRef {
+            view: self.info,
+            _marker: PhantomData,
+        }
     }
 }
 

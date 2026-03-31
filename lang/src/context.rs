@@ -3,10 +3,10 @@
 use {
     crate::{
         pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
-        Accounts, Bumps, ToAccountMetas, ToAccountViews,
+        Accounts, Bumps, Key, ToAccountMetas, ToAccountViews,
     },
     pinocchio::cpi::Signer,
-    std::fmt,
+    std::{fmt, marker::PhantomData},
 };
 
 /// Provides non-argument inputs to the program.
@@ -248,3 +248,81 @@ impl<T: ToAccountViews + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T
         metas
     }
 }
+
+/// A CPI account wrapper tied to a mutable account borrow.
+///
+/// Generated CPI account structs use this type for mutable `Account<T>` fields
+/// so local borrow conflicts are rejected at compile time.
+pub struct CpiAccountMut<'cpi, T> {
+    pub(crate) view: AccountView,
+    pub(crate) _marker: PhantomData<&'cpi mut T>,
+}
+
+/// A CPI account wrapper tied to an immutable account borrow.
+pub struct CpiAccountRef<'cpi, T> {
+    pub(crate) view: AccountView,
+    pub(crate) _marker: PhantomData<&'cpi T>,
+}
+
+impl<'cpi, T> CpiAccountMut<'cpi, T> {
+    pub fn address(&self) -> &Pubkey {
+        self.view.address()
+    }
+}
+
+impl<'cpi, T> CpiAccountRef<'cpi, T> {
+    pub fn address(&self) -> &Pubkey {
+        self.view.address()
+    }
+}
+
+impl<'cpi, T> Key for CpiAccountMut<'cpi, T> {
+    fn key(&self) -> Pubkey {
+        *self.view.address()
+    }
+}
+
+impl<'cpi, T> Key for CpiAccountRef<'cpi, T> {
+    fn key(&self) -> Pubkey {
+        *self.view.address()
+    }
+}
+
+impl<'cpi, T> ToAccountViews for CpiAccountMut<'cpi, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![self.view]
+    }
+}
+
+impl<'cpi, T> ToAccountViews for CpiAccountRef<'cpi, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![self.view]
+    }
+}
+
+/// Compile-time borrow safety examples for `for_cpi_mut`.
+///
+/// Duplicate-account aliasing across different CPI inputs remains a runtime
+/// check (`ConstraintDuplicateMutableAccount`, per #4285).
+///
+/// ```compile_fail
+/// use anchor_lang::prelude::*;
+///
+/// fn borrow_twice(acc: &mut Account<()>) {
+///     let first = acc.for_cpi_mut();
+///     let _second = acc.for_cpi_mut();
+///     drop(first);
+/// }
+/// ```
+///
+/// ```compile_fail
+/// use anchor_lang::prelude::*;
+///
+/// fn mut_then_ref(acc: &mut Account<()>) {
+///     let first = acc.for_cpi_mut();
+///     let _second = acc.for_cpi_ref();
+///     drop(first);
+/// }
+/// ```
+#[doc(hidden)]
+pub fn _anchor_cpi_borrow_safety_doc_test() {}
