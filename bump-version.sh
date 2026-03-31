@@ -44,16 +44,24 @@ git grep -l $old_version -- $allow_globs |
 
 # Avoid updating the docs for pre-release builds
 if [[ "$is_prerelease" -eq 0 ]]; then
+    latest_stable_version=$(
+        git tag --sort=-version:refname | \
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
+            head -n1 | \
+            sed 's/^v//'
+    )
+    echo "Latest stable version for documentation was $latest_stable_version..."
+
     # Separately handle docs because blindly replacing the old version with the new
     # might break certain examples/links
     pushd docs/content/docs
-    git grep -l $old_version -- "./*.md*" | \
+    git grep -l $latest_stable_version -- "./*.md*" | \
         xargs sed "${sedi[@]}" \
-        -e "s/\"$old_version\"/\"$version\"/g"
+        -e "s/\"$latest_stable_version\"/\"$version\"/g"
     allow_globs="installation.mdx quickstart/local.mdx references/verifiable-builds.mdx"
-    git grep -l $old_version -- $allow_globs |
+    git grep -l $latest_stable_version -- $allow_globs |
         xargs sed "${sedi[@]}" \
-        -e "s/$old_version/$version/g"
+        -e "s/$latest_stable_version/$version/g"
     # Replace `solana_version` with the current version
     solana_version=$(solana --version | awk '{print $2;}')
     sed $sedi "s/solana_version.*\"/solana_version = \"$solana_version\"/g" references/anchor-toml.mdx
