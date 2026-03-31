@@ -63,8 +63,9 @@ fn generics(accs: &AccountsStruct) -> ParsedGenerics {
         });
 
     let trait_lifetime = if all_account_info {
-        // Use 'static for AccountInfo-only structs since AccountInfo is Copy
-        syn::parse_str("'static").expect("Could not parse 'static lifetime")
+        // Keep `'info` for AccountInfo-only structs to avoid forcing `'static`
+        // in generated `try_accounts` signatures.
+        syn::parse_str("'info").expect("Could not parse lifetime")
     } else {
         accs.generics
             .lifetimes()
@@ -89,7 +90,7 @@ fn generics(accs: &AccountsStruct) -> ParsedGenerics {
     let trait_lifetime = GenericParam::Lifetime(trait_lifetime);
 
     ParsedGenerics {
-        combined_generics: if all_account_info || has_lifetime {
+        combined_generics: if has_lifetime {
             accs.generics.params.clone()
         } else {
             iter::once(trait_lifetime.clone())
