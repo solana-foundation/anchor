@@ -1,4 +1,4 @@
-use anchor_lang::{context::CpiContext, solana_program::pubkey::Pubkey, Accounts, Result};
+use anchor_lang::{context::CpiContext, pinocchio_runtime::pubkey::Pubkey, Accounts, Result};
 pub use spl_memo_interface::{instruction as spl_memo, v3::ID};
 
 pub fn build_memo<'info>(ctx: CpiContext<'_, '_, '_, 'info, BuildMemo>, memo: &[u8]) -> Result<()> {
@@ -10,7 +10,7 @@ pub fn build_memo<'info>(ctx: CpiContext<'_, '_, '_, 'info, BuildMemo>, memo: &[
             .map(|account| account.key)
             .collect::<Vec<_>>(),
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ctx.remaining_accounts,
         ctx.signer_seeds,

@@ -1,12 +1,13 @@
-use anchor_lang::context::CpiContext;
-use anchor_lang::error::ErrorCode;
-use anchor_lang::solana_program::account_info::AccountView;
-use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{system_program, Accounts, Result, ToAccountViews};
-use std::ops::Deref;
-
-pub use mpl_token_metadata;
-pub use mpl_token_metadata::ID;
+pub use mpl_token_metadata::{self, ID};
+use {
+    anchor_lang::{
+        context::CpiContext,
+        error::ErrorCode,
+        pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+        system_program, Accounts, Result, ToAccountViews,
+    },
+    std::ops::Deref,
+};
 
 pub fn approve_collection_authority(
     ctx: CpiContext<'_, '_, ApproveCollectionAuthority>,
@@ -22,7 +23,7 @@ pub fn approve_collection_authority(
         update_authority: *ctx.accounts.update_authority.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -47,7 +48,7 @@ pub fn bubblegum_set_collection_size(
             set_collection_size_args: mpl_token_metadata::types::SetCollectionSizeArgs { size },
         },
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -69,7 +70,7 @@ pub fn burn_edition_nft(ctx: CpiContext<'_, '_, BurnEditionNft>) -> Result<()> {
         spl_token_program: *ctx.accounts.spl_token.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -106,7 +107,7 @@ pub fn burn_nft(
         token_account: *ctx.accounts.token.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -140,7 +141,7 @@ pub fn create_metadata_accounts_v3(
             is_mutable,
         },
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -167,7 +168,7 @@ pub fn update_metadata_accounts_v2(
             is_mutable,
         },
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -193,7 +194,7 @@ pub fn create_master_edition_v3(
     .instruction(
         mpl_token_metadata::instructions::CreateMasterEditionV3InstructionArgs { max_supply },
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -227,7 +228,7 @@ pub fn mint_new_edition_from_master_edition_via_token(
                 mpl_token_metadata::types::MintNewEditionFromMasterEditionViaTokenArgs { edition },
         },
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -246,7 +247,7 @@ pub fn revoke_collection_authority(
         revoke_authority: *ctx.accounts.revoke_authority.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -270,7 +271,7 @@ pub fn set_collection_size(
             set_collection_size_args: mpl_token_metadata::types::SetCollectionSizeArgs { size },
         },
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -292,7 +293,7 @@ pub fn verify_collection(
         payer: *ctx.accounts.payer.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -314,7 +315,7 @@ pub fn verify_sized_collection_item(
         payer: *ctx.accounts.payer.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -337,7 +338,7 @@ pub fn set_and_verify_collection(
         update_authority: *ctx.accounts.update_authority.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -360,7 +361,7 @@ pub fn set_and_verify_sized_collection_item(
         update_authority: *ctx.accounts.update_authority.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -377,7 +378,7 @@ pub fn freeze_delegated_account(ctx: CpiContext<'_, '_, FreezeDelegatedAccount>)
         token_program: *ctx.accounts.token_program.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -394,7 +395,7 @@ pub fn thaw_delegated_account(ctx: CpiContext<'_, '_, ThawDelegatedAccount>) -> 
         token_program: *ctx.accounts.token_program.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -411,7 +412,7 @@ pub fn update_primary_sale_happened_via_token(
         token: *ctx.accounts.token.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -430,7 +431,7 @@ pub fn set_token_standard(
         update_authority: *ctx.accounts.update_authority.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -444,7 +445,7 @@ pub fn sign_metadata(ctx: CpiContext<'_, '_, SignMetadata>) -> Result<()> {
         metadata: *ctx.accounts.metadata.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -460,7 +461,7 @@ pub fn remove_creator_verification(
         metadata: *ctx.accounts.metadata.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -488,7 +489,7 @@ pub fn utilize(
         use_authority_record,
     }
     .instruction(mpl_token_metadata::instructions::UtilizeInstructionArgs { number_of_uses });
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -509,7 +510,7 @@ pub fn unverify_collection(
         metadata: *ctx.accounts.metadata.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,
@@ -531,7 +532,7 @@ pub fn unverify_sized_collection_item(
         payer: *ctx.accounts.payer.key,
     }
     .instruction();
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &ToAccountViews::to_account_views(&ctx),
         ctx.signer_seeds,

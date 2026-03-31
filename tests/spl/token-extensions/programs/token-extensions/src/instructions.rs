@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::entrypoint::ProgramResult};
+use anchor_lang::prelude::*;
 
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -83,7 +83,7 @@ impl<'info> CreateMintAccount<'info> {
         name: String,
         symbol: String,
         uri: String,
-    ) -> ProgramResult {
+    ) -> Result<()> {
         let cpi_accounts = TokenMetadataInitialize {
             program_id: self.token_program.to_account_info(),
             mint: self.mint.to_account_info(),

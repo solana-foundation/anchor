@@ -1,15 +1,17 @@
-use anchor_lang::{
-    context::CpiContext,
-    solana_program::{account_info::AccountView, pubkey::Pubkey},
-    Accounts, Result,
+use {
+    anchor_lang::{
+        context::CpiContext,
+        pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+        Accounts, Result,
+    },
+    borsh::BorshDeserialize,
+    solana_stake_interface::{
+        self as stake,
+        program::ID,
+        state::{StakeAuthorize, StakeStateV2},
+    },
+    std::ops::Deref,
 };
-use borsh::BorshDeserialize;
-use solana_stake_interface::{
-    self as stake,
-    program::ID,
-    state::{StakeAuthorize, StakeStateV2},
-};
-use std::ops::Deref;
 
 // CPI functions
 
@@ -33,7 +35,7 @@ pub fn authorize(
     if let Some(c) = custodian {
         account_infos.push(c);
     }
-    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::pinocchio_runtime::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
@@ -59,13 +61,13 @@ pub fn withdraw(
     if let Some(c) = custodian {
         account_infos.push(c);
     }
-    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::pinocchio_runtime::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
 pub fn deactivate_stake(ctx: CpiContext<'_, '_, DeactivateStake>) -> Result<()> {
     let ix = stake::instruction::deactivate_stake(ctx.accounts.stake.key, ctx.accounts.staker.key);
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.stake, ctx.accounts.clock, ctx.accounts.staker],
         ctx.signer_seeds,

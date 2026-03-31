@@ -207,12 +207,6 @@ pub mod pinocchio_runtime {
     }
 }
 
-// Compatibility shim for derive macros and legacy paths that still resolve through
-// `anchor_lang::solana_program::*`.
-pub mod solana_program {
-    pub use crate::pinocchio_runtime::*;
-}
-
 #[cfg(feature = "event-cpi")]
 pub use anchor_attribute_event::{emit_cpi, event_cpi};
 #[cfg(feature = "idl-build")]

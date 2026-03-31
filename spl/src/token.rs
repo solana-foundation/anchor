@@ -1,12 +1,14 @@
 // Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_view::AccountView;
-use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{Key, Result};
-use std::ops::Deref;
-
-use pinocchio_token::ID;
+use {
+    anchor_lang::{
+        context::CpiContext,
+        pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+        Accounts, Key, Result,
+    },
+    pinocchio_token::ID,
+    std::ops::Deref,
+};
 
 pub fn transfer(ctx: CpiContext<'_, '_, Transfer>, amount: u64) -> Result<()> {
     let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();

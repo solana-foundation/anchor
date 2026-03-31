@@ -1,15 +1,16 @@
-use anchor_lang::__private::bytemuck::Pod;
-use anchor_lang::pinocchio_runtime::account_view::AccountView;
-use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use std::ops::Deref;
-
-use spl_token_2022_interface::extension::{
-    BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensions,
-};
-
 pub use crate::token_2022::*;
 #[cfg(feature = "token_2022_extensions")]
 pub use crate::token_2022_extensions::*;
+use {
+    anchor_lang::{
+        __private::bytemuck::Pod,
+        pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    },
+    spl_token_2022_interface::extension::{
+        BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensions,
+    },
+    std::ops::Deref,
+};
 
 static IDS: [Pubkey; 2] = [pinocchio_token::ID, pinocchio_token_2022::ID];
 

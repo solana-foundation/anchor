@@ -1,10 +1,13 @@
 // Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_view::AccountView;
-use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{Key, Result};
-use pinocchio_token_2022::{instructions::ExtensionDiscriminator, ID};
+use {
+    anchor_lang::{
+        context::CpiContext,
+        pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+        Accounts, Key, Result,
+    },
+    pinocchio_token_2022::{instructions::ExtensionDiscriminator, ID},
+};
 
 #[deprecated(
     since = "0.28.0",

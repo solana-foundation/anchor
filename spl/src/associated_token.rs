@@ -1,11 +1,11 @@
 // Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_view::AccountView;
-use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{Key, Result};
-
 pub use ::pinocchio_associated_token_account as spl_associated_token_account;
+use anchor_lang::{
+    context::CpiContext,
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    Accounts, Key, Result,
+};
 
 pub fn create(ctx: CpiContext<'_, '_, Create>) -> Result<()> {
     let ix = spl_associated_token_account::instructions::Create {

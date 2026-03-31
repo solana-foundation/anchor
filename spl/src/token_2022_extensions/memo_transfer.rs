@@ -1,9 +1,10 @@
 // Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_view::AccountView;
-use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{Key, Result};
+use anchor_lang::{
+    context::CpiContext,
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    Accounts, Key, Result,
+};
 
 pub fn memo_transfer_enable(ctx: CpiContext<'_, '_, MemoTransfer>) -> Result<()> {
     let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();

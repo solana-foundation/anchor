@@ -1,12 +1,14 @@
 // Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::pinocchio_runtime::account_view::AccountView;
-use anchor_lang::pinocchio_runtime::pubkey::Pubkey;
-use anchor_lang::{context::CpiContext, Accounts};
-use anchor_lang::{Key, Result};
-
-use spl_pod::optional_keys::OptionalNonZeroPubkey;
-use spl_token_metadata_interface::state::Field;
+use {
+    anchor_lang::{
+        context::CpiContext,
+        pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+        Accounts, Key, Result,
+    },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
+    spl_token_metadata_interface::state::Field,
+};
 
 #[allow(unreachable_code, unused_variables, clippy::let_unit_value)]
 pub fn token_metadata_initialize(

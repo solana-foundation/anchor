@@ -1,5 +1,6 @@
-// Utility hashing module copied from `solana_program::program::hash`, since we
-// can't import solana_program for compile time hashing for some reason.
+// Utility hashing module copied from Solana's `program::hash` implementation.
+// We can't import `solana_program` in this build context, so we keep a local,
+// compile-time friendly hash type instead.
 
 use {
     serde::{Deserialize, Serialize},
