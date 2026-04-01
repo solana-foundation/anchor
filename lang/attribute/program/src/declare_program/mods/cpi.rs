@@ -110,8 +110,8 @@ fn gen_cpi_return_type() -> proc_macro2::TokenStream {
 
         impl<T: AnchorDeserialize> Return<T> {
             pub fn get(&self) -> T {
-                let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap(); // safe-unwrap: generated runtime code, not proc-macro expansion
-                T::try_from_slice(&data).unwrap() // safe-unwrap: generated runtime code, not proc-macro expansion
+                let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
+                T::try_from_slice(&data).unwrap()
             }
         }
     }

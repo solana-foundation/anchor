@@ -119,7 +119,6 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
             quote!((#array_len * #type_len))
         }
         Type::Path(ty_path) => {
-            // safe-unwrap: syn never produces Type::Path with empty segments
             let path_segment = match ty_path.path.segments.last() {
                 Some(seg) => seg,
                 None => {

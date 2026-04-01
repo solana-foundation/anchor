@@ -376,11 +376,9 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                 .map(|attr| {
                     let mut tts = attr.tokens.clone().into_iter();
                     // if user writes #[accessor] with no arguments on a field, tts.next() returns None
-                    // safe-unwrap: named fields always have idents
                     let g_stream = match tts.next() {
                         Some(proc_macro2::TokenTree::Group(g)) => g.stream(),
                         Some(_) => {
-                            // safe-unwrap: valid field name always tokenizes
                             return syn::Error::new_spanned(
                                 &attr.tokens,
                                 "invalid `#[accessor]` syntax, expected `#[accessor(Type)]`",
@@ -388,7 +386,6 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                             .into_compile_error();
                         }
                         None => {
-                            // safe-unwrap: valid field name always tokenizes
                             return syn::Error::new_spanned(
                                 &attr.tokens,
                                 "`#[accessor]` requires a type argument, e.g `#[accessor(MyType)]`",
@@ -561,13 +558,11 @@ pub fn zero_copy(
         } else {
             quote! {}
         };
-        #[allow(clippy::disallowed_methods)]
-        // safe: quote-generated tokens always parse as syn::ItemStruct
-        let zc_struct = syn::parse2(quote! {
+
+        let zc_struct = syn::parse_quote! {
             #derive_unsafe
             #ret
-        })
-        .unwrap();
+        };
         let idl_build_impl = anchor_syn::idl::impl_idl_build_struct(&zc_struct);
         return proc_macro::TokenStream::from(quote! {
             #ret
