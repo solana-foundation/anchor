@@ -69,7 +69,6 @@ pub use nonblocking::ThreadSafeSigner;
 pub use {
     anchor_lang,
     cluster::Cluster,
-    solana_account_decoder,
     solana_commitment_config::CommitmentConfig,
     solana_instruction::Instruction,
     solana_program::hash::Hash,
