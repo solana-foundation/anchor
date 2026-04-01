@@ -53,10 +53,7 @@ jobs:
         run: |
           set -xeou pipefail
 
-          # required for tests
-          solana-keygen new --no-bip39-passphrase
           ./setup-tests.sh
-
           ./bump-version.sh "$VERSION"
 
       # I would love to automatically create a PR here, but GitHub does not allow triggering CI jobs
