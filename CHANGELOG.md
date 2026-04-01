@@ -13,6 +13,14 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 ### Fixes
+
+### Breaking
+
+## [1.0.0] - 2026-04-01
+
+### Features
+
+### Fixes
 - client: Fix deadlock when having multiple websocket listeners ([#4250](https://github.com/solana-foundation/anchor/pull/4250)).
 
 ### Breaking
