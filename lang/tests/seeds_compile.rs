@@ -25,30 +25,30 @@ fn pda_seeds(key: Pubkey) -> &'static [&'static [u8]] {
 }
 
 #[derive(Accounts)]
-pub struct LiteralSeeds<'info> {
+pub struct LiteralSeeds {
     #[account(
         // Literal list parsed as `SeedsExpr::List`
         seeds = [PREFIX, user.key().as_ref()],
         bump
     )]
-    pda: Account<'info, Dummy>,
+    pda: Account<Dummy>,
     #[account(
         // Literal list with a trailing comma parsed as `SeedsExpr::List`
         seeds = [PREFIX, user.key().as_ref(),],
         bump
     )]
-    user: Signer<'info>,
+    user: Account<anchor_lang::accounts::account::Wallet>,
 }
 
 #[derive(Accounts)]
-pub struct ExprSeeds<'info> {
+pub struct ExprSeeds {
     #[account(
         // Expression parsed as `SeedsExpr::Expr`
         seeds = pda_seeds(user.key()),
         bump
     )]
-    pda: Account<'info, Dummy>,
-    user: Signer<'info>,
+    pda: Account<Dummy>,
+    user: Account<anchor_lang::accounts::account::Wallet>,
 }
 
 /// Dummy account so the structs derive cleanly

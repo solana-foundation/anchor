@@ -13,7 +13,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .ixs
         .iter()
         .map(|ix| {
-            let accounts_ident: proc_macro2::TokenStream = format!("crate::cpi::accounts::{}", &ix.anchor_ident.to_string()).parse().unwrap();
+            let accounts_ident: proc_macro2::TokenStream =
+                format!("crate::cpi::accounts::{}Cpi", &ix.anchor_ident.to_string())
+                    .parse()
+                    .unwrap();
             let cpi_method = {
                 let name = &ix.raw_method.sig.ident;
                 let name_str = name.to_string();
@@ -45,8 +48,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
                 quote! {
                     #(#ix_cfgs)*
-                    pub fn #method_name<'a, 'b, 'c, 'info>(
-                        ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, #accounts_ident<'info>>,
+                    pub fn #method_name<'a, 'b>(
+                        ctx: anchor_lang::context::CpiContext<'a, 'b, #accounts_ident<'static, 'a>>,
                         #(#args),*
                     ) -> #method_ret {
                         let ix = {
@@ -56,14 +59,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             AnchorSerialize::serialize(&ix, &mut data)
                                 .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
                             let accounts = ctx.to_account_metas(None);
-                            anchor_lang::solana_program::instruction::Instruction {
+                            anchor_lang::pinocchio_runtime::instruction::Instruction {
                                 program_id: ctx.program_id,
                                 accounts,
                                 data,
                             }
                         };
-                        let mut acc_infos = ctx.to_account_infos();
-                        anchor_lang::solana_program::program::invoke_signed(
+                        let mut acc_infos = ctx.to_account_views();
+                        anchor_lang::pinocchio_runtime::program::invoke_signed(
                             &ix,
                             &acc_infos,
                             ctx.signer_seeds,
@@ -95,7 +98,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             impl<T: AnchorDeserialize> Return<T> {
                 pub fn get(&self) -> T {
-                    let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
+                    let (_key, data) = anchor_lang::pinocchio_runtime::program::get_return_data().unwrap();
                     T::try_from_slice(&data).unwrap()
                 }
             }
@@ -137,7 +140,7 @@ pub fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
     quote! {
         /// An Anchor generated module, providing a set of structs
         /// mirroring the structs deriving `Accounts`, where each field is
-        /// an `AccountInfo`. This is useful for CPI.
+        /// an `AccountView`. This is useful for CPI.
         pub mod accounts {
             #(#account_structs)*
         }

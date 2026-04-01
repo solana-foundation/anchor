@@ -3,8 +3,8 @@
 
 use anchor_lang::accounts::state::ProgramState;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::account_info::next_account_info;
-use anchor_lang::solana_program::program_option::COption;
+use anchor_lang::pinocchio_runtime::account_view::next_account_view as next_account_info;
+use anchor_lang::pinocchio_runtime::program_option::COption;
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
 use lockup::{CreateVesting, RealizeLock, Realizor, Vesting};
 use std::convert::Into;

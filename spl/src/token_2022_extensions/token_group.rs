@@ -1,77 +1,43 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
 use anchor_lang::{
     context::CpiContext,
-    solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-    Accounts, Result,
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    Accounts, Key, Result,
 };
 
-pub fn token_group_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, TokenGroupInitialize<'info>>,
+#[allow(unreachable_code, unused_variables, clippy::let_unit_value)]
+pub fn token_group_initialize(
+    ctx: CpiContext<'_, '_, TokenGroupInitialize>,
     update_authority: Option<Pubkey>,
     max_size: u64,
 ) -> Result<()> {
-    let ix = spl_token_group_interface::instruction::initialize_group(
-        ctx.accounts.program_id.key,
-        ctx.accounts.group.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.mint_authority.key,
-        update_authority,
-        max_size,
-    );
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[
-            ctx.accounts.program_id,
-            ctx.accounts.group,
-            ctx.accounts.mint,
-            ctx.accounts.mint_authority,
-        ],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let ix = todo!();
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]
-pub struct TokenGroupInitialize<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub group: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
+pub struct TokenGroupInitialize {
+    pub program_id: AccountView,
+    pub group: AccountView,
+    pub mint: AccountView,
+    pub mint_authority: AccountView,
 }
 
-pub fn token_member_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, TokenMemberInitialize<'info>>,
-) -> Result<()> {
-    let ix = spl_token_group_interface::instruction::initialize_member(
-        ctx.accounts.program_id.key,
-        ctx.accounts.member.key,
-        ctx.accounts.member_mint.key,
-        ctx.accounts.member_mint_authority.key,
-        ctx.accounts.group.key,
-        ctx.accounts.group_update_authority.key,
-    );
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[
-            ctx.accounts.program_id,
-            ctx.accounts.member,
-            ctx.accounts.member_mint,
-            ctx.accounts.member_mint_authority,
-            ctx.accounts.group,
-            ctx.accounts.group_update_authority,
-        ],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+#[allow(unreachable_code, unused_variables, clippy::let_unit_value)]
+pub fn token_member_initialize(ctx: CpiContext<'_, '_, TokenMemberInitialize>) -> Result<()> {
+    let ix = todo!();
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]
-pub struct TokenMemberInitialize<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub member: AccountInfo<'info>,
-    pub member_mint: AccountInfo<'info>,
-    pub member_mint_authority: AccountInfo<'info>,
-    pub group: AccountInfo<'info>,
-    pub group_update_authority: AccountInfo<'info>,
+pub struct TokenMemberInitialize {
+    pub program_id: AccountView,
+    pub member: AccountView,
+    pub member_mint: AccountView,
+    pub member_mint_authority: AccountView,
+    pub group: AccountView,
+    pub group_update_authority: AccountView,
 }

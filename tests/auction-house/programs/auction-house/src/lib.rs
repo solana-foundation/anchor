@@ -3,11 +3,11 @@ pub mod utils;
 use {
     crate::utils::*,
     anchor_lang::{
-        prelude::*,
-        solana_program::{
+        pinocchio_runtime::{
             program::{invoke, invoke_signed},
             system_instruction,
         },
+        prelude::*,
     },
     anchor_spl::{
         associated_token::AssociatedToken,

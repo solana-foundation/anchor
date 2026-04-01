@@ -25,7 +25,7 @@ pub mod declare_program {
             ctx.accounts.external_program.key(),
             external::cpi::accounts::Update {
                 authority: ctx.accounts.authority.to_account_info(),
-                my_account: cpi_my_account.to_account_info(),
+                my_account: cpi_my_account.for_cpi_mut(),
             },
         );
         external::cpi::update(cpi_ctx, value)?;
@@ -45,7 +45,7 @@ pub mod declare_program {
             external::cpi::accounts::UpdateComposite {
                 update: external::cpi::accounts::Update {
                     authority: ctx.accounts.authority.to_account_info(),
-                    my_account: cpi_my_account.to_account_info(),
+                    my_account: cpi_my_account.for_cpi_mut(),
                 },
             },
         );
@@ -59,7 +59,7 @@ pub mod declare_program {
             external::cpi::accounts::UpdateNonInstructionComposite {
                 non_instruction_update: external::cpi::accounts::NonInstructionUpdate {
                     authority: ctx.accounts.authority.to_account_info(),
-                    my_account: cpi_my_account.to_account_info(),
+                    my_account: cpi_my_account.for_cpi_mut(),
                     program: ctx.accounts.external_program.to_account_info(),
                 },
             },
@@ -78,7 +78,7 @@ pub mod declare_program {
                 non_instruction_update_with_different_ident:
                     external::cpi::accounts::NonInstructionUpdate {
                         authority: ctx.accounts.authority.to_account_info(),
-                        my_account: cpi_my_account.to_account_info(),
+                        my_account: cpi_my_account.for_cpi_mut(),
                         program: ctx.accounts.external_program.to_account_info(),
                     },
             },

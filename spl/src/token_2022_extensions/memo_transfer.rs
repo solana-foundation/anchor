@@ -1,60 +1,36 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use {
-    anchor_lang::{
-        context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        Accounts, Result,
-    },
-    spl_token_2022_interface as spl_token_2022,
+use anchor_lang::{
+    context::CpiContext,
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    Accounts, Key, Result,
 };
 
-pub fn memo_transfer_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, MemoTransfer<'info>>,
-) -> Result<()> {
-    let ix = spl_token_2022::extension::memo_transfer::instruction::enable_required_transfer_memos(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.account.key,
-        ctx.accounts.owner.key,
-        &[],
-    )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[
-            ctx.accounts.token_program_id,
-            ctx.accounts.account,
-            ctx.accounts.owner,
-        ],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+pub fn memo_transfer_enable(ctx: CpiContext<'_, '_, MemoTransfer>) -> Result<()> {
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::memo_transfer::Enable {
+        account: &ctx.accounts.account,
+        authority: &ctx.accounts.authority,
+        multisig_signers: &signers,
+        token_program: ctx.accounts.token_program_id.address(),
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn memo_transfer_disable<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, MemoTransfer<'info>>,
-) -> Result<()> {
-    let ix =
-        spl_token_2022::extension::memo_transfer::instruction::disable_required_transfer_memos(
-            ctx.accounts.token_program_id.key,
-            ctx.accounts.account.key,
-            ctx.accounts.owner.key,
-            &[],
-        )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[
-            ctx.accounts.token_program_id,
-            ctx.accounts.account,
-            ctx.accounts.owner,
-        ],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+pub fn memo_transfer_disable(ctx: CpiContext<'_, '_, MemoTransfer>) -> Result<()> {
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::memo_transfer::Disable {
+        account: &ctx.accounts.account,
+        authority: &ctx.accounts.authority,
+        multisig_signers: &signers,
+        token_program: ctx.accounts.token_program_id.address(),
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct MemoTransfer<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub account: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
+pub struct MemoTransfer {
+    pub token_program_id: AccountView,
+    pub account: AccountView,
+    pub authority: AccountView,
 }

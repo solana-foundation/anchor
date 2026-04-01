@@ -1,31 +1,22 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use {
-    anchor_lang::{
-        context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        Accounts, Result,
-    },
-    spl_token_2022_interface as spl_token_2022,
+use anchor_lang::{
+    context::CpiContext,
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    Accounts, Key, Result,
 };
 
-pub fn non_transferable_mint_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, NonTransferableMintInitialize<'info>>,
+#[allow(unreachable_code, unused_variables, clippy::let_unit_value)]
+pub fn non_transferable_mint_initialize(
+    ctx: CpiContext<'_, '_, NonTransferableMintInitialize>,
 ) -> Result<()> {
-    let ix = spl_token_2022::instruction::initialize_non_transferable_mint(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
-    )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[ctx.accounts.token_program_id, ctx.accounts.mint],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let ix = todo!();
+    // ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    Ok(())
 }
 
 #[derive(Accounts)]
-pub struct NonTransferableMintInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct NonTransferableMintInitialize {
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
 }

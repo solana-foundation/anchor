@@ -1,4 +1,4 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(dead_code, deprecated)]
 // Generic accounts are not supported with `Lazy`
 #![cfg(not(feature = "lazy-account"))]
@@ -13,22 +13,22 @@ use {
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[derive(Accounts)]
-pub struct CustomLifetime<'a> {
-    pub non_generic: UncheckedAccount<'a>,
+pub struct CustomLifetime {
+    pub non_generic: AccountView,
 }
 
 #[derive(Accounts)]
-pub struct GenericsTest<'info, T, U, const N: usize>
+pub struct GenericsTest<T, U, const N: usize>
 where
     T: AccountSerialize + AccountDeserialize + Owner + Clone,
     U: BorshSerialize + BorshDeserialize + Default + Clone,
 {
-    pub non_generic: AccountInfo<'info>,
-    pub generic: Account<'info, T>,
+    pub non_generic: AccountView,
+    pub generic: Account<T>,
 
-    pub const_generic: AccountLoader<'info, FooAccount<N>>,
-    pub const_generic_loader: AccountLoader<'info, FooAccount<N>>,
-    pub associated: Account<'info, Associated<U>>,
+    pub const_generic: Account<Associated<WrappedU8Array<N>>>,
+    pub const_generic_loader: Account<Associated<WrappedU8Array<N>>>,
+    pub associated: Account<Associated<U>>,
 }
 
 #[account(zero_copy(unsafe))]
@@ -45,7 +45,7 @@ where
     pub data: T,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct WrappedU8Array<const N: usize>(u8);
 impl<const N: usize> BorshSerialize for WrappedU8Array<N> {
     fn serialize<W: Write>(&self, _writer: &mut W) -> borsh::io::Result<()> {

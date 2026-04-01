@@ -122,6 +122,9 @@ fn gen_internal_accounts_common(
             let accounts = accs.accounts.iter().map(|acc| match acc {
                 IdlInstructionAccountItem::Single(acc) => {
                     let name = format_ident!("{}", acc.name);
+                    let ty_name = acc.name.to_camel_case();
+                    let typed_account_ident = format_ident!("{}", ty_name);
+                    let is_typed_account = idl.types.iter().any(|ty_def| ty_def.name == ty_name);
 
                     let attrs = {
                         let signer = acc.signer.then_some(quote!(signer));
@@ -135,10 +138,16 @@ fn gen_internal_accounts_common(
                         }
                     };
 
-                    let acc_expr = if acc.optional {
-                        quote! { Option<AccountInfo #generics> }
+                    let acc_expr = if is_typed_account {
+                        if acc.optional {
+                            quote! { Option<Account<'info, #typed_account_ident>> }
+                        } else {
+                            quote! { Account<'info, #typed_account_ident> }
+                        }
+                    } else if acc.optional {
+                        quote! { Option<AccountView #generics> }
                     } else {
-                        quote! { AccountInfo #generics }
+                        quote! { AccountView #generics }
                     };
 
                     quote! {

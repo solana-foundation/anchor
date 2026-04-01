@@ -33,21 +33,21 @@ pub struct CustomAccountType {
 }
 ```
 
-### `AccountInfo<'info>`
+### `AccountView`
 
-Description: AccountInfo can be used as a type but Unchecked Account should be
+Description: AccountView can be used as a type but Unchecked Account should be
 used instead  
-Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-types/AccountInfo)
+Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-types/AccountView)
 |
-[Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-types/AccountInfo)
+[Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-types/AccountView)
 
 ```rust title="snippet"
 #[derive(Accounts)]
 pub struct InstructionAccounts<'info> {
-    /// CHECK: AccountInfo is an unchecked account
-    // [!code word:AccountInfo]
+    /// CHECK: AccountView is an unchecked account
+    // [!code word:AccountView]
     // [!code highlight]
-    pub unchecked_account: AccountInfo<'info>,
+    pub unchecked_account: AccountView,
 }
 ```
 
@@ -215,7 +215,7 @@ pub struct InstructionAccounts<'info> {
 
 ### `UncheckedAccount<'info>`
 
-Description: Explicit wrapper for AccountInfo types to emphasize that no checks
+Description: Explicit wrapper for AccountView types to emphasize that no checks
 are performed  
 Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-types/UncheckedAccount)
 |

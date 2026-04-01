@@ -2,10 +2,11 @@
 
 use {
     crate::{
-        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
-        Accounts, Bumps, ToAccountInfos, ToAccountMetas,
+        pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, Bumps, Key, ToAccountMetas, ToAccountViews,
     },
-    std::fmt,
+    pinocchio::cpi::Signer,
+    std::{fmt, marker::PhantomData},
 };
 
 /// Provides non-argument inputs to the program.
@@ -23,14 +24,14 @@ use {
 ///     Ok(())
 /// }
 /// ```
-pub struct Context<'info, T: Bumps> {
+pub struct Context<'a, 'b, 'c, T: Bumps> {
     /// Currently executing program id.
-    pub program_id: &'info Pubkey,
+    pub program_id: &'a Pubkey,
     /// Deserialized accounts.
-    pub accounts: &'info mut T,
+    pub accounts: &'b mut T,
     /// Remaining accounts given but not deserialized or validated.
     /// Be very careful when using this directly.
-    pub remaining_accounts: &'info [AccountInfo<'info>],
+    pub remaining_accounts: &'c [AccountView],
     /// Bump seeds found during constraint validation. This is provided as a
     /// convenience so that handlers don't have to recalculate bump seeds or
     /// pass them in as arguments.
@@ -38,7 +39,7 @@ pub struct Context<'info, T: Bumps> {
     pub bumps: T::Bumps,
 }
 
-impl<T> fmt::Debug for Context<'_, T>
+impl<T> fmt::Debug for Context<'_, '_, '_, T>
 where
     T: fmt::Debug + Bumps,
 {
@@ -52,14 +53,14 @@ where
     }
 }
 
-impl<'info, T> Context<'info, T>
+impl<'a, 'b, 'c, 'info, T> Context<'a, 'b, 'c, T>
 where
     T: Bumps + Accounts<'info, T::Bumps>,
 {
     pub fn new(
-        program_id: &'info Pubkey,
-        accounts: &'info mut T,
-        remaining_accounts: &'info [AccountInfo<'info>],
+        program_id: &'a Pubkey,
+        accounts: &'b mut T,
+        remaining_accounts: &'c [AccountView],
         bumps: T::Bumps,
     ) -> Self {
         Self {
@@ -131,8 +132,8 @@ where
 ///     pub fn do_cpi(ctx: Context<DoCpi>, data: u64) -> Result<()> {
 ///         let callee_id = ctx.accounts.callee.key();
 ///         let callee_accounts = callee::cpi::accounts::SetData {
-///             data_acc: ctx.accounts.data_acc.to_account_info(),
-///             authority: ctx.accounts.callee_authority.to_account_info(),
+///             data_acc: ctx.accounts.data_acc.to_account_view(),
+///             authority: ctx.accounts.callee_authority.to_account_view(),
 ///         };
 ///         let cpi_ctx = CpiContext::new(callee_id, callee_accounts);
 ///         callee::cpi::set_data(cpi_ctx, data)
@@ -140,10 +141,10 @@ where
 ///
 ///     pub fn do_cpi_with_pda_authority(ctx: Context<DoCpiWithPDAAuthority>, bump: u8, data: u64) -> Result<()> {
 ///         let seeds = &[&[b"example_seed", bytemuck::bytes_of(&bump)][..]];
-///         let callee_id = ctx.accounts.callee.to_account_info();
+///         let callee_id = ctx.accounts.callee.to_account_view();
 ///         let callee_accounts = callee::cpi::accounts::SetData {
-///             data_acc: ctx.accounts.data_acc.to_account_info(),
-///             authority: ctx.accounts.callee_authority.to_account_info(),
+///             data_acc: ctx.accounts.data_acc.to_account_view(),
+///             authority: ctx.accounts.callee_authority.to_account_view(),
 ///         };
 ///         let cpi_ctx = CpiContext::new_with_signer(callee_id, callee_accounts, seeds);
 ///         callee::cpi::set_data(cpi_ctx, data)
@@ -170,19 +171,19 @@ where
 ///     pub callee: Program<'info, Callee>,
 /// }
 /// ```
-pub struct CpiContext<'a, 'b, 'c, 'info, T>
+pub struct CpiContext<'a, 'b, T>
 where
-    T: ToAccountMetas + ToAccountInfos<'info>,
+    T: ToAccountMetas + ToAccountViews,
 {
     pub accounts: T,
-    pub remaining_accounts: Vec<AccountInfo<'info>>,
+    pub remaining_accounts: Vec<AccountView>,
     pub program_id: Pubkey,
-    pub signer_seeds: &'a [&'b [&'c [u8]]],
+    pub signer_seeds: &'a [Signer<'a, 'b>],
 }
 
-impl<'a, 'b, 'c, 'info, T> CpiContext<'a, 'b, 'c, 'info, T>
+impl<'a, 'b, T> CpiContext<'a, 'b, T>
 where
-    T: ToAccountMetas + ToAccountInfos<'info>,
+    T: ToAccountMetas + ToAccountViews,
 {
     #[must_use]
     pub fn new(program_id: Pubkey, accounts: T) -> Self {
@@ -198,7 +199,7 @@ where
     pub fn new_with_signer(
         program_id: Pubkey,
         accounts: T,
-        signer_seeds: &'a [&'b [&'c [u8]]],
+        signer_seeds: &'a [Signer<'a, 'b>],
     ) -> Self {
         Self {
             accounts,
@@ -209,43 +210,119 @@ where
     }
 
     #[must_use]
-    pub fn with_signer(mut self, signer_seeds: &'a [&'b [&'c [u8]]]) -> Self {
+    pub fn with_signer(mut self, signer_seeds: &'a [Signer<'a, 'b>]) -> Self {
         self.signer_seeds = signer_seeds;
         self
     }
 
     #[must_use]
-    pub fn with_remaining_accounts(mut self, ra: Vec<AccountInfo<'info>>) -> Self {
+    pub fn with_remaining_accounts(mut self, ra: Vec<AccountView>) -> Self {
         self.remaining_accounts = ra;
         self
     }
 }
 
-impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountInfos<'info>
-    for CpiContext<'_, '_, '_, 'info, T>
-{
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        let mut infos = self.accounts.to_account_infos();
+impl<T: ToAccountViews + ToAccountMetas> ToAccountViews for CpiContext<'_, '_, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        let mut infos = self.accounts.to_account_views();
         infos.extend_from_slice(&self.remaining_accounts);
         infos
     }
 }
 
-impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountMetas
-    for CpiContext<'_, '_, '_, 'info, T>
-{
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+impl<T: ToAccountViews + ToAccountMetas> ToAccountMetas for CpiContext<'_, '_, T> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let mut metas = self.accounts.to_account_metas(is_signer);
         metas.append(
             &mut self
                 .remaining_accounts
                 .iter()
-                .map(|acc| match acc.is_writable {
-                    false => AccountMeta::new_readonly(*acc.key, acc.is_signer),
-                    true => AccountMeta::new(*acc.key, acc.is_signer),
+                .map(|acc| match (acc.is_writable(), acc.is_signer()) {
+                    (false, false) => AccountMeta::readonly(acc.address()),
+                    (false, true) => AccountMeta::readonly_signer(acc.address()),
+                    (true, false) => AccountMeta::writable(acc.address()),
+                    (true, true) => AccountMeta::writable_signer(acc.address()),
                 })
                 .collect(),
         );
         metas
     }
 }
+
+/// A CPI account wrapper tied to a mutable account borrow.
+///
+/// Generated CPI account structs use this type for mutable `Account<T>` fields
+/// so local borrow conflicts are rejected at compile time.
+pub struct CpiAccountMut<'cpi, T> {
+    pub(crate) view: AccountView,
+    pub(crate) _marker: PhantomData<&'cpi mut T>,
+}
+
+/// A CPI account wrapper tied to an immutable account borrow.
+pub struct CpiAccountRef<'cpi, T> {
+    pub(crate) view: AccountView,
+    pub(crate) _marker: PhantomData<&'cpi T>,
+}
+
+impl<'cpi, T> CpiAccountMut<'cpi, T> {
+    pub fn address(&self) -> &Pubkey {
+        self.view.address()
+    }
+}
+
+impl<'cpi, T> CpiAccountRef<'cpi, T> {
+    pub fn address(&self) -> &Pubkey {
+        self.view.address()
+    }
+}
+
+impl<'cpi, T> Key for CpiAccountMut<'cpi, T> {
+    fn key(&self) -> Pubkey {
+        *self.view.address()
+    }
+}
+
+impl<'cpi, T> Key for CpiAccountRef<'cpi, T> {
+    fn key(&self) -> Pubkey {
+        *self.view.address()
+    }
+}
+
+impl<'cpi, T> ToAccountViews for CpiAccountMut<'cpi, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![self.view]
+    }
+}
+
+impl<'cpi, T> ToAccountViews for CpiAccountRef<'cpi, T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![self.view]
+    }
+}
+
+/// Compile-time borrow safety examples for `for_cpi_mut`.
+///
+/// Duplicate-account aliasing across different CPI inputs remains a runtime
+/// check (`ConstraintDuplicateMutableAccount`, per #4285).
+///
+/// ```compile_fail
+/// use anchor_lang::prelude::*;
+///
+/// fn borrow_twice(acc: &mut Account<()>) {
+///     let first = acc.for_cpi_mut();
+///     let _second = acc.for_cpi_mut();
+///     drop(first);
+/// }
+/// ```
+///
+/// ```compile_fail
+/// use anchor_lang::prelude::*;
+///
+/// fn mut_then_ref(acc: &mut Account<()>) {
+///     let first = acc.for_cpi_mut();
+///     let _second = acc.for_cpi_ref();
+///     drop(first);
+/// }
+/// ```
+#[doc(hidden)]
+pub fn _anchor_cpi_borrow_safety_doc_test() {}

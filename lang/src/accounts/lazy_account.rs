@@ -3,8 +3,8 @@
 use {
     crate::{
         error::{Error, ErrorCode},
-        AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key,
-        Owner, Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+        AccountMeta, AccountSerialize, AccountView, Accounts, AccountsClose, Discriminator, Key,
+        Owner, Pubkey, Result, ToAccountMetas, ToAccountView, ToAccountViews,
     },
     std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc},
 };
@@ -57,7 +57,7 @@ use {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use anchor_lang::prelude::*;
 ///
 /// declare_id!("LazyAccount11111111111111111111111111111111");
@@ -171,13 +171,13 @@ use {
 /// [`borsh`]: crate::prelude::borsh
 /// [`Account`]: crate::prelude::Account
 /// [SIMD-0166]: https://github.com/solana-foundation/solana-improvement-documents/pull/166
-pub struct LazyAccount<'info, T>
+pub struct LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
-    pub __info: &'info AccountInfo<'info>,
+    pub __info: AccountView,
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
     pub __account: Rc<RefCell<MaybeUninit<T>>>,
@@ -186,7 +186,7 @@ where
     pub __fields: Rc<RefCell<Option<Vec<bool>>>>,
 }
 
-impl<T> fmt::Debug for LazyAccount<'_, T>
+impl<T> fmt::Debug for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone + fmt::Debug,
 {
@@ -199,11 +199,11 @@ where
     }
 }
 
-impl<'info, T> LazyAccount<'info, T>
+impl<T> LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn new(info: &'info AccountInfo<'info>) -> LazyAccount<'info, T> {
+    fn new(info: AccountView) -> LazyAccount<T> {
         Self {
             __info: info,
             __account: Rc::new(RefCell::new(MaybeUninit::uninit())),
@@ -212,8 +212,9 @@ where
     }
 
     /// Check both the owner and the discriminator.
-    pub fn try_from(info: &'info AccountInfo<'info>) -> Result<LazyAccount<'info, T>> {
-        let data = &info.try_borrow_data()?;
+    pub fn try_from(info: AccountView) -> Result<LazyAccount<T>> {
+        let mut info_ref = info;
+        let data = &info_ref.try_borrow_data()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
@@ -228,10 +229,10 @@ where
     }
 
     /// Check the owner but **not** the discriminator.
-    pub fn try_from_unchecked(info: &'info AccountInfo<'info>) -> Result<LazyAccount<'info, T>> {
-        if info.owner != &T::owner() {
+    pub fn try_from_unchecked(info: AccountView) -> Result<LazyAccount<T>> {
+        if info.owner() != &T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, T::owner())));
+                .with_pubkeys((*info.owner(), T::owner())));
         }
 
         Ok(LazyAccount::new(info))
@@ -267,14 +268,14 @@ where
     }
 }
 
-impl<'info, B, T> Accounts<'info, B> for LazyAccount<'info, T>
+impl<'info, B, T> Accounts<'info, B> for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -282,58 +283,60 @@ where
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         LazyAccount::try_from(account)
     }
 }
 
-impl<'info, T> AccountsClose<'info> for LazyAccount<'info, T>
+impl<T> AccountsClose for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
-        crate::common::close(self.as_ref(), sol_destination.as_ref())
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
+        crate::common::close(self.to_account_view(), sol_destination)
     }
 }
 
-impl<T> ToAccountMetas for LazyAccount<'_, T>
+impl<T> ToAccountMetas for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.__info.is_signer);
-        let meta = match self.__info.is_writable {
-            false => AccountMeta::new_readonly(*self.__info.key, is_signer),
-            true => AccountMeta::new(*self.__info.key, is_signer),
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        let is_signer = is_signer.unwrap_or(self.__info.is_signer());
+        let meta = match (self.__info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(*self.__info.key()),
+            (false, true) => AccountMeta::readonly_signer(*self.__info.key()),
+            (true, false) => AccountMeta::writable(*self.__info.key()),
+            (true, true) => AccountMeta::writable_signer(*self.__info.key()),
         };
         vec![meta]
     }
 }
 
-impl<'info, T> ToAccountInfos<'info> for LazyAccount<'info, T>
+impl<T> ToAccountViews for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.to_account_info()]
+    fn to_account_views(&self) -> Vec<AccountView> {
+        vec![self.to_account_view()]
     }
 }
 
-impl<'info, T> AsRef<AccountInfo<'info>> for LazyAccount<'info, T>
+impl<T> AsRef<AccountView> for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
-    fn as_ref(&self) -> &AccountInfo<'info> {
-        self.__info
+    fn as_ref(&self) -> &AccountView {
+        &self.__info
     }
 }
 
-impl<T> Key for LazyAccount<'_, T>
+impl<T> Key for LazyAccount<T>
 where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     fn key(&self) -> Pubkey {
-        *self.__info.key
+        *self.__info.key()
     }
 }

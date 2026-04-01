@@ -1,35 +1,49 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use {
-    anchor_lang::{
-        context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        Accounts, Result,
-    },
-    spl_token_2022_interface as spl_token_2022,
+use anchor_lang::{
+    context::CpiContext,
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    Accounts, Key, Result,
 };
 
-pub fn metadata_pointer_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, MetadataPointerInitialize<'info>>,
-    authority: Option<Pubkey>,
-    metadata_address: Option<Pubkey>,
+pub fn metadata_pointer_initialize(
+    ctx: CpiContext<'_, '_, MetadataPointer>,
+    authority: Option<&Pubkey>,
+    metadata_address: Option<&Pubkey>,
 ) -> Result<()> {
-    let ix = spl_token_2022::extension::metadata_pointer::instruction::initialize(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
+    let ix = pinocchio_token_2022::instructions::metadata_pointer::Initialize {
+        token_program: ctx.accounts.token_program_id.address(),
+        mint: &ctx.accounts.mint,
         authority,
         metadata_address,
-    )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[ctx.accounts.token_program_id, ctx.accounts.mint],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    };
+    ix.invoke().map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct MetadataPointerInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct MetadataPointer {
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
+}
+
+pub fn metadata_pointer_update(
+    ctx: CpiContext<'_, '_, MetadataPointerUpdate>,
+    metadata_address: Option<&Pubkey>,
+) -> Result<()> {
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::metadata_pointer::Update {
+        token_program: ctx.accounts.token_program_id.address(),
+        mint: &ctx.accounts.mint,
+        authority: &ctx.accounts.authority,
+        metadata_address,
+        multisig_signers: &signers,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+}
+
+#[derive(Accounts)]
+pub struct MetadataPointerUpdate {
+    pub token_program_id: AccountView,
+    pub mint: AccountView,
+    pub authority: AccountView,
 }

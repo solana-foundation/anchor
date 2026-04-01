@@ -1,13 +1,13 @@
 use anchor_lang::{
-    prelude::Result,
-    solana_program::{
-        account_info::AccountInfo,
+    pinocchio_runtime::{
+        account_view::AccountInfo,
         instruction::{get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT},
         program::invoke,
         pubkey::Pubkey,
         rent::Rent,
         system_instruction::transfer,
     },
+    prelude::Result,
     Lamports,
 };
 use anchor_spl::token_interface::spl_token_2022::{
