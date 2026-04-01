@@ -1,56 +1,36 @@
-// Avoiding AccountInfo deprecated msg in anchor context
+// Avoiding AccountView deprecated msg in anchor context
 #![allow(deprecated)]
-use {
-    anchor_lang::{
-        context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        Accounts, Result,
-    },
-    spl_token_2022_interface as spl_token_2022,
+use anchor_lang::{
+    context::CpiContext,
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    Accounts, Key, Result,
 };
 
-pub fn cpi_guard_enable<'info>(ctx: CpiContext<'_, '_, '_, 'info, CpiGuard<'info>>) -> Result<()> {
-    let ix = spl_token_2022::extension::cpi_guard::instruction::enable_cpi_guard(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.account.key,
-        ctx.accounts.account.owner,
-        &[],
-    )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[
-            ctx.accounts.token_program_id,
-            ctx.accounts.account,
-            ctx.accounts.owner,
-        ],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+pub fn cpi_guard_enable(ctx: CpiContext<'_, '_, CpiGuard>) -> Result<()> {
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::cpi_guard::Enable {
+        account: &ctx.accounts.account,
+        token_program: ctx.accounts.token_program_id.address(),
+        multisig_signers: &signers,
+        authority: &ctx.accounts.authority,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
-pub fn cpi_guard_disable<'info>(ctx: CpiContext<'_, '_, '_, 'info, CpiGuard<'info>>) -> Result<()> {
-    let ix = spl_token_2022::extension::cpi_guard::instruction::disable_cpi_guard(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.account.key,
-        ctx.accounts.account.owner,
-        &[],
-    )?;
-
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
-        &[
-            ctx.accounts.token_program_id,
-            ctx.accounts.account,
-            ctx.accounts.owner,
-        ],
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+pub fn cpi_guard_disable(ctx: CpiContext<'_, '_, CpiGuard>) -> Result<()> {
+    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
+    let ix = pinocchio_token_2022::instructions::cpi_guard::Disable {
+        account: &ctx.accounts.account,
+        token_program: ctx.accounts.token_program_id.address(),
+        multisig_signers: &signers,
+        authority: &ctx.accounts.authority,
+    };
+    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct CpiGuard<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub account: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
+pub struct CpiGuard {
+    pub token_program_id: AccountView,
+    pub account: AccountView,
+    pub authority: AccountView,
 }

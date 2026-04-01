@@ -64,7 +64,7 @@ pub fn test_event_parser() {
 
 #[test]
 pub fn test_instruction_parser() {
-    use anchor_lang::solana_program::instruction::Instruction as SolanaInstruction;
+    use anchor_lang::pinocchio_runtime::instruction::Instruction as SolanaInstruction;
     use external::parsers::Instruction;
 
     // Incorrect program

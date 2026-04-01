@@ -66,41 +66,32 @@
 
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
-pub use {
-    anchor_lang,
-    cluster::Cluster,
-    solana_account_decoder,
-    solana_commitment_config::CommitmentConfig,
-    solana_instruction::Instruction,
-    solana_program::hash::Hash,
-    solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError,
-    solana_rpc_client_api::{
-        client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,
-        filter::RpcFilterType,
-    },
-    solana_signer::{Signer, SignerError},
-    solana_transaction::Transaction,
-};
+pub use {anchor_lang, cluster::Cluster, solana_account_decoder};
 use {
     anchor_lang::{
-        solana_program::{program_error::ProgramError, pubkey::Pubkey},
+        pinocchio_runtime::{program_error::ProgramError, pubkey::Pubkey},
         AccountDeserialize, Discriminator, InstructionData, ToAccountMetas,
     },
     futures::{Future, StreamExt},
     regex::Regex,
     solana_account_decoder::{UiAccount, UiAccountEncoding},
-    solana_instruction::AccountMeta,
-    solana_pubsub_client::nonblocking::pubsub_client::PubsubClient,
+    solana_commitment_config::CommitmentConfig,
+    solana_hash::Hash,
+    solana_instruction::{AccountMeta as SolanaAccountMeta, Instruction},
+    solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError},
     solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
     solana_rpc_client_api::{
+        client_error::Error as SolanaClientError,
         config::{
-            RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcTransactionLogsConfig,
-            RpcTransactionLogsFilter,
+            RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
+            RpcTransactionLogsConfig, RpcTransactionLogsFilter,
         },
-        filter::Memcmp,
+        filter::{Memcmp, RpcFilterType},
         response::{Response as RpcResponse, RpcLogsResponse},
     },
     solana_signature::Signature,
+    solana_signer::{Signer, SignerError},
+    solana_transaction::Transaction,
     std::{iter::Map, marker::PhantomData, ops::Deref, pin::Pin, sync::Arc, vec::IntoIter},
     thiserror::Error,
     tokio::{
@@ -298,7 +289,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 
     async fn on_internal<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        mut f: impl FnMut(&EventContext, T) + Send + 'static,
+        f: impl Fn(&EventContext, T) + Send + 'static,
     ) -> Result<
         (
             JoinHandle<Result<(), ClientError>>,
@@ -508,7 +499,7 @@ impl AsSigner for Box<dyn Signer + '_> {
 pub struct RequestBuilder<'a, C, S: 'a> {
     cluster: String,
     program_id: Pubkey,
-    accounts: Vec<AccountMeta>,
+    accounts: Vec<SolanaAccountMeta>,
     options: CommitmentConfig,
     instructions: Vec<Instruction>,
     payer: C,
@@ -521,7 +512,7 @@ pub struct RequestBuilder<'a, C, S: 'a> {
 }
 
 // Shared implementation for all RequestBuilders
-impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, S> {
+impl<'a, C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'a, C, S> {
     #[must_use]
     pub fn payer(mut self, payer: C) -> Self {
         self.payer = payer;
@@ -577,9 +568,18 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     ///     .send()?;
     /// ```
     #[must_use]
-    pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
-        let mut metas = accounts.to_account_metas(None);
-        self.accounts.append(&mut metas);
+    pub fn accounts(mut self, accounts: impl ToAccountMetas + 'a) -> Self {
+        self.accounts
+            .extend(
+                accounts
+                    .to_account_metas(None)
+                    .into_iter()
+                    .map(|meta| SolanaAccountMeta {
+                        pubkey: *meta.address,
+                        is_signer: meta.is_signer,
+                        is_writable: meta.is_writable,
+                    }),
+            );
         self
     }
 
@@ -736,8 +736,8 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 mod tests {
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`
+    use anchor_lang::prelude::*;
     use {
-        anchor_lang::prelude::*,
         futures::{SinkExt, StreamExt},
         solana_rpc_client_api::response::RpcResponseContext,
         std::sync::atomic::{AtomicU64, Ordering},

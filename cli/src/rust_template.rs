@@ -844,7 +844,7 @@ fn create_program_template_mollusk_test(name: &str, tests_path: &Path) -> Files 
             r#"#![cfg(feature = "test-sbf")]
 
 use {{
-    anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    anchor_lang::{{pinocchio_runtime::instruction::Instruction, InstructionData, ToAccountMetas}},
     mollusk_svm::{{result::Check, Mollusk}},
 }};
 
@@ -875,7 +875,7 @@ fn create_program_template_litesvm_test(name: &str, tests_path: &Path) -> Files 
         format!(
             r#"
 use {{
-    anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    anchor_lang::{{pinocchio_runtime::instruction::Instruction, InstructionData, ToAccountMetas}},
     litesvm::LiteSVM,
     solana_message::{{Message, VersionedMessage}},
     solana_signer::Signer,

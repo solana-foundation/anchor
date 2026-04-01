@@ -1,7 +1,7 @@
 // WIP. This program has been checkpointed and is not production ready.
 
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::sysvar::instructions as tx_instructions;
+use anchor_lang::pinocchio_runtime::sysvar_instructions as tx_instructions;
 use anchor_spl::dex::{self, Dex};
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
 use lockup::program::Lockup;

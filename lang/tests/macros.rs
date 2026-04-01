@@ -1,4 +1,4 @@
-use {anchor_lang::solana_program::pubkey::Pubkey, core::str::FromStr};
+use {anchor_lang::pinocchio_runtime::pubkey::Pubkey, core::str::FromStr};
 
 mod id {
     anchor_lang::declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -15,7 +15,7 @@ fn test_declare_id() {
 }
 
 mod pk {
-    pub(super) const PUBKEY: anchor_lang::solana_program::pubkey::Pubkey =
+    pub(super) const PUBKEY: anchor_lang::pinocchio_runtime::pubkey::Pubkey =
         anchor_lang::pubkey!("A7yUYJNEVYRLE4QWsnc9rE9JRsm7DfqEmLscQVwkffAk");
 }
 
