@@ -577,7 +577,15 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     /// ```
     #[must_use]
     pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
-        let mut metas = accounts.to_account_metas(None);
+        let mut metas = accounts
+            .to_account_metas(None)
+            .into_iter()
+            .map(|meta| AccountMeta {
+                pubkey: *meta.address,
+                is_signer: meta.is_signer,
+                is_writable: meta.is_writable,
+            })
+            .collect::<Vec<_>>();
         self.accounts.append(&mut metas);
         self
     }

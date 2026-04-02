@@ -11,8 +11,8 @@
 use {
     crate::{
         error::ErrorCode,
-        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
-        Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
+        pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsClose, AccountsExit, Result, ToAccountMetas, ToAccountViews,
     },
     std::collections::BTreeSet,
 };
@@ -20,7 +20,7 @@ use {
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -42,7 +42,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
 
         // If there are enough accounts, it will check the program_id and return
         // None if it matches, popping the first account off the accounts vec.
-        if accounts[0].key == program_id {
+        if accounts[0].address() == program_id {
             *accounts = &accounts[1..];
             Ok(None)
         } else {
@@ -54,23 +54,23 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
     }
 }
 
-impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Option<T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+impl<T: ToAccountViews> ToAccountViews for Option<T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
         self.as_ref()
-            .map_or_else(Vec::new, |account| account.to_account_infos())
+            .map_or_else(Vec::new, |account| account.to_account_views())
     }
 }
 
 impl<T: ToAccountMetas> ToAccountMetas for Option<T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         self.as_ref()
             .expect("Cannot run `to_account_metas` on None")
             .to_account_metas(is_signer)
     }
 }
 
-impl<'info, T: AccountsClose<'info>> AccountsClose<'info> for Option<T> {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
+impl<T: AccountsClose> AccountsClose for Option<T> {
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
         self.as_ref()
             .map_or(Ok(()), |t| T::close(t, sol_destination))
     }
