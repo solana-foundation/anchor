@@ -354,6 +354,16 @@ export function seed(): string {
   return "idl";
 }
 
+/**
+ * Get the parsed IDL from the given account data.
+ *
+ * **Note:** Only JSON IDLs are supported.
+ *
+ * @see {@link decodeIdlAccountRaw} to get the raw IDL account.
+ *
+ * @param data IDL account data
+ * @returns the parsed IDL
+ */
 export function decodeIdlAccount<IDL extends Idl = Idl>(data: Buffer): IDL {
   const { data: rawData, compression, encoding } = decodeIdlAccountRaw(data);
   const decoded = decodeMetadataData(
@@ -363,6 +373,16 @@ export function decodeIdlAccount<IDL extends Idl = Idl>(data: Buffer): IDL {
   return JSON.parse(decoded);
 }
 
+/**
+ * Decode an IDL account.
+ *
+ * **Note:** Only JSON IDLs are supported.
+ *
+ * @see {@link decodeIdlAccount} to get the parsed IDL.
+ *
+ * @param data IDL account data
+ * @returns the decoded account fields
+ */
 export function decodeIdlAccountRaw(data: Buffer) {
   const minimumSize =
     METADATA_HEADER_SIZE + DATA_LENGTH_SIZE + DATA_LENGTH_PADDING;
