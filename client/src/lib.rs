@@ -83,7 +83,7 @@ pub use {
 };
 use {
     anchor_lang::{
-        solana_program::{program_error::ProgramError, pubkey::Pubkey},
+        pinocchio_runtime::{program_error::ProgramError, pubkey::Pubkey},
         AccountDeserialize, Discriminator, InstructionData, ToAccountMetas,
     },
     futures::{Future, StreamExt},

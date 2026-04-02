@@ -3,7 +3,7 @@
 use {
     anchor_lang::{
         context::CpiContext,
-        solana_program::{account_info::AccountInfo, program_pack::Pack, pubkey::Pubkey},
+        pinocchio_runtime::{account_info::AccountInfo, program_pack::Pack, pubkey::Pubkey},
         Accounts, Result,
     },
     std::ops::Deref,
@@ -22,7 +22,7 @@ pub fn transfer<'info>(
         &[],
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.from, ctx.accounts.to, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -45,7 +45,7 @@ pub fn transfer_checked<'info>(
         amount,
         decimals,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.from,
@@ -70,7 +70,7 @@ pub fn mint_to<'info>(
         &[],
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.to, ctx.accounts.mint, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -87,7 +87,7 @@ pub fn burn<'info>(ctx: CpiContext<'_, '_, '_, 'info, Burn<'info>>, amount: u64)
         &[],
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.from, ctx.accounts.mint, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -107,7 +107,7 @@ pub fn approve<'info>(
         &[],
         amount,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.to,
@@ -134,7 +134,7 @@ pub fn approve_checked<'info>(
         amount,
         decimals,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.to,
@@ -154,7 +154,7 @@ pub fn revoke<'info>(ctx: CpiContext<'_, '_, '_, 'info, Revoke<'info>>) -> Resul
         ctx.accounts.authority.key,
         &[],
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.source, ctx.accounts.authority],
         ctx.signer_seeds,
@@ -171,7 +171,7 @@ pub fn initialize_account<'info>(
         ctx.accounts.mint.key,
         ctx.accounts.authority.key,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.account,
@@ -193,7 +193,7 @@ pub fn initialize_account3<'info>(
         ctx.accounts.mint.key,
         ctx.accounts.authority.key,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.account, ctx.accounts.mint],
         ctx.signer_seeds,
@@ -209,7 +209,7 @@ pub fn close_account<'info>(ctx: CpiContext<'_, '_, '_, 'info, CloseAccount<'inf
         ctx.accounts.authority.key,
         &[], // TODO: support multisig
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.account,
@@ -231,7 +231,7 @@ pub fn freeze_account<'info>(
         ctx.accounts.authority.key,
         &[], // TODO: Support multisig signers.
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.account,
@@ -251,7 +251,7 @@ pub fn thaw_account<'info>(ctx: CpiContext<'_, '_, '_, 'info, ThawAccount<'info>
         ctx.accounts.authority.key,
         &[], // TODO: Support multisig signers.
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.account,
@@ -276,7 +276,7 @@ pub fn initialize_mint<'info>(
         freeze_authority,
         decimals,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.mint, ctx.accounts.rent],
         ctx.signer_seeds,
@@ -297,7 +297,7 @@ pub fn initialize_mint2<'info>(
         freeze_authority,
         decimals,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(&ix, &[ctx.accounts.mint], ctx.signer_seeds)
+    anchor_lang::pinocchio_runtime::program::invoke_signed(&ix, &[ctx.accounts.mint], ctx.signer_seeds)
         .map_err(Into::into)
 }
 
@@ -314,7 +314,7 @@ pub fn set_authority<'info>(
         ctx.accounts.current_authority.key,
         &[], // TODO: Support multisig signers.
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.account_or_mint, ctx.accounts.current_authority],
         ctx.signer_seeds,
@@ -324,7 +324,7 @@ pub fn set_authority<'info>(
 
 pub fn sync_native<'info>(ctx: CpiContext<'_, '_, '_, 'info, SyncNative<'info>>) -> Result<()> {
     let ix = spl_token::instruction::sync_native(&spl_token::ID, ctx.accounts.account.key)?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.account],
         ctx.signer_seeds,

@@ -1,6 +1,6 @@
 use anchor_lang::{
     prelude::Result,
-    solana_program::{
+    pinocchio_runtime::{
         account_info::AccountInfo,
         instruction::{get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT},
         program::invoke,
