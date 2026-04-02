@@ -312,6 +312,13 @@ export enum MetadataEncoding {
   Base64 = 3,
 }
 
+export enum Format {
+  None = 0,
+  Json = 1,
+  Yaml = 2,
+  Toml = 3,
+}
+
 export type MetadataAccount = {
   format: number;
   dataSource: number;
@@ -399,10 +406,10 @@ export function decodeIdlAccountRaw(data: Buffer) {
   const compression = data.readUInt8(offset) as MetadataCompression;
   offset += 1;
 
-  const format = data.readUInt8(offset);
-  if (format !== FORMAT_JSON) {
+  const format = data.readUInt8(offset) as Format;
+  if (format !== Format.Json) {
     throw new Error(
-      `IDL has data format '${format}', only JSON IDLs (${FORMAT_JSON}) are supported`
+      `IDL has data format '${format}', only JSON IDLs (${Format.Json}) are supported`
     );
   }
   offset += 1;
