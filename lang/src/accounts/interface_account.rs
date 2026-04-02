@@ -199,7 +199,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
         let info = self.account.to_account_info();
 
         // Enforce owner stability: must match the one validated at construction.
-        if info.owned_by(&self.owner) {
+        if !info.owned_by(&self.owner) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner(), self.owner)));
         }
