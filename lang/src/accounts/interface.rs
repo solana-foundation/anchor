@@ -4,7 +4,7 @@ use {
     crate::{
         accounts::program::Program,
         error::{Error, ErrorCode},
-        pinocchio_runtime::{account_info::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
         AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountMetas,
         ToAccountViews,
     },

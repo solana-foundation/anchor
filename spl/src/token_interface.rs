@@ -92,9 +92,9 @@ pub fn find_mint_account_size(extensions: Option<&ExtensionsVec>) -> anchor_lang
 }
 
 pub fn get_mint_extension_data<T: Extension + Pod>(
-    account: &anchor_lang::pinocchio_runtime::account_info::AccountInfo,
+    account: &anchor_lang::pinocchio_runtime::account_view::AccountView,
 ) -> anchor_lang::Result<T> {
-    let mint_data = account.data.borrow();
+    let mint_data = account.try_borrow()?;
     let mint_with_extension =
         StateWithExtensions::<spl_token_2022::state::Mint>::unpack(&mint_data)?;
     let extension_data = *mint_with_extension.get_extension::<T>()?;

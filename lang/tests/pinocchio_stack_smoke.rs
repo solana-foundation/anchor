@@ -3,10 +3,13 @@
 #[path = "support/mod.rs"]
 mod support;
 
-use anchor_lang::prelude::*;
-use anchor_lang::system_program::{self, CreateAccount, Transfer};
-
-use support::OwnedPinocchioAccount;
+use {
+    anchor_lang::{
+        prelude::*,
+        system_program::{self, CreateAccount, Transfer},
+    },
+    support::OwnedPinocchioAccount,
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 

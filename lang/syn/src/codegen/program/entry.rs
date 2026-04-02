@@ -37,8 +37,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// Anchor's generated entrypoint accepts [`AccountView`] values directly.
         ///
         /// The custom-entrypoint escape hatch documented in the performance section may still
-        /// receive runtime account data from Solana. In that case, wrap at the boundary
-        /// into `AccountView` before calling Anchor dispatch.
+        /// receive `&[solana_program::account_info::AccountInfo]` from the Solana runtime.
+        /// In that case, wrap at the boundary into `AccountView` before calling Anchor dispatch.
+        /// This conversion should happen in your hand-written entrypoint shim, keeping all Anchor
+        /// internals and generated code on `AccountView` only.
         ///
         /// This keeps all user-facing Anchor traits/structs/codegen on `AccountView` while still
         /// supporting runtime compatibility at the outermost entrypoint edge.

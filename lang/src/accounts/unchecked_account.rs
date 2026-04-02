@@ -4,7 +4,7 @@
 use {
     crate::{
         error::ErrorCode,
-        pinocchio_runtime::{account_info::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, AccountsExit, Key, Result, ToAccountMetas, ToAccountViews,
     },
     std::{collections::BTreeSet, ops::Deref},

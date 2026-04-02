@@ -1,9 +1,9 @@
 #[path = "support/mod.rs"]
 mod support;
-use anchor_lang::prelude::*;
-use anchor_lang::RefMut;
-
-use support::OwnedPinocchioAccount;
+use {
+    anchor_lang::{prelude::*, RefMut},
+    support::OwnedPinocchioAccount,
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 

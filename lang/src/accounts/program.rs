@@ -4,7 +4,7 @@ use {
     crate::{
         error::{Error, ErrorCode},
         pinocchio_runtime::{
-            account_info::AccountView,
+            account_view::AccountView,
             bpf_loader_upgradeable::{self, UpgradeableLoaderState},
             instruction::AccountMeta,
             pubkey::Pubkey,

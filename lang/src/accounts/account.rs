@@ -5,7 +5,7 @@ use {
         bpf_writer::BpfWriter,
         error::{Error, ErrorCode},
         pinocchio_runtime::{
-            account_info::AccountView, instruction::AccountMeta, pubkey::Pubkey, system_program,
+            account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey, system_program,
         },
         AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
         Result, ToAccountMetas, ToAccountView, ToAccountViews,
@@ -18,7 +18,7 @@ use {
     },
 };
 
-/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_info::AccountView)
+/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_view::AccountView)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -95,7 +95,7 @@ use {
 /// functions `#[account]` generates. See the example below for the code you have
 /// to write.
 ///
-/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/coral-xyz/anchor/blob/master/spl/src/token.rs))
+/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/solana-foundation/anchor/blob/master/spl/src/token.rs))
 /// ```ignore
 /// #[derive(Clone)]
 /// pub struct Mint(spl_token::state::Mint);
@@ -324,7 +324,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        if info.owned_by(&T::owner()) {
+        if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner(), T::owner())));
         }
@@ -341,7 +341,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        if info.owned_by(&T::owner()) {
+        if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner(), T::owner())));
         }

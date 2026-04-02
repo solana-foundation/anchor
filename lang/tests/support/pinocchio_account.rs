@@ -1,11 +1,13 @@
 //! Build a valid `RuntimeAccount` + trailing data buffer for `AccountView::new_unchecked`.
 
-use std::mem::size_of;
-use std::ptr;
-
-use anchor_lang::pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED};
-use anchor_lang::prelude::Pubkey;
-use anchor_lang::AccountView;
+use {
+    anchor_lang::{
+        pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED},
+        prelude::Pubkey,
+        AccountView,
+    },
+    std::{mem::size_of, ptr},
+};
 
 /// Owns the backing allocation for a single `AccountView`.
 pub struct OwnedPinocchioAccount {

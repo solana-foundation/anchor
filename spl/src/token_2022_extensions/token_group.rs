@@ -2,20 +2,20 @@
 #![allow(deprecated)]
 use anchor_lang::{
     context::CpiContext,
-    pinocchio_runtime::{account_info::AccountInfo, pubkey::Pubkey},
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
     Accounts, Result,
 };
 
-pub fn token_group_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, TokenGroupInitialize<'info>>,
+pub fn token_group_initialize(
+    ctx: CpiContext<'_, '_, TokenGroupInitialize>,
     update_authority: Option<Pubkey>,
     max_size: u64,
 ) -> Result<()> {
     let ix = spl_token_group_interface::instruction::initialize_group(
-        ctx.accounts.program_id.key,
-        ctx.accounts.group.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.mint_authority.key,
+        *ctx.accounts.program_id.address(),
+        *ctx.accounts.group.address(),
+        *ctx.accounts.mint.address(),
+        *ctx.accounts.mint_authority.address(),
         update_authority,
         max_size,
     );
@@ -33,23 +33,21 @@ pub fn token_group_initialize<'info>(
 }
 
 #[derive(Accounts)]
-pub struct TokenGroupInitialize<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub group: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
+pub struct TokenGroupInitialize {
+    pub program_id: AccountView,
+    pub group: AccountView,
+    pub mint: AccountView,
+    pub mint_authority: AccountView,
 }
 
-pub fn token_member_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, TokenMemberInitialize<'info>>,
-) -> Result<()> {
+pub fn token_member_initialize(ctx: CpiContext<'_, '_, TokenMemberInitialize>) -> Result<()> {
     let ix = spl_token_group_interface::instruction::initialize_member(
-        ctx.accounts.program_id.key,
-        ctx.accounts.member.key,
-        ctx.accounts.member_mint.key,
-        ctx.accounts.member_mint_authority.key,
-        ctx.accounts.group.key,
-        ctx.accounts.group_update_authority.key,
+        *ctx.accounts.program_id.address(),
+        *ctx.accounts.member.address(),
+        *ctx.accounts.member_mint.address(),
+        *ctx.accounts.member_mint_authority.address(),
+        *ctx.accounts.group.address(),
+        *ctx.accounts.group_update_authority.address(),
     );
     anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
@@ -67,11 +65,11 @@ pub fn token_member_initialize<'info>(
 }
 
 #[derive(Accounts)]
-pub struct TokenMemberInitialize<'info> {
-    pub program_id: AccountInfo<'info>,
-    pub member: AccountInfo<'info>,
-    pub member_mint: AccountInfo<'info>,
-    pub member_mint_authority: AccountInfo<'info>,
-    pub group: AccountInfo<'info>,
-    pub group_update_authority: AccountInfo<'info>,
+pub struct TokenMemberInitialize {
+    pub program_id: AccountView,
+    pub member: AccountView,
+    pub member_mint: AccountView,
+    pub member_mint_authority: AccountView,
+    pub group: AccountView,
+    pub group_update_authority: AccountView,
 }

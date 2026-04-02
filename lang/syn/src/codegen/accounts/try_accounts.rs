@@ -73,10 +73,10 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         let name = f.ident.to_string();
                         let typed_name = f.typed_ident();
 
-                        // Generate the deprecation call if it is an AccountView
+                        // Generate the deprecation call if it is a raw account view.
                         let warning = if matches!(f.ty, Ty::AccountView) {
                             quote_spanned! { f.ty_span =>
-                                ::anchor_lang::deprecated_account_info_usage();
+                                ::anchor_lang::deprecated_raw_account_usage();
                             }
                         } else {
                             quote! {}

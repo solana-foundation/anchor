@@ -56,14 +56,14 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 
 fn generics(accs: &AccountsStruct) -> ParsedGenerics {
     let has_lifetime = accs.generics.lifetimes().next().is_some();
-    let all_account_info = accs.generics.lifetimes().next().is_none()
+    let all_account_view = accs.generics.lifetimes().next().is_none()
         && accs.fields.iter().all(|f| match f {
             AccountField::Field(field) => matches!(field.ty, Ty::AccountView),
             AccountField::CompositeField(_) => false, // Composite fields need lifetimes
         });
 
-    let trait_lifetime = if all_account_info {
-        // Keep `'info` for AccountInfo-only structs to avoid forcing `'static`
+    let trait_lifetime = if all_account_view {
+        // Keep `'info` for AccountView-only structs to avoid forcing `'static`
         // in generated `try_accounts` signatures.
         syn::parse_str("'info").expect("Could not parse lifetime")
     } else {

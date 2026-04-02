@@ -97,14 +97,6 @@ pub mod pinocchio_runtime {
         }
     }
 
-    #[deprecated(
-        since = "1.0.0-rc.5",
-        note = "use `pinocchio_runtime::account_view` instead"
-    )]
-    pub mod account_info {
-        pub use super::account_view::*;
-    }
-
     pub use {
         pinocchio::{entrypoint, program_entrypoint, sysvars::clock},
         solana_msg::msg,
@@ -216,9 +208,9 @@ pub use idl::IdlBuild;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
-// Deprecated message for old account wrapper usage in Accounts struct.
+// Deprecated message for old raw account-view usage in Accounts struct.
 #[deprecated(note = "Use `UncheckedAccount` for safer unchecked account access.")]
-pub fn deprecated_account_info_usage() {}
+pub fn deprecated_raw_account_usage() {}
 
 /// A data structure of validated accounts that can be deserialized from the
 /// input to a Solana program. Implementations of this trait should perform any
