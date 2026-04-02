@@ -288,7 +288,16 @@ const DATA_LENGTH_PADDING = 5;
 const PUBKEY_SIZE = 32;
 const ZEROABLE_OPTION_PUBKEY_SIZE = 32;
 const METADATA_HEADER_SIZE =
-  1 + 32 + ZEROABLE_OPTION_PUBKEY_SIZE + 1 + 1 + SEED_SIZE + 1 + 1 + 1 + 1;
+  1 +
+  PUBKEY_SIZE +
+  ZEROABLE_OPTION_PUBKEY_SIZE +
+  1 +
+  1 +
+  SEED_SIZE +
+  1 +
+  1 +
+  1 +
+  1;
 
 export enum MetadataCompression {
   None = 0,
