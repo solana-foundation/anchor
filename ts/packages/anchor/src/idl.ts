@@ -444,7 +444,6 @@ export function decodeIdlAccountRaw(data: Buffer) {
 
   const dataLength = data.readUInt32LE(offset);
   offset += DATA_LENGTH_SIZE + DATA_LENGTH_PADDING;
-
   if (data.length < offset + dataLength) {
     throw new Error("Metadata account data is truncated");
   }
@@ -461,7 +460,7 @@ export function decodeIdlAccountRaw(data: Buffer) {
     format,
     dataSource,
     dataLength,
-    data,
+    data: data.subarray(offset, offset + dataLength),
   };
 }
 
