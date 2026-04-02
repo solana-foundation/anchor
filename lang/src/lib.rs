@@ -19,7 +19,7 @@
 //!
 //! For detailed tutorials and examples on how to use Anchor, see the guided
 //! [tutorials](https://anchor-lang.com) or examples in the GitHub
-//! [repository](https://github.com/coral-xyz/anchor).
+//! [repository](https://github.com/solana-foundation/anchor).
 //!
 //! Presented here are the Rust primitives for building on Solana.
 
@@ -195,12 +195,6 @@ pub mod pinocchio_runtime {
     pub mod feature {
         pub use solana_feature_gate_interface as feature;
     }
-}
-
-// Compatibility shim for derive macros and legacy paths that still resolve through
-// `anchor_lang::solana_program::*`.
-pub mod solana_program {
-    pub use crate::pinocchio_runtime::*;
 }
 
 #[cfg(feature = "event-cpi")]

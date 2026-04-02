@@ -3,7 +3,7 @@
 use {
     anchor_lang::{
         context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        pinocchio_runtime::{account_info::AccountInfo, pubkey::Pubkey},
         Accounts, Result,
     },
     spl_token_2022_interface as spl_token_2022,
@@ -20,7 +20,7 @@ pub fn interest_bearing_mint_initialize<'info>(
         rate_authority,
         rate,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
@@ -45,7 +45,7 @@ pub fn interest_bearing_mint_update_rate<'info>(
         &[],
         rate,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.token_program_id,

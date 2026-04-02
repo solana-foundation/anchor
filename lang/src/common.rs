@@ -19,7 +19,7 @@ pub fn close(mut info: AccountInfo, mut sol_destination: AccountInfo) -> Result<
     unsafe {
         info.assign(&system_program::ID);
     }
-    let _ = Resize::resize(&mut info, 0);
+    Resize::resize(&mut info, 0)?;
     Ok(())
 }
 

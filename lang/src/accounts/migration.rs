@@ -4,7 +4,7 @@ use {
     crate::{
         bpf_writer::BpfWriter,
         error::{Error, ErrorCode},
-        solana_program::{
+        pinocchio_runtime::{
             account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey, system_program,
         },
         AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Owner, Result,
@@ -448,7 +448,7 @@ where
         match &self.inner {
             MigrationInner::From(from) => from,
             MigrationInner::To(_) => {
-                crate::solana_program::msg!("Cannot deref to From: account is already migrated.");
+                crate::pinocchio_runtime::msg!("Cannot deref to From: account is already migrated.");
                 panic!();
             }
         }
@@ -465,7 +465,7 @@ where
         match &mut self.inner {
             MigrationInner::From(from) => from,
             MigrationInner::To(_) => {
-                crate::solana_program::msg!(
+                crate::pinocchio_runtime::msg!(
                     "Cannot deref_mut to From: account is already migrated."
                 );
                 panic!();

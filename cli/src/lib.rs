@@ -7,7 +7,7 @@ use {
     },
     anchor_client::Cluster,
     anchor_lang::{
-        prelude::UpgradeableLoaderState, solana_program::bpf_loader_upgradeable, AnchorDeserialize,
+        prelude::UpgradeableLoaderState, pinocchio_runtime::bpf_loader_upgradeable, AnchorDeserialize,
     },
     anchor_lang_idl::{
         convert::convert_idl,
