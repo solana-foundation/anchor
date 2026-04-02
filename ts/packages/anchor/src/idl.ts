@@ -417,7 +417,7 @@ export function decodeIdlAccountRaw(data: Buffer) {
   const canonical = Boolean(data.readUInt8(offset));
   offset += 1;
 
-  const seed = utf8.decode(data.subarray(offset, offset + SEED));
+  const seed = utf8.decode(data.subarray(offset, offset + SEED_SIZE));
   offset += SEED_SIZE;
 
   const encoding = data.readUInt8(offset) as MetadataEncoding;
