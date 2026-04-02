@@ -318,7 +318,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        if info.owned_by(&T::owner()) {
+        if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner(), T::owner())));
         }
@@ -335,7 +335,7 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T
         if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        if info.owned_by(&T::owner()) {
+        if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner(), T::owner())));
         }

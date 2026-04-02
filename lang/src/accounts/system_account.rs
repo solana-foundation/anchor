@@ -22,7 +22,7 @@ impl<'info> SystemAccount<'info> {
 
     #[inline(never)]
     pub fn try_from(info: &'info AccountInfo) -> Result<SystemAccount<'info>> {
-        if info.owned_by(&system_program::ID) {
+        if !info.owned_by(&system_program::ID) {
             return Err(ErrorCode::AccountNotSystemOwned.into());
         }
         Ok(SystemAccount::new(info))
