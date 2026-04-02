@@ -245,13 +245,13 @@ pub fn generate_constraint_zeroed(
             };
             if other_field.is_optional {
                 quote! {
-                    if #other.is_some() && #field.key == &#other.as_ref().unwrap().key() {
+                    if #other.is_some() && #field.key() == &#other.as_ref().unwrap().key() {
                         return #err;
                     }
                 }
             } else {
                 quote! {
-                    if #field.key == &#other.key() {
+                    if #field.key() == &#other.key() {
                         return #err;
                     }
                 }
@@ -297,7 +297,7 @@ pub fn generate_constraint_mut(f: &Field, c: &ConstraintMut) -> proc_macro2::Tok
     let account_ref = generate_account_ref(f);
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintMut }, &None);
     quote! {
-        if !#account_ref.is_writable {
+        if !#account_ref.is_writable() {
             return #error;
         }
     }
@@ -348,7 +348,7 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
 
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintSigner }, &None);
     quote! {
-        if !#account_ref.is_signer {
+        if !#account_ref.is_signer() {
             return #error;
         }
     }
@@ -385,7 +385,7 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
 
     quote! {
         {
-            let my_owner = AsRef::<AccountInfo>::as_ref(& #maybe_deref #ident).owner;
+            let my_owner = AsRef::<AccountView>::as_ref(& #maybe_deref #ident).owner;
             let owner_address = #owner_address;
             if my_owner != &owner_address {
                 return #error;
@@ -401,7 +401,7 @@ pub fn generate_constraint_rent_exempt(
     let ident = &f.ident;
     let name_str = ident.to_string();
     let info = quote! {
-        #ident.to_account_info()
+        #ident.to_account_view()
     };
     match c {
         ConstraintRentExempt::Skip => quote! {},
@@ -437,7 +437,7 @@ fn generate_constraint_realloc(
         }
 
         let __anchor_rent = anchor_lang::prelude::Rent::get()?;
-        let __field_info = #field.to_account_info();
+        let __field_info = #field.to_account_view();
         let __new_rent_minimum = __anchor_rent.minimum_balance(#new_space);
 
         let __delta_space = (::std::convert::TryInto::<isize>::try_into(#new_space).unwrap())
@@ -448,7 +448,7 @@ fn generate_constraint_realloc(
             #payer_optional_check
             if __delta_space > 0 {
                 #system_program_optional_check
-                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
+                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::pinocchio_runtime::entrypoint::MAX_PERMITTED_DATA_INCREASE {
                     return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountReallocExceedsLimit).with_account_name(#account_name));
                 }
 
@@ -457,7 +457,7 @@ fn generate_constraint_realloc(
                         anchor_lang::context::CpiContext::new(
                             system_program.key(),
                             anchor_lang::system_program::Transfer {
-                                from: #payer.to_account_info(),
+                                from: #payer.to_account_view(),
                                 to: __field_info.clone(),
                             },
                         ),
@@ -466,11 +466,11 @@ fn generate_constraint_realloc(
                 }
             } else {
                 let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).unwrap();
-                **#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info().lamports().checked_add(__lamport_amt).unwrap();
+                **#payer.to_account_view().lamports.borrow_mut() = #payer.to_account_view().lamports().checked_add(__lamport_amt).unwrap();
                 **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
             }
 
-            __field_info.resize(#new_space)?;
+            anchor_lang::pinocchio_runtime::Resize::resize(&mut __field_info, #new_space)?;
             __reallocs.insert(#field.key());
         }
     }
@@ -646,7 +646,7 @@ fn generate_constraint_init_group(
                     #optional_checks
 
                     let owner_program = #account_ref.owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    if !#if_needed || owner_program == &anchor_lang::pinocchio_runtime::system_program::ID {
                         #payer_optional_check
 
                         // Create the account with the system program.
@@ -655,9 +655,9 @@ fn generate_constraint_init_group(
                         // Initialize the token account.
                         let cpi_program_id = #token_program.key();
                         let accounts = ::anchor_spl::token_interface::InitializeAccount3 {
-                            account: #field.to_account_info(),
-                            mint: #mint.to_account_info(),
-                            authority: #owner.to_account_info(),
+                            account: #field.to_account_view(),
+                            mint: #mint.to_account_view(),
+                            authority: #owner.to_account_view(),
                         };
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program_id, accounts);
                         ::anchor_spl::token_interface::initialize_account3(cpi_ctx)?;
@@ -717,19 +717,19 @@ fn generate_constraint_init_group(
                     #optional_checks
 
                     let owner_program = #account_ref.owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    if !#if_needed || owner_program == &anchor_lang::pinocchio_runtime::system_program::ID {
                         #payer_optional_check
 
                         ::anchor_spl::associated_token::create(
                             anchor_lang::context::CpiContext::new(
                                 associated_token_program.key(),
                                 ::anchor_spl::associated_token::Create {
-                                    payer: #payer.to_account_info(),
-                                    associated_token: #field.to_account_info(),
-                                    authority: #owner.to_account_info(),
-                                    mint: #mint.to_account_info(),
-                                    system_program: system_program.to_account_info(),
-                                    token_program: #token_program.to_account_info(),
+                                    payer: #payer.to_account_view(),
+                                    associated_token: #field.to_account_view(),
+                                    authority: #owner.to_account_view(),
+                                    mint: #mint.to_account_view(),
+                                    system_program: system_program.to_account_view(),
+                                    token_program: #token_program.to_account_view(),
                                 }
                             )
                         )?;
@@ -971,8 +971,8 @@ fn generate_constraint_init_group(
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
-                    let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    let owner_program = AsRef::<AccountView>::as_ref(&#field).owner;
+                    if !#if_needed || owner_program == &anchor_lang::pinocchio_runtime::system_program::ID {
                         // Define payer variable.
                         #payer_optional_check
 
@@ -988,44 +988,44 @@ fn generate_constraint_init_group(
                                 match e {
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::GroupPointer => {
                                         ::anchor_spl::token_interface::group_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::GroupPointerInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
+                                            token_program_id: #token_program.to_account_view(),
+                                            mint: #field.to_account_view(),
                                         }), #group_pointer_authority, #group_pointer_group_address)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::GroupMemberPointer => {
                                         ::anchor_spl::token_interface::group_member_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::GroupMemberPointerInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
+                                            token_program_id: #token_program.to_account_view(),
+                                            mint: #field.to_account_view(),
                                         }), #group_member_pointer_authority, #group_member_pointer_member_address)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::MetadataPointer => {
                                         ::anchor_spl::token_interface::metadata_pointer_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::MetadataPointerInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
+                                            token_program_id: #token_program.to_account_view(),
+                                            mint: #field.to_account_view(),
                                         }), #metadata_pointer_authority, #metadata_pointer_metadata_address)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::MintCloseAuthority => {
                                         ::anchor_spl::token_interface::mint_close_authority_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::MintCloseAuthorityInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
+                                            token_program_id: #token_program.to_account_view(),
+                                            mint: #field.to_account_view(),
                                         }), #close_authority)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::TransferHook => {
                                         ::anchor_spl::token_interface::transfer_hook_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::TransferHookInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
+                                            token_program_id: #token_program.to_account_view(),
+                                            mint: #field.to_account_view(),
                                         }), #transfer_hook_authority, #transfer_hook_program_id)?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::NonTransferable => {
                                         ::anchor_spl::token_interface::non_transferable_mint_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::NonTransferableMintInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
+                                            token_program_id: #token_program.to_account_view(),
+                                            mint: #field.to_account_view(),
                                         }))?;
                                     },
                                     ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::PermanentDelegate => {
                                         ::anchor_spl::token_interface::permanent_delegate_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::PermanentDelegateInitialize {
-                                            token_program_id: #token_program.to_account_info(),
-                                            mint: #field.to_account_info(),
+                                            token_program_id: #token_program.to_account_view(),
+                                            mint: #field.to_account_view(),
                                         }), #permanent_delegate.unwrap())?;
                                     },
                                     // All extensions specified by the user should be implemented.
@@ -1037,7 +1037,7 @@ fn generate_constraint_init_group(
 
                         // Initialize the mint account.
                         let accounts = ::anchor_spl::token_interface::InitializeMint2 {
-                            mint: #field.to_account_info(),
+                            mint: #field.to_account_view(),
                         };
                         let cpi_ctx = anchor_lang::context::CpiContext::new(cpi_program_id, accounts);
                         ::anchor_spl::token_interface::initialize_mint2(cpi_ctx, #decimals, &#owner.key(), #freeze_authority)?;
@@ -1045,7 +1045,7 @@ fn generate_constraint_init_group(
 
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
-                        if pa.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#owner.key()) {
+                        if pa.mint_authority != anchor_lang::pinocchio_runtime::program_option::COption::Some(#owner.key()) {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority).with_account_name(#name_str));
                         }
                         if pa.freeze_authority
@@ -1126,7 +1126,7 @@ fn generate_constraint_init_group(
 
                     // Create the account. Always do this in the event
                     // if needed is not specified or the system program is the owner.
-                    let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID {
+                    let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::pinocchio_runtime::system_program::ID {
                         #payer_optional_check
 
                         // CPI to the system program to create.
@@ -1152,7 +1152,7 @@ fn generate_constraint_init_group(
 
                         {
                             let required_lamports = __anchor_rent.minimum_balance(space);
-                            if pa.to_account_info().lamports() < required_lamports {
+                            if pa.to_account_view().lamports() < required_lamports {
                                 return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintRentExempt).with_account_name(#name_str));
                             }
                         }
@@ -1377,7 +1377,7 @@ fn generate_constraint_mint(
             let mint_authority_optional_check = optional_check_scope.generate_check(mint_authority);
             quote! {
                 #mint_authority_optional_check
-                if #name.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#mint_authority.key()) {
+                if #name.mint_authority != anchor_lang::pinocchio_runtime::program_option::COption::Some(#mint_authority.key()) {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority.into());
                 }
             }
@@ -1390,7 +1390,7 @@ fn generate_constraint_mint(
                 optional_check_scope.generate_check(freeze_authority);
             quote! {
                 #freeze_authority_optional_check
-                if #name.freeze_authority != anchor_lang::solana_program::program_option::COption::Some(#freeze_authority.key()) {
+                if #name.freeze_authority != anchor_lang::pinocchio_runtime::program_option::COption::Some(#freeze_authority.key()) {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintFreezeAuthority.into());
                 }
             }
@@ -1650,7 +1650,7 @@ impl<'a> OptionalCheckScope<'a> {
 fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
     quote! {
         {
-            let mint_info = #mint.to_account_info();
+            let mint_info = #mint.to_account_view();
             if *mint_info.owner == ::anchor_spl::token_2022::Token2022::id() {
                 use ::anchor_spl::token_2022::spl_token_2022::extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions};
                 use ::anchor_spl::token_2022::spl_token_2022::state::{Account, Mint};
@@ -1692,8 +1692,8 @@ fn generate_create_account(
             let space = #space;
             let lamports = __anchor_rent.minimum_balance(space);
             let cpi_accounts = anchor_lang::system_program::CreateAccount {
-                from: #payer.to_account_info(),
-                to: #field.to_account_info()
+                from: #payer.to_account_view(),
+                to: #field.to_account_view()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
             anchor_lang::system_program::create_account(cpi_context.with_signer(&[#seeds_with_nonce]), lamports, space as u64, #owner)?;
@@ -1706,21 +1706,21 @@ fn generate_create_account(
                 .saturating_sub(__current_lamports);
             if required_lamports > 0 {
                 let cpi_accounts = anchor_lang::system_program::Transfer {
-                    from: #payer.to_account_info(),
-                    to: #field.to_account_info(),
+                    from: #payer.to_account_view(),
+                    to: #field.to_account_view(),
                 };
                 let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
                 anchor_lang::system_program::transfer(cpi_context, required_lamports)?;
             }
             // Allocate space.
             let cpi_accounts = anchor_lang::system_program::Allocate {
-                account_to_allocate: #field.to_account_info()
+                account_to_allocate: #field.to_account_view()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
             anchor_lang::system_program::allocate(cpi_context.with_signer(&[#seeds_with_nonce]), #space as u64)?;
             // Assign to the spl token program.
             let cpi_accounts = anchor_lang::system_program::Assign {
-                account_to_assign: #field.to_account_info()
+                account_to_assign: #field.to_account_view()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
             anchor_lang::system_program::assign(cpi_context.with_signer(&[#seeds_with_nonce]), #owner)?;
@@ -1776,11 +1776,11 @@ fn generate_account_ref(field: &Field) -> proc_macro2::TokenStream {
     let name = &field.ident;
 
     match &field.ty {
-        Ty::AccountInfo => quote!(&#name),
-        Ty::Account(acc) if acc.boxed => quote!(AsRef::<AccountInfo>::as_ref(#name.as_ref())),
+        Ty::AccountView => quote!(&#name),
+        Ty::Account(acc) if acc.boxed => quote!(AsRef::<AccountView>::as_ref(#name.as_ref())),
         Ty::InterfaceAccount(acc) if acc.boxed => {
-            quote!(AsRef::<AccountInfo>::as_ref(#name.as_ref()))
+            quote!(AsRef::<AccountView>::as_ref(#name.as_ref()))
         }
-        _ => quote!(AsRef::<AccountInfo>::as_ref(&#name)),
+        _ => quote!(AsRef::<AccountView>::as_ref(&#name)),
     }
 }

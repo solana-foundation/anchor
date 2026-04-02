@@ -1,7 +1,7 @@
 use {
     anchor_lang::{
         context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
         Accounts, Result,
     },
     borsh::BorshDeserialize,
@@ -16,16 +16,16 @@ use {
 // CPI functions
 
 pub fn authorize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, Authorize<'info>>,
+    ctx: CpiContext<'_, '_, Authorize<'info>>,
     stake_authorize: StakeAuthorize,
-    custodian: Option<AccountInfo<'info>>,
+    custodian: Option<AccountView>,
 ) -> Result<()> {
     let ix = stake::instruction::authorize(
-        ctx.accounts.stake.key,
-        ctx.accounts.authorized.key,
-        ctx.accounts.new_authorized.key,
+        ctx.accounts.stake.address(),
+        ctx.accounts.authorized.address(),
+        ctx.accounts.new_authorized.address(),
         stake_authorize,
-        custodian.as_ref().map(|c| c.key),
+        custodian.as_ref().map(|c| c.address()),
     );
     let mut account_infos = vec![
         ctx.accounts.stake,
@@ -35,21 +35,21 @@ pub fn authorize<'info>(
     if let Some(c) = custodian {
         account_infos.push(c);
     }
-    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::pinocchio_runtime::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
 pub fn withdraw<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, Withdraw<'info>>,
+    ctx: CpiContext<'_, '_, Withdraw<'info>>,
     amount: u64,
-    custodian: Option<AccountInfo<'info>>,
+    custodian: Option<AccountView>,
 ) -> Result<()> {
     let ix = stake::instruction::withdraw(
-        ctx.accounts.stake.key,
-        ctx.accounts.withdrawer.key,
-        ctx.accounts.to.key,
+        ctx.accounts.stake.address(),
+        ctx.accounts.withdrawer.address(),
+        ctx.accounts.to.address(),
         amount,
-        custodian.as_ref().map(|c| c.key),
+        custodian.as_ref().map(|c| c.address()),
     );
     let mut account_infos = vec![
         ctx.accounts.stake,
@@ -61,15 +61,16 @@ pub fn withdraw<'info>(
     if let Some(c) = custodian {
         account_infos.push(c);
     }
-    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::pinocchio_runtime::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
-pub fn deactivate_stake<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, DeactivateStake<'info>>,
-) -> Result<()> {
-    let ix = stake::instruction::deactivate_stake(ctx.accounts.stake.key, ctx.accounts.staker.key);
-    anchor_lang::solana_program::program::invoke_signed(
+pub fn deactivate_stake<'info>(ctx: CpiContext<'_, '_, DeactivateStake<'info>>) -> Result<()> {
+    let ix = stake::instruction::deactivate_stake(
+        ctx.accounts.stake.address(),
+        ctx.accounts.staker.address(),
+    );
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[ctx.accounts.stake, ctx.accounts.clock, ctx.accounts.staker],
         ctx.signer_seeds,
@@ -82,46 +83,46 @@ pub fn deactivate_stake<'info>(
 #[derive(Accounts)]
 pub struct Authorize<'info> {
     /// The stake account to be updated
-    pub stake: AccountInfo<'info>,
+    pub stake: AccountView,
 
     /// The existing authority
-    pub authorized: AccountInfo<'info>,
+    pub authorized: AccountView,
 
     /// The new authority to replace the existing authority
-    pub new_authorized: AccountInfo<'info>,
+    pub new_authorized: AccountView,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     /// The stake account to be updated
-    pub stake: AccountInfo<'info>,
+    pub stake: AccountView,
 
     /// The stake account's withdraw authority
-    pub withdrawer: AccountInfo<'info>,
+    pub withdrawer: AccountView,
 
     /// Account to send withdrawn lamports to
-    pub to: AccountInfo<'info>,
+    pub to: AccountView,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: AccountView,
 
     /// StakeHistory sysvar
-    pub stake_history: AccountInfo<'info>,
+    pub stake_history: AccountView,
 }
 
 #[derive(Accounts)]
 pub struct DeactivateStake<'info> {
     /// The stake account to be deactivated
-    pub stake: AccountInfo<'info>,
+    pub stake: AccountView,
 
     /// The stake account's stake authority
-    pub staker: AccountInfo<'info>,
+    pub staker: AccountView,
 
     /// Clock sysvar
-    pub clock: AccountInfo<'info>,
+    pub clock: AccountView,
 }
 
 // State

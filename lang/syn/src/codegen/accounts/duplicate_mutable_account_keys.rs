@@ -120,7 +120,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     quote! {
         #[automatically_derived]
         impl<#combined_generics> anchor_lang::DuplicateMutableAccountKeys for #name<#struct_generics> #where_clause {
-            fn duplicate_mutable_account_keys(&self) -> Vec<anchor_lang::solana_program::pubkey::Pubkey> {
+            fn duplicate_mutable_account_keys(&self) -> Vec<anchor_lang::Pubkey> {
                 let mut keys = Vec::new();
                 #(#key_pushes)*
                 keys

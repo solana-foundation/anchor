@@ -3,21 +3,22 @@
 use {
     crate::{
         accounts::account::Account,
-        error::ErrorCode,
-        solana_program::{
-            account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey, system_program,
+        error::{Error, ErrorCode},
+        pinocchio_runtime::{
+            account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey, system_program,
         },
         AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, CheckOwner,
-        Key, Owners, Result, ToAccountInfos, ToAccountMetas,
+        Key, Owner, Owners, Result, ToAccountMetas, ToAccountView, ToAccountViews,
     },
     std::{
         collections::BTreeSet,
+        convert::AsRef,
         fmt,
         ops::{Deref, DerefMut},
     },
 };
 
-/// Wrapper around [`AccountInfo`]
+/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_view::AccountView)
 /// that verifies program ownership and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
@@ -161,14 +162,14 @@ use {
 /// ```
 /// to access mint accounts.
 #[derive(Clone)]
-pub struct InterfaceAccount<'info, T: AccountSerialize + AccountDeserialize + Clone> {
+pub struct InterfaceAccount<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> {
     account: Account<'info, T>,
     // The owner here is used to make sure that changes aren't incorrectly propagated
     // to an account with a modified owner
     owner: Pubkey,
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
+impl<T: AccountSerialize + AccountDeserialize + Owner + Clone + fmt::Debug> fmt::Debug
     for InterfaceAccount<'_, T>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -176,13 +177,39 @@ impl<T: AccountSerialize + AccountDeserialize + Clone + fmt::Debug> fmt::Debug
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, T> {
-    fn new(info: &'a AccountInfo<'a>, account: T) -> Self {
-        let owner = *info.owner;
+impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> InterfaceAccount<'a, T> {
+    fn new(info: AccountView, account: T) -> Self {
+        let owner = *info.owner();
         Self {
             account: Account::new(info, account),
             owner,
         }
+    }
+
+    /// Reloads the account from storage. This is useful, for example, when
+    /// observing side effects after CPI.
+    ///
+    /// No Anchor discriminator is checked during reload. Instead, this method enforces
+    /// owner stability by verifying that `info.owner == self.owner` (i.e., the pubkey
+    /// validated at construction) to avoid TOCTOU issues, and then re-deserializes `T`
+    /// from the updated bytes.
+    ///
+    /// If you need discriminator validation on reload, use `Account<T>` with an Anchor
+    /// #[account] type.
+    pub fn reload(&mut self) -> Result<()> {
+        let info = self.account.to_account_view();
+
+        // Enforce owner stability: must match the one validated at construction.
+        if !info.owned_by(&self.owner) {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*info.owner(), self.owner)));
+        }
+
+        // Re-deserialize fresh data into the inner account.
+        let mut data: &[u8] = &info.try_borrow()?;
+        let new_val = T::try_deserialize_unchecked(&mut data)?;
+        self.account.set_inner(new_val);
+        Ok(())
     }
 
     pub fn into_inner(self) -> T {
@@ -210,54 +237,42 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> InterfaceAccount<'a, 
     }
 }
 
-impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> InterfaceAccount<'a, T> {
+impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Owner + Clone>
+    InterfaceAccount<'a, T>
+{
     /// Deserializes the given `info` into an `InterfaceAccount`.
     #[inline(never)]
-    pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
-            return Err(ErrorCode::AccountNotInitialized.into());
-        }
-        T::check_owner(info.owner)?;
-        let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(Self::new(info, T::try_deserialize(&mut data)?))
+    pub fn try_from(info: AccountView) -> Result<Self> {
+        // `InterfaceAccount` targets foreign program accounts (e.g., SPL Token
+        // accounts) that do not have Anchor discriminators. Because of that, we
+        // intentionally skip the Anchor discriminator check here and instead:
+        //
+        // 1) Validate program ownership via `T::check_owner(info.owner)?`
+        // 2) Deserialize without a discriminator by delegating to
+        //    `T::try_deserialize_unchecked`
+        Self::try_from_unchecked(info)
     }
 
     /// Deserializes the given `info` into an `InterfaceAccount` without checking the account
     /// discriminator. Be careful when using this and avoid it if possible.
     #[inline(never)]
-    pub fn try_from_unchecked(info: &'a AccountInfo<'a>) -> Result<Self> {
-        if info.owner == &system_program::ID && info.lamports() == 0 {
+    pub fn try_from_unchecked(info: AccountView) -> Result<Self> {
+        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        T::check_owner(info.owner)?;
-        let mut data: &[u8] = &info.try_borrow_data()?;
+        T::check_owner(info.owner())?;
+        let mut data: &[u8] = &info.try_borrow()?;
         Ok(Self::new(info, T::try_deserialize_unchecked(&mut data)?))
-    }
-
-    /// Reloads the account from storage. This is useful, for example, when observing side effects
-    /// after CPI.
-    ///
-    /// This method also validates that the account is owned by one of the expected programs.
-    pub fn reload(&mut self) -> Result<()> {
-        let info: &AccountInfo = self.account.as_ref();
-        T::check_owner(info.owner)?;
-
-        // Re-deserialize fresh data into the inner account.
-        self.account.set_inner({
-            let mut data: &[u8] = &info.try_borrow_data()?;
-            T::try_deserialize(&mut data)?
-        });
-        Ok(())
     }
 }
 
-impl<'info, B, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Accounts<'info, B>
-    for InterfaceAccount<'info, T>
+impl<'info, B, T: AccountSerialize + AccountDeserialize + CheckOwner + Owner + Clone>
+    Accounts<'info, B> for InterfaceAccount<'info, T>
 {
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -265,13 +280,13 @@ impl<'info, B, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Ac
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());
         }
-        let account = &accounts[0];
+        let account = accounts[0];
         *accounts = &accounts[1..];
         Self::try_from(account)
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Owners + Clone> AccountsExit<'info>
+impl<'info, T: AccountSerialize + AccountDeserialize + Owners + Owner + Clone> AccountsExit<'info>
     for InterfaceAccount<'info, T>
 {
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
@@ -280,43 +295,47 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Owners + Clone> AccountsE
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'info>
+impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AccountsClose<'info>
     for InterfaceAccount<'info, T>
 {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
         self.account.close(sol_destination)
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> ToAccountMetas for InterfaceAccount<'_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountMetas
+    for InterfaceAccount<'_, T>
+{
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         self.account.to_account_metas(is_signer)
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> ToAccountInfos<'info>
+impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> ToAccountViews
     for InterfaceAccount<'info, T>
 {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        self.account.to_account_infos()
+    fn to_account_views(&self) -> Vec<AccountView> {
+        self.account.to_account_views()
     }
 }
 
-impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AsRef<AccountInfo<'info>>
+impl<'info, T: AccountSerialize + AccountDeserialize + Owner + Clone> AsRef<AccountView>
     for InterfaceAccount<'info, T>
 {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+    fn as_ref(&self) -> &AccountView {
         self.account.as_ref()
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> AsRef<T> for InterfaceAccount<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> AsRef<T>
+    for InterfaceAccount<'_, T>
+{
     fn as_ref(&self) -> &T {
         self.account.as_ref()
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for InterfaceAccount<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> Deref for InterfaceAccount<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -324,13 +343,15 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for InterfaceAccoun
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for InterfaceAccount<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> DerefMut
+    for InterfaceAccount<'_, T>
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.account.deref_mut()
     }
 }
 
-impl<T: AccountSerialize + AccountDeserialize + Clone> Key for InterfaceAccount<'_, T> {
+impl<T: AccountSerialize + AccountDeserialize + Owner + Clone> Key for InterfaceAccount<'_, T> {
     fn key(&self) -> Pubkey {
         self.account.key()
     }

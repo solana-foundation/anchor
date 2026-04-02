@@ -15,8 +15,8 @@
 
 use {
     crate::{
-        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
-        Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
+        pinocchio_runtime::{account_view::AccountView, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsClose, AccountsExit, Result, ToAccountMetas, ToAccountViews,
     },
     std::{collections::BTreeSet, ops::Deref},
 };
@@ -24,7 +24,7 @@ use {
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Box<T> {
     fn try_accounts(
         program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountView],
         ix_data: &[u8],
         bumps: &mut B,
         reallocs: &mut BTreeSet<Pubkey>,
@@ -39,20 +39,20 @@ impl<'info, T: AccountsExit<'info>> AccountsExit<'info> for Box<T> {
     }
 }
 
-impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Box<T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        T::to_account_infos(self)
+impl<T: ToAccountViews> ToAccountViews for Box<T> {
+    fn to_account_views(&self) -> Vec<AccountView> {
+        T::to_account_views(self)
     }
 }
 
 impl<T: ToAccountMetas> ToAccountMetas for Box<T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         T::to_account_metas(self, is_signer)
     }
 }
 
 impl<'info, T: AccountsClose<'info>> AccountsClose<'info> for Box<T> {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
+    fn close(&self, sol_destination: AccountView) -> Result<()> {
         T::close(self, sol_destination)
     }
 }

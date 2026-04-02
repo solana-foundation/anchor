@@ -1,5 +1,5 @@
 use {
-    crate::solana_program::program_memory::sol_memcpy,
+    crate::pinocchio_runtime::program_memory::sol_memcpy,
     std::{
         cmp,
         io::{self, Write},

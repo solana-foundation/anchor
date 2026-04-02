@@ -105,7 +105,7 @@ pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let data: proc_macro2::TokenStream = input.into();
     proc_macro::TokenStream::from(quote! {
         {
-            anchor_lang::solana_program::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
+            anchor_lang::pinocchio_runtime::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
         }
     })
 }
@@ -165,7 +165,7 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     proc_macro::TokenStream::from(quote! {
         {
-            let authority_info = ctx.accounts.#authority_name.to_account_info();
+            let authority_info = ctx.accounts.#authority_name.to_account_view();
 
             let disc = anchor_lang::event::EVENT_IX_TAG_LE;
             let inner_data = anchor_lang::Event::data(&#event_struct);
@@ -175,17 +175,16 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 .chain(inner_data.into_iter())
                 .collect();
 
-            let ix = anchor_lang::solana_program::instruction::Instruction::new_with_bytes(
+            let ix = anchor_lang::pinocchio_runtime::instruction::Instruction::new_with_bytes(
                 crate::ID,
                 &ix_data,
                 vec![
-                    anchor_lang::solana_program::instruction::AccountMeta::new_readonly(
-                        *authority_info.key,
-                        true,
+                    anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(
+                        authority_info.key(),
                     ),
                 ],
             );
-            anchor_lang::solana_program::program::invoke_signed(
+            anchor_lang::pinocchio_runtime::program::invoke_signed(
                 &ix,
                 &[authority_info],
                 &[&[#authority_seeds, &[crate::EVENT_AUTHORITY_AND_BUMP.1]]],
@@ -217,9 +216,9 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///    pub signer: Signer<'info>,
 ///    /// CHECK: Only the event authority can invoke self-CPI
 ///    #[account(seeds = [b"__event_authority"], bump)]
-///    pub event_authority: AccountInfo<'info>,
+///    pub event_authority: AccountView,
 ///    /// CHECK: Self-CPI will fail if the program is not the current program
-///    pub program: AccountInfo<'info>,
+///    pub program: AccountView,
 /// }
 /// ```
 ///
