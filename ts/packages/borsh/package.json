@@ -1,6 +1,6 @@
 {
   "name": "@anchor-lang/borsh",
-  "version": "1.0.0-rc.5",
+  "version": "1.0.0",
   "description": "Anchor Borsh",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
