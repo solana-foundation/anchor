@@ -100,9 +100,9 @@ pub enum Command {
         /// Don't install JavaScript dependencies
         #[clap(long)]
         no_install: bool,
-        /// Package Manager to use
-        #[clap(value_enum, long, default_value = "yarn")]
-        package_manager: PackageManager,
+        /// Package Manager to use (auto-detects bun, pnpm, npm if not specified)
+        #[clap(value_enum, long)]
+        package_manager: Option<PackageManager>,
         /// Don't initialize git
         #[clap(long)]
         no_git: bool,
@@ -1348,12 +1348,37 @@ fn process_command(opts: Opts) -> Result<()> {
 }
 
 #[allow(clippy::too_many_arguments)]
+fn is_package_manager_available(pm: &PackageManager) -> bool {
+    std::process::Command::new(pm.to_string())
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok()
+}
+
+fn detect_package_manager() -> Result<PackageManager> {
+    for pm in [
+        PackageManager::Yarn,
+        PackageManager::Bun,
+        PackageManager::PNPM,
+        PackageManager::NPM,
+    ] {
+        if is_package_manager_available(&pm) {
+            return Ok(pm);
+        }
+    }
+    Err(anyhow!(
+        "No supported package manager found. Install yarn, bun, pnpm, or npm and retry, or pass --package-manager <pm>."
+    ))
+}
+
 fn init(
     cfg_override: &ConfigOverride,
     name: String,
     javascript: bool,
     no_install: bool,
-    package_manager: PackageManager,
+    package_manager: Option<PackageManager>,
     no_git: bool,
     template: ProgramTemplate,
     test_template: TestTemplate,
@@ -1384,11 +1409,35 @@ fn init(
         ));
     }
 
+    // Resolve package manager before touching the filesystem
+    let package_manager = match package_manager {
+        Some(pm) => {
+            if !is_package_manager_available(&pm) {
+                return Err(anyhow!(
+                    "{pm} not found. Install it or omit --package-manager to auto-detect."
+                ));
+            }
+            pm
+        }
+        None => {
+            let detected = detect_package_manager()?;
+            if detected.to_string() != PackageManager::default().to_string() {
+                println!(
+                    "{} not found, using {detected} instead",
+                    PackageManager::default()
+                );
+            }
+            detected
+        }
+    };
+
     if force {
         fs::create_dir_all(&project_name)?;
     } else {
         fs::create_dir(&project_name)?;
     }
+
+    let _parent_dir = std::env::current_dir()?;
     std::env::set_current_dir(&project_name)?;
     fs::create_dir_all("app")?;
 
@@ -5310,7 +5359,7 @@ mod tests {
             "await".to_string(),
             true,
             true,
-            PackageManager::default(),
+            None,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -5332,7 +5381,7 @@ mod tests {
             "fn".to_string(),
             true,
             true,
-            PackageManager::default(),
+            None,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -5354,7 +5403,7 @@ mod tests {
             "1project".to_string(),
             true,
             true,
-            PackageManager::default(),
+            None,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
