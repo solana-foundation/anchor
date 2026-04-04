@@ -67,7 +67,7 @@ mod lazy;
 /// To enable zero-copy-deserialization, one can pass in the `zero_copy`
 /// argument to the macro as follows:
 ///
-/// ```ignore
+/// ```rust,ignore
 /// #[account(zero_copy)]
 /// ```
 ///
@@ -408,7 +408,7 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
 ///
 /// `#[zero_copy]` is just a convenient alias for
 ///
-/// ```ignore
+/// ```rust,ignore
 /// #[derive(Copy, Clone)]
 /// #[derive(bytemuck::Zeroable)]
 /// #[derive(bytemuck::Pod)]
