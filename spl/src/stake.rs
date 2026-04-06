@@ -1,7 +1,7 @@
 use {
     anchor_lang::{
         context::CpiContext,
-        pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
         Accounts, Result,
     },
     borsh::BorshDeserialize,
@@ -15,10 +15,10 @@ use {
 
 // CPI functions
 
-pub fn authorize(
-    ctx: CpiContext<'_, '_, Authorize>,
+pub fn authorize<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, Authorize<'info>>,
     stake_authorize: StakeAuthorize,
-    custodian: Option<AccountView>,
+    custodian: Option<AccountInfo<'info>>,
 ) -> Result<()> {
     let ix = stake::instruction::authorize(
         ctx.accounts.stake.key,
@@ -35,14 +35,14 @@ pub fn authorize(
     if let Some(c) = custodian {
         account_infos.push(c);
     }
-    anchor_lang::pinocchio_runtime::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
-pub fn withdraw(
-    ctx: CpiContext<'_, '_, Withdraw>,
+pub fn withdraw<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, Withdraw<'info>>,
     amount: u64,
-    custodian: Option<AccountView>,
+    custodian: Option<AccountInfo<'info>>,
 ) -> Result<()> {
     let ix = stake::instruction::withdraw(
         ctx.accounts.stake.key,
@@ -61,13 +61,15 @@ pub fn withdraw(
     if let Some(c) = custodian {
         account_infos.push(c);
     }
-    anchor_lang::pinocchio_runtime::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
         .map_err(Into::into)
 }
 
-pub fn deactivate_stake(ctx: CpiContext<'_, '_, DeactivateStake>) -> Result<()> {
+pub fn deactivate_stake<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, DeactivateStake<'info>>,
+) -> Result<()> {
     let ix = stake::instruction::deactivate_stake(ctx.accounts.stake.key, ctx.accounts.staker.key);
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
+    anchor_lang::solana_program::program::invoke_signed(
         &ix,
         &[ctx.accounts.stake, ctx.accounts.clock, ctx.accounts.staker],
         ctx.signer_seeds,
@@ -78,48 +80,48 @@ pub fn deactivate_stake(ctx: CpiContext<'_, '_, DeactivateStake>) -> Result<()> 
 // CPI accounts
 
 #[derive(Accounts)]
-pub struct Authorize {
+pub struct Authorize<'info> {
     /// The stake account to be updated
-    pub stake: AccountView,
+    pub stake: AccountInfo<'info>,
 
     /// The existing authority
-    pub authorized: AccountView,
+    pub authorized: AccountInfo<'info>,
 
     /// The new authority to replace the existing authority
-    pub new_authorized: AccountView,
+    pub new_authorized: AccountInfo<'info>,
 
     /// Clock sysvar
-    pub clock: AccountView,
+    pub clock: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
-pub struct Withdraw {
+pub struct Withdraw<'info> {
     /// The stake account to be updated
-    pub stake: AccountView,
+    pub stake: AccountInfo<'info>,
 
     /// The stake account's withdraw authority
-    pub withdrawer: AccountView,
+    pub withdrawer: AccountInfo<'info>,
 
     /// Account to send withdrawn lamports to
-    pub to: AccountView,
+    pub to: AccountInfo<'info>,
 
     /// Clock sysvar
-    pub clock: AccountView,
+    pub clock: AccountInfo<'info>,
 
     /// StakeHistory sysvar
-    pub stake_history: AccountView,
+    pub stake_history: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
-pub struct DeactivateStake {
+pub struct DeactivateStake<'info> {
     /// The stake account to be deactivated
-    pub stake: AccountView,
+    pub stake: AccountInfo<'info>,
 
     /// The stake account's stake authority
-    pub staker: AccountView,
+    pub staker: AccountInfo<'info>,
 
     /// Clock sysvar
-    pub clock: AccountView,
+    pub clock: AccountInfo<'info>,
 }
 
 // State

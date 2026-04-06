@@ -1,149 +1,199 @@
-// Avoiding AccountView deprecated msg in anchor context
+// Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::{
-    context::CpiContext,
-    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
-    Accounts, Key, Result,
+use {
+    anchor_lang::{
+        context::CpiContext,
+        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        Accounts, Result,
+    },
+    spl_token_2022_interface as spl_token_2022,
 };
 
-pub fn transfer_fee_initialize(
-    ctx: CpiContext<'_, '_, TransferFeeInitialize>,
+pub fn transfer_fee_initialize<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, TransferFeeInitialize<'info>>,
     transfer_fee_config_authority: Option<&Pubkey>,
     withdraw_withheld_authority: Option<&Pubkey>,
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Result<()> {
-    let ix = pinocchio_token_2022::instructions::transfer_fee::InitializeTransferFeeConfig {
-        token_program: ctx.accounts.token_program_id.address(),
-        mint: &ctx.accounts.mint,
+    let ix = spl_token_2022::extension::transfer_fee::instruction::initialize_transfer_fee_config(
+        ctx.accounts.token_program_id.key,
+        ctx.accounts.mint.key,
         transfer_fee_config_authority,
         withdraw_withheld_authority,
         transfer_fee_basis_points,
         maximum_fee,
-    };
-    ix.invoke().map_err(Into::into)
+    )?;
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[ctx.accounts.token_program_id, ctx.accounts.mint],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct TransferFeeInitialize {
-    pub token_program_id: AccountView,
-    pub mint: AccountView,
+pub struct TransferFeeInitialize<'info> {
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
 }
 
-pub fn transfer_fee_set(
-    ctx: CpiContext<'_, '_, TransferFeeSetTransferFee>,
+pub fn transfer_fee_set<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, TransferFeeSetTransferFee<'info>>,
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Result<()> {
-    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
-    let ix = pinocchio_token_2022::instructions::transfer_fee::SetTransferFee {
-        token_program: ctx.accounts.token_program_id.address(),
-        mint: &ctx.accounts.mint,
-        authority: &ctx.accounts.authority,
+    let ix = spl_token_2022::extension::transfer_fee::instruction::set_transfer_fee(
+        ctx.accounts.token_program_id.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.authority.key,
+        &[],
         transfer_fee_basis_points,
         maximum_fee,
-        multisig_signers: &signers,
-    };
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    )?;
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.token_program_id,
+            ctx.accounts.mint,
+            ctx.accounts.authority,
+        ],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct TransferFeeSetTransferFee {
-    pub token_program_id: AccountView,
-    pub mint: AccountView,
-    pub authority: AccountView,
+pub struct TransferFeeSetTransferFee<'info> {
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-pub fn transfer_checked_with_fee(
-    ctx: CpiContext<'_, '_, TransferCheckedWithFee>,
+pub fn transfer_checked_with_fee<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, TransferCheckedWithFee<'info>>,
     amount: u64,
     decimals: u8,
     fee: u64,
 ) -> Result<()> {
-    let signers: Vec<&AccountView> = ctx.remaining_accounts.iter().collect();
-    let ix = pinocchio_token_2022::instructions::transfer_fee::TransferCheckedWithFee {
-        token_program: ctx.accounts.token_program_id.address(),
-        source: &ctx.accounts.source,
-        mint: &ctx.accounts.mint,
-        destination: &ctx.accounts.destination,
-        authority: &ctx.accounts.authority,
+    let ix = spl_token_2022::extension::transfer_fee::instruction::transfer_checked_with_fee(
+        ctx.accounts.token_program_id.key,
+        ctx.accounts.source.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.destination.key,
+        ctx.accounts.authority.key,
+        &[],
         amount,
         decimals,
         fee,
-        multisig_signers: &signers,
-    };
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    )?;
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.token_program_id,
+            ctx.accounts.source,
+            ctx.accounts.mint,
+            ctx.accounts.destination,
+            ctx.accounts.authority,
+        ],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct TransferCheckedWithFee {
-    pub token_program_id: AccountView,
-    pub source: AccountView,
-    pub mint: AccountView,
-    pub destination: AccountView,
-    pub authority: AccountView,
+pub struct TransferCheckedWithFee<'info> {
+    pub token_program_id: AccountInfo<'info>,
+    pub source: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-pub fn harvest_withheld_tokens_to_mint(
-    ctx: CpiContext<'_, '_, HarvestWithheldTokensToMint>,
-    sources: Vec<&AccountView>,
+pub fn harvest_withheld_tokens_to_mint<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, HarvestWithheldTokensToMint<'info>>,
+    sources: Vec<AccountInfo<'info>>,
 ) -> Result<()> {
-    let ix = pinocchio_token_2022::instructions::transfer_fee::HarvestWithheldTokensToMint {
-        token_program: ctx.accounts.token_program_id.address(),
-        mint: &ctx.accounts.mint,
-        sources: &sources,
-    };
-    ix.invoke().map_err(Into::into)
+    let ix = spl_token_2022::extension::transfer_fee::instruction::harvest_withheld_tokens_to_mint(
+        ctx.accounts.token_program_id.key,
+        ctx.accounts.mint.key,
+        sources.iter().map(|a| a.key).collect::<Vec<_>>().as_slice(),
+    )?;
+
+    let mut account_infos = vec![ctx.accounts.token_program_id, ctx.accounts.mint];
+    account_infos.extend_from_slice(&sources);
+
+    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct HarvestWithheldTokensToMint {
-    pub token_program_id: AccountView,
-    pub mint: AccountView,
+pub struct HarvestWithheldTokensToMint<'info> {
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
 }
 
-pub fn withdraw_withheld_tokens_from_mint(
-    ctx: CpiContext<'_, '_, WithdrawWithheldTokensFromMint>,
+pub fn withdraw_withheld_tokens_from_mint<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, WithdrawWithheldTokensFromMint<'info>>,
 ) -> Result<()> {
-    let signers = ctx.remaining_accounts.iter().collect::<Vec<&AccountView>>();
-    let ix = pinocchio_token_2022::instructions::transfer_fee::WithdrawWithheldTokensFromMint {
-        token_program: ctx.accounts.token_program_id.address(),
-        mint: &ctx.accounts.mint,
-        destination: &ctx.accounts.destination,
-        authority: &ctx.accounts.authority,
-        multisig_signers: &signers,
-    };
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    let ix =
+        spl_token_2022::extension::transfer_fee::instruction::withdraw_withheld_tokens_from_mint(
+            ctx.accounts.token_program_id.key,
+            ctx.accounts.mint.key,
+            ctx.accounts.destination.key,
+            ctx.accounts.authority.key,
+            &[],
+        )?;
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.token_program_id,
+            ctx.accounts.mint,
+            ctx.accounts.destination,
+            ctx.accounts.authority,
+        ],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct WithdrawWithheldTokensFromMint {
-    pub token_program_id: AccountView,
-    pub mint: AccountView,
-    pub destination: AccountView,
-    pub authority: AccountView,
+pub struct WithdrawWithheldTokensFromMint<'info> {
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
 
-pub fn withdraw_withheld_tokens_from_accounts(
-    ctx: CpiContext<'_, '_, WithdrawWithheldTokensFromAccounts>,
-    sources: Vec<&AccountView>,
+pub fn withdraw_withheld_tokens_from_accounts<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, WithdrawWithheldTokensFromAccounts<'info>>,
+    sources: Vec<AccountInfo<'info>>,
 ) -> Result<()> {
-    let signers = ctx.remaining_accounts.iter().collect::<Vec<&AccountView>>();
-    let ix = pinocchio_token_2022::instructions::transfer_fee::WithdrawWithheldTokensFromAccounts {
-        token_program: ctx.accounts.token_program_id.address(),
-        mint: &ctx.accounts.mint,
-        sources: &sources,
-        destination: &ctx.accounts.destination,
-        authority: &ctx.accounts.authority,
-        multisig_signers: &signers,
-    };
-    ix.invoke_signed(ctx.signer_seeds).map_err(Into::into)
+    let ix = spl_token_2022::extension::transfer_fee::instruction::withdraw_withheld_tokens_from_accounts(
+        ctx.accounts.token_program_id.key,
+        ctx.accounts.mint.key,
+        ctx.accounts.destination.key,
+        ctx.accounts.authority.key,
+        &[],
+        sources.iter().map(|a| a.key).collect::<Vec<_>>().as_slice(),
+    )?;
+
+    let mut account_infos = vec![
+        ctx.accounts.token_program_id,
+        ctx.accounts.mint,
+        ctx.accounts.destination,
+        ctx.accounts.authority,
+    ];
+    account_infos.extend_from_slice(&sources);
+
+    anchor_lang::solana_program::program::invoke_signed(&ix, &account_infos, ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct WithdrawWithheldTokensFromAccounts {
-    pub token_program_id: AccountView,
-    pub mint: AccountView,
-    pub destination: AccountView,
-    pub authority: AccountView,
+pub struct WithdrawWithheldTokensFromAccounts<'info> {
+    pub token_program_id: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
 }
