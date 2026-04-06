@@ -1116,21 +1116,8 @@ fn restore_toolchain(restore_cbs: RestoreToolchainCallbacks) -> Result<()> {
     Ok(())
 }
 
-/// Get the system's default license - what 'npm init' would use.
-fn get_npm_init_license() -> Result<String> {
-    let npm_init_license_output = std::process::Command::new("npm")
-        .arg("config")
-        .arg("get")
-        .arg("init-license")
-        .output()?;
-
-    if !npm_init_license_output.status.success() {
-        return Err(anyhow!("Failed to get npm init license"));
-    }
-
-    let license = String::from_utf8(npm_init_license_output.stdout)?;
-    Ok(license.trim().to_string())
-}
+/// Default license for generated package.json files.
+const DEFAULT_PACKAGE_LICENSE: &str = "ISC";
 
 fn process_command(opts: Opts) -> Result<()> {
     match opts.command {
@@ -1425,7 +1412,7 @@ fn init(
     let migrations_path = Path::new("migrations");
     fs::create_dir_all(migrations_path)?;
 
-    let license = get_npm_init_license()?;
+    let license = DEFAULT_PACKAGE_LICENSE.to_string();
 
     let jest = TestTemplate::Jest == test_template;
     if javascript {
