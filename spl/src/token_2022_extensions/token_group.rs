@@ -3,7 +3,7 @@
 use anchor_lang::{
     context::CpiContext,
     pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
-    Accounts, Result,
+    Accounts, Key, Result,
 };
 
 pub fn token_group_initialize(

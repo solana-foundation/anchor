@@ -373,11 +373,6 @@ dependencies = [
  "anchor-lang",
  "borsh 1.6.0",
  "mpl-token-metadata",
- "pinocchio",
- "pinocchio-associated-token-account",
- "pinocchio-memo",
- "pinocchio-token",
- "pinocchio-token-2022",
  "solana-stake-interface",
  "solana-sysvar",
  "spl-associated-token-account-interface",
@@ -3155,56 +3150,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "pinocchio-associated-token-account"
-version = "0.3.0"
-source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
-dependencies = [
- "solana-account-view",
- "solana-address 2.3.0",
- "solana-instruction-view",
- "solana-program-error",
-]
-
-[[package]]
-name = "pinocchio-memo"
-version = "0.3.0"
-source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
-dependencies = [
- "solana-account-view",
- "solana-address 2.3.0",
- "solana-instruction-view",
- "solana-program-error",
-]
-
-[[package]]
 name = "pinocchio-system"
 version = "0.5.0"
 source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
 dependencies = [
  "pinocchio",
  "solana-address 2.3.0",
-]
-
-[[package]]
-name = "pinocchio-token"
-version = "0.5.0"
-source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
-dependencies = [
- "solana-account-view",
- "solana-address 2.3.0",
- "solana-instruction-view",
- "solana-program-error",
-]
-
-[[package]]
-name = "pinocchio-token-2022"
-version = "0.2.0"
-source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
-dependencies = [
- "solana-account-view",
- "solana-address 2.3.0",
- "solana-instruction-view",
- "solana-program-error",
 ]
 
 [[package]]

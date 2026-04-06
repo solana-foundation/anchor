@@ -2,7 +2,7 @@ use {
     anchor_lang::{
         context::CpiContext,
         pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
-        Accounts, Result,
+        Accounts, Key, Result,
     },
     borsh::BorshDeserialize,
     solana_stake_interface::{

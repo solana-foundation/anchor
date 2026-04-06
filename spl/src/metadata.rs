@@ -4,7 +4,7 @@ use {
         context::CpiContext,
         error::ErrorCode,
         pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
-        system_program, Accounts, Result, ToAccountInfos,
+        system_program, Accounts, Key, Result, ToAccountInfos,
     },
     std::ops::Deref,
 };

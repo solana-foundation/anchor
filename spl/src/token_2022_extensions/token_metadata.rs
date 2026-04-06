@@ -4,7 +4,7 @@ use {
     anchor_lang::{
         context::CpiContext,
         pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
-        Accounts, Result,
+        Accounts, Key, Result,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_token_metadata_interface::state::Field,

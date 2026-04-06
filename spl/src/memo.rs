@@ -1,4 +1,4 @@
-use anchor_lang::{context::CpiContext, pinocchio_runtime::pubkey::Pubkey, Accounts, Result};
+use anchor_lang::{context::CpiContext, pinocchio_runtime::pubkey::Pubkey, Accounts, Key, Result};
 pub use spl_memo_interface::{instruction as spl_memo, v3::ID};
 
 pub fn build_memo<'info>(ctx: CpiContext<'_, '_, BuildMemo>, memo: &[u8]) -> Result<()> {
