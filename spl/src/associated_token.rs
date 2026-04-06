@@ -7,18 +7,18 @@ pub use ::spl_associated_token_account_interface::{
 };
 use anchor_lang::{
     context::CpiContext,
-    solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-    Accounts, Result,
+    pinocchio_runtime::{account_view::AccountView, pubkey::Pubkey},
+    Accounts, Key, Result,
 };
 
-pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Result<()> {
+pub fn create(ctx: CpiContext<'_, '_, Create>) -> Result<()> {
     let ix = spl_associated_token_account::instruction::create_associated_token_account(
-        ctx.accounts.payer.key,
-        ctx.accounts.authority.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.token_program.key,
+        ctx.accounts.payer.address(),
+        ctx.accounts.authority.address(),
+        ctx.accounts.mint.address(),
+        ctx.accounts.token_program.address(),
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.payer,
@@ -33,16 +33,14 @@ pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Resul
     .map_err(Into::into)
 }
 
-pub fn create_idempotent<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, CreateIdempotent<'info>>,
-) -> Result<()> {
+pub fn create_idempotent(ctx: CpiContext<'_, '_, CreateIdempotent>) -> Result<()> {
     let ix = spl_associated_token_account::instruction::create_associated_token_account_idempotent(
-        ctx.accounts.payer.key,
-        ctx.accounts.authority.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.token_program.key,
+        ctx.accounts.payer.address(),
+        ctx.accounts.authority.address(),
+        ctx.accounts.mint.address(),
+        ctx.accounts.token_program.address(),
     );
-    anchor_lang::solana_program::program::invoke_signed(
+    anchor_lang::pinocchio_runtime::program::invoke_signed(
         &ix,
         &[
             ctx.accounts.payer,
@@ -58,16 +56,16 @@ pub fn create_idempotent<'info>(
 }
 
 #[derive(Accounts)]
-pub struct Create<'info> {
-    pub payer: AccountInfo<'info>,
-    pub associated_token: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+pub struct Create {
+    pub payer: AccountView,
+    pub associated_token: AccountView,
+    pub authority: AccountView,
+    pub mint: AccountView,
+    pub system_program: AccountView,
+    pub token_program: AccountView,
 }
 
-type CreateIdempotent<'info> = Create<'info>;
+type CreateIdempotent = Create;
 
 #[derive(Clone)]
 pub struct AssociatedToken;
