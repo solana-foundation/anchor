@@ -18,8 +18,8 @@
 //! signed.
 
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program;
-use anchor_lang::solana_program::instruction::Instruction;
+use anchor_lang::pinocchio_runtime::instruction::Instruction;
+use solana_instruction::AccountMeta;
 use std::convert::Into;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -155,7 +155,7 @@ pub mod multisig {
         ];
         let signer = &[&seeds[..]];
         let accounts = ctx.remaining_accounts;
-        solana_program::program::invoke_signed(&ix, &accounts, signer)?;
+        solana_cpi::invoke_signed(&ix, &accounts, signer)?;
 
         // Burn the transaction to ensure one time use.
         ctx.accounts.transaction.did_execute = true;

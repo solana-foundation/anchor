@@ -373,6 +373,11 @@ dependencies = [
  "anchor-lang",
  "borsh 1.6.0",
  "mpl-token-metadata",
+ "pinocchio",
+ "pinocchio-associated-token-account",
+ "pinocchio-memo",
+ "pinocchio-token",
+ "pinocchio-token-2022",
  "solana-stake-interface",
  "solana-sysvar",
  "spl-associated-token-account-interface",
@@ -1800,7 +1805,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a75b8549488b4715defcb0d8a8a1c1c76a80661b5fa106b4ca0e7fce59d7d875"
 dependencies = [
- "five8_core 0.1.2",
+ "five8_core",
 ]
 
 [[package]]
@@ -1809,7 +1814,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23f76610e969fa1784327ded240f1e28a3fd9520c9cec93b636fcf62dd37f772"
 dependencies = [
- "five8_core 1.0.0",
+ "five8_core",
 ]
 
 [[package]]
@@ -1818,7 +1823,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a0f1728185f277989ca573a402716ae0beaaea3f76a8ff87ef9dd8fb19436c5"
 dependencies = [
- "five8_core 1.0.0",
+ "five8_core",
 ]
 
 [[package]]
@@ -1826,12 +1831,6 @@ name = "five8_core"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2551bf44bc5f776c15044b9b94153a00198be06743e262afaaa61f11ac7523a5"
-
-[[package]]
-name = "five8_core"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "059c31d7d36c43fe39d89e55711858b4da8be7eb6dabac23c7289b1a19489406"
 
 [[package]]
 name = "flate2"
@@ -3156,12 +3155,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "pinocchio-associated-token-account"
+version = "0.3.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.3.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
+name = "pinocchio-memo"
+version = "0.3.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.3.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
 name = "pinocchio-system"
 version = "0.5.0"
 source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
 dependencies = [
  "pinocchio",
  "solana-address 2.3.0",
+]
+
+[[package]]
+name = "pinocchio-token"
+version = "0.5.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.3.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
+name = "pinocchio-token-2022"
+version = "0.2.0"
+source = "git+https://github.com/anza-xyz/pinocchio?rev=d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2#d19f19b8e50f50f1c41ffc7b979d1d14de68f8c2"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.3.0",
+ "solana-instruction-view",
+ "solana-program-error",
 ]
 
 [[package]]

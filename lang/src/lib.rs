@@ -113,6 +113,7 @@ pub mod pinocchio_runtime {
     pub mod instruction {
         pub use pinocchio::instruction::*;
         pub type AccountMeta<'a> = InstructionAccount<'a>;
+        pub use solana_instruction::Instruction;
     }
 
     pub mod rent {
@@ -202,12 +203,6 @@ pub mod pinocchio_runtime {
     pub mod feature {
         pub use solana_feature_gate_interface as feature;
     }
-}
-
-// Compatibility shim for derive macros and legacy paths that still resolve through
-// `anchor_lang::solana_program::*`.
-pub mod solana_program {
-    pub use crate::pinocchio_runtime::*;
 }
 
 #[cfg(feature = "event-cpi")]

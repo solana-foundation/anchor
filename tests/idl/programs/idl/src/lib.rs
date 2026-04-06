@@ -487,7 +487,7 @@ mod wrapped {
     #[cfg(feature = "idl-build")]
     use anchor_lang::idl::types::*;
 
-    pub struct Feature(anchor_lang::solana_program::feature::Feature);
+    pub struct Feature(anchor_lang::pinocchio_runtime::feature::feature::Feature);
 
     impl AnchorSerialize for Feature {
         fn serialize<W: std::io::prelude::Write>(&self, writer: &mut W) -> std::io::Result<()> {
@@ -498,7 +498,7 @@ mod wrapped {
 
     impl AnchorDeserialize for Feature {
         fn deserialize_reader<R: std::io::prelude::Read>(reader: &mut R) -> std::io::Result<Self> {
-            Ok(Self(anchor_lang::solana_program::feature::Feature {
+            Ok(Self(anchor_lang::pinocchio_runtime::feature::feature::Feature {
                 activated_at: AnchorDeserialize::deserialize_reader(reader)?,
             }))
         }
@@ -506,7 +506,7 @@ mod wrapped {
 
     impl Clone for Feature {
         fn clone(&self) -> Self {
-            Self(anchor_lang::solana_program::feature::Feature {
+            Self(anchor_lang::pinocchio_runtime::feature::feature::Feature {
                 activated_at: self.0.activated_at.clone(),
             })
         }

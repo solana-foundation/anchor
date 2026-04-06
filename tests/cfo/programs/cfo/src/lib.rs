@@ -1,7 +1,7 @@
 // WIP. This program has been checkpointed and is not production ready.
 
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::sysvar::instructions as tx_instructions;
+use anchor_lang::pinocchio_runtime::sysvar_instructions as tx_instructions;
 use anchor_spl::dex::{self, Dex};
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
 use lockup::program::Lockup;
@@ -516,7 +516,7 @@ pub struct SwapToUsdc<'info> {
     swap_program: Program<'info, Swap>,
     dex_program: Program<'info, Dex>,
     token_program: Program<'info, Token>,
-    #[account(address = tx_instructions::ID)]
+    #[account(address = tx_instructions::INSTRUCTIONS_ID)]
     instructions: UncheckedAccount<'info>,
     rent: Sysvar<'info, Rent>,
 }
@@ -554,7 +554,7 @@ pub struct SwapToSrm<'info> {
     swap_program: Program<'info, Swap>,
     dex_program: Program<'info, Dex>,
     token_program: Program<'info, Token>,
-    #[account(address = tx_instructions::ID)]
+    #[account(address = tx_instructions::INSTRUCTIONS_ID)]
     instructions: UncheckedAccount<'info>,
     rent: Sysvar<'info, Rent>,
 }
@@ -939,9 +939,9 @@ fn is_distribution_ready(accounts: &Distribute) -> Result<()> {
 }
 
 // `ixs` must be the Instructions sysvar.
-fn is_not_trading(ixs: &UncheckedAccount) -> Result<()> {
-    let data = ixs.try_borrow_data()?;
-    match tx_instructions::load_instruction_at(1, &data) {
+fn is_not_trading(ixs: &AccountView) -> Result<()> {
+    let instructions = tx_instructions::Instructions::try_from(ixs)?;
+    match instructions.load_instruction_at(1) {
         Ok(_) => err!(ErrorCode::TooManyInstructions),
         Err(_) => Ok(()),
     }

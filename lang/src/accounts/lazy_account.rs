@@ -230,7 +230,7 @@ where
 
     /// Check the owner but **not** the discriminator.
     pub fn try_from_unchecked(info: AccountView) -> Result<LazyAccount<T>> {
-        if info.owner() != &T::owner() {
+        if !info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*info.owner(), T::owner())));
         }

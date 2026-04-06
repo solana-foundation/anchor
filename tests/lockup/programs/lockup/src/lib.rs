@@ -2,10 +2,11 @@
 //! it's suggested to start with the other examples.
 
 use anchor_lang::accounts::state::ProgramState;
+use anchor_lang::pinocchio_runtime::instruction::Instruction;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program;
-use anchor_lang::solana_program::instruction::Instruction;
 use anchor_spl::token::{self, TokenAccount, Transfer};
+use solana_cpi::invoke_signed;
+use solana_instruction::AccountMeta as SolanaAccountMeta;
 
 mod calculator;
 
@@ -440,15 +441,15 @@ pub fn whitelist_relay_cpi<'info>(
     instruction_data: Vec<u8>,
 ) -> Result<()> {
     let mut meta_accounts = vec![
-        AccountMeta::new_readonly(*transfer.vesting.to_account_info().key, false),
-        AccountMeta::new(*transfer.vault.to_account_info().key, false),
-        AccountMeta::new_readonly(*transfer.vesting_signer.to_account_info().key, true),
-        AccountMeta::new_readonly(*transfer.token_program.to_account_info().key, false),
-        AccountMeta::new(
+        SolanaAccountMeta::new_readonly(*transfer.vesting.to_account_info().key, false),
+        SolanaAccountMeta::new(*transfer.vault.to_account_info().key, false),
+        SolanaAccountMeta::new_readonly(*transfer.vesting_signer.to_account_info().key, true),
+        SolanaAccountMeta::new_readonly(*transfer.token_program.to_account_info().key, false),
+        SolanaAccountMeta::new(
             *transfer.whitelisted_program_vault.to_account_info().key,
             false,
         ),
-        AccountMeta::new_readonly(
+        SolanaAccountMeta::new_readonly(
             *transfer
                 .whitelisted_program_vault_authority
                 .to_account_info()
@@ -458,9 +459,9 @@ pub fn whitelist_relay_cpi<'info>(
     ];
     meta_accounts.extend(remaining_accounts.iter().map(|a| {
         if a.is_writable {
-            AccountMeta::new(*a.key, a.is_signer)
+            SolanaAccountMeta::new(*a.key, a.is_signer)
         } else {
-            AccountMeta::new_readonly(*a.key, a.is_signer)
+            SolanaAccountMeta::new_readonly(*a.key, a.is_signer)
         }
     }));
     let relay_instruction = Instruction {
@@ -476,7 +477,7 @@ pub fn whitelist_relay_cpi<'info>(
     let signer = &[&seeds[..]];
     let mut accounts = transfer.to_account_infos();
     accounts.extend_from_slice(&remaining_accounts);
-    solana_program::program::invoke_signed(&relay_instruction, &accounts, signer)
+    invoke_signed(&relay_instruction, &accounts, signer)
         .map_err(Into::into)
 }
 

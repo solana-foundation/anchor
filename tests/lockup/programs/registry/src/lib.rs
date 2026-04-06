@@ -3,8 +3,7 @@
 
 use anchor_lang::accounts::state::ProgramState;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::account_info::next_account_info;
-use anchor_lang::solana_program::program_option::COption;
+use anchor_lang::pinocchio_runtime::program_option::COption;
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
 use lockup::{CreateVesting, RealizeLock, Realizor, Vesting};
 use std::convert::Into;
@@ -498,18 +497,15 @@ mod registry {
             &[ctx.accounts.cmn.vendor.nonce],
         ];
         let signer = &[&seeds[..]];
-        let remaining_accounts: &[AccountInfo] = ctx.remaining_accounts;
+        let mut rem = ctx.remaining_accounts.iter().copied();
         let cpi_program = ctx.accounts.lockup_program.clone();
-        let cpi_accounts = {
-            let accs = &mut remaining_accounts.iter();
-            lockup::cpi::accounts::CreateVesting {
-                vesting: next_account_info(accs)?.to_account_info(),
-                vault: next_account_info(accs)?.to_account_info(),
-                depositor: next_account_info(accs)?.to_account_info(),
-                depositor_authority: next_account_info(accs)?.to_account_info(),
-                token_program: next_account_info(accs)?.to_account_info(),
-                clock: next_account_info(accs)?.to_account_info(),
-            }
+        let cpi_accounts = lockup::cpi::accounts::CreateVesting {
+            vesting: rem.next().ok_or(ProgramError::NotEnoughAccountKeys)?,
+            vault: rem.next().ok_or(ProgramError::NotEnoughAccountKeys)?,
+            depositor: rem.next().ok_or(ProgramError::NotEnoughAccountKeys)?,
+            depositor_authority: rem.next().ok_or(ProgramError::NotEnoughAccountKeys)?,
+            token_program: rem.next().ok_or(ProgramError::NotEnoughAccountKeys)?,
+            clock: rem.next().ok_or(ProgramError::NotEnoughAccountKeys)?,
         };
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
         lockup::cpi::create_vesting(

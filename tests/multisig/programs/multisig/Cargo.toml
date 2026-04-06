@@ -17,3 +17,5 @@ idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
+solana-cpi = "3.0.0"
+solana-instruction = "3.0.0"

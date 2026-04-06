@@ -116,7 +116,7 @@ impl<T: ZeroCopy + Owner> AccountLoader<T> {
     /// Constructs a new `Loader` from a previously initialized account.
     #[inline(never)]
     pub fn try_from(acc_info: AccountView) -> Result<AccountLoader<T>> {
-        if acc_info.owned_by(&T::owner()) {
+        if !acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*acc_info.owner(), T::owner())));
         }
@@ -141,7 +141,7 @@ impl<T: ZeroCopy + Owner> AccountLoader<T> {
         _program_id: &Pubkey,
         acc_info: AccountView,
     ) -> Result<AccountLoader<T>> {
-        if acc_info.owned_by(&T::owner()) {
+        if !acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*acc_info.owner(), T::owner())));
         }

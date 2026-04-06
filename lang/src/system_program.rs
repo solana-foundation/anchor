@@ -181,59 +181,75 @@ pub fn create_account_with_seed(
         .map_err(error::Error::from)
 }
 
-// #[derive(Accounts)]
-// pub struct CreateNonceAccount {
-//     pub from: AccountView,
-//     pub nonce: AccountView,
-//     pub recent_blockhashes: AccountView,
-//     pub rent: AccountView,
-// }
+#[derive(Accounts)]
+pub struct CreateNonceAccount {
+    pub from: AccountView,
+    pub nonce: AccountView,
+    pub recent_blockhashes: AccountView,
+    pub rent: AccountView,
+}
 
-// pub fn create_nonce_account(
-//     ctx: CpiContext<'_, '_, CreateNonceAccount>,
-//     lamports: u64,
-//     authority: &Pubkey,
-// ) -> Result<()> {
-//     let instruction = system_instruction::CreateNonceAccount {
-//         nonce: &ctx.accounts.nonce,
-//         recent_blockhashes: &ctx.accounts.recent_blockhashes,
-//         rent: &ctx.accounts.rent,
-//         authority: authority.to_bytes(),
-//         authority,
-//         lamports,
-//     };
-//     instruction
-//         .invoke_signed(&ctx.signer_seeds)
-//         .map_err(error::Error::from)
-// }
+pub fn create_nonce_account(
+    ctx: CpiContext<'_, '_, CreateNonceAccount>,
+    lamports: u64,
+    authority: &Pubkey,
+) -> Result<()> {
+    const NONCE_STATE_SIZE: u64 = 80;
+    let create_ix = system_instruction::CreateAccount {
+        from: &ctx.accounts.from,
+        to: &ctx.accounts.nonce,
+        lamports,
+        space: NONCE_STATE_SIZE,
+        owner: &ID,
+    };
+    create_ix
+        .invoke_signed(ctx.signer_seeds)
+        .map_err(error::Error::from)?;
+    let init_ix = system_instruction::InitializeNonceAccount {
+        account: &ctx.accounts.nonce,
+        recent_blockhashes_sysvar: &ctx.accounts.recent_blockhashes,
+        rent_sysvar: &ctx.accounts.rent,
+        authority,
+    };
+    init_ix.invoke().map_err(error::Error::from)
+}
 
-// pub struct CreateNonceAccountWithSeed {
-//     pub from: AccountView,
-//     pub nonce: AccountView,
-//     pub base: AccountView,
-//     pub recent_blockhashes: AccountView,
-//     pub rent: AccountView,
-// }
+#[derive(Accounts)]
+pub struct CreateNonceAccountWithSeed {
+    pub from: AccountView,
+    pub nonce: AccountView,
+    pub base: AccountView,
+    pub recent_blockhashes: AccountView,
+    pub rent: AccountView,
+}
 
-// pub fn create_nonce_account_with_seed(
-//     ctx: CpiContext<'_, '_, CreateNonceAccountWithSeed>,
-//     lamports: u64,
-//     seed: &str,
-//     authority: &Pubkey,
-// ) -> Result<()> {
-//     let instruction = system_instruction::CreateNonceAccountWithSeed {
-//         from: &ctx.accounts.from,
-//         nonce: &ctx.accounts.nonce,
-//         base: &ctx.accounts.base,
-//         recent_blockhashes: &ctx.accounts.recent_blockhashes,
-//         rent: &ctx.accounts.rent,
-//         seed: seed.to_string(),
-//         authority: authority.to_bytes(),
-//     };
-//     instruction
-//         .invoke_signed(&ctx.signer_seeds)
-//         .map_err(error::Error::from)
-// }
+pub fn create_nonce_account_with_seed(
+    ctx: CpiContext<'_, '_, CreateNonceAccountWithSeed>,
+    lamports: u64,
+    seed: &str,
+    authority: &Pubkey,
+) -> Result<()> {
+    const NONCE_STATE_SIZE: u64 = 80;
+    let create_ix = system_instruction::CreateAccountWithSeed {
+        from: &ctx.accounts.from,
+        to: &ctx.accounts.nonce,
+        base: Some(&ctx.accounts.base),
+        seed,
+        lamports,
+        space: NONCE_STATE_SIZE,
+        owner: &ID,
+    };
+    create_ix
+        .invoke_signed(ctx.signer_seeds)
+        .map_err(error::Error::from)?;
+    let init_ix = system_instruction::InitializeNonceAccount {
+        account: &ctx.accounts.nonce,
+        recent_blockhashes_sysvar: &ctx.accounts.recent_blockhashes,
+        rent_sysvar: &ctx.accounts.rent,
+        authority,
+    };
+    init_ix.invoke().map_err(error::Error::from)
+}
 
 #[derive(Accounts)]
 pub struct InitializeNonceAccount {
