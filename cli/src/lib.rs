@@ -4264,6 +4264,7 @@ fn upgrade(
 
 fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
     with_workspace(cfg_override, |cfg| -> Result<()> {
+        ensure_node_installed()?;
         println!("Running migration deploy script");
 
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
@@ -4574,6 +4575,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
                     .collect::<Vec<ProgramWorkspace>>(),
             }
         };
+        ensure_node_installed()?;
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
         let js_code = rust_template::node_shell(&url, &cfg.provider.wallet.to_string(), programs)?;
         let mut child = std::process::Command::new("node")
@@ -4888,6 +4890,16 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
         .to_str()
         .map(|s| s == "." || s.starts_with('.') || s == "target")
         .unwrap_or(false)
+}
+
+fn ensure_node_installed() -> Result<()> {
+    std::process::Command::new("node")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map_err(|_| anyhow!("Node.js is required for this command but was not found. Install it from https://nodejs.org"))?;
+    Ok(())
 }
 
 fn get_node_version() -> Result<Version> {
