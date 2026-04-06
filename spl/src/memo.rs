@@ -1,13 +1,13 @@
-use anchor_lang::{context::CpiContext, pinocchio_runtime::pubkey::Pubkey, Accounts, Result};
+use anchor_lang::{context::CpiContext, pinocchio_runtime::pubkey::Pubkey, Accounts, Key, Result};
 pub use spl_memo_interface::{instruction as spl_memo, v3::ID};
 
-pub fn build_memo<'info>(ctx: CpiContext<'_, '_, '_, 'info, BuildMemo>, memo: &[u8]) -> Result<()> {
+pub fn build_memo<'info>(ctx: CpiContext<'_, '_, BuildMemo>, memo: &[u8]) -> Result<()> {
     let ix = spl_memo::build_memo(
         &ID,
         memo,
         &ctx.remaining_accounts
             .iter()
-            .map(|account| account.key)
+            .map(|account| account.address())
             .collect::<Vec<_>>(),
     );
     anchor_lang::pinocchio_runtime::program::invoke_signed(

@@ -132,7 +132,7 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
                 "WARNING: Adding `solana-program` as a separate dependency might cause \
                  conflicts.\nTo solve, remove the `solana-program` dependency and use the \
                  exported crate from `anchor-lang`.\n`use solana_program` becomes `use \
-                 anchor_lang::solana_program`.\nProgram name: `{}`\n",
+                 anchor_lang::pinocchio_runtime`.\nProgram name: `{}`\n",
                 man.package().name()
             )
         });

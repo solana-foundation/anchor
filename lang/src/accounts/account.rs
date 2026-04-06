@@ -1,15 +1,6 @@
-//! Generic account container driven by check policies.
-//!
-//! ## Coherence and blankets
-//!
-//! `AccountChecks` deliberately supports **one** blanket implementation for Anchor account payloads
-//! (`AccountSerialize` + `AccountDeserialize` + `Owner` + `Clone`) and **explicit** implementations
-//! for marker types (`Wallet`, `System`, [`Program`], etc.). Marker types are not meant to satisfy
-//! that payload bound, so there is no overlap (see [`AccountChecks`]).
-//!
-//! Sysvars stay on the dedicated [`crate::accounts::sysvar::Sysvar`] type today; if they are ever
-//! expressed as [`Account`], they should use **their own** marker newtypes (same pattern as programs
-//! and signers), not additional competing blankets on the same `T`.
+//! [`Account`] wraps an [`AccountView`] and pairs it with a payload chosen by `T: AccountChecks`.
+//! Typed account data uses the blanket impl for `AccountSerialize + AccountDeserialize + Owner + Clone`;
+//! signers, the system program, and executable programs use markers such as [`Wallet`], [`System`], and [`Program`].
 
 use {
     crate::{
@@ -34,251 +25,15 @@ use {
 };
 
 mod private {
-    /// [`super::AccountChecks`] is sealed so downstream crates cannot add conflicting
-    /// implementations; supported kinds are the marker types in this module and the
-    /// [`AccountSerialize`]/[`AccountDeserialize`]/[`Owner`] blanket (see [`super::AccountChecks`]).
+    /// [`super::AccountChecks`] is sealed: implementations live only in this module.
     pub trait Sealed {}
 }
 
-/// Wrapper around [`AccountView`](crate::pinocchio_runtime::account_view::AccountView)
-/// that verifies program ownership and deserializes underlying data into a Rust type.
+/// Describes how to validate an [`AccountView`] and produce the value stored in [`Account<T>`].
 ///
-/// # Table of Contents
-/// - [Basic Functionality](#basic-functionality)
-/// - [Using Account with non-anchor types](#using-account-with-non-anchor-types)
-/// - [Out of the box wrapper types](#out-of-the-box-wrapper-types)
-///
-/// # Basic Functionality
-///
-/// Account checks that `Account.info.owner == T::owner()`.
-/// This means that the data type that Accounts wraps around (`=T`) needs to
-/// implement the [Owner trait](crate::Owner).
-/// The `#[account]` attribute implements the Owner trait for
-/// a struct using the `crate::ID` declared by [`declare_id`](crate::declare_id)
-/// in the same program. It follows that Account can also be used
-/// with a `T` that comes from a different program.
-///
-/// Checks:
-///
-/// - `Account.info.owner == T::owner()`
-/// - `!(Account.info.owner == SystemProgram && Account.info.lamports() == 0)`
-///
-/// # Example
-/// ```ignore
-/// use anchor_lang::prelude::*;
-/// use other_program::Auth;
-///
-/// declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
-///
-/// #[program]
-/// mod hello_anchor {
-///     use super::*;
-///     pub fn set_data(ctx: Context<SetData>, data: u64) -> Result<()> {
-///         if (*ctx.accounts.auth_account).authorized {
-///             (*ctx.accounts.my_account).data = data;
-///         }
-///         Ok(())
-///     }
-/// }
-///
-/// #[account]
-/// #[derive(Default)]
-/// pub struct MyData {
-///     pub data: u64
-/// }
-///
-/// #[derive(Accounts)]
-/// pub struct SetData<'info> {
-///     #[account(mut)]
-///     pub my_account: Account<'info, MyData> // checks that my_account.info.owner == Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS
-///     pub auth_account: Account<'info, Auth> // checks that auth_account.info.owner == FEZGUxNhZWpYPj9MJCrZJvUo1iF9ys34UHx52y4SzVW9
-/// }
-///
-/// // In a different program
-///
-/// ...
-/// declare_id!("FEZGUxNhZWpYPj9MJCrZJvUo1iF9ys34UHx52y4SzVW9");
-/// #[account]
-/// #[derive(Default)]
-/// pub struct Auth {
-///     pub authorized: bool
-/// }
-/// ...
-/// ```
-///
-/// # Using Account with non-anchor programs
-///
-/// Account can also be used with non-anchor programs. The data types from
-/// those programs are not annotated with `#[account]` so you have to
-/// - create a wrapper type around the structs you want to wrap with Account
-/// - implement the functions required by Account yourself
-///
-/// instead of using `#[account]`. You only have to implement a fraction of the
-/// functions `#[account]` generates. See the example below for the code you have
-/// to write.
-///
-/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/solana-foundation/anchor/blob/master/spl/src/token.rs))
-/// ```ignore
-/// #[derive(Clone)]
-/// pub struct Mint(spl_token::state::Mint);
-///
-/// // This is necessary so we can use "anchor_spl::token::Mint::LEN"
-/// // because rust does not resolve "anchor_spl::token::Mint::LEN" to
-/// // "spl_token::state::Mint::LEN" automatically
-/// impl Mint {
-///     pub const LEN: usize = spl_token::state::Mint::LEN;
-/// }
-///
-/// // You don't have to implement the "try_deserialize" function
-/// // from this trait. It delegates to
-/// // "try_deserialize_unchecked" by default which is what we want here
-/// // because non-anchor accounts don't have a discriminator to check
-/// impl anchor_lang::AccountDeserialize for Mint {
-///     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self> {
-///         spl_token::state::Mint::unpack(buf).map(Mint)
-///     }
-/// }
-/// // AccountSerialize defaults to a no-op which is what we want here
-/// // because it's a foreign program, so our program does not
-/// // have permission to write to the foreign program's accounts anyway
-/// impl anchor_lang::AccountSerialize for Mint {}
-///
-/// impl anchor_lang::Owner for Mint {
-///     fn owner() -> Pubkey {
-///         // pub use spl_token::ID is used at the top of the file
-///         ID
-///     }
-/// }
-///
-/// // Implement the "std::ops::Deref" trait for better user experience
-/// impl Deref for Mint {
-///     type Target = spl_token::state::Mint;
-///
-///     fn deref(&self) -> &Self::Target {
-///         &self.0
-///     }
-/// }
-/// ```
-///
-/// ## Out of the box wrapper types
-///
-/// ### Accessing BPFUpgradeableLoader Data
-///
-/// Anchor provides wrapper types to access data stored in programs owned by the BPFUpgradeableLoader
-/// such as the upgrade authority. If you're interested in the data of a program account, you can use
-/// ```ignore
-/// Account<'info, BpfUpgradeableLoaderState>
-/// ```
-/// and then match on its contents inside your instruction function.
-///
-/// Alternatively, you can use
-/// ```ignore
-/// Account<'info, ProgramData>
-/// ```
-/// to let anchor do the matching for you and return the ProgramData variant of BpfUpgradeableLoaderState.
-///
-/// # Example
-/// ```ignore
-/// use anchor_lang::prelude::*;
-/// use crate::program::MyProgram;
-///
-/// declare_id!("Cum9tTyj5HwcEiAmhgaS7Bbj4UczCwsucrCkxRECzM4e");
-///
-/// #[program]
-/// pub mod my_program {
-///     use super::*;
-///
-///     pub fn set_initial_admin(
-///         ctx: Context<SetInitialAdmin>,
-///         admin_key: Pubkey
-///     ) -> Result<()> {
-///         ctx.accounts.admin_settings.admin_key = admin_key;
-///         Ok(())
-///     }
-///
-///     pub fn set_admin(...){...}
-///
-///     pub fn set_settings(...){...}
-/// }
-///
-/// #[account]
-/// #[derive(Default, Debug)]
-/// pub struct AdminSettings {
-///     admin_key: Pubkey
-/// }
-///
-/// #[derive(Accounts)]
-/// pub struct SetInitialAdmin<'info> {
-///     #[account(init, payer = authority, seeds = [b"admin"], bump)]
-///     pub admin_settings: Account<'info, AdminSettings>,
-///     #[account(mut)]
-///     pub authority: Signer<'info>,
-///     #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
-///     pub program: Program<'info, MyProgram>,
-///     #[account(constraint = program_data.upgrade_authority_address == Some(authority.key()))]
-///     pub program_data: Account<'info, ProgramData>,
-///     pub system_program: Program<'info, System>,
-/// }
-/// ```
-///
-/// This example solves a problem you may face if your program has admin settings: How do you set the
-/// admin key for restricted functionality after deployment? Setting the admin key itself should
-/// be a restricted action but how do you restrict it without having set an admin key?
-/// You're stuck in a loop.
-/// One solution is to use the upgrade authority of the program as the initial
-/// (or permanent) admin key.
-///
-/// ### SPL Types
-///
-/// Anchor provides wrapper types to access accounts owned by the token program. Use
-/// ```ignore
-/// use anchor_spl::token::TokenAccount;
-///
-/// #[derive(Accounts)]
-/// pub struct Example {
-///     pub my_acc: Account<'info, TokenAccount>
-/// }
-/// ```
-/// to access token accounts and
-/// ```ignore
-/// use anchor_spl::token::Mint;
-///
-/// #[derive(Accounts)]
-/// pub struct Example {
-///     pub my_acc: Account<'info, Mint>
-/// }
-/// ```
-/// to access mint accounts.
-///
-/// # Blanket implementations and categories
-///
-/// Assigning accounts to categories (signer, executable program, sysvar, typed payload, …) with
-/// **multiple** unconstrained blanket `AccountChecks` impls (e.g. “for every `T: IsSigner`” *and*
-/// “for every `T: IsProgram`”) risks **overlapping** implementations in Rust whenever a `T` could
-/// satisfy both predicates—or simply makes future extensions unimplementable. Review discussion on
-/// [issue \#4273](https://github.com/solana-foundation/anchor/issues/4273) called out exactly this.
-///
-/// **Resolution here:** each category is a **distinct Rust type** used as `Account<T>`’s `T`:
-///
-/// - **Signers** use the marker [`Wallet`].
-/// - **System-owned** accounts use [`System`].
-/// - **Programs** use `Program<P>` with `P: `[`Id`], or `Program<AnyProgram>` for any executable.
-/// - **Unchecked / pass-through** uses `()` as the type parameter.
-/// - **Anchor account data** uses the user’s `#[account]` (or compatible) type `T`, which hits the
-///   **single** blanket implementation below via `AccountSerialize` + `AccountDeserialize` + `Owner` +
-///   `Clone`.
-///
-/// Markers intentionally **do not** implement that payload trait bundle (and `#[account]` types are
-/// not the same as `Wallet` / `Program<_>`), so the blanket never applies to marker `T`s and there
-/// is no ambiguity at coherence time.
-///
-/// **Future sysvars:** prefer syscall access where possible ([`crate::accounts::sysvar::Sysvar`]).
-/// If `Account<…>` ever covers sysvars, introduce a dedicated sysvar marker (same “one type per
-/// category” rule) instead of another open blanket.
-///
-/// A crate-private `Sealed` supertrait ensures [`AccountChecks`] is only implemented via the
-/// marker types and the payload blanket **in this file**—not by adding a conflicting impl in another
-/// crate.
+/// Markers ([`Wallet`], [`System`], [`Program`], [`AnyProgram`], `()`) cover signers, system-owned
+/// accounts, and programs. Typed account data uses the blanket impl for
+/// `AccountSerialize + AccountDeserialize + Owner + Clone` (for example types from `#[account]`).
 pub trait AccountChecks: private::Sealed {
     type Target: Clone;
     fn check(info: &AccountView) -> Result<()>;
@@ -310,6 +65,205 @@ pub struct Program<T>(PhantomData<T>);
 #[derive(Clone, Debug)]
 pub struct AnyProgram;
 
+/// Validated wrapper around a single [`AccountView`]. The type parameter `T: AccountChecks` decides
+/// what is checked and what is stored alongside the view: marker kinds ([`Wallet`], [`System`],
+/// [`Program`], [`AnyProgram`], `()`) or typed program account data via the blanket impl for
+/// `AccountSerialize + AccountDeserialize + Owner + Clone`. See [`AccountChecks`].
+///
+/// Use [`Account::view`] to borrow the [`AccountView`]. When `T` implements [`AccountData`], [`Account<T>`]
+/// dereferences to the deserialized Rust value.
+///
+/// In `#[derive(Accounts)]` structs, you may write `Account<T>` or the legacy spelling `Account<'info, T>`;
+/// the accounts parser accepts both.
+///
+/// # Table of contents
+///
+/// - [Basic behavior](#basic-behavior)
+/// - [Cross-program `#[account]` types](#cross-program-account-types)
+/// - [Foreign programs (manual `Owner` / (de)serialize)](#foreign-programs-manual-owner--deserialize)
+/// - [Loader-owned program data (`ProgramData`, `BpfUpgradeableLoaderState`)](#loader-owned-program-data-programdata-bpfupgradeableloaderstate)
+/// - [Initial admin via upgrade authority (example)](#initial-admin-via-upgrade-authority-example)
+/// - [SPL types via `anchor_spl`](#spl-types-via-anchor_spl)
+///
+/// # Basic behavior
+///
+/// For typed `T` using the blanket [`AccountChecks`] impl, validation ensures the account is not an
+/// uninitialized system account (zero lamports, system program owner) and that
+/// `info.owner() == T::owner()`. Your `#[account]` struct implements [`Owner`] (via `declare_id!` /
+/// `#[account]`) so the owner is the program that defines the type.
+///
+/// [`AccountSerialize`] / [`AccountDeserialize`] drive load and, when your program is the owner, persist
+/// on exit.
+///
+/// # Cross-program `#[account]` types
+///
+/// ```ignore
+/// use anchor_lang::prelude::*;
+/// use other_program::Auth;
+///
+/// declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+///
+/// #[program]
+/// mod hello_anchor {
+///     use super::*;
+///     pub fn set_data(ctx: Context<SetData>, data: u64) -> Result<()> {
+///         if (*ctx.accounts.auth_account).authorized {
+///             (*ctx.accounts.my_account).data = data;
+///         }
+///         Ok(())
+///     }
+/// }
+///
+/// #[account]
+/// #[derive(Default)]
+/// pub struct MyData {
+///     pub data: u64,
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct SetData<'info> {
+///     #[account(mut)]
+///     /// Owned by this program (`declare_id!` above).
+///     pub my_account: Account<MyData>,
+///     /// Owned by `other_program` (its `declare_id!` / `#[account]`).
+///     pub auth_account: Account<Auth>,
+/// }
+///
+/// // In `other_program`:
+/// //
+/// // declare_id!("FEZGUxNhZWpYPj9MJCrZJvUo1iF9ys34UHx52y4SzVW9");
+/// //
+/// // #[account]
+/// // #[derive(Default)]
+/// // pub struct Auth {
+/// //     pub authorized: bool,
+/// // }
+/// ```
+///
+/// # Foreign programs (manual `Owner` / (de)serialize)
+///
+/// For state defined by a non-Anchor program, wrap the foreign layout, implement
+/// [`AccountDeserialize`] (often `try_deserialize_unchecked`), [`AccountSerialize`] (often a no-op if
+/// you never write the account), and [`Owner`] pointing at that program’s id.
+///
+/// The mint newtype in [`anchor_spl::token`](https://github.com/solana-foundation/anchor/blob/master/spl/src/token.rs)
+/// follows this pattern:
+///
+/// ```ignore
+/// #[derive(Clone)]
+/// pub struct Mint(spl_token::state::Mint);
+///
+/// impl Mint {
+///     pub const LEN: usize = spl_token::state::Mint::LEN;
+/// }
+///
+/// impl anchor_lang::AccountDeserialize for Mint {
+///     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self> {
+///         spl_token::state::Mint::unpack(buf).map(Mint)
+///     }
+/// }
+///
+/// impl anchor_lang::AccountSerialize for Mint {}
+///
+/// impl anchor_lang::Owner for Mint {
+///     fn owner() -> Pubkey {
+///         ID
+///     }
+/// }
+///
+/// impl std::ops::Deref for Mint {
+///     type Target = spl_token::state::Mint;
+///
+///     fn deref(&self) -> &Self::Target {
+///         &self.0
+///     }
+/// }
+/// ```
+///
+/// # Loader-owned program data (`ProgramData`, `BpfUpgradeableLoaderState`)
+///
+/// To inspect upgradeable loader state generically:
+///
+/// ```ignore
+/// use anchor_lang::prelude::*;
+///
+/// // Match on loader state inside your instruction:
+/// pub upgradeable: Account<BpfUpgradeableLoaderState>,
+/// ```
+///
+/// Or constrain to the `ProgramData` enum variant:
+///
+/// ```ignore
+/// use anchor_lang::prelude::*;
+///
+/// pub program_data: Account<ProgramData>,
+/// ```
+///
+/// Combine with [`Account::<Program<P>>::programdata_address`](Account::programdata_address) when the
+/// executable account is a BPF upgradeable program.
+///
+/// # Initial admin via upgrade authority (example)
+///
+/// One pattern for “who sets the first admin?” is to tie initial admin to the program’s upgrade
+/// authority, then store it in your settings account.
+///
+/// ```ignore
+/// use anchor_lang::prelude::*;
+/// use crate::program::MyProgram;
+///
+/// declare_id!("Cum9tTyj5HwcEiAmhgaS7Bbj4UczCwsucrCkxRECzM4e");
+///
+/// #[program]
+/// pub mod my_program {
+///     use super::*;
+///
+///     pub fn set_initial_admin(
+///         ctx: Context<SetInitialAdmin>,
+///         admin_key: Pubkey,
+///     ) -> Result<()> {
+///         ctx.accounts.admin_settings.admin_key = admin_key;
+///         Ok(())
+///     }
+/// }
+///
+/// #[account]
+/// #[derive(Default, Debug)]
+/// pub struct AdminSettings {
+///     admin_key: Pubkey,
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct SetInitialAdmin<'info> {
+///     #[account(init, payer = authority, seeds = [b"admin"], bump)]
+///     pub admin_settings: Account<AdminSettings>,
+///     #[account(mut)]
+///     pub authority: Account<Wallet>,
+///     #[account(constraint = program.programdata_address()? == Some(program_data.key()))]
+///     pub program: Program<MyProgram>,
+///     #[account(constraint = program_data.upgrade_authority_address == Some(authority.key()))]
+///     pub program_data: Account<ProgramData>,
+///     pub system_program: Program<System>,
+/// }
+/// ```
+///
+/// # SPL types via `anchor_spl`
+///
+/// Token accounts and mints are exposed as wrapper types implementing [`Owner`] and deserialize:
+///
+/// ```ignore
+/// use anchor_lang::prelude::*;
+/// use anchor_spl::token::{Mint, TokenAccount};
+///
+/// #[derive(Accounts)]
+/// pub struct TokenExample<'info> {
+///     pub my_token_account: Account<TokenAccount>,
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct MintExample<'info> {
+///     pub my_mint: Account<Mint>,
+/// }
+/// ```
 #[derive(Clone)]
 pub struct Account<T: AccountChecks = ()> {
     account: T::Target,
