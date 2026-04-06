@@ -3334,16 +3334,25 @@ fn run_test_suite(
     }
     let url = cluster_url(cfg, test_validator, surfpool_config);
 
-    let node_options = format!(
-        "{} {}",
-        match std::env::var_os("NODE_OPTIONS") {
-            Some(value) => value
-                .into_string()
-                .map_err(std::env::VarError::NotUnicode)?,
-            None => "".to_owned(),
-        },
-        get_node_dns_option()?,
-    );
+    let test_cmd = scripts
+        .get("test")
+        .expect("Not able to find script for `test`");
+    let is_rust_test = test_cmd.starts_with("cargo test");
+
+    let node_options = if is_rust_test {
+        String::new()
+    } else {
+        format!(
+            "{} {}",
+            match std::env::var_os("NODE_OPTIONS") {
+                Some(value) => value
+                    .into_string()
+                    .map_err(std::env::VarError::NotUnicode)?,
+                None => "".to_owned(),
+            },
+            get_node_dns_option()?,
+        )
+    };
 
     // Setup log reader - kept alive until end of scope
     let log_streams = match stream_logs(cfg, &url) {
