@@ -12,7 +12,7 @@ pub mod basic_4 {
         let bump = ctx.bumps.counter;
 
         *counter = Counter {
-            authority: *ctx.accounts.authority.key,
+            authority: ctx.accounts.authority.key(),
             count: 0,
             bump,
         };

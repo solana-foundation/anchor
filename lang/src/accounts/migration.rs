@@ -448,7 +448,9 @@ where
         match &self.inner {
             MigrationInner::From(from) => from,
             MigrationInner::To(_) => {
-                crate::pinocchio_runtime::msg!("Cannot deref to From: account is already migrated.");
+                crate::pinocchio_runtime::msg!(
+                    "Cannot deref to From: account is already migrated."
+                );
                 panic!();
             }
         }

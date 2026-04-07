@@ -15,5 +15,10 @@
   },
   "scripts": {
     "test": "anchor test --skip-lint && anchor clean"
+  },
+  "devDependencies": {
+    "@anchor-lang/core": "../../../ts/packages/anchor",
+    "mocha": "^10.0.0",
+    "ts-mocha": "^10.0.0"
   }
 }

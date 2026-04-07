@@ -8,9 +8,15 @@ members = [
     "lang/attribute/*",
     "lang/derive/*",
     "lang/syn",
-    "spl",
 ]
-exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
+
+# FIXME(pinocchio-task/spl): anchor-spl is not yet migrated to AccountView / InstructionView CPI.
+# Re-add "spl" to members when SPL is fixed; build with: cargo build --manifest-path spl/Cargo.toml
+exclude = [
+    "spl",
+    "tests/cfo/deps/openbook-dex",
+    "tests/swap/deps/openbook-dex",
+]
 resolver = "2"
 
 [workspace.package]

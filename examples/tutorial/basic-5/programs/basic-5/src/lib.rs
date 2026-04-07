@@ -8,8 +8,7 @@ pub mod basic_5 {
 
     pub fn create(ctx: Context<Create>) -> Result<()> {
         let action_state = &mut ctx.accounts.action_state;
-        // * - means dereferencing
-        action_state.user = *ctx.accounts.user.key;
+        action_state.user = ctx.accounts.user.key();
         // Lets initialize the state
         action_state.action = 0;
 

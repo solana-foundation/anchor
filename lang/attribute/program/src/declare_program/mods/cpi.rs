@@ -65,34 +65,34 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
         };
 
         quote! {
-            pub fn #method_name<'a, 'b, 'c, 'info>(
-                ctx: anchor_lang::context::CpiContext<'a, 'b, 'c, 'info, accounts::#accounts_ident #accounts_generic>,
+            pub fn #method_name #accounts_generic(
+                ctx: anchor_lang::context::CpiContext<'_, '_, accounts::#accounts_ident #accounts_generic>,
                 #(#args),*
             ) -> #ret_type {
-                let ix = {
+                let ix_data = {
                     let ix = internal::args::#arg_value;
                     let mut data = Vec::with_capacity(256);
                     data.extend_from_slice(internal::args::#accounts_ident::DISCRIMINATOR);
                     AnchorSerialize::serialize(&ix, &mut data)
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
-
-                    let accounts = ctx.to_account_metas(None);
-                    anchor_lang::pinocchio_runtime::instruction::Instruction {
-                        program_id: ctx.program_id.key(),
-                        accounts,
-                        data,
-                    }
+                    data
                 };
 
-                let mut acc_infos = ctx.to_account_infos();
-                anchor_lang::pinocchio_runtime::program::invoke_signed(
+                let accounts = ctx.to_account_metas(None);
+                let ix = anchor_lang::pinocchio_runtime::instruction::InstructionView {
+                    program_id: &ctx.program_id,
+                    accounts: accounts.as_slice(),
+                    data: ix_data.as_slice(),
+                };
+
+                let acc_infos = ctx.to_account_infos();
+                anchor_lang::pinocchio_runtime::program::invoke_signed_with_slice(
                     &ix,
-                    &acc_infos,
+                    acc_infos.as_slice(),
                     ctx.signer_seeds,
-                ).map_or_else(
-                    |e| Err(Into::into(e)),
-                    |_| { #ret_value }
                 )
+                .map_err(Into::into)?;
+                #ret_value
             }
         }
     });
@@ -110,8 +110,8 @@ fn gen_cpi_return_type() -> proc_macro2::TokenStream {
 
         impl<T: AnchorDeserialize> Return<T> {
             pub fn get(&self) -> T {
-                let (_key, data) = anchor_lang::pinocchio_runtime::program::get_return_data().unwrap();
-                T::try_from_slice(&data).unwrap()
+                let rd = anchor_lang::pinocchio_runtime::program::get_return_data().unwrap();
+                T::try_from_slice(rd.as_slice()).unwrap()
             }
         }
     }
