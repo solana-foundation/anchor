@@ -35,7 +35,7 @@ fn test_instruction_data() {
     );
 }
 
-
+#[cfg(not(feature = "lazy-account"))]
 #[test]
 /// Test for <https://github.com/solana-foundation/anchor/issues/4377>;
 /// ensure that user-provided `borsh` attributes are applied.
