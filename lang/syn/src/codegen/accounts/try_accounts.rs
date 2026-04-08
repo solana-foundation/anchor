@@ -401,7 +401,7 @@ fn generate_duplicate_mutable_checks(accs: &AccountsStruct) -> proc_macro2::Toke
     quote! {
         // Duplicate mutable account validation - using HashSet
         {
-            let mut __mutable_accounts = anchor_lang::prelude::BTreeSet::new();
+            let mut __mutable_accounts = anchor_lang::__private::BTreeSet::new();
 
             // Check declared mutable accounts for duplicates among themselves
             #(

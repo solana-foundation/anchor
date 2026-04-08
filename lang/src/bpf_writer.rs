@@ -13,6 +13,12 @@ impl<T> BpfWriter<T> {
     pub fn new(inner: T) -> Self {
         Self { inner, pos: 0 }
     }
+
+    /// Current write cursor into `inner` (bytes written so far).
+    #[inline]
+    pub fn position(&self) -> u64 {
+        self.pos
+    }
 }
 
 impl Write for BpfWriter<&mut [u8]> {

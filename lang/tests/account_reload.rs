@@ -9,10 +9,11 @@ struct Dummy {
 }
 
 fn serialize_dummy(val: u64) -> Vec<u8> {
-    let mut v: Vec<u8> = Vec::new();
-    Dummy { val }.try_serialize(&mut v).unwrap();
-
-    v
+    let mut buf = [0u8; 128];
+    let mut w = anchor_lang::__private::BpfWriter::new(&mut buf[..]);
+    Dummy { val }.try_serialize(&mut w).unwrap();
+    let n = w.position() as usize;
+    buf[..n].to_vec()
 }
 
 // For interface_account.

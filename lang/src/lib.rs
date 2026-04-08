@@ -40,6 +40,12 @@ use {
 };
 
 /// A trait for writing bytes, similar to `std::io::Write` but `no_std` compatible.
+///
+/// On-chain serialization should use a **bounded** writer (typically
+/// [`crate::__private::BpfWriter`] over account data). Unbounded sinks such as
+/// [`alloc::vec::Vec`] are not implemented here so account code does not grow
+/// the heap implicitly.
+///
 pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.
     fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, WriteError>;
@@ -84,13 +90,6 @@ impl<W: Write + ?Sized> Write for &mut W {
 
     fn flush(&mut self) -> core::result::Result<(), WriteError> {
         (**self).flush()
-    }
-}
-
-impl Write for Vec<u8> {
-    fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, WriteError> {
-        self.extend_from_slice(buf);
-        Ok(buf.len())
     }
 }
 
@@ -150,7 +149,7 @@ pub use {
     anchor_attribute_event::{emit, event},
     anchor_attribute_program::{declare_program, instruction, program},
     anchor_derive_accounts::Accounts,
-    anchor_derive_serde::{AnchorDeserialize, AnchorSerialize, __erase},
+    anchor_derive_serde::{__erase, AnchorDeserialize, AnchorSerialize},
     anchor_derive_space::InitSpace,
     borsh::ser::BorshSerialize as AnchorSerialize,
     const_crypto::ed25519::derive_program_address,
