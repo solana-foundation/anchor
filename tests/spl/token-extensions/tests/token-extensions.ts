@@ -98,14 +98,14 @@ describe("token extensions", () => {
   it("missing token account extension constraints test", async () => {
     try {
       await program.methods
-      .checkMissingTokenAccountExtensionsConstraints()
-      .accountsStrict({
-        authority: payer.publicKey,
-        mint: mint.publicKey,
-        mintTokenAccount: mintTokenAccount.publicKey,
-      })
-      .signers([payer])
-      .rpc();
+        .checkMissingTokenAccountExtensionsConstraints()
+        .accountsStrict({
+          authority: payer.publicKey,
+          mint: mint.publicKey,
+          mintTokenAccount: mintTokenAccount.publicKey,
+        })
+        .signers([payer])
+        .rpc();
       assert.fail("Transaction should fail");
     } catch (e) {
       // "Error Code: ConstraintTokenAccountImmutableOwnerExtension. Error Number: 2040. Error Message: A immutable owner extension constraint was violated."
