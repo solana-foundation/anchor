@@ -1,18 +1,20 @@
 //! Type validating that the account is the given Program
 
-use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::bpf_loader_upgradeable::{self, UpgradeableLoaderState};
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{
-    AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        error::{Error, ErrorCode},
+        solana_program::{
+            account_info::AccountInfo,
+            bpf_loader_upgradeable::{self, UpgradeableLoaderState},
+            instruction::AccountMeta,
+            pubkey::Pubkey,
+        },
+        AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos,
+        ToAccountMetas,
+    },
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::{fmt, marker::PhantomData, ops::Deref},
 };
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
-use core::fmt;
-use core::marker::PhantomData;
-use core::ops::Deref;
 
 /// Type validating that the account is the given Program
 ///

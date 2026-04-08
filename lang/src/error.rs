@@ -1,10 +1,16 @@
-use crate::solana_program::{program_error::ProgramError, pubkey::Pubkey};
-use anchor_lang::error_code;
-use alloc::boxed::Box;
-use alloc::string::{String, ToString};
-use borsh::io::Error as BorshIoError;
-use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use core::num::TryFromIntError;
+use {
+    crate::solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    alloc::{
+        boxed::Box,
+        string::{String, ToString},
+    },
+    anchor_lang::error_code,
+    borsh::io::Error as BorshIoError,
+    core::{
+        fmt::{Debug, Display, Formatter, Result as FmtResult},
+        num::TryFromIntError,
+    },
+};
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
@@ -325,6 +331,18 @@ impl From<TryFromIntError> for Error {
             error_name: ErrorCode::InvalidNumericConversion.name(),
             error_code_number: ErrorCode::InvalidNumericConversion.into(),
             error_msg: format!("{e}"),
+            error_origin: None,
+            compared_values: None,
+        }))
+    }
+}
+
+impl From<crate::WriteError> for Error {
+    fn from(e: crate::WriteError) -> Self {
+        Self::AnchorError(Box::new(AnchorError {
+            error_name: ErrorCode::AccountDidNotSerialize.name(),
+            error_code_number: ErrorCode::AccountDidNotSerialize.into(),
+            error_msg: alloc::format!("{e:?}"),
             error_origin: None,
             compared_values: None,
         }))

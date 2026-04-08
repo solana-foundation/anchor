@@ -1,15 +1,18 @@
 //! Type validating that the account is a sysvar and deserializing it
 
-use crate::error::ErrorCode;
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
-use core::fmt;
-use core::ops::{Deref, DerefMut};
-use solana_sysvar::{Sysvar as SolanaSysvar, SysvarSerialize as SolanaSysvarSerialize};
+use {
+    crate::{
+        error::ErrorCode,
+        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas,
+    },
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::{
+        fmt,
+        ops::{Deref, DerefMut},
+    },
+    solana_sysvar::{Sysvar as SolanaSysvar, SysvarSerialize as SolanaSysvarSerialize},
+};
 
 /// Type validating that the account is a sysvar and deserializing it.
 ///

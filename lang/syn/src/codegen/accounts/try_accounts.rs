@@ -240,7 +240,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 __accounts: &mut &#trait_generics [anchor_lang::solana_program::account_info::AccountInfo<#trait_generics>],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
-                __reallocs: &mut std::collections::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,
+                __reallocs: &mut ::anchor_lang::__private::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,
             ) -> anchor_lang::Result<Self> {
                 // Deserialize instruction, if declared.
                 #ix_de

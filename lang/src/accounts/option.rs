@@ -8,15 +8,13 @@
 //! }
 //! ```
 
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
-
-use crate::error::ErrorCode;
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{
-    Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        error::ErrorCode,
+        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
+    },
+    alloc::{collections::BTreeSet, vec::Vec},
 };
 
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {

@@ -1,5 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -29,14 +29,15 @@ extern crate alloc;
 
 extern crate self as anchor_lang;
 
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::program_error::ProgramError;
-use crate::solana_program::pubkey::Pubkey;
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
-use bytemuck::{Pod, Zeroable};
-use core::fmt::Debug;
+use {
+    crate::solana_program::{
+        account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
+        pubkey::Pubkey,
+    },
+    alloc::{collections::BTreeSet, vec::Vec},
+    bytemuck::{Pod, Zeroable},
+    core::fmt::Debug,
+};
 
 /// A trait for writing bytes, similar to `std::io::Write` but `no_std` compatible.
 pub trait Write {
@@ -86,6 +87,13 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 }
 
+impl Write for Vec<u8> {
+    fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, WriteError> {
+        self.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+}
+
 // Adapter to use our Write trait as borsh::io::Write
 pub struct WriteAdapter<'a, W: Write + ?Sized> {
     inner: &'a mut W,
@@ -100,21 +108,17 @@ impl<'a, W: Write + ?Sized> WriteAdapter<'a, W> {
 impl<W: Write + ?Sized> borsh::io::Write for WriteAdapter<'_, W> {
     fn write(&mut self, buf: &[u8]) -> borsh::io::Result<usize> {
         self.inner.write(buf).map_err(|e| match e {
-            WriteError::WriteZero => borsh::io::Error::new(
-                borsh::io::ErrorKind::WriteZero,
-                "Write zero",
-            ),
-            WriteError::Other => borsh::io::Error::new(
-                borsh::io::ErrorKind::Other,
-                "Write error",
-            ),
+            WriteError::WriteZero => {
+                borsh::io::Error::new(borsh::io::ErrorKind::WriteZero, "Write zero")
+            }
+            WriteError::Other => borsh::io::Error::other("Write error"),
         })
     }
 
     fn flush(&mut self) -> borsh::io::Result<()> {
-        self.inner.flush().map_err(|_| {
-            borsh::io::Error::new(borsh::io::ErrorKind::Other, "Flush error")
-        })
+        self.inner
+            .flush()
+            .map_err(|_| borsh::io::Error::other("Flush error"))
     }
 }
 
@@ -146,7 +150,7 @@ pub use {
     anchor_attribute_event::{emit, event},
     anchor_attribute_program::{declare_program, instruction, program},
     anchor_derive_accounts::Accounts,
-    anchor_derive_serde::{__erase, AnchorDeserialize, AnchorSerialize},
+    anchor_derive_serde::{AnchorDeserialize, AnchorSerialize, __erase},
     anchor_derive_space::InitSpace,
     borsh::ser::BorshSerialize as AnchorSerialize,
     const_crypto::ed25519::derive_program_address,
@@ -633,8 +637,14 @@ pub mod prelude {
 #[doc(hidden)]
 pub mod __private {
     use crate::solana_program::pubkey::Pubkey;
+    /// Used by derive/attribute expansions so dependents need not add `extern crate alloc`.
+    pub use alloc::collections::{BTreeMap, BTreeSet};
     pub use {
         crate::{bpf_writer::BpfWriter, common::is_closed},
+        alloc::{
+            string::{String, ToString},
+            vec::Vec,
+        },
         anchor_attribute_account::ZeroCopyAccessor,
         base64, bytemuck,
     };

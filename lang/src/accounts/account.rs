@@ -1,19 +1,21 @@
 //! Account container that checks ownership on deserialization.
 
-use crate::bpf_writer::BpfWriter;
-use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::solana_program::system_program;
-use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
-    Result, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        bpf_writer::BpfWriter,
+        error::{Error, ErrorCode},
+        solana_program::{
+            account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey, system_program,
+        },
+        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
+        Result, ToAccountInfos, ToAccountMetas,
+    },
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::{
+        fmt,
+        ops::{Deref, DerefMut},
+    },
 };
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
-use core::fmt;
-use core::ops::{Deref, DerefMut};
 
 /// Wrapper around [`AccountInfo`] that verifies program ownership
 /// and deserializes underlying data into a Rust type.

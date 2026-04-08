@@ -1,16 +1,13 @@
 //! Like [`Account`](crate::Account), but deserializes on-demand.
 
-use alloc::collections::BTreeSet;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use core::cell::RefCell;
-use core::fmt;
-use core::mem::MaybeUninit;
-
-use crate::{
-    error::{Error, ErrorCode},
-    AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key, Owner,
-    Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        error::{Error, ErrorCode},
+        AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key,
+        Owner, Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    },
+    alloc::{collections::BTreeSet, rc::Rc, vec::Vec},
+    core::{cell::RefCell, fmt, mem::MaybeUninit},
 };
 
 /// Deserialize account data lazily (on-demand).
@@ -184,10 +181,10 @@ where
     pub __info: &'info AccountInfo<'info>,
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
-    pub __account: Arc<RefCell<MaybeUninit<T>>>,
+    pub __account: Rc<RefCell<MaybeUninit<T>>>,
     /// **INTERNAL FIELD DO NOT USE!**
     #[doc(hidden)]
-    pub __fields: Arc<RefCell<Option<Vec<bool>>>>,
+    pub __fields: Rc<RefCell<Option<Vec<bool>>>>,
 }
 
 impl<T> fmt::Debug for LazyAccount<'_, T>
@@ -210,8 +207,8 @@ where
     fn new(info: &'info AccountInfo<'info>) -> LazyAccount<'info, T> {
         Self {
             __info: info,
-            __account: Arc::new(RefCell::new(MaybeUninit::uninit())),
-            __fields: Arc::new(RefCell::new(None)),
+            __account: Rc::new(RefCell::new(MaybeUninit::uninit())),
+            __fields: Rc::new(RefCell::new(None)),
         }
     }
 

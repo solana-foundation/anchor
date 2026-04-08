@@ -1,11 +1,12 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
+use {
+    crate::{
+        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, Result, ToAccountInfos, ToAccountMetas,
+    },
+    alloc::{collections::BTreeSet, vec::Vec},
+};
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {

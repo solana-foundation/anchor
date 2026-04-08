@@ -110,7 +110,7 @@ fn create_error(error_code: Expr, source: bool, account_name: Option<Expr>) -> T
             anchor_lang::error::AnchorError {
                 error_name: #error_code.name(),
                 error_code_number: #error_code.into(),
-                error_msg: alloc::string::ToString::to_string(&#error_code),
+                error_msg: ::anchor_lang::__private::ToString::to_string(&#error_code),
                 error_origin: #error_origin,
                 compared_values: None
             }

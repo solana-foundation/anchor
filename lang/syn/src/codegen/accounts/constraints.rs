@@ -576,7 +576,7 @@ fn generate_constraint_init_group(
                         __bumps.#field = #bump_tok;
 
                         // Build signer seeds at runtime = seeds + bump
-                        let mut __signer_seeds_vec: std::vec::Vec<&[u8]> = __seeds_slice.to_vec();
+                        let mut __signer_seeds_vec: ::anchor_lang::__private::Vec<&[u8]> = __seeds_slice.to_vec();
                         __signer_seeds_vec.push(&[__bump][..]);
                         let __signer_seeds = __signer_seeds_vec;
 
@@ -1228,7 +1228,7 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
             // expr, explicit bump -> concat slice + bump, then create_program_address.
             (SeedsExpr::Expr(expr), Some(b)) => quote! {
                 let __bump_bytes = [#b];
-                let __seeds_vec: std::vec::Vec<&[u8]> = [#expr, &[&__bump_bytes[..]]].concat();
+                let __seeds_vec: ::anchor_lang::__private::Vec<&[u8]> = [#expr, &[&__bump_bytes[..]]].concat();
                 let __pda_address = Pubkey::create_program_address(
                     &__seeds_vec[..],
                     &#deriving_program_id,

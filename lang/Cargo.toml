@@ -13,6 +13,8 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
+default = ["std"]
+std = []
 allow-missing-optionals = ["anchor-derive-accounts/allow-missing-optionals"]
 anchor-debug = [
     "anchor-attribute-account/anchor-debug",
@@ -89,4 +91,4 @@ thiserror = "1"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(target_os, values("solana"))']
+check-cfg = ['cfg(target_os, values("solana"))', 'cfg(feature, values("std"))']

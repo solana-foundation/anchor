@@ -1,6 +1,7 @@
-use crate::solana_program::program_memory::sol_memcpy;
-use crate::{Write, WriteError};
-use core::cmp;
+use {
+    crate::{solana_program::program_memory::sol_memcpy, Write, WriteError},
+    core::cmp,
+};
 
 #[derive(Debug, Default)]
 pub struct BpfWriter<T> {
