@@ -47,7 +47,7 @@ pub fn generate(
                 .unwrap();
                 quote! {
                     #docs
-                    pub #name: #symbol<'info>
+                    pub #name: #symbol
                 }
             }
             AccountField::Field(f) => {
@@ -113,7 +113,7 @@ pub fn generate(
                             };
                             account_metas.push(meta);
                         } else {
-                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(#program_id));
+                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(&#program_id));
                         }
                     }
                 } else {
@@ -173,18 +173,8 @@ pub fn generate(
             })
             .collect()
     };
-    // Check if there are any composite fields (which need lifetimes)
-    // Regular fields are always AccountInfo in this module, so they don't need lifetimes
-    let has_composite_fields = accs
-        .fields
-        .iter()
-        .any(|f| matches!(f, AccountField::CompositeField(_)));
-
-    let generics = if account_struct_fields.is_empty() || !has_composite_fields {
-        quote! {}
-    } else {
-        quote! {<'info>}
-    };
+    // CPI client structs only use owned `AccountInfo` and nested CPI structs; no lifetimes.
+    let generics = quote! {};
     let struct_doc = proc_macro2::TokenStream::from_str(&format!(
         "#[doc = \" Generated CPI struct of the accounts for [`{name}`].\"]"
     ))

@@ -213,7 +213,7 @@ where
 
     /// Check both the owner and the discriminator.
     pub fn try_from(info: &'info AccountInfo) -> Result<LazyAccount<'info, T>> {
-        let data = &info.try_borrow_data()?;
+        let data = &info.try_borrow()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
@@ -304,10 +304,10 @@ where
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
         let is_signer = is_signer.unwrap_or(self.__info.is_signer());
         let meta = match (self.__info.is_writable(), is_signer) {
-            (false, false) => AccountMeta::readonly(*self.__info.key()),
-            (false, true) => AccountMeta::readonly_signer(*self.__info.key()),
-            (true, false) => AccountMeta::writable(*self.__info.key()),
-            (true, true) => AccountMeta::writable_signer(*self.__info.key()),
+            (false, false) => AccountMeta::readonly(self.__info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.__info.address()),
+            (true, false) => AccountMeta::writable(self.__info.address()),
+            (true, true) => AccountMeta::writable_signer(self.__info.address()),
         };
         vec![meta]
     }

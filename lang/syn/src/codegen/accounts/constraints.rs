@@ -245,13 +245,13 @@ pub fn generate_constraint_zeroed(
             };
             if other_field.is_optional {
                 quote! {
-                    if #other.is_some() && #field.key() == &#other.as_ref().unwrap().key() {
+                    if #other.is_some() && #field.key() == #other.as_ref().unwrap().key() {
                         return #err;
                     }
                 }
             } else {
                 quote! {
-                    if #field.key() == &#other.key() {
+                    if #field.key() == #other.key() {
                         return #err;
                     }
                 }
@@ -260,7 +260,7 @@ pub fn generate_constraint_zeroed(
 
     quote! {
         let #field: #ty_decl = {
-            let mut __data: &[u8] = &#field.try_borrow_data()?;
+            let mut __data: &[u8] = &#field.try_borrow()?;
             let __disc = &__data[..#discriminator.len()];
             let __has_disc = __disc.iter().any(|b| *b != 0);
             if __has_disc {
@@ -437,7 +437,7 @@ fn generate_constraint_realloc(
         }
 
         let __anchor_rent = anchor_lang::prelude::Rent::get()?;
-        let __field_info = #field.to_account_info();
+        let mut __field_info = #field.to_account_info();
         let __new_rent_minimum = __anchor_rent.minimum_balance(#new_space);
 
         let __delta_space = (::std::convert::TryInto::<isize>::try_into(#new_space).unwrap())
@@ -448,7 +448,7 @@ fn generate_constraint_realloc(
             #payer_optional_check
             if __delta_space > 0 {
                 #system_program_optional_check
-                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::pinocchio_runtime::entrypoint::MAX_PERMITTED_DATA_INCREASE {
+                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::pinocchio_runtime::account::MAX_PERMITTED_DATA_INCREASE {
                     return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountReallocExceedsLimit).with_account_name(#account_name));
                 }
 
@@ -458,7 +458,7 @@ fn generate_constraint_realloc(
                             system_program.key(),
                             anchor_lang::system_program::Transfer {
                                 from: #payer.to_account_info(),
-                                to: __field_info.clone(),
+                                to: __field_info,
                             },
                         ),
                         __new_rent_minimum.checked_sub(__field_info.lamports()).unwrap(),
@@ -466,8 +466,9 @@ fn generate_constraint_realloc(
                 }
             } else {
                 let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).unwrap();
-                **#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info().lamports().checked_add(__lamport_amt).unwrap();
-                **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
+                let mut __payer_info = #payer.to_account_info();
+                __payer_info.set_lamports(__payer_info.lamports().checked_add(__lamport_amt).unwrap());
+                __field_info.set_lamports(__field_info.lamports().checked_sub(__lamport_amt).unwrap());
             }
 
             anchor_lang::pinocchio_runtime::Resize::resize(&mut __field_info, #new_space)?;
@@ -1735,7 +1736,7 @@ fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
             if mint_info.owner() == &::anchor_spl::token_2022::Token2022::id() {
                 use ::anchor_spl::token_2022::spl_token_2022::extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions};
                 use ::anchor_spl::token_2022::spl_token_2022::state::{Account, Mint};
-                let mint_data = mint_info.try_borrow_data()?;
+                let mint_data = mint_info.try_borrow()?;
                 let mint_state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
                 let mint_extensions = mint_state.get_extension_types()?;
                 let required_extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);

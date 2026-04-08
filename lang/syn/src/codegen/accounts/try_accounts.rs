@@ -51,7 +51,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             quote! {
                                 let #name = if __accounts.is_empty() {
                                     #empty_behavior
-                                } else if __accounts[0].key() == __program_id {
+                                } else if __accounts[0].address() == __program_id {
                                     *__accounts = &__accounts[1..];
                                     None
                                 } else {

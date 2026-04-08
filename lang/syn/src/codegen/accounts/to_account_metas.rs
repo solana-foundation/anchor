@@ -26,7 +26,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     if let Some(#name) = &self.#name {
                         account_metas.extend(#name.to_account_metas(#is_signer));
                     } else {
-                        account_metas.push(AccountMeta::readonly(crate::ID));
+                        account_metas.push(AccountMeta::readonly(&crate::ID));
                     }
                 }
             } else {

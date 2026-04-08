@@ -86,13 +86,19 @@ pub mod pinocchio_runtime {
     }
 
     pub mod account_info {
+        use core::borrow::Borrow;
         pub use pinocchio::account::*;
         pub type AccountInfo = AccountView;
 
-        pub fn next_account_info<I: Iterator<Item = AccountInfo>>(
+        pub fn next_account_info<I>(
             iter: &mut I,
-        ) -> Result<I::Item, pinocchio::error::ProgramError> {
+        ) -> Result<AccountInfo, pinocchio::error::ProgramError>
+        where
+            I: Iterator,
+            I::Item: core::borrow::Borrow<AccountInfo>,
+        {
             iter.next()
+                .map(|a| *a.borrow())
                 .ok_or(pinocchio::error::ProgramError::NotEnoughAccountKeys)
         }
     }

@@ -112,7 +112,7 @@ pub fn generate(
                             };
                             account_metas.push(meta);
                         } else {
-                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(#program_id));
+                            account_metas.push(anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly(&#program_id));
                         }
                     }
                 } else {
