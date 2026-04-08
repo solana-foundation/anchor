@@ -1205,9 +1205,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::ExtensionPermanentDelegate(c) => {
                 self.add_extension_permanent_delegate(c)
             }
-            ConstraintToken::ExtensionImmutableOwner(c) => {
-                self.add_extension_immutable_owner(c)
-            }
+            ConstraintToken::ExtensionImmutableOwner(c) => self.add_extension_immutable_owner(c),
             ConstraintToken::Dup(c) => self.add_dup(c),
             ConstraintToken::ExtensionPausableAuthority(c) => {
                 self.add_extension_pausable_authority(c)
