@@ -13,7 +13,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std"]
+# TEMP (no_std smoke test): removing `default = ["std"]
 std = []
 allow-missing-optionals = ["anchor-derive-accounts/allow-missing-optionals"]
 anchor-debug = [
@@ -91,4 +91,4 @@ thiserror = "1"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(target_os, values("solana"))', 'cfg(feature, values("std"))']
+check-cfg = ['cfg(target_os, values("solana"))']
