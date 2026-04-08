@@ -42,9 +42,10 @@ use {
 /// A trait for writing bytes, similar to `std::io::Write` but `no_std` compatible.
 ///
 /// On-chain serialization should use a **bounded** writer (typically
-/// [`crate::__private::BpfWriter`] over account data). Unbounded sinks such as
-/// [`alloc::vec::Vec`] are not implemented here so account code does not grow
-/// the heap implicitly.
+/// [`crate::__private::BpfWriter`] over account data). Without the `std` feature, unbounded sinks
+/// such as [`alloc::vec::Vec`] are intentionally not implemented as [`Write`] so on-chain code does
+/// not grow the heap implicitly. With `std` enabled, every [`std::io::Write`] type (including
+/// [`alloc::vec::Vec`] as a buffer) implements this trait.
 ///
 pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.
@@ -90,6 +91,26 @@ impl<W: Write + ?Sized> Write for &mut W {
 
     fn flush(&mut self) -> core::result::Result<(), WriteError> {
         (**self).flush()
+    }
+}
+
+/// When `std` is enabled, any `std::io::Write` target can be used as [`Write`].
+#[cfg(feature = "std")]
+impl<T: std::io::Write + ?Sized> Write for T {
+    fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, WriteError> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+        match std::io::Write::write(self, buf) {
+            Ok(0) => Err(WriteError::WriteZero),
+            Ok(n) => Ok(n),
+            Err(e) if e.kind() == std::io::ErrorKind::WriteZero => Err(WriteError::WriteZero),
+            Err(_) => Err(WriteError::Other),
+        }
+    }
+
+    fn flush(&mut self) -> core::result::Result<(), WriteError> {
+        std::io::Write::flush(self).map_err(|_| WriteError::Other)
     }
 }
 
