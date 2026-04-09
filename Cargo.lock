@@ -269,7 +269,6 @@ dependencies = [
  "crossterm",
  "dirs",
  "ed25519-dalek",
- "flate2",
  "heck 0.4.1",
  "inferno",
  "object 0.37.3",
