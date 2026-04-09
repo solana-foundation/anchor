@@ -81,4 +81,17 @@ describe("token extensions", () => {
       .signers([payer])
       .rpc();
   });
+
+  it("mint metadata update and remove test passes", async () => {
+    //update_and_remove_token_metadata
+    await program.methods
+      .updateAndRemoveTokenMetadata()
+      .accountsStrict({
+        authority: payer.publicKey,
+        mint: mint.publicKey,
+        tokenProgram: TOKEN_2022_PROGRAM_ID,
+      })
+      .signers([payer])
+      .rpc();
+  });
 });
