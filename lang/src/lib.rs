@@ -86,6 +86,7 @@ pub mod pinocchio_runtime {
     }
 
     pub mod account_info {
+
         use core::borrow::Borrow;
         pub use pinocchio::account::*;
         pub type AccountInfo = AccountView;
