@@ -1721,24 +1721,19 @@ fn expand_program(
         .as_ref()
         .ok_or_else(|| anyhow!("Cargo config is missing a package"))?
         .name;
-    let exit = std::process::Command::new("cargo")
+    let status = std::process::Command::new("cargo")
         .arg("expand")
         .arg(target_dir_arg)
         .arg(format!("--package={package_name}"))
         .args(cargo_args)
-        .stderr(Stdio::inherit())
-        .output()
+        .stdout(Stdio::inherit())
+        .status()
         .map_err(|e| anyhow::format_err!("{}", e))?;
-    if !exit.status.success() {
+    if !status.success() {
         eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
-        std::process::exit(exit.status.code().unwrap_or(1));
+        std::process::exit(status.code().unwrap_or(1));
     }
 
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    handle
-        .write_all(&exit.stdout)
-        .map_err(|e| anyhow::format_err!("{}", e))?;
     Ok(())
 }
 
