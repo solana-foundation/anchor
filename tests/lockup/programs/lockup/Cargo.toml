@@ -16,3 +16,4 @@ default = []
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
+solana-instruction = "3.0.0"

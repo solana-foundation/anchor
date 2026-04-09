@@ -1,6 +1,6 @@
 use {
     super::common::{get_idl_module_path, get_no_docs},
-    crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, Ty},
+    crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, SysvarTy, Ty},
     anyhow::{anyhow, Result},
     proc_macro2::TokenStream,
     quote::{quote, ToTokens},
@@ -159,9 +159,28 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
     }
 }
 
+fn sysvar_id_pubkey(ty: &SysvarTy) -> TokenStream {
+    match ty {
+        SysvarTy::Clock => quote! { ::solana_sdk_ids::sysvar::clock::ID },
+        SysvarTy::Rent => quote! { ::solana_sdk_ids::sysvar::rent::ID },
+        SysvarTy::EpochSchedule => quote! { ::solana_sdk_ids::sysvar::epoch_schedule::ID },
+        SysvarTy::Fees => quote! { ::solana_sdk_ids::sysvar::fees::ID },
+        SysvarTy::RecentBlockhashes => quote! { ::solana_sdk_ids::sysvar::recent_blockhashes::ID },
+        SysvarTy::SlotHashes => quote! { ::solana_sdk_ids::sysvar::slot_hashes::ID },
+        SysvarTy::SlotHistory => quote! { ::solana_sdk_ids::sysvar::slot_history::ID },
+        SysvarTy::StakeHistory => quote! { ::solana_sdk_ids::sysvar::stake_history::ID },
+        SysvarTy::Instructions => quote! { ::solana_sdk_ids::sysvar::instructions::ID },
+        SysvarTy::Rewards => quote! { ::solana_sdk_ids::sysvar::rewards::ID },
+    }
+}
+
 fn get_address(acc: &Field) -> TokenStream {
     match &acc.ty {
-        Ty::Program(_) | Ty::Sysvar(_) => {
+        Ty::Sysvar(sy_ty) => {
+            let id = sysvar_id_pubkey(sy_ty);
+            quote! { Some(#id.to_string()) }
+        }
+        Ty::Program(_) => {
             let ty = acc.account_ty();
             // Check if this is the unit type marker (for generic Program<'info>)
             let ty_str = quote!(#ty).to_string();
@@ -169,10 +188,7 @@ fn get_address(acc: &Field) -> TokenStream {
                 // For generic programs, we don't have a specific address
                 quote! { None }
             } else {
-                let id_trait = matches!(acc.ty, Ty::Program(_))
-                    .then(|| quote!(anchor_lang::Id))
-                    .unwrap_or_else(|| quote!(anchor_lang::pinocchio_runtime::sysvar::SysvarId));
-                quote! { Some(<#ty as #id_trait>::id().to_string()) }
+                quote! { Some(<#ty as anchor_lang::Id>::id().to_string()) }
             }
         }
         _ => acc

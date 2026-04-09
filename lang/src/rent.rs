@@ -5,15 +5,9 @@
 pub use solana_sysvar::rent::{check_id, id, ID};
 use std::ops::Deref;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 #[repr(transparent)]
 pub struct Rent(pub solana_sysvar::rent::Rent);
-
-impl Default for Rent {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
 
 impl Deref for Rent {
     type Target = solana_sysvar::rent::Rent;

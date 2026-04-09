@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use solana_instruction::AccountMeta as IxAccountMeta;
 
 declare_program!(external);
 
@@ -64,12 +65,12 @@ pub fn test_event_parser() {
 
 #[test]
 pub fn test_instruction_parser() {
-    use anchor_lang::solana_program::instruction::Instruction as SolanaInstruction;
+    use anchor_lang::Instruction as SolanaInstruction;
     use external::parsers::Instruction;
 
     // Incorrect program
     assert!(Instruction::parse(&SolanaInstruction::new_with_bytes(
-        system_program::ID,
+        anchor_lang::system_program::ID,
         &[],
         vec![]
     ),)
@@ -93,9 +94,9 @@ pub fn test_instruction_parser() {
         external::ID,
         external::client::args::Init::DISCRIMINATOR,
         vec![
-            AccountMeta::default(),
-            AccountMeta::default(),
-            AccountMeta::default(),
+            IxAccountMeta::default(),
+            IxAccountMeta::default(),
+            IxAccountMeta::default(),
         ],
     ),)
     .is_err());
@@ -107,15 +108,15 @@ pub fn test_instruction_parser() {
         external::ID,
         external::client::args::Init::DISCRIMINATOR,
         vec![
-            AccountMeta::new(authority, true),
-            AccountMeta::new(my_account, false),
-            AccountMeta::new_readonly(system_program::ID, false),
+            IxAccountMeta::new(authority, true),
+            IxAccountMeta::new(my_account, false),
+            IxAccountMeta::new_readonly(anchor_lang::system_program::ID, false),
         ],
     )) {
         Ok(Instruction::Init { accounts, args: _ }) => {
             assert_eq!(accounts.authority, authority);
             assert_eq!(accounts.my_account, my_account);
-            assert_eq!(accounts.system_program, system_program::ID);
+            assert_eq!(accounts.system_program, anchor_lang::system_program::ID);
         }
         Ok(_) => panic!("Expected Init instruction variant"),
         Err(e) => panic!("Expected Ok result, got error: {:?}", e),
@@ -125,8 +126,8 @@ pub fn test_instruction_parser() {
         external::ID,
         external::client::args::Update::DISCRIMINATOR,
         vec![
-            AccountMeta::new_readonly(authority, true),
-            AccountMeta::new(my_account, false),
+            IxAccountMeta::new_readonly(authority, true),
+            IxAccountMeta::new(my_account, false),
         ],
     ),)
     .is_err());
@@ -140,8 +141,8 @@ pub fn test_instruction_parser() {
         ]
         .concat(),
         vec![
-            AccountMeta::new_readonly(authority, true),
-            AccountMeta::new(my_account, false),
+            IxAccountMeta::new_readonly(authority, true),
+            IxAccountMeta::new(my_account, false),
         ],
     )) {
         Ok(Instruction::Update { accounts, args }) => {
@@ -163,8 +164,8 @@ pub fn test_instruction_parser() {
         ]
         .concat(),
         vec![
-            AccountMeta::new_readonly(authority, true),
-            AccountMeta::new(my_account, false),
+            IxAccountMeta::new_readonly(authority, true),
+            IxAccountMeta::new(my_account, false),
         ],
     )) {
         Ok(Instruction::UpdateComposite { accounts, args }) => {
@@ -186,9 +187,9 @@ pub fn test_instruction_parser() {
         ]
         .concat(),
         vec![
-            AccountMeta::new_readonly(authority, true),
-            AccountMeta::new(my_account, false),
-            AccountMeta::new_readonly(external::ID, false),
+            IxAccountMeta::new_readonly(authority, true),
+            IxAccountMeta::new(my_account, false),
+            IxAccountMeta::new_readonly(external::ID, false),
         ],
     )) {
         Ok(Instruction::UpdateNonInstructionComposite { accounts, args }) => {
@@ -211,10 +212,10 @@ pub fn test_instruction_parser() {
         ]
         .concat(),
         vec![
-            AccountMeta::new_readonly(external::ID, false),
-            AccountMeta::new_readonly(authority, true),
-            AccountMeta::new(my_account, false),
-            AccountMeta::new_readonly(external::ID, false),
+            IxAccountMeta::new_readonly(external::ID, false),
+            IxAccountMeta::new_readonly(authority, true),
+            IxAccountMeta::new(my_account, false),
+            IxAccountMeta::new_readonly(external::ID, false),
         ],
     )) {
         Ok(Instruction::UpdateNonInstructionComposite2 { accounts, args }) => {
@@ -262,9 +263,9 @@ pub fn test_instruction_parser() {
         ]
         .concat(),
         vec![
-            AccountMeta::new_readonly(authority, true),
-            AccountMeta::new(my_account, false),
-            AccountMeta::new(optional_account, false),
+            IxAccountMeta::new_readonly(authority, true),
+            IxAccountMeta::new(my_account, false),
+            IxAccountMeta::new(optional_account, false),
         ],
     )) {
         Ok(Instruction::UpdateWithOptional { accounts, args }) => {
@@ -286,9 +287,9 @@ pub fn test_instruction_parser() {
         ]
         .concat(),
         vec![
-            AccountMeta::new_readonly(authority, true),
-            AccountMeta::new(my_account, false),
-            AccountMeta::new(external::ID, false), // Program ID as placeholder for missing optional
+            IxAccountMeta::new_readonly(authority, true),
+            IxAccountMeta::new(my_account, false),
+            IxAccountMeta::new(external::ID, false), // Program ID as placeholder for missing optional
         ],
     )) {
         Ok(Instruction::UpdateWithOptional { accounts, args }) => {

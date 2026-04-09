@@ -43,6 +43,7 @@ pub mod event;
 #[doc(hidden)]
 pub mod idl;
 mod rent;
+mod stake_history;
 pub mod system_program;
 mod vec;
 
@@ -61,6 +62,7 @@ pub use {
             pubkey::Pubkey,
         },
         rent::Rent,
+        stake_history::StakeHistory,
     },
     anchor_attribute_access_control::access_control,
     anchor_attribute_account::{account, declare_id, pubkey, zero_copy},
@@ -73,6 +75,7 @@ pub use {
     anchor_derive_space::InitSpace,
     borsh::ser::BorshSerialize as AnchorSerialize,
     const_crypto::ed25519::derive_program_address,
+    solana_instruction::Instruction,
 };
 /// Pinocchio runtime module - replaces solana_program for V2
 pub mod pinocchio_runtime {
@@ -582,10 +585,12 @@ pub mod prelude {
             pinocchio_runtime::bpf_loader_upgradeable::UpgradeableLoaderState,
             program, pubkey, require, require_eq, require_gt, require_gte, require_keys_eq,
             require_keys_neq, require_neq, source,
+            stake_history::{StakeHistoryEntry, MAX_ENTRIES},
             system_program::System,
             zero_copy, AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
             AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
-            ProgramData, Rent, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+            ProgramData, Rent, Result, Space, StakeHistory, ToAccountInfo, ToAccountInfos,
+            ToAccountMetas,
         },
         crate::pinocchio_runtime::{
             instruction::AccountMeta,
@@ -600,7 +605,6 @@ pub mod prelude {
             clock::Clock, instructions::Instructions, slot_hashes::SlotHashes,
             Sysvar as SolanaSysvar,
         },
-        solana_stake_interface::stake_history::StakeHistory,
         solana_sysvar::{
             epoch_schedule::EpochSchedule, rewards::Rewards, slot_history::SlotHistory,
             Sysvar as AgaveSysvar,

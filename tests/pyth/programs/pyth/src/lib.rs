@@ -31,11 +31,11 @@ pub mod pyth {
 #[derive(Accounts)]
 pub struct SetPrice<'info> {
     #[account(mut)]
-    pub price: AccountInfo<'info>,
+    pub price: AccountInfo,
 }
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
-    pub price: AccountInfo<'info>,
+    pub price: AccountInfo,
 }

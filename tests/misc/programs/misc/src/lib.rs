@@ -122,7 +122,7 @@ pub mod misc {
 
     pub fn default<'info>(
         _program_id: &Pubkey,
-        _accounts: &[AccountInfo<'info>],
+        _accounts: &[AccountInfo],
         _data: &[u8],
     ) -> Result<()> {
         Err(ProgramError::Custom(1234).into())

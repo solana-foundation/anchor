@@ -109,7 +109,7 @@ pub struct InitMyAccount<'info> {
     base: Account<'info, BaseAccount>,
     // Intentionally using this qualified form instead of importing to test parsing
     another_base: Account<'info, crate::other::AnotherBaseAccount>,
-    base2: AccountInfo<'info>,
+    base2: AccountInfo,
     #[account(
         init,
         payer = payer,
@@ -119,7 +119,7 @@ pub struct InitMyAccount<'info> {
             "another-seed".as_bytes(),
             b"test".as_ref(),
             base.key().as_ref(),
-            base2.key.as_ref(),
+            base2.key().as_ref(),
             MY_SEED.as_ref(),
             MY_SEED_STR.as_bytes(),
             MY_SEED_U8.to_le_bytes().as_ref(),
@@ -153,7 +153,7 @@ pub struct Nested<'info> {
         bump,
     )]
     /// CHECK: Not needed
-    account_nested: AccountInfo<'info>,
+    account_nested: AccountInfo,
 }
 
 #[derive(Accounts)]
@@ -205,9 +205,9 @@ pub struct SeedMathExpr<'info> {
 #[derive(Accounts)]
 pub struct ResolutionError<'info> {
     pub unknown: UncheckedAccount<'info>,
-    #[account(seeds = [unknown.key.as_ref()], bump)]
+    #[account(seeds = [unknown.key().as_ref()], bump)]
     pub pda: UncheckedAccount<'info>,
-    #[account(seeds = [pda.key.as_ref()], bump)]
+    #[account(seeds = [pda.key().as_ref()], bump)]
     pub another_pda: UncheckedAccount<'info>,
 }
 
@@ -216,7 +216,7 @@ pub struct ResolutionError<'info> {
 pub struct UnsupportedProgramSeed<'info> {
     #[account(
         seeds = [],
-        seeds::program = external_function_with_an_argument(&pda.key),
+        seeds::program = external_function_with_an_argument(&pda.key()),
         bump
     )]
     pub pda: UncheckedAccount<'info>,

@@ -207,7 +207,7 @@ pub struct UpdateWithOptional<'info> {
     pub my_account: Account<'info, MyAccount>,
     /// CHECK: Optional account for testing
     #[account(mut)]
-    pub optional_account: Option<AccountInfo<'info>>,
+    pub optional_account: Option<AccountInfo>,
 }
 
 #[account]

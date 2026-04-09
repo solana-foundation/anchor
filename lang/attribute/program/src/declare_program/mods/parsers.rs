@@ -206,21 +206,19 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
             .collect::<Vec<_>>()
     };
 
-    let solana_instruction = quote!(anchor_lang::solana_program::instruction::Instruction);
+    let solana_instruction = quote!(anchor_lang::Instruction);
     let program_id = get_canonical_program_id();
 
     quote! {
         /// An enum that includes all instructions of the declared program.
         ///
-        /// See [`Self::parse`] to create an instance from
-        /// [`anchor_lang::solana_program::instruction::Instruction`].
+        /// See [`Self::parse`] to create an instance from [`anchor_lang::Instruction`].
         pub enum Instruction {
             #(#variants,)*
         }
 
         impl Instruction {
-            ///  Parse an instruction based on the given
-            /// [`anchor_lang::solana_program::instruction::Instruction`].
+            ///  Parse an instruction based on the given [`anchor_lang::Instruction`].
             ///
             /// This method checks:
             ///

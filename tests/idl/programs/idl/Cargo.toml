@@ -15,3 +15,4 @@ anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
 bytemuck = { version = "*", features = ["derive", "min_const_generics"] }
 external = { path = "../external", features = ["no-entrypoint"] }
+solana-feature-gate-interface = "3.0.0"

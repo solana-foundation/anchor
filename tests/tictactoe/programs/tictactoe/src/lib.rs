@@ -21,7 +21,7 @@ pub mod tictactoe {
     pub fn initialize_dashboard(ctx: Context<Initializedashboard>) -> Result<()> {
         let dashboard = &mut ctx.accounts.dashboard;
         dashboard.game_count = 0;
-        dashboard.address = *dashboard.to_account_info().key;
+        dashboard.address = dashboard.to_account_info().key();
         Ok(())
     }
 
@@ -29,14 +29,14 @@ pub mod tictactoe {
         let dashboard = &mut ctx.accounts.dashboard;
         let game = &mut ctx.accounts.game;
         dashboard.game_count = dashboard.game_count + 1;
-        dashboard.latest_game = *game.to_account_info().key;
-        game.player_x = *ctx.accounts.player_x.key;
+        dashboard.latest_game = game.to_account_info().key();
+        game.player_x = ctx.accounts.player_x.key();
         Ok(())
     }
 
     pub fn player_join(ctx: Context<Playerjoin>) -> Result<()> {
         let game = &mut ctx.accounts.game;
-        game.player_o = *ctx.accounts.player_o.key;
+        game.player_o = ctx.accounts.player_o.key();
         game.game_state = 1;
         Ok(())
     }
@@ -105,7 +105,7 @@ impl<'info> Playermove<'info> {
     }
 
     pub fn player_x_checks(ctx: &Context<Playermove>) -> Result<()> {
-        if ctx.accounts.game.player_x != *ctx.accounts.player.key {
+        if ctx.accounts.game.player_x != ctx.accounts.player.key() {
             return Err(ErrorCode::Unauthorized.into());
         }
         if ctx.accounts.game.game_state != 1 {
@@ -115,7 +115,7 @@ impl<'info> Playermove<'info> {
     }
 
     pub fn player_o_checks(ctx: &Context<Playermove>) -> Result<()> {
-        if ctx.accounts.game.player_o != *ctx.accounts.player.key {
+        if ctx.accounts.game.player_o != ctx.accounts.player.key() {
             return Err(ErrorCode::Unauthorized.into());
         }
         if ctx.accounts.game.game_state != 2 {

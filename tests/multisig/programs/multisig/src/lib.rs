@@ -17,10 +17,20 @@
 //! the `execute_transaction`, once enough (i.e. `threshold`) of the owners have
 //! signed.
 
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program;
-use anchor_lang::solana_program::instruction::Instruction;
-use std::convert::Into;
+use {
+    anchor_lang::{
+        prelude::*,
+        pinocchio_runtime::{
+            cpi::{Seed, Signer as CpiSigner},
+            instruction::{InstructionAccount, InstructionView},
+            program::invoke_signed_with_slice,
+        },
+        Instruction,
+    },
+    core::slice,
+    solana_instruction::AccountMeta as IxAccountMeta,
+    std::convert::Into,
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -55,7 +65,7 @@ pub mod multisig {
             .multisig
             .owners
             .iter()
-            .position(|a| a == ctx.accounts.proposer.key)
+            .position(|a| *a == ctx.accounts.proposer.key())
             .ok_or(error!(ErrorCode::InvalidOwner))?;
 
         let mut signers = Vec::new();
@@ -67,7 +77,7 @@ pub mod multisig {
         tx.accounts = accs;
         tx.data = data;
         tx.signers = signers;
-        tx.multisig = *ctx.accounts.multisig.to_account_info().key;
+        tx.multisig = ctx.accounts.multisig.to_account_info().key();
         tx.did_execute = false;
 
         Ok(())
@@ -80,7 +90,7 @@ pub mod multisig {
             .multisig
             .owners
             .iter()
-            .position(|a| a == ctx.accounts.owner.key)
+            .position(|a| *a == ctx.accounts.owner.key())
             .ok_or(error!(ErrorCode::InvalidOwner))?;
 
         ctx.accounts.transaction.signers[owner_index] = true;
@@ -138,24 +148,41 @@ pub mod multisig {
 
         // Execute the transaction signed by the multisig.
         let mut ix: Instruction = (&*ctx.accounts.transaction).into();
+        let signer_pk = ctx.accounts.multisig_signer.key();
         ix.accounts = ix
             .accounts
             .iter()
             .map(|acc| {
-                if &acc.pubkey == ctx.accounts.multisig_signer.key {
-                    AccountMeta::new_readonly(acc.pubkey, true)
+                if acc.pubkey == signer_pk {
+                    IxAccountMeta::new_readonly(acc.pubkey, true)
                 } else {
                     acc.clone()
                 }
             })
             .collect();
-        let seeds = &[
-            ctx.accounts.multisig.to_account_info().key.as_ref(),
-            &[ctx.accounts.multisig.nonce],
+
+        let cpi_accounts: Vec<InstructionAccount> = ix
+            .accounts
+            .iter()
+            .map(|m| InstructionAccount::new(&m.pubkey, m.is_writable, m.is_signer))
+            .collect();
+        let cpi_ix = InstructionView {
+            program_id: &ix.program_id,
+            data: ix.data.as_slice(),
+            accounts: &cpi_accounts,
+        };
+
+        let multisig_key = ctx.accounts.multisig.to_account_info().key();
+        let bump = ctx.accounts.multisig.nonce;
+        let signer_seeds = [
+            Seed::from(multisig_key.as_ref()),
+            Seed::from(slice::from_ref(&bump)),
         ];
-        let signer = &[&seeds[..]];
-        let accounts = ctx.remaining_accounts;
-        solana_program::program::invoke_signed(&ix, &accounts, signer)?;
+        let signers = [CpiSigner::from(&signer_seeds[..])];
+
+        invoke_signed_with_slice(&cpi_ix, ctx.remaining_accounts, &signers).map_err(|e| {
+            anchor_lang::error::Error::from(anchor_lang::ProgramError::from(e))
+        })?;
 
         // Burn the transaction to ensure one time use.
         ctx.accounts.transaction.did_execute = true;
@@ -194,20 +221,20 @@ pub struct Auth<'info> {
     multisig: Account<'info, Multisig>,
     #[account(
         signer,
-        seeds = [multisig.to_account_info().key.as_ref()],
+        seeds = [multisig.to_account_info().key().as_ref()],
         bump = multisig.nonce,
     )]
-    multisig_signer: AccountInfo<'info>,
+    multisig_signer: AccountInfo,
 }
 
 #[derive(Accounts)]
 pub struct ExecuteTransaction<'info> {
     multisig: Account<'info, Multisig>,
     #[account(
-        seeds = [multisig.to_account_info().key.as_ref()],
+        seeds = [multisig.to_account_info().key().as_ref()],
         bump = multisig.nonce,
     )]
-    multisig_signer: AccountInfo<'info>,
+    multisig_signer: AccountInfo,
     #[account(mut, has_one = multisig)]
     transaction: Account<'info, Transaction>,
 }
@@ -252,11 +279,11 @@ pub struct TransactionAccount {
     is_writable: bool,
 }
 
-impl From<TransactionAccount> for AccountMeta {
-    fn from(account: TransactionAccount) -> AccountMeta {
+impl From<TransactionAccount> for IxAccountMeta {
+    fn from(account: TransactionAccount) -> IxAccountMeta {
         match account.is_writable {
-            false => AccountMeta::new_readonly(account.pubkey, account.is_signer),
-            true => AccountMeta::new(account.pubkey, account.is_signer),
+            false => IxAccountMeta::new_readonly(account.pubkey, account.is_signer),
+            true => IxAccountMeta::new(account.pubkey, account.is_signer),
         }
     }
 }

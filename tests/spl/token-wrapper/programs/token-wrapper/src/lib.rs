@@ -44,8 +44,8 @@ pub mod token_wrapper {
         // mint wrapped tokens
         let inner_seeds = [
             WRAPPER_AUTH_SEED,
-            ctx.accounts.deposit_mint.to_account_info().key.as_ref(),
-            ctx.accounts.wrapped_mint.to_account_info().key.as_ref(),
+            ctx.accounts.deposit_mint.to_account_info().key().as_ref(),
+            ctx.accounts.wrapped_mint.to_account_info().key().as_ref(),
             &[ctx.bumps.wrapper_authority],
         ];
         let signer_seeds = &[&inner_seeds[..]];
@@ -87,8 +87,8 @@ pub mod token_wrapper {
         // mint wrapped tokens
         let inner_seeds = [
             WRAPPER_AUTH_SEED,
-            ctx.accounts.deposit_mint.to_account_info().key.as_ref(),
-            ctx.accounts.wrapped_mint.to_account_info().key.as_ref(),
+            ctx.accounts.deposit_mint.to_account_info().key().as_ref(),
+            ctx.accounts.wrapped_mint.to_account_info().key().as_ref(),
             &[ctx.bumps.wrapper_authority],
         ];
         let signer_seeds = &[&inner_seeds[..]];
@@ -125,8 +125,8 @@ pub mod token_wrapper {
         // withdraw from vault
         let inner_seeds = [
             WRAPPER_AUTH_SEED,
-            ctx.accounts.deposit_mint.to_account_info().key.as_ref(),
-            ctx.accounts.wrapped_mint.to_account_info().key.as_ref(),
+            ctx.accounts.deposit_mint.to_account_info().key().as_ref(),
+            ctx.accounts.wrapped_mint.to_account_info().key().as_ref(),
             &[ctx.bumps.wrapper_authority],
         ];
         let signer_seeds = &[&inner_seeds[..]];
@@ -202,7 +202,7 @@ pub struct Initialize<'info> {
         seeds = [WRAPPER_AUTH_SEED, deposit_mint.key().as_ref(), wrapped_mint.key().as_ref()],
         bump,
     )]
-    pub wrapper_authority: AccountInfo<'info>,
+    pub wrapper_authority: AccountInfo,
 
     pub system_program: Program<'info, System>,
     pub deposit_token_program: Interface<'info, TokenInterface>,
@@ -253,7 +253,7 @@ pub struct Wrap<'info> {
         seeds = [WRAPPER_AUTH_SEED, deposit_mint.key().as_ref(), wrapped_mint.key().as_ref()],
         bump,
     )]
-    pub wrapper_authority: AccountInfo<'info>,
+    pub wrapper_authority: AccountInfo,
 
     pub deposit_token_program: Interface<'info, TokenInterface>,
     pub wrapped_token_program: Interface<'info, TokenInterface>,
@@ -303,7 +303,7 @@ pub struct Unwrap<'info> {
         seeds = [crate::token_wrapper::WRAPPER_AUTH_SEED, deposit_mint.key().as_ref(), wrapped_mint.key().as_ref()],
         bump,
     )]
-    pub wrapper_authority: AccountInfo<'info>,
+    pub wrapper_authority: AccountInfo,
 
     pub deposit_token_program: Interface<'info, TokenInterface>,
     pub wrapped_token_program: Interface<'info, TokenInterface>,

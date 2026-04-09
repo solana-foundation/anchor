@@ -10,7 +10,7 @@ pub mod chat {
 
     pub fn create_user(ctx: Context<CreateUser>, name: String) -> Result<()> {
         ctx.accounts.user.name = name;
-        ctx.accounts.user.authority = *ctx.accounts.authority.key;
+        ctx.accounts.user.authority = ctx.accounts.authority.key();
         ctx.accounts.user.bump = ctx.bumps.user;
         Ok(())
     }
@@ -29,7 +29,7 @@ pub mod chat {
             let mut data = [0u8; 280];
             data[..src.len()].copy_from_slice(src);
             Message {
-                from: *ctx.accounts.user.to_account_info().key,
+                from: ctx.accounts.user.to_account_info().key(),
                 data,
             }
         });
@@ -50,7 +50,7 @@ pub struct CreateUser<'info> {
     user: Account<'info, User>,
     #[account(mut)]
     authority: Signer<'info>,
-    system_program: AccountInfo<'info>,
+    system_program: AccountInfo,
 }
 
 #[derive(Accounts)]

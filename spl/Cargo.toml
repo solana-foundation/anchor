@@ -1,6 +1,6 @@
 [package]
 name = "anchor-spl"
-version.workspace = true
+version = "1.0.0"
 publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/solana-foundation/anchor"
@@ -49,7 +49,9 @@ spl-token-2022-interface = { version = "2", optional = true }
 spl-token-group-interface = { version = "0.7", optional = true }
 spl-token-metadata-interface = { version = "0.8", optional = true }
 
-pinocchio-associated-token-account.workspace = true
-pinocchio-token-2022.workspace = true
-pinocchio-token.workspace = true
-pinocchio-memo.workspace = true
+pinocchio = { version = "0.11", features = ["cpi", "copy", "account-resize"] }
+pinocchio-system = "0.6.0"
+pinocchio-token-2022 = "0.3.0"
+pinocchio-token = "0.6.0"
+pinocchio-associated-token-account = "0.4.0"
+pinocchio-memo = "0.4.0"

@@ -4,7 +4,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let name: proc_macro2::TokenStream = program.name.to_string().to_camel_case().parse().unwrap();
     quote! {
         #[cfg(not(feature = "no-entrypoint"))]
-        anchor_lang::pinocchio_runtime::program_entrypoint!(entry);
+        // `program_entrypoint!` alone does not register a global allocator; anything that uses
+        // the Rust global alloc ends up with an unresolved `sol_alloc_free_` at deploy time.
+        // `entrypoint!` wraps `program_entrypoint!` plus Pinocchio's default allocator and panic hook.
+        anchor_lang::pinocchio_runtime::entrypoint!(entry);
         /// The Anchor codegen exposes a programming model where a user defines
         /// a set of methods inside of a `#[program]` module in a way similar
         /// to writing RPC request handlers. The macro then generates a bunch of
