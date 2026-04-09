@@ -13,7 +13,7 @@ pub fn cpi_guard_enable<'info>(ctx: CpiContext<'_, '_, '_, 'info, CpiGuard<'info
     let ix = spl_token_2022::extension::cpi_guard::instruction::enable_cpi_guard(
         ctx.accounts.token_program_id.key,
         ctx.accounts.account.key,
-        ctx.accounts.account.owner,
+        ctx.accounts.owner.key,
         &[],
     )?;
     anchor_lang::solana_program::program::invoke_signed(
@@ -32,7 +32,7 @@ pub fn cpi_guard_disable<'info>(ctx: CpiContext<'_, '_, '_, 'info, CpiGuard<'inf
     let ix = spl_token_2022::extension::cpi_guard::instruction::disable_cpi_guard(
         ctx.accounts.token_program_id.key,
         ctx.accounts.account.key,
-        ctx.accounts.account.owner,
+        ctx.accounts.owner.key,
         &[],
     )?;
 
