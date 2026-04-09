@@ -11,7 +11,7 @@ pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .iter()
         .any(|c| matches!(c, Constraint::RentExempt(ConstraintRentExempt::Enforce)))
     {
-        quote! { let __anchor_rent = Rent::get()?; }
+        quote! { let __anchor_rent = <Rent as anchor_lang::prelude::AgaveSysvar>::get()?; }
     } else {
         quote! {}
     };
@@ -436,7 +436,8 @@ fn generate_constraint_realloc(
             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountDuplicateReallocs).with_account_name(#account_name));
         }
 
-        let __anchor_rent = anchor_lang::prelude::Rent::get()?;
+        let __anchor_rent =
+            <anchor_lang::prelude::Rent as anchor_lang::prelude::AgaveSysvar>::get()?;
         let mut __field_info = #field.to_account_info();
         let __new_rent_minimum = __anchor_rent.minimum_balance(#new_space);
 

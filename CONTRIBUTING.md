@@ -20,6 +20,13 @@ If you'd like to contribute, please claim an issue by commenting, forking, and
 opening a pull request, even if empty. This allows the maintainers to track who
 is working on what issue as to not overlap work.
 
+## Branch Targeting
+
+Pull requests should usually target `master`.
+
+If your change is breaking, open the pull request against `anchor-next`
+instead of `master`.
+
 ## Issue Guidelines
 
 Please follow these guidelines:

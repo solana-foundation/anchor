@@ -42,6 +42,7 @@ pub mod error;
 pub mod event;
 #[doc(hidden)]
 pub mod idl;
+mod rent;
 pub mod system_program;
 mod vec;
 
@@ -59,6 +60,7 @@ pub use {
             program_error::ProgramError,
             pubkey::Pubkey,
         },
+        rent::Rent,
     },
     anchor_attribute_access_control::access_control,
     anchor_attribute_account::{account, declare_id, pubkey, zero_copy},
@@ -115,7 +117,7 @@ pub mod pinocchio_runtime {
     }
 
     pub mod rent {
-        pub use pinocchio::sysvars::rent::*;
+        pub use crate::rent::{check_id, id, Rent, ID};
     }
 
     pub mod program {
@@ -583,7 +585,7 @@ pub mod prelude {
             system_program::System,
             zero_copy, AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
             AnchorDeserialize, AnchorSerialize, Discriminator, Id, InitSpace, Key, Lamports, Owner,
-            ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+            ProgramData, Rent, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
         },
         crate::pinocchio_runtime::{
             instruction::AccountMeta,
@@ -595,12 +597,13 @@ pub mod prelude {
         borsh,
         error::*,
         pinocchio::sysvars::{
-            clock::Clock, instructions::Instructions, rent::Rent, slot_hashes::SlotHashes,
+            clock::Clock, instructions::Instructions, slot_hashes::SlotHashes,
             Sysvar as SolanaSysvar,
         },
         solana_stake_interface::stake_history::StakeHistory,
         solana_sysvar::{
             epoch_schedule::EpochSchedule, rewards::Rewards, slot_history::SlotHistory,
+            Sysvar as AgaveSysvar,
         },
         thiserror,
     };
