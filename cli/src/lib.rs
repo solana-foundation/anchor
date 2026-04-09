@@ -1721,32 +1721,19 @@ fn expand_program(
         .as_ref()
         .ok_or_else(|| anyhow!("Cargo config is missing a package"))?
         .name;
-    let program_expansions_path = expansions_path.join(package_name);
-    fs::create_dir_all(&program_expansions_path)?;
-
-    let exit = std::process::Command::new("cargo")
+    let status = std::process::Command::new("cargo")
         .arg("expand")
         .arg(target_dir_arg)
         .arg(format!("--package={package_name}"))
         .args(cargo_args)
-        .stderr(Stdio::inherit())
-        .output()
+        .stdout(Stdio::inherit())
+        .status()
         .map_err(|e| anyhow::format_err!("{}", e))?;
-    if !exit.status.success() {
+    if !status.success() {
         eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
-        std::process::exit(exit.status.code().unwrap_or(1));
+        std::process::exit(status.code().unwrap_or(1));
     }
 
-    let version = cargo.version();
-    let time = chrono::Utc::now().to_string().replace(' ', "_");
-    let file_path = program_expansions_path.join(format!("{package_name}-{version}-{time}.rs"));
-    fs::write(&file_path, &exit.stdout).map_err(|e| anyhow::format_err!("{}", e))?;
-
-    println!(
-        "Expanded {} into file {}\n",
-        package_name,
-        file_path.to_string_lossy()
-    );
     Ok(())
 }
 
