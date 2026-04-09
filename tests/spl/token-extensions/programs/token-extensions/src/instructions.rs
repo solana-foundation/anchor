@@ -8,8 +8,11 @@ use anchor_spl::{
         transfer_hook::TransferHook,
     },
     token_interface::{
-        get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
-        token_metadata_initialize, Mint, Token2022, TokenAccount, TokenMetadataInitialize,
+        get_mint_extension_data,
+        spl_token_metadata_interface::state::{Field, TokenMetadata},
+        token_metadata_initialize, token_metadata_remove_key, token_metadata_update_field, Mint,
+        Token2022, TokenAccount, TokenMetadataInitialize, TokenMetadataRemoveKey,
+        TokenMetadataUpdateField,
     },
 };
 use spl_pod::optional_keys::OptionalNonZeroPubkey;
@@ -95,69 +98,69 @@ impl<'info> CreateMintAccount<'info> {
         token_metadata_initialize(cpi_ctx, name, symbol, uri)?;
         Ok(())
     }
-}
 
-pub fn handler(ctx: Context<CreateMintAccount>, args: CreateMintAccountArgs) -> Result<()> {
-    ctx.accounts.initialize_token_metadata(
-        args.name.clone(),
-        args.symbol.clone(),
-        args.uri.clone(),
-    )?;
-    ctx.accounts.mint.reload()?;
-    let mint_data = &mut ctx.accounts.mint.to_account_info();
-    let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
-    assert_eq!(metadata.mint, ctx.accounts.mint.key());
-    assert_eq!(metadata.name, args.name);
-    assert_eq!(metadata.symbol, args.symbol);
-    assert_eq!(metadata.uri, args.uri);
-    let metadata_pointer = get_mint_extension_data::<MetadataPointer>(mint_data)?;
-    let mint_key: Option<Pubkey> = Some(ctx.accounts.mint.key());
-    let authority_key: Option<Pubkey> = Some(ctx.accounts.authority.key());
-    assert_eq!(
-        metadata_pointer.metadata_address,
-        OptionalNonZeroPubkey::try_from(mint_key)?
-    );
-    assert_eq!(
-        metadata_pointer.authority,
-        OptionalNonZeroPubkey::try_from(authority_key)?
-    );
-    let permanent_delegate = get_mint_extension_data::<PermanentDelegate>(mint_data)?;
-    assert_eq!(
-        permanent_delegate.delegate,
-        OptionalNonZeroPubkey::try_from(authority_key)?
-    );
-    let close_authority = get_mint_extension_data::<MintCloseAuthority>(mint_data)?;
-    assert_eq!(
-        close_authority.close_authority,
-        OptionalNonZeroPubkey::try_from(authority_key)?
-    );
-    let transfer_hook = get_mint_extension_data::<TransferHook>(mint_data)?;
-    let program_id: Option<Pubkey> = Some(ctx.program_id.key());
-    assert_eq!(
-        transfer_hook.authority,
-        OptionalNonZeroPubkey::try_from(authority_key)?
-    );
-    assert_eq!(
-        transfer_hook.program_id,
-        OptionalNonZeroPubkey::try_from(program_id)?
-    );
-    let group_member_pointer = get_mint_extension_data::<GroupMemberPointer>(mint_data)?;
-    assert_eq!(
-        group_member_pointer.authority,
-        OptionalNonZeroPubkey::try_from(authority_key)?
-    );
-    assert_eq!(
-        group_member_pointer.member_address,
-        OptionalNonZeroPubkey::try_from(mint_key)?
-    );
-    // transfer minimum rent to mint account
-    update_account_lamports_to_minimum_balance(
-        ctx.accounts.mint.to_account_info(),
-        ctx.accounts.payer.to_account_info(),
-        ctx.accounts.system_program.to_account_info(),
-    )?;
+    pub fn handler(ctx: Context<CreateMintAccount>, args: CreateMintAccountArgs) -> Result<()> {
+        ctx.accounts.initialize_token_metadata(
+            args.name.clone(),
+            args.symbol.clone(),
+            args.uri.clone(),
+        )?;
+        ctx.accounts.mint.reload()?;
+        let mint_data = &mut ctx.accounts.mint.to_account_info();
+        let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
+        assert_eq!(metadata.mint, ctx.accounts.mint.key());
+        assert_eq!(metadata.name, args.name);
+        assert_eq!(metadata.symbol, args.symbol);
+        assert_eq!(metadata.uri, args.uri);
+        let metadata_pointer = get_mint_extension_data::<MetadataPointer>(mint_data)?;
+        let mint_key: Option<Pubkey> = Some(ctx.accounts.mint.key());
+        let authority_key: Option<Pubkey> = Some(ctx.accounts.authority.key());
+        assert_eq!(
+            metadata_pointer.metadata_address,
+            OptionalNonZeroPubkey::try_from(mint_key)?
+        );
+        assert_eq!(
+            metadata_pointer.authority,
+            OptionalNonZeroPubkey::try_from(authority_key)?
+        );
+        let permanent_delegate = get_mint_extension_data::<PermanentDelegate>(mint_data)?;
+        assert_eq!(
+            permanent_delegate.delegate,
+            OptionalNonZeroPubkey::try_from(authority_key)?
+        );
+        let close_authority = get_mint_extension_data::<MintCloseAuthority>(mint_data)?;
+        assert_eq!(
+            close_authority.close_authority,
+            OptionalNonZeroPubkey::try_from(authority_key)?
+        );
+        let transfer_hook = get_mint_extension_data::<TransferHook>(mint_data)?;
+        let program_id: Option<Pubkey> = Some(ctx.program_id.key());
+        assert_eq!(
+            transfer_hook.authority,
+            OptionalNonZeroPubkey::try_from(authority_key)?
+        );
+        assert_eq!(
+            transfer_hook.program_id,
+            OptionalNonZeroPubkey::try_from(program_id)?
+        );
+        let group_member_pointer = get_mint_extension_data::<GroupMemberPointer>(mint_data)?;
+        assert_eq!(
+            group_member_pointer.authority,
+            OptionalNonZeroPubkey::try_from(authority_key)?
+        );
+        assert_eq!(
+            group_member_pointer.member_address,
+            OptionalNonZeroPubkey::try_from(mint_key)?
+        );
+        // transfer minimum rent to mint account
+        update_account_lamports_to_minimum_balance(
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.payer.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+        )?;
 
-    Ok(())
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -177,4 +180,65 @@ pub struct CheckMintExtensionConstraints<'info> {
         extensions::permanent_delegate::delegate = authority,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateAndRemoveTokenMetadata<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(mut)]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+
+    pub token_program: Program<'info, Token2022>,
+}
+
+impl<'info> UpdateAndRemoveTokenMetadata<'info> {
+    fn update_token_metadata(&self, field: String, value: String) -> ProgramResult {
+        let cpi_accounts = TokenMetadataUpdateField {
+            program_id: self.token_program.to_account_info(),
+            metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
+            update_authority: self.authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.key(), cpi_accounts);
+        token_metadata_update_field(cpi_ctx, Field::Key(field), value)?;
+        Ok(())
+    }
+
+    fn remove_token_metadata(&self, key: String) -> ProgramResult {
+        let cpi_accounts = TokenMetadataRemoveKey {
+            program_id: self.token_program.to_account_info(),
+            metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
+            update_authority: self.authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.key(), cpi_accounts);
+        token_metadata_remove_key(cpi_ctx, key, true)?;
+        Ok(())
+    }
+
+    pub fn handler(ctx: Context<UpdateAndRemoveTokenMetadata>) -> Result<()> {
+        let key = "dummy_key";
+        let value = "dummy_value";
+        ctx.accounts
+            .update_token_metadata(key.to_string(), value.to_string())?;
+        ctx.accounts.mint.reload()?;
+
+        let mint_data = &mut ctx.accounts.mint.to_account_info();
+        let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
+        assert_eq!(metadata.additional_metadata.len(), 1);
+
+        if let Some((k, v)) = metadata.additional_metadata.get(0) {
+            assert_eq!(k, key);
+            assert_eq!(v, value);
+        } else {
+            assert!(false);
+        }
+
+        ctx.accounts.remove_token_metadata(key.to_string())?;
+        ctx.accounts.mint.reload()?;
+
+        let mint_data = &mut ctx.accounts.mint.to_account_info();
+        let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
+        assert_eq!(metadata.additional_metadata.len(), 0);
+        Ok(())
+    }
 }
