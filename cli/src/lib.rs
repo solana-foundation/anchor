@@ -51,6 +51,8 @@ use {
 mod account;
 mod checks;
 pub mod config;
+#[cfg(feature = "flamegraph")]
+mod flamegraph;
 mod keygen;
 mod metadata;
 mod program;
@@ -159,6 +161,16 @@ pub enum Command {
         /// Suppress doc strings in IDL output
         #[clap(long)]
         no_docs: bool,
+    },
+    /// Builds the workspace, then generates placeholder flamegraph SVGs.
+    #[cfg(feature = "flamegraph")]
+    Flamegraph {
+        /// Name of the program to generate a flamegraph for
+        #[clap(short, long)]
+        program_name: Option<String>,
+        /// Open the generated flamegraph SVG(s) in a browser
+        #[clap(long)]
+        open: bool,
     },
     /// Expands macros (wrapper around cargo expand)
     ///
@@ -1193,6 +1205,10 @@ fn process_command(opts: Opts) -> Result<()> {
             cargo_args,
             no_docs,
         ),
+        #[cfg(feature = "flamegraph")]
+        Command::Flamegraph { program_name, open } => {
+            flamegraph::flamegraph(&opts.cfg_override, program_name, open)
+        }
         Command::Verify {
             program_id,
             repo_url,
