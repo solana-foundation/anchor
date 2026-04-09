@@ -65,7 +65,10 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 if #ty_as_lazy::SIZED {
                     #ty_as_lazy::size_of(&[])
                 } else {
-                    #ty_as_lazy::size_of(&self.__info.data.borrow()[self.#offset_of_ident()..])
+                    // SAFETY: sizing only reads account data; runtime guarantees no conflicting borrows here.
+                    #ty_as_lazy::size_of(
+                        &unsafe { self.__info.borrow_unchecked() }[self.#offset_of_ident()..],
+                    )
                 }
             };
 
@@ -125,7 +128,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                     // Deserialize and write
                     let offset = self.#offset_of_ident();
                     let size = self.#size_of_ident();
-                    let data = self.__info.data.borrow();
+                    let data = self.__info.try_borrow()?;
                     let val = anchor_lang::AnchorDeserialize::try_from_slice(
                         &data[offset..offset + size]
                     )?;
@@ -235,7 +238,7 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 if all_uninit {
                     // Nothing is initialized, initialize all
                     let offset = #disc_len;
-                    let mut data = self.__info.data.borrow();
+                    let data = self.__info.try_borrow()?;
                     let val = anchor_lang::AnchorDeserialize::deserialize(&mut &data[offset..])?;
                     unsafe { self.__account.borrow_mut().as_mut_ptr().write(val) };
 
@@ -278,7 +281,8 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
                 {
                     // Make sure all fields are initialized
                     let acc = self.load()?;
-                    let mut data = self.__info.try_borrow_mut_data()?;
+                    let mut info = *self.__info;
+                    let mut data = info.try_borrow_mut()?;
                     let dst: &mut [u8] = &mut data;
                     let mut writer = anchor_lang::__private::BpfWriter::new(dst);
                     acc.try_serialize(&mut writer)?;

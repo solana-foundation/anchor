@@ -57,7 +57,7 @@ use {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use anchor_lang::prelude::*;
 ///
 /// declare_id!("LazyAccount11111111111111111111111111111111");
@@ -66,7 +66,7 @@ use {
 /// pub mod lazy_account {
 ///     use super::*;
 ///
-///     pub fn init(ctx: Context<Init>) -> Result<()> {
+///     pub fn init(ctx: Context<Init>) -> anchor_lang::Result<()> {
 ///         let mut my_account = ctx.accounts.my_account.load_mut()?;
 ///         my_account.authority = ctx.accounts.authority.key();
 ///
@@ -78,14 +78,14 @@ use {
 ///         Ok(())
 ///     }
 ///
-///     pub fn read(ctx: Context<Read>) -> Result<()> {
+///     pub fn read(ctx: Context<Read>) -> anchor_lang::Result<()> {
 ///         // Cached load due to the `has_one` constraint
 ///         let authority = ctx.accounts.my_account.load_authority()?;
 ///         msg!("Authority: {}", authority);
 ///         Ok(())
 ///     }
 ///
-///     pub fn write(ctx: Context<Write>, new_authority: Pubkey) -> Result<()> {
+///     pub fn write(ctx: Context<Write>, new_authority: Pubkey) -> anchor_lang::Result<()> {
 ///         // Cached load due to the `has_one` constraint
 ///         *ctx.accounts.my_account.load_mut_authority()? = new_authority;
 ///         Ok(())
@@ -336,6 +336,6 @@ where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     fn key(&self) -> Pubkey {
-        *self.__info.key()
+        *self.__info.address()
     }
 }
