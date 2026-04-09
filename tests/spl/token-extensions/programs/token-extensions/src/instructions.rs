@@ -8,7 +8,8 @@ use anchor_spl::{
         transfer_hook::TransferHook,
     },
     token_interface::{
-        get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
+        get_mint_extension_data,
+        spl_token_metadata_interface::state::{Field, TokenMetadata},
         token_metadata_initialize, token_metadata_remove_key, token_metadata_update_field, Mint,
         Token2022, TokenAccount, TokenMetadataInitialize, TokenMetadataRemoveKey,
         TokenMetadataUpdateField,
@@ -199,7 +200,7 @@ impl<'info> UpdateAndRemoveTokenMetadata<'info> {
             update_authority: self.authority.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(self.token_program.key(), cpi_accounts);
-        token_metadata_update_field(cpi_ctx, field, value)?;
+        token_metadata_update_field(cpi_ctx, Field::Key(field), value)?;
         Ok(())
     }
 

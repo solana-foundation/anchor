@@ -81,14 +81,14 @@ pub struct TokenMetadataUpdateAuthority<'info> {
 
 pub fn token_metadata_update_field<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, TokenMetadataUpdateField<'info>>,
-    field: String,
+    field: Field,
     value: String,
 ) -> Result<()> {
     let ix = spl_token_metadata_interface::instruction::update_field(
         ctx.accounts.program_id.key,
         ctx.accounts.metadata.key,
         ctx.accounts.update_authority.key,
-        Field::Key(field),
+        field,
         value,
     );
     anchor_lang::solana_program::program::invoke_signed(
