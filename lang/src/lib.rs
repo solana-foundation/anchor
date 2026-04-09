@@ -47,6 +47,18 @@ mod stake_history;
 pub mod system_program;
 mod vec;
 
+/// Sysvar account addresses referenced by `idl-build` generated `Accounts` helpers.
+#[doc(hidden)]
+pub mod __idl_sysvar_ids {
+    pub use solana_sdk_ids::sysvar::{
+        clock, epoch_schedule, fees, instructions, recent_blockhashes, rewards, slot_hashes,
+        slot_history, stake_history,
+    };
+    pub mod rent {
+        pub use crate::rent::ID;
+    }
+}
+
 #[cfg(feature = "lazy-account")]
 mod lazy;
 
@@ -77,7 +89,6 @@ pub use {
     const_crypto::ed25519::derive_program_address,
     solana_instruction::Instruction,
 };
-/// Pinocchio runtime module - replaces solana_program for V2
 pub mod pinocchio_runtime {
 
     pub use pinocchio::*;

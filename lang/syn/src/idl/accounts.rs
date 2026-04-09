@@ -161,16 +161,18 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
 
 fn sysvar_id_pubkey(ty: &SysvarTy) -> TokenStream {
     match ty {
-        SysvarTy::Clock => quote! { ::solana_sdk_ids::sysvar::clock::ID },
-        SysvarTy::Rent => quote! { ::solana_sdk_ids::sysvar::rent::ID },
-        SysvarTy::EpochSchedule => quote! { ::solana_sdk_ids::sysvar::epoch_schedule::ID },
-        SysvarTy::Fees => quote! { ::solana_sdk_ids::sysvar::fees::ID },
-        SysvarTy::RecentBlockhashes => quote! { ::solana_sdk_ids::sysvar::recent_blockhashes::ID },
-        SysvarTy::SlotHashes => quote! { ::solana_sdk_ids::sysvar::slot_hashes::ID },
-        SysvarTy::SlotHistory => quote! { ::solana_sdk_ids::sysvar::slot_history::ID },
-        SysvarTy::StakeHistory => quote! { ::solana_sdk_ids::sysvar::stake_history::ID },
-        SysvarTy::Instructions => quote! { ::solana_sdk_ids::sysvar::instructions::ID },
-        SysvarTy::Rewards => quote! { ::solana_sdk_ids::sysvar::rewards::ID },
+        SysvarTy::Clock => quote! { ::anchor_lang::__idl_sysvar_ids::clock::ID },
+        SysvarTy::Rent => quote! { ::anchor_lang::__idl_sysvar_ids::rent::ID },
+        SysvarTy::EpochSchedule => quote! { ::anchor_lang::__idl_sysvar_ids::epoch_schedule::ID },
+        SysvarTy::Fees => quote! { ::anchor_lang::__idl_sysvar_ids::fees::ID },
+        SysvarTy::RecentBlockhashes => {
+            quote! { ::anchor_lang::__idl_sysvar_ids::recent_blockhashes::ID }
+        }
+        SysvarTy::SlotHashes => quote! { ::anchor_lang::__idl_sysvar_ids::slot_hashes::ID },
+        SysvarTy::SlotHistory => quote! { ::anchor_lang::__idl_sysvar_ids::slot_history::ID },
+        SysvarTy::StakeHistory => quote! { ::anchor_lang::__idl_sysvar_ids::stake_history::ID },
+        SysvarTy::Instructions => quote! { ::anchor_lang::__idl_sysvar_ids::instructions::ID },
+        SysvarTy::Rewards => quote! { ::anchor_lang::__idl_sysvar_ids::rewards::ID },
     }
 }
 
