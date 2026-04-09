@@ -2524,6 +2524,11 @@ fn idl_init(
     non_canonical: bool,
     allow_localnet: bool,
 ) -> Result<()> {
+    // Convert relative path to absolute path
+    let idl_filepath = fs::canonicalize(&idl_filepath)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(idl_filepath);
+
     // Get cluster URL and wallet path from Anchor config
     let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
 
@@ -2574,6 +2579,11 @@ fn idl_upgrade(
     priority_fee: Option<u64>,
     allow_localnet: bool,
 ) -> Result<()> {
+    // Convert relative path to absolute path
+    let idl_filepath = fs::canonicalize(&idl_filepath)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(idl_filepath);
+
     // Get cluster URL and wallet path from Anchor config
     let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
 
@@ -2697,6 +2707,10 @@ fn idl_fetch(
 }
 
 fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) -> Result<()> {
+    // Convert relative path to absolute path
+    let path = fs::canonicalize(&path)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(path);
     let idl = fs::read(path)?;
 
     // Set the `metadata.address` field based on the given `program_id`
@@ -2723,6 +2737,10 @@ fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) ->
 }
 
 fn idl_type(path: String, out: Option<String>) -> Result<()> {
+    // Convert relative path to absolute path
+    let path = fs::canonicalize(&path)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(path);
     let idl = fs::read(path)?;
     let idl = convert_idl(&idl)?;
     let types = idl_ts(&idl)?;
