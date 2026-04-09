@@ -356,7 +356,14 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
 
     let fields = match &account_strct.fields {
         syn::Fields::Named(n) => n,
-        _ => panic!("Fields must be named"),
+        _ => {
+            return syn::Error::new_spanned(
+                &account_strct.ident,
+                "#[derive(ZeroCopyAccessor)] requires a struct with named fields",
+            )
+            .into_compile_error()
+            .into()
+        }
     };
     let methods: Vec<proc_macro2::TokenStream> = fields
         .named
@@ -368,19 +375,53 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                 .find(|attr| anchor_syn::parser::tts_to_string(&attr.path) == "accessor")
                 .map(|attr| {
                     let mut tts = attr.tokens.clone().into_iter();
-                    let g_stream = match tts.next().expect("Must have a token group") {
-                        proc_macro2::TokenTree::Group(g) => g.stream(),
-                        _ => panic!("Invalid syntax"),
+                    // if user writes #[accessor] with no arguments on a field, tts.next() returns None
+                    let g_stream = match tts.next() {
+                        Some(proc_macro2::TokenTree::Group(g)) => g.stream(),
+                        Some(_) => {
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "invalid `#[accessor]` syntax, expected `#[accessor(Type)]`",
+                            )
+                            .into_compile_error();
+                        }
+                        None => {
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "`#[accessor]` requires a type argument, e.g `#[accessor(MyType)]`",
+                            )
+                            .into_compile_error();
+                        }
                     };
                     let accessor_ty = match g_stream.into_iter().next() {
                         Some(token) => token,
-                        _ => panic!("Missing accessor type"),
+                        None => {
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "`#[accessor]` requires a type inside the parantheses e.g \
+                                 `#[accessor(MyType)]`",
+                            )
+                            .into_compile_error()
+                        }
                     };
 
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "accessor fields always have idents (named struct fields)"
+                    )]
                     let field_name = field.ident.as_ref().unwrap();
-
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "get_<field_name> formed from a valid Rust identifier is always \
+                                  valid TokenStream"
+                    )]
                     let get_field: proc_macro2::TokenStream =
                         format!("get_{field_name}").parse().unwrap();
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "set_<field_name> formed from a valid Rust identifier is always \
+                                  valid TokenStream"
+                    )]
                     let set_field: proc_macro2::TokenStream =
                         format!("set_{field_name}").parse().unwrap();
 
@@ -434,12 +475,21 @@ pub fn zero_copy(
                     // ```
                     is_unsafe = true;
                 } else {
-                    // TODO: how to return a compile error with a span (can't return prase error because expected type TokenStream)
-                    panic!("expected single ident `unsafe`");
+                    return syn::Error::new(
+                        proc_macro2::Span::from(ident.span()),
+                        "expected `unsafe`, e.g `#[zero_copy(unsafe)]`",
+                    )
+                    .into_compile_error()
+                    .into();
                 }
             }
             _ => {
-                panic!("expected single ident `unsafe`");
+                return syn::Error::new(
+                    proc_macro2::Span::from(arg.span()),
+                    "expected `unsafe`, e.g `#[zero_copy(unsafe)]`",
+                )
+                .into_compile_error()
+                .into();
             }
         }
     }
@@ -508,11 +558,11 @@ pub fn zero_copy(
         } else {
             quote! {}
         };
-        let zc_struct = syn::parse2(quote! {
+
+        let zc_struct = syn::parse_quote! {
             #derive_unsafe
             #ret
-        })
-        .unwrap();
+        };
         let idl_build_impl = anchor_syn::idl::impl_idl_build_struct(&zc_struct);
         return proc_macro::TokenStream::from(quote! {
             #ret
