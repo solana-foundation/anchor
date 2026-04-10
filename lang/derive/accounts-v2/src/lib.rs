@@ -4,8 +4,16 @@ use {
     proc_macro::TokenStream,
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
-    syn::{parse_macro_input, Attribute, Data, DeriveInput, Fields, FnArg, Ident, ItemMod, Pat, Type},
+    syn::{
+        parse::{Parse, ParseStream},
+        parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, FnArg, Ident, ItemMod,
+        Pat, Token, Type,
+    },
 };
+
+// ---------------------------------------------------------------------------
+// #[derive(Accounts)]
+// ---------------------------------------------------------------------------
 
 #[proc_macro_derive(Accounts, attributes(account))]
 pub fn derive_accounts(input: TokenStream) -> TokenStream {
@@ -24,13 +32,11 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     };
 
     let mut load_stmts = Vec::new();
+    let mut constraint_stmts = Vec::new();
     let mut exit_stmts = Vec::new();
     let mut field_names = Vec::new();
 
-    // Count non-nested fields for upfront bounds check
-    let account_count = fields.iter()
-        .filter(|f| !is_nested_type(&f.ty))
-        .count();
+    let account_count = fields.iter().filter(|f| !is_nested_type(&f.ty)).count();
 
     for field in fields.iter() {
         let field_name = field.ident.as_ref().expect("named field");
@@ -47,8 +53,82 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             continue;
         }
 
-        if attrs.is_init {
-            // Init: create account via system program CPI, then init
+        // --- Seeds / PDA ---
+        if let Some(ref seeds) = attrs.seeds {
+            let seed_exprs = seeds;
+            if attrs.is_init {
+                // init + seeds: find PDA, then create with invoke_signed
+                let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
+                let space = attrs.space.as_ref().expect("#[account(init)] requires space");
+
+                load_stmts.push(quote! {
+                    let mut #field_name = {
+                        let (__pda, __bump) = anchor_lang::v2::find_program_address(
+                            &[#(#seed_exprs),*],
+                            __program_id,
+                        );
+                        let __target = __accounts[__account_idx];
+                        if *__target.address() != __pda {
+                            return Err(anchor_lang::error::Error::from(
+                                anchor_lang::error::ErrorCode::ConstraintSeeds
+                            ).with_account_name(#name_str));
+                        }
+                        let __payer = #payer.account();
+                        anchor_lang::v2::create_account_signed(
+                            __payer,
+                            &__target,
+                            #space,
+                            __program_id,
+                            &[#(#seed_exprs),* , &[__bump]],
+                        )?;
+                        <#field_ty as anchor_lang::v2::AnchorAccountInit>::init(
+                            __target, __program_id,
+                        ).map_err(|e| {
+                            anchor_lang::error::Error::from(e).with_account_name(#name_str)
+                        })?
+                    };
+                    __account_idx += 1;
+                });
+            } else {
+                // seeds without init: validate PDA address
+                let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
+                let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
+
+                load_stmts.push(quote! {
+                    #binding #field_name = <#field_ty as anchor_lang::v2::AnchorAccount>::#load_fn(
+                        __accounts[__account_idx], __program_id,
+                    ).map_err(|e| {
+                        anchor_lang::error::Error::from(e).with_account_name(#name_str)
+                    })?;
+                    __account_idx += 1;
+                });
+
+                let bump_expr = if attrs.has_bump {
+                    // bump provided: use it directly
+                    quote! {
+                        let (__pda, _) = anchor_lang::v2::find_program_address(
+                            &[#(#seed_exprs),*], __program_id,
+                        );
+                    }
+                } else {
+                    quote! {
+                        let (__pda, _) = anchor_lang::v2::find_program_address(
+                            &[#(#seed_exprs),*], __program_id,
+                        );
+                    }
+                };
+
+                constraint_stmts.push(quote! {
+                    #bump_expr
+                    if *#field_name.account().address() != __pda {
+                        return Err(anchor_lang::error::Error::from(
+                            anchor_lang::error::ErrorCode::ConstraintSeeds
+                        ).with_account_name(#name_str));
+                    }
+                });
+            }
+        } else if attrs.is_init {
+            // init without seeds
             let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
             let space = attrs.space.as_ref().expect("#[account(init)] requires space");
 
@@ -57,14 +137,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                     let __target = __accounts[__account_idx];
                     let __payer = #payer.account();
                     anchor_lang::v2::create_account(
-                        __payer,
-                        &__target,
-                        #space,
-                        __program_id,
+                        __payer, &__target, #space, __program_id,
                     )?;
                     <#field_ty as anchor_lang::v2::AnchorAccountInit>::init(
-                        __target,
-                        __program_id,
+                        __target, __program_id,
                     ).map_err(|e| {
                         anchor_lang::error::Error::from(e).with_account_name(#name_str)
                     })?
@@ -72,13 +148,13 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 __account_idx += 1;
             });
         } else {
+            // Normal load
             let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
             let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
 
             load_stmts.push(quote! {
                 #binding #field_name = <#field_ty as anchor_lang::v2::AnchorAccount>::#load_fn(
-                    __accounts[__account_idx],
-                    __program_id,
+                    __accounts[__account_idx], __program_id,
                 ).map_err(|e| {
                     anchor_lang::error::Error::from(e).with_account_name(#name_str)
                 })?;
@@ -86,7 +162,37 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             });
         }
 
-        if attrs.is_mut {
+        // --- has_one ---
+        for ho in &attrs.has_one {
+            constraint_stmts.push(quote! {
+                if #field_name.#ho != *#ho.account().address() {
+                    return Err(anchor_lang::error::Error::from(
+                        anchor_lang::error::ErrorCode::ConstraintHasOne
+                    ).with_account_name(#name_str));
+                }
+            });
+        }
+
+        // --- address ---
+        if let Some(ref addr) = attrs.address {
+            constraint_stmts.push(quote! {
+                if *#field_name.account().address() != #addr {
+                    return Err(anchor_lang::error::Error::from(
+                        anchor_lang::error::ErrorCode::ConstraintAddress
+                    ).with_account_name(#name_str));
+                }
+            });
+        }
+
+        // --- close ---
+        if let Some(ref close_target) = attrs.close {
+            exit_stmts.push(quote! {
+                anchor_lang::v2::AnchorAccount::close(
+                    &mut self.#field_name,
+                    *#close_target.account(),
+                )?;
+            });
+        } else if attrs.is_mut {
             exit_stmts.push(quote! {
                 anchor_lang::v2::AnchorAccount::exit(&mut self.#field_name)?;
             });
@@ -98,14 +204,15 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             pub fn try_accounts(
                 __program_id: &anchor_lang::v2::Address,
                 __accounts: &[anchor_lang::v2::AccountView],
-            ) -> anchor_lang::Result<Self> {
+            ) -> anchor_lang::Result<(Self, usize)> {
                 use anchor_lang::v2::AnchorAccount as _;
                 if __accounts.len() < #account_count {
                     return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
                 }
                 let mut __account_idx: usize = 0;
                 #(#load_stmts)*
-                Ok(Self { #(#field_names),* })
+                #(#constraint_stmts)*
+                Ok((Self { #(#field_names),* }, __account_idx))
             }
 
             pub fn exit_accounts(&mut self) -> anchor_lang::Result<()> {
@@ -116,41 +223,91 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Attribute parsing
+// ---------------------------------------------------------------------------
+
+struct AccountAttrs {
+    is_mut: bool,
+    is_init: bool,
+    has_bump: bool,
+    payer: Option<Ident>,
+    space: Option<Expr>,
+    seeds: Option<Vec<Expr>>,
+    has_one: Vec<Ident>,
+    address: Option<Expr>,
+    close: Option<Ident>,
+}
+
 fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
     let mut result = AccountAttrs {
         is_mut: false,
         is_init: false,
+        has_bump: false,
         payer: None,
         space: None,
+        seeds: None,
+        has_one: Vec::new(),
+        address: None,
+        close: None,
     };
+
     for attr in attrs {
-        if !attr.path().is_ident("account") { continue; }
-        let _ = attr.parse_nested_meta(|meta| {
-            if meta.path.is_ident("mut") {
-                result.is_mut = true;
-            } else if meta.path.is_ident("init") {
-                result.is_init = true;
-                result.is_mut = true; // init implies mut
-            } else if meta.path.is_ident("payer") {
-                let value = meta.value()?;
-                let ident: Ident = value.parse()?;
-                result.payer = Some(ident);
-            } else if meta.path.is_ident("space") {
-                let value = meta.value()?;
-                let expr: syn::Expr = value.parse()?;
-                result.space = Some(expr);
+        if !attr.path().is_ident("account") {
+            continue;
+        }
+        // Parse as comma-separated items
+        let _ = attr.parse_args_with(|input: ParseStream| {
+            while !input.is_empty() {
+                let ident: Ident = input.parse()?;
+                match ident.to_string().as_str() {
+                    "mut" => result.is_mut = true,
+                    "init" => {
+                        result.is_init = true;
+                        result.is_mut = true;
+                    }
+                    "bump" => result.has_bump = true,
+                    "signer" => {} // validated by Signer type itself
+                    "payer" => {
+                        input.parse::<Token![=]>()?;
+                        result.payer = Some(input.parse()?);
+                    }
+                    "space" => {
+                        input.parse::<Token![=]>()?;
+                        result.space = Some(input.parse()?);
+                    }
+                    "seeds" => {
+                        input.parse::<Token![=]>()?;
+                        let content;
+                        syn::bracketed!(content in input);
+                        let seeds = content
+                            .parse_terminated(Expr::parse, Token![,])?
+                            .into_iter()
+                            .collect();
+                        result.seeds = Some(seeds);
+                    }
+                    "has_one" => {
+                        input.parse::<Token![=]>()?;
+                        result.has_one.push(input.parse()?);
+                    }
+                    "address" => {
+                        input.parse::<Token![=]>()?;
+                        result.address = Some(input.parse()?);
+                    }
+                    "close" => {
+                        input.parse::<Token![=]>()?;
+                        result.close = Some(input.parse()?);
+                    }
+                    _ => {} // ignore unknown attrs for forward compat
+                }
+                if !input.is_empty() {
+                    input.parse::<Token![,]>()?;
+                }
             }
             Ok(())
         });
     }
     result
-}
-
-struct AccountAttrs {
-    is_mut: bool,
-    is_init: bool,
-    payer: Option<Ident>,
-    space: Option<syn::Expr>,
 }
 
 fn is_nested_type(ty: &Type) -> bool {
@@ -163,7 +320,7 @@ fn is_nested_type(ty: &Type) -> bool {
 }
 
 // ---------------------------------------------------------------------------
-// #[derive(AnchorData)] — generates Owner + Discriminator
+// #[derive(AnchorData)]
 // ---------------------------------------------------------------------------
 
 #[proc_macro_derive(AnchorData)]
@@ -187,7 +344,7 @@ pub fn derive_anchor_data(input: TokenStream) -> TokenStream {
 }
 
 // ---------------------------------------------------------------------------
-// #[program] — generates entrypoint + dispatch
+// #[program]
 // ---------------------------------------------------------------------------
 
 #[proc_macro_attribute]
@@ -274,8 +431,9 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 #[cfg(not(feature = "no-log-ix-name"))]
                 anchor_lang::v2::msg!(#fn_name_log);
                 #deser_args
-                let __ctx_accounts = #accounts_type::try_accounts(__program_id, __accounts)?;
-                let mut __ctx = anchor_lang::v2::Context::new(*__program_id, __ctx_accounts, &[]);
+                let (__ctx_accounts, __consumed) = #accounts_type::try_accounts(__program_id, __accounts)?;
+                let __remaining = &__accounts[__consumed..];
+                let mut __ctx = anchor_lang::v2::Context::new(*__program_id, __ctx_accounts, __remaining);
                 #mod_name::#fn_name(&mut __ctx, #(#extra_arg_names),*)?;
                 __ctx.accounts.exit_accounts()?;
                 Ok(())
@@ -340,7 +498,6 @@ fn extract_generic_arg(ty: &Type) -> TokenStream2 {
     if let Type::Path(tp) = ty {
         if let Some(seg) = tp.path.segments.last() {
             if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-                // Skip lifetime args, find the first Type arg
                 for arg in &args.args {
                     if let syn::GenericArgument::Type(inner) = arg {
                         return quote! { #inner };
