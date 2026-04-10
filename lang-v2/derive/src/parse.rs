@@ -20,6 +20,7 @@ pub struct AccountAttrs {
     pub is_signer: bool,
     pub is_init: bool,
     pub is_init_if_needed: bool,
+    pub is_zeroed: bool,
     pub is_executable: bool,
     /// None = not specified, Some(true) = enforce, Some(false) = skip
     pub rent_exempt: Option<bool>,
@@ -51,6 +52,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         is_signer: false,
         is_init: false,
         is_init_if_needed: false,
+        is_zeroed: false,
         is_executable: false,
         rent_exempt: None,
         bump: None,
@@ -87,6 +89,10 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     }
                     "init_if_needed" => {
                         result.is_init_if_needed = true;
+                        result.is_mut = true;
+                    }
+                    "zeroed" => {
+                        result.is_zeroed = true;
                         result.is_mut = true;
                     }
                     "bump" => {
@@ -422,6 +428,31 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
                     )?;
                     <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
                 }
+            };
+        }
+    } else if attrs.is_zeroed {
+        // zeroed: account exists but discriminator must be all zeros. Load mutably,
+        // check disc is zero, then write the real discriminator.
+        let inner_ty = extract_inner_type_for_init(field_ty)
+            .expect("#[account(zeroed)] requires Account<T> or BorshAccount<T>");
+        quote! {
+            let mut #field_name = {
+                let __target = __loader.next_view()?;
+                {
+                    let __data = __target.try_borrow()?;
+                    let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
+                    if __data.len() < __disc.len() || __data[..__disc.len()].iter().any(|b| *b != 0) {
+                        return Err(anchor_lang_v2::ErrorCode::ConstraintZero.into());
+                    }
+                }
+                // Write discriminator then load
+                unsafe {
+                    let mut __view = __target;
+                    let __data = __view.borrow_unchecked_mut();
+                    let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
+                    __data[..__disc.len()].copy_from_slice(__disc);
+                }
+                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
             };
         }
     } else if attrs.is_mut {
