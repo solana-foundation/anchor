@@ -88,7 +88,7 @@ solana-sysvar-id.workspace = true
 
 pinocchio = { workspace = true, features = ["copy", "alloc"] }
 pinocchio-system = "0.6"
-solana-address = { version = "2.0", features = ["bytemuck"] }
+solana-address = { version = "2.0", features = ["bytemuck", "borsh"] }
 
 thiserror = "1"
 

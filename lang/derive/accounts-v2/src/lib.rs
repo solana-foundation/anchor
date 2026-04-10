@@ -189,7 +189,84 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 }
 
 // ---------------------------------------------------------------------------
-// #[derive(AnchorData)]
+// #[account] — attribute macro for account data structs
+// ---------------------------------------------------------------------------
+
+/// Attribute macro for account data structs.
+///
+/// For zerocopy (default):
+/// ```ignore
+/// #[account]
+/// pub struct Market {
+///     pub authority: Address,
+///     pub base_reserve: u64,
+/// }
+/// ```
+/// Generates: `#[derive(Clone, Copy, Pod, Zeroable)]`, `#[repr(C)]`, `Owner`, `Discriminator`.
+///
+/// For borsh:
+/// ```ignore
+/// #[account(borsh)]
+/// pub struct Counter {
+///     pub count: u64,
+/// }
+/// ```
+/// Generates: `#[derive(BorshSerialize, BorshDeserialize, Default)]`, `Owner`, `Discriminator`.
+#[proc_macro_attribute]
+pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let is_borsh = attr.to_string().contains("borsh");
+    let input = parse_macro_input!(item as DeriveInput);
+    let name = &input.ident;
+    let name_str = name.to_string();
+    let vis = &input.vis;
+    let attrs = &input.attrs;
+    let fields = match &input.data {
+        Data::Struct(data) => &data.fields,
+        _ => panic!("#[account] only supports structs"),
+    };
+
+    use sha2::Digest;
+    let hash = sha2::Sha256::digest(format!("account:{name_str}").as_bytes());
+    let disc_bytes = &hash[..8];
+    let disc_literals: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
+
+    let idl_type_json = if let Fields::Named(named) = fields {
+        idl::build_type_json(&name_str, disc_bytes, &named.named)
+    } else {
+        idl::build_type_json(&name_str, disc_bytes, &syn::punctuated::Punctuated::new())
+    };
+
+    let derives_and_repr = if is_borsh {
+        quote! {
+            #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)]
+        }
+    } else {
+        quote! {
+            #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+            #[repr(C)]
+        }
+    };
+
+    TokenStream::from(quote! {
+        #(#attrs)*
+        #derives_and_repr
+        #vis struct #name #fields
+
+        impl anchor_lang::v2::Owner for #name {
+            fn owner() -> anchor_lang::v2::Address { crate::ID }
+        }
+        impl anchor_lang::v2::Discriminator for #name {
+            const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
+        }
+        #[cfg(feature = "idl-build")]
+        impl #name {
+            pub const __IDL_TYPE: &'static str = #idl_type_json;
+        }
+    })
+}
+
+// ---------------------------------------------------------------------------
+// #[derive(AnchorData)] — kept for backwards compatibility
 // ---------------------------------------------------------------------------
 
 #[proc_macro_derive(AnchorData)]

@@ -23,6 +23,7 @@ pub use solana_msg::msg;
 // Re-export the v2 derive macros
 pub use anchor_derive_accounts_v2::Accounts;
 pub use anchor_derive_accounts_v2::AnchorData;
+pub use anchor_derive_accounts_v2::account;
 pub use anchor_derive_accounts_v2::program;
 
 // Re-export v1 event system (works as-is with v2)
