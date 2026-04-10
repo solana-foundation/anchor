@@ -362,7 +362,6 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
     quote! {
         #mod_vis mod #mod_name {
-            use super::*;
             #(#other_items)*
             #(#handlers)*
         }
@@ -403,10 +402,10 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         }
 
         #[cfg(feature = "idl-build")]
-        pub fn __build_idl_instructions() -> alloc::vec::Vec<alloc::string::String> {
-            alloc::vec![
+        pub fn __build_idl_instructions() -> Vec<String> {
+            vec![
                 #(
-                    alloc::format!(
+                    format!(
                         "{{\"name\":\"{}\",\"discriminator\":{},\"accounts\":{},\"args\":{}}}",
                         #idl_ix_names,
                         #idl_ix_discs,
