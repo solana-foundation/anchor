@@ -24,3 +24,12 @@ pub use solana_msg::msg;
 pub use anchor_derive_accounts_v2::Accounts;
 pub use anchor_derive_accounts_v2::AnchorData;
 pub use anchor_derive_accounts_v2::program;
+
+// Re-export v1 event system (works as-is with v2)
+pub use anchor_attribute_event::{emit, event};
+
+// Re-export serialization derives needed by #[event]
+pub use crate::{AnchorSerialize, AnchorDeserialize};
+// Re-export v1 traits needed by #[event] / emit! macro expansion
+pub use crate::Discriminator as EventDiscriminator;
+pub use crate::Event;

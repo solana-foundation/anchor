@@ -155,7 +155,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         // --- has_one ---
         for ho in &attrs.has_one {
             constraint_stmts.push(quote! {
-                if #field_name.#ho != #ho.account().address().to_bytes() {
+                if AsRef::<[u8]>::as_ref(&#field_name.#ho) != AsRef::<[u8]>::as_ref(#ho.account().address()) {
                     return Err(anchor_lang::error::Error::from(
                         anchor_lang::error::ErrorCode::ConstraintHasOne
                     ).with_account_name(#name_str));
