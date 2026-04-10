@@ -44,7 +44,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     // or non-init with seeds constraint). Each gets a u8 entry in the bumps struct.
     let mut bump_field_names: Vec<syn::Ident> = Vec::new();
 
-    let account_count = fields.iter().filter(|f| !is_nested_type(&f.ty)).count();
+
 
     for field in fields.iter() {
         let field_name = field.ident.as_ref().expect("named field");
@@ -118,7 +118,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
             load_stmts.push(quote! {
                 let mut #field_name = {
-                    let __target = __accounts[__account_idx];
+                    let __target = __loader.next_view()?;
                     let __payer = #payer.account();
                     #seeds_arg
                     let __init_params = {
@@ -132,7 +132,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                     )?;
                     <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
                 };
-                __account_idx += 1;
             });
             }
         } else if attrs.is_init_if_needed {
@@ -175,7 +174,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
             load_stmts.push(quote! {
                 let mut #field_name = {
-                    let __target = __accounts[__account_idx];
+                    let __target = __loader.next_view()?;
                     let __already_init = __target.owned_by(__program_id) && __target.data_len() > 0;
                     if __already_init {
                         <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
@@ -194,18 +193,18 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                         <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
                     }
                 };
-                __account_idx += 1;
             });
         } else {
             // --- Normal load ---
-            let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
-            let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
-            load_stmts.push(quote! {
-                #binding #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::#load_fn(
-                    __accounts[__account_idx], __program_id,
-                )?;
-                __account_idx += 1;
-            });
+            if attrs.is_mut {
+                load_stmts.push(quote! {
+                    let mut #field_name = __loader.next_mut::<#field_ty>()?;
+                });
+            } else {
+                load_stmts.push(quote! {
+                    let #field_name = __loader.next::<#field_ty>()?;
+                });
+            }
         }
 
         // --- mut writability check ---
@@ -426,34 +425,32 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             type Bumps = #bumps_name;
         }
 
-        impl #name {
-            #[cfg(feature = "idl-build")]
-            pub const __IDL_ACCOUNTS: &'static str = #idl_json;
-
-            #[cfg(feature = "idl-build")]
-            pub fn __idl_types() -> Vec<&'static str> {
-                vec![#(#idl_data_types::__IDL_TYPE),*]
-            }
-
-            pub fn try_accounts(
+        impl anchor_lang_v2::TryAccounts for #name {
+            fn try_accounts(
                 __program_id: &anchor_lang_v2::Address,
                 __accounts: &[anchor_lang_v2::AccountView],
             ) -> anchor_lang_v2::Result<(Self, #bumps_name, usize)> {
                 use anchor_lang_v2::AnchorAccount as _;
-                if __accounts.len() < #account_count {
-                    return Err(anchor_lang_v2::ErrorCode::AccountNotEnoughKeys.into());
-                }
-                let mut __account_idx: usize = 0;
+                let mut __loader = anchor_lang_v2::AccountLoader::new(__program_id, __accounts);
                 let mut __bumps = #bumps_name::default();
                 #(#load_stmts)*
                 #(#constraint_stmts)*
-                Ok((Self { #(#field_names),* }, __bumps, __account_idx))
+                Ok((Self { #(#field_names),* }, __bumps, __loader.consumed()))
             }
 
-            pub fn exit_accounts(&mut self) -> anchor_lang_v2::Result<()> {
+            fn exit_accounts(&mut self) -> anchor_lang_v2::Result<()> {
                 use anchor_lang_v2::AnchorAccount as _;
                 #(#exit_stmts)*
                 Ok(())
+            }
+        }
+
+        #[cfg(feature = "idl-build")]
+        impl #name {
+            pub const __IDL_ACCOUNTS: &'static str = #idl_json;
+
+            pub fn __idl_types() -> Vec<&'static str> {
+                vec![#(#idl_data_types::__IDL_TYPE),*]
             }
         }
     }
@@ -645,7 +642,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         });
 
         dispatch_arms.push(quote! {
-            #disc_u64 => __handlers::#fn_name(__program_id, __accounts, &__data[8..]),
+            #disc_u64 => __handlers::#fn_name(__program_id, __accounts, __ix_data),
         });
 
         handler_wrappers.push(quote! {
@@ -658,12 +655,9 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 #[cfg(not(feature = "no-log-ix-name"))]
                 anchor_lang_v2::msg!(#fn_name_log);
                 #deser_args
-                let (__ctx_accounts, __bumps, __consumed) = #accounts_type::try_accounts(__program_id, __accounts)?;
-                let __remaining = &__accounts[__consumed..];
-                let mut __ctx = anchor_lang_v2::Context::new(*__program_id, __ctx_accounts, __remaining, __bumps);
-                #mod_name::#fn_name(&mut __ctx, #(#extra_arg_names),*)?;
-                __ctx.accounts.exit_accounts()?;
-                Ok(())
+                anchor_lang_v2::run_handler::<#accounts_type>(__program_id, __accounts, |__ctx| {
+                    #mod_name::#fn_name(__ctx, #(#extra_arg_names),*)
+                })
             }
         });
     }
@@ -682,30 +676,19 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             __accounts: &mut [anchor_lang_v2::AccountView],
             __data: &[u8],
         ) -> pinocchio::ProgramResult {
-            __try_entry(__program_id, __accounts, __data).map_err(|e| e.into())
-        }
-
-        fn __try_entry(
-            __program_id: &anchor_lang_v2::Address,
-            __accounts: &[anchor_lang_v2::AccountView],
-            __data: &[u8],
-        ) -> anchor_lang_v2::Result<()> {
             if *__program_id != crate::ID {
-                return Err(anchor_lang_v2::ErrorCode::DeclaredProgramIdMismatch.into());
+                return Err(solana_program_error::ProgramError::IncorrectProgramId);
             }
-            if __data.len() < 8 {
-                return Err(anchor_lang_v2::ErrorCode::InstructionFallbackNotFound.into());
-            }
-            let __disc = u64::from_le_bytes(__data[..8].try_into().unwrap());
-            match __disc {
+            let (__disc, __ix_data) = anchor_lang_v2::parse_instruction(__data)?;
+            (match __disc {
                 #(#dispatch_arms)*
                 _ => Err(anchor_lang_v2::ErrorCode::InstructionFallbackNotFound.into()),
-            }
+            }).map_err(|e| e.into())
         }
 
         mod __handlers {
             use super::*;
-            use anchor_lang_v2::AnchorAccount as _;
+            use anchor_lang_v2::TryAccounts as _;
             #(#handler_wrappers)*
         }
 
