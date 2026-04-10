@@ -5,6 +5,7 @@ use {
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
     syn::{
+        ext::IdentExt,
         parse::{Parse, ParseStream},
         parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, FnArg, Ident, ItemMod,
         Pat, Token, Type,
@@ -103,23 +104,12 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                     __account_idx += 1;
                 });
 
-                let bump_expr = if attrs.has_bump {
-                    // bump provided: use it directly
-                    quote! {
-                        let (__pda, _) = anchor_lang::v2::find_program_address(
-                            &[#(#seed_exprs),*], __program_id,
-                        );
-                    }
-                } else {
-                    quote! {
-                        let (__pda, _) = anchor_lang::v2::find_program_address(
-                            &[#(#seed_exprs),*], __program_id,
-                        );
-                    }
-                };
-
+                // TODO: when bump value is provided, use create_program_address instead
+                // of find_program_address to save ~1000 CUs
                 constraint_stmts.push(quote! {
-                    #bump_expr
+                    let (__pda, _) = anchor_lang::v2::find_program_address(
+                        &[#(#seed_exprs),*], __program_id,
+                    );
                     if *#field_name.account().address() != __pda {
                         return Err(anchor_lang::error::Error::from(
                             anchor_lang::error::ErrorCode::ConstraintSeeds
@@ -165,7 +155,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         // --- has_one ---
         for ho in &attrs.has_one {
             constraint_stmts.push(quote! {
-                if #field_name.#ho != *#ho.account().address() {
+                if #field_name.#ho != #ho.account().address().to_bytes() {
                     return Err(anchor_lang::error::Error::from(
                         anchor_lang::error::ErrorCode::ConstraintHasOne
                     ).with_account_name(#name_str));
@@ -189,7 +179,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             exit_stmts.push(quote! {
                 anchor_lang::v2::AnchorAccount::close(
                     &mut self.#field_name,
-                    *#close_target.account(),
+                    *self.#close_target.account(),
                 )?;
             });
         } else if attrs.is_mut {
@@ -259,7 +249,7 @@ fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         // Parse as comma-separated items
         let _ = attr.parse_args_with(|input: ParseStream| {
             while !input.is_empty() {
-                let ident: Ident = input.parse()?;
+                let ident = Ident::parse_any(input)?;
                 match ident.to_string().as_str() {
                     "mut" => result.is_mut = true,
                     "init" => {

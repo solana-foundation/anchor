@@ -10,21 +10,18 @@ use {
 ///
 /// Equivalent to Anchor v1's `Account<T>`. Validates owner, checks discriminator,
 /// deserializes via borsh. On `exit()`, serializes back to the data buffer.
-///
-/// Note: `load_mut` does NOT take a pinocchio mutable borrow because borsh
-/// deserializes into an owned copy of `T`. Duplicate mutable accounts result
-/// in last-writer-wins on `exit()`, same as Anchor v1.
 pub struct BorshAccount<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> {
     view: AccountView,
     data: T,
+    mutable: bool,
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<T> {
-    fn validate_and_deserialize(view: AccountView) -> Result<Self, ProgramError> {
+    fn validate_and_deserialize(view: AccountView, mutable: bool) -> Result<Self, ProgramError> {
         if !view.owned_by(&T::owner()) {
             return Err(ProgramError::IllegalOwner);
         }
-        // SAFETY: slice does not escape this function; no aliasing concern.
+        // SAFETY: slice consumed by try_from_slice (copies data out); no reference escapes.
         let data_slice = unsafe { view.borrow_unchecked() };
         if data_slice.len() < DISC_LEN {
             return Err(ProgramError::AccountDataTooSmall);
@@ -34,7 +31,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
         }
         let data = T::try_from_slice(&data_slice[DISC_LEN..])
             .map_err(|_| ProgramError::InvalidAccountData)?;
-        Ok(Self { view, data })
+        Ok(Self { view, data, mutable })
     }
 }
 
@@ -42,18 +39,18 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
     type Data = T;
 
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        Self::validate_and_deserialize(view)
+        Self::validate_and_deserialize(view, false)
     }
 
     fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        Self::validate_and_deserialize(view)
+        Self::validate_and_deserialize(view, true)
     }
 
     fn account(&self) -> &AccountView { &self.view }
 
     fn exit(&mut self) -> pinocchio::ProgramResult {
+        if !self.mutable { return Ok(()); }
         let mut data_ref = self.view.try_borrow_mut()?;
-        // Discriminator is already written (unchanged since load). Only serialize data.
         self.data.serialize(&mut &mut data_ref[DISC_LEN..])
             .map_err(|_| ProgramError::InvalidAccountData)?;
         Ok(())
@@ -62,8 +59,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator + Default> AnchorAccountInit for BorshAccount<T> {
     fn init(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        let mut account = Self { view, data: T::default() };
-        // Write discriminator + default data
+        let mut account = Self { view, data: T::default(), mutable: true };
         let mut data_ref = account.view.try_borrow_mut()?;
         if data_ref.len() < DISC_LEN {
             return Err(ProgramError::AccountDataTooSmall);
@@ -82,7 +78,12 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> Deref for Bor
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> DerefMut for BorshAccount<T> {
-    fn deref_mut(&mut self) -> &mut T { &mut self.data }
+    fn deref_mut(&mut self) -> &mut T {
+        if !self.mutable {
+            panic!("cannot mutably deref an account loaded with load() — use #[account(mut)]");
+        }
+        &mut self.data
+    }
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AsRef<AccountView> for BorshAccount<T> {

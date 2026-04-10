@@ -50,11 +50,18 @@ pub fn create_account_signed(
     let required = rent_exempt_lamports(space);
     let current = target.lamports();
 
-    // Build pinocchio Seed array from raw seed slices
-    let pino_seeds: Vec<pinocchio::cpi::Seed> = seeds.iter()
-        .map(|s| pinocchio::cpi::Seed::from(*s))
-        .collect();
-    let signer = pinocchio::cpi::Signer::from(pino_seeds.as_slice());
+    // Stack-allocated seed array (max 16 seeds per Solana spec)
+    assert!(seeds.len() <= 16, "PDA seeds exceed maximum of 16");
+    let mut pino_seeds: [core::mem::MaybeUninit<pinocchio::cpi::Seed>; 16] =
+        unsafe { core::mem::MaybeUninit::uninit().assume_init() };
+    for (i, s) in seeds.iter().enumerate() {
+        pino_seeds[i].write(pinocchio::cpi::Seed::from(*s));
+    }
+    // SAFETY: first `seeds.len()` elements are initialized above
+    let initialized = unsafe {
+        core::slice::from_raw_parts(pino_seeds.as_ptr() as *const pinocchio::cpi::Seed, seeds.len())
+    };
+    let signer = pinocchio::cpi::Signer::from(initialized);
 
     if current == 0 {
         pinocchio_system::instructions::CreateAccount {
