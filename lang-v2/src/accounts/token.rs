@@ -8,7 +8,8 @@ use {
     pinocchio::account::AccountView,
     solana_address::Address,
     solana_program_error::ProgramError,
-    super::account::AccountValidate,
+    super::{account::AccountValidate, Account},
+    crate::constraints::{self, Constrain},
     crate::programs::{Token, Token2022},
     crate::Id,
 };
@@ -172,5 +173,53 @@ impl Mint {
 
     pub fn freeze_authority(&self) -> Option<&Address> {
         if self.has_freeze_authority() { Some(&self.freeze_authority) } else { None }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Constrain impls — Account<TokenAccount>
+// ---------------------------------------------------------------------------
+
+impl Constrain<constraints::token::Mint> for Account<TokenAccount> {
+    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+        if self.mint != *expected {
+            Err(ProgramError::InvalidAccountData)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl Constrain<constraints::token::Authority> for Account<TokenAccount> {
+    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+        if self.authority != *expected {
+            Err(ProgramError::InvalidAccountData)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Constrain impls — Account<Mint>
+// ---------------------------------------------------------------------------
+
+impl Constrain<constraints::mint::Authority> for Account<Mint> {
+    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+        if !self.has_mint_authority() || self.mint_authority != *expected {
+            Err(ProgramError::InvalidAccountData)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl Constrain<constraints::mint::FreezeAuthority> for Account<Mint> {
+    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+        if !self.has_freeze_authority() || self.freeze_authority != *expected {
+            Err(ProgramError::InvalidAccountData)
+        } else {
+            Ok(())
+        }
     }
 }

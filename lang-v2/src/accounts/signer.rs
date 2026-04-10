@@ -25,3 +25,7 @@ impl Deref for Signer {
 impl AsRef<AccountView> for Signer {
     fn as_ref(&self) -> &AccountView { &self.view }
 }
+
+impl AsRef<Address> for Signer {
+    fn as_ref(&self) -> &Address { self.view.address() }
+}

@@ -22,3 +22,7 @@ impl Deref for UncheckedAccount {
 impl AsRef<AccountView> for UncheckedAccount {
     fn as_ref(&self) -> &AccountView { &self.view }
 }
+
+impl AsRef<Address> for UncheckedAccount {
+    fn as_ref(&self) -> &Address { self.view.address() }
+}

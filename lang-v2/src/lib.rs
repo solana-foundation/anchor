@@ -7,6 +7,7 @@
 extern crate alloc;
 
 pub mod accounts;
+pub mod constraints;
 mod context;
 mod cpi;
 pub mod event;

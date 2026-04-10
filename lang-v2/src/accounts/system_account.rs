@@ -25,3 +25,7 @@ impl Deref for SystemAccount {
 impl AsRef<AccountView> for SystemAccount {
     fn as_ref(&self) -> &AccountView { &self.view }
 }
+
+impl AsRef<Address> for SystemAccount {
+    fn as_ref(&self) -> &Address { self.view.address() }
+}

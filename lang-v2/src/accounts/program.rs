@@ -26,3 +26,7 @@ impl<T: Id> Deref for Program<T> {
 impl<T: Id> AsRef<AccountView> for Program<T> {
     fn as_ref(&self) -> &AccountView { &self.view }
 }
+
+impl<T: Id> AsRef<Address> for Program<T> {
+    fn as_ref(&self) -> &Address { self.view.address() }
+}
