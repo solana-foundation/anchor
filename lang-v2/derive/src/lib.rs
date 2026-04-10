@@ -44,6 +44,22 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let idl_json = idl::build_accounts_json(&idl_accounts);
     let idl_data_types: Vec<_> = fields.iter().filter_map(|f| f.idl_data_type.as_ref()).collect();
 
+    // Conditional bumps: empty → type alias, non-empty → struct
+    let has_bumps = !bump_fields.is_empty();
+    let bumps_def = if has_bumps {
+        quote! {
+            #[derive(Default, Clone)]
+            pub struct #bumps_name { #(pub #bump_fields: u8,)* }
+        }
+    } else {
+        quote! { pub type #bumps_name = (); }
+    };
+    let bumps_init = if has_bumps {
+        quote! { let mut __bumps = #bumps_name::default(); }
+    } else {
+        quote! { let __bumps = #bumps_name::default(); }
+    };
+
     // --- Client-side struct for off-chain usage (tests, CPI, SDK) ---
     let client_mod_name = syn::Ident::new(
         &format!("__client_accounts_{}", name.to_string().to_lowercase()),
@@ -79,11 +95,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             }
         }
 
-        /// Auto-generated bumps struct for PDA fields.
-        #[derive(Debug, Default, Clone)]
-        pub struct #bumps_name {
-            #(pub #bump_fields: u8,)*
-        }
+        #bumps_def
 
         impl anchor_lang_v2::Bumps for #name {
             type Bumps = #bumps_name;
@@ -96,7 +108,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             ) -> anchor_lang_v2::Result<(Self, #bumps_name, usize)> {
                 use anchor_lang_v2::AnchorAccount as _;
                 let mut __loader = anchor_lang_v2::AccountLoader::new(__program_id, __accounts);
-                let mut __bumps = #bumps_name::default();
+                #bumps_init
                 #(#loads)*
                 #(#constraints)*
                 Ok((Self { #(#field_names),* }, __bumps, __loader.consumed()))
@@ -151,23 +163,18 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     let (struct_attrs, pod_impls) = if is_borsh {
         (quote! { #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)] }, quote! {})
     } else {
-        let field_checks: Vec<_> = if let Fields::Named(named) = fields {
-            named.named.iter().map(|f| {
-                let fty = &f.ty;
-                quote! {
-                    const _: fn() = || {
-                        fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
-                        assert_pod::<#fty>();
-                    };
-                }
-            }).collect()
+        let field_types: Vec<_> = if let Fields::Named(named) = fields {
+            named.named.iter().map(|f| &f.ty).collect()
         } else {
             vec![]
         };
         (
             quote! { #[derive(Clone, Copy)] #[repr(C)] },
             quote! {
-                #(#field_checks)*
+                const _: fn() = || {
+                    fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
+                    #( assert_pod::<#field_types>(); )*
+                };
                 unsafe impl anchor_lang_v2::bytemuck::Pod for #name {}
                 unsafe impl anchor_lang_v2::bytemuck::Zeroable for #name {}
             },
@@ -261,17 +268,25 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         let extra_arg_names: Vec<_> = extra_args.iter().map(|(n, _)| *n).collect();
         let extra_arg_types: Vec<_> = extra_args.iter().map(|(_, t)| *t).collect();
 
-        let deser_args = if extra_args.is_empty() {
-            quote! {}
-        } else {
-            quote! {
+        let deser_args = match extra_args.len() {
+            0 => quote! {},
+            1 => {
+                let arg_name = extra_arg_names[0];
+                let arg_type = extra_arg_types[0];
+                quote! {
+                    let #arg_name = <#arg_type as anchor_lang_v2::AnchorDeserialize>::deserialize(
+                        &mut &__ix_data[..]
+                    ).map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
+                }
+            }
+            _ => quote! {
                 #[derive(anchor_lang_v2::AnchorDeserialize)]
                 struct __Args { #(#extra_arg_names: #extra_arg_types,)* }
                 let __args = <__Args as anchor_lang_v2::AnchorDeserialize>::deserialize(
                     &mut &__ix_data[..]
                 ).map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
                 #(let #extra_arg_names = __args.#extra_arg_names;)*
-            }
+            },
         };
 
         idl_ix_names.push(fn_name_str.clone());
