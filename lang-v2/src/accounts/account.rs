@@ -69,9 +69,33 @@ enum BorrowState<T> {
 impl<T: Pod + Zeroable + AccountValidate> Account<T> {
     /// Release the data borrow guard so the underlying `AccountView` can be
     /// passed to CPI calls that check `is_borrowed()`. After calling this,
-    /// `Deref` / `DerefMut` will panic — only use right before a CPI.
+    /// `Deref` / `DerefMut` will panic until `reacquire_borrow()` is called.
     pub fn release_borrow(&mut self) {
         self.borrow = BorrowState::Released;
+    }
+
+    /// Re-acquire an immutable borrow after a `release_borrow()` + CPI.
+    /// This allows reading updated account data (e.g. checking balances
+    /// after a token transfer).
+    pub fn reacquire_borrow(&mut self) -> core::result::Result<(), ProgramError> {
+        let data_ref = self.view.try_borrow()?;
+        let offset = T::data_offset();
+        let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        let ptr = guard[offset..].as_ptr() as *const T;
+        self.borrow = BorrowState::Immutable { _guard: guard, ptr };
+        Ok(())
+    }
+
+    /// Re-acquire a mutable borrow after a `release_borrow()` + CPI.
+    /// This allows reading and writing updated account data.
+    pub fn reacquire_borrow_mut(&mut self) -> core::result::Result<(), ProgramError> {
+        let mut view_mut = self.view;
+        let data_ref = view_mut.try_borrow_mut()?;
+        let offset = T::data_offset();
+        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        let ptr = guard[offset..].as_mut_ptr() as *mut T;
+        self.borrow = BorrowState::Mutable { _guard: guard, ptr };
+        Ok(())
     }
 
     fn from_ref(view: AccountView) -> Result<Self, ProgramError> {
