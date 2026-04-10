@@ -10,6 +10,8 @@ pub mod accounts;
 pub mod constraints;
 mod context;
 mod cpi;
+mod dispatch;
+pub mod loader;
 pub mod event;
 pub mod pod;
 pub mod prelude;
@@ -20,6 +22,8 @@ pub use pinocchio::account::AccountView;
 pub use pinocchio::address::Address;
 pub use accounts::AccountInitialize;
 pub use context::{Context, Bumps};
+pub use dispatch::{TryAccounts, run_handler, parse_instruction};
+pub use loader::AccountLoader;
 pub use cpi::{create_account, create_account_signed, find_program_address, create_program_address, verify_program_address, realloc_account};
 pub use traits::*;
 pub use event::{Event, sol_log_data};
@@ -82,6 +86,9 @@ pub enum ErrorCode {
     ConstraintClose,
     ConstraintOwner,
     ConstraintRaw,
+    ConstraintExecutable,
+    ConstraintRentExempt,
+    ConstraintZero,
     InstructionDidNotDeserialize,
     DeclaredProgramIdMismatch,
     InstructionFallbackNotFound,
@@ -106,6 +113,9 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             ErrorCode::ConstraintClose => solana_program_error::ProgramError::InvalidAccountData,
             ErrorCode::ConstraintOwner => solana_program_error::ProgramError::IllegalOwner,
             ErrorCode::ConstraintRaw => solana_program_error::ProgramError::Custom(2001),
+            ErrorCode::ConstraintExecutable => solana_program_error::ProgramError::Custom(2002),
+            ErrorCode::ConstraintRentExempt => solana_program_error::ProgramError::Custom(2003),
+            ErrorCode::ConstraintZero => solana_program_error::ProgramError::Custom(2004),
             ErrorCode::InstructionDidNotDeserialize => solana_program_error::ProgramError::InvalidInstructionData,
             ErrorCode::DeclaredProgramIdMismatch => solana_program_error::ProgramError::IncorrectProgramId,
             ErrorCode::InstructionFallbackNotFound => solana_program_error::ProgramError::InvalidInstructionData,
@@ -118,6 +128,13 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             ErrorCode::RequireGteViolated => solana_program_error::ProgramError::Custom(2506),
         }
     }
+}
+
+/// Check if an account is rent-exempt. Used by `rent_exempt = enforce` constraint.
+pub fn is_rent_exempt(view: &pinocchio::account::AccountView) -> bool {
+    use pinocchio::sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BYTE};
+    let required = (ACCOUNT_STORAGE_OVERHEAD + view.data_len() as u64) * DEFAULT_LAMPORTS_PER_BYTE;
+    view.lamports() >= required
 }
 
 // ---------------------------------------------------------------------------
