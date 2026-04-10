@@ -23,6 +23,7 @@ pub fn derive_accounts(input: TokenStream) -> TokenStream {
 
 fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let name = &input.ident;
+    let bumps_name = syn::Ident::new(&format!("{name}Bumps"), name.span());
     let fields = match &input.data {
         Data::Struct(data) => match &data.fields {
             Fields::Named(fields) => &fields.named,
@@ -38,6 +39,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     // (name, writable, signer, optional_program_address)
     let mut idl_accounts: Vec<(String, bool, bool, Option<String>)> = Vec::new();
     let mut idl_data_types: Vec<TokenStream2> = Vec::new(); // inner T from BorshAccount<T>/Account<T>
+
+    // Bumps: collect fields that have seeds (init with seeds, init_if_needed with seeds,
+    // or non-init with seeds constraint). Each gets a u8 entry in the bumps struct.
+    let mut bump_field_names: Vec<syn::Ident> = Vec::new();
 
     let account_count = fields.iter().filter(|f| !is_nested_type(&f.ty)).count();
 
@@ -58,6 +63,12 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         // Extract inner data type T from BorshAccount<T> or Account<T> for IDL
         if let Some(inner) = extract_inner_data_type(field_ty) {
             idl_data_types.push(inner);
+        }
+
+        // Track whether this field needs a bump entry
+        let has_seeds = attrs.seeds.is_some();
+        if has_seeds {
+            bump_field_names.push(field_name.clone());
         }
 
         if is_nested_type(field_ty) {
@@ -82,6 +93,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                     if *__target.address() != __pda {
                         return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
                     }
+                    __bumps.#field_name = __bump;
                     anchor_lang_v2::create_account_signed(
                         __payer, &__target, #space, __program_id,
                         &[#(#seed_exprs),* , &[__bump]],
@@ -119,6 +131,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                     if *__target.address() != __pda {
                         return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
                     }
+                    __bumps.#field_name = __bump;
                     anchor_lang_v2::create_account_signed(
                         __payer, &__target, #space, __program_id,
                         &[#(#seed_exprs),* , &[__bump]],
@@ -162,12 +175,13 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             if let Some(ref seeds) = attrs.seeds {
                 let seed_exprs = seeds;
                 constraint_stmts.push(quote! {
-                    let (__pda, _) = anchor_lang_v2::find_program_address(
+                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
                         &[#(#seed_exprs),*], __program_id,
                     );
                     if *#field_name.account().address() != __pda {
                         return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
                     }
+                    __bumps.#field_name = __bump;
                 });
             }
         }
@@ -237,6 +251,16 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let idl_json = idl::build_accounts_json(&idl_accounts);
 
     quote! {
+        /// Auto-generated bumps struct for PDA fields.
+        #[derive(Debug, Default, Clone)]
+        pub struct #bumps_name {
+            #(pub #bump_field_names: u8,)*
+        }
+
+        impl anchor_lang_v2::Bumps for #name {
+            type Bumps = #bumps_name;
+        }
+
         impl #name {
             #[cfg(feature = "idl-build")]
             pub const __IDL_ACCOUNTS: &'static str = #idl_json;
@@ -249,15 +273,16 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             pub fn try_accounts(
                 __program_id: &anchor_lang_v2::Address,
                 __accounts: &[anchor_lang_v2::AccountView],
-            ) -> anchor_lang_v2::Result<(Self, usize)> {
+            ) -> anchor_lang_v2::Result<(Self, #bumps_name, usize)> {
                 use anchor_lang_v2::AnchorAccount as _;
                 if __accounts.len() < #account_count {
                     return Err(anchor_lang_v2::ErrorCode::AccountNotEnoughKeys.into());
                 }
                 let mut __account_idx: usize = 0;
+                let mut __bumps = #bumps_name::default();
                 #(#load_stmts)*
                 #(#constraint_stmts)*
-                Ok((Self { #(#field_names),* }, __account_idx))
+                Ok((Self { #(#field_names),* }, __bumps, __account_idx))
             }
 
             pub fn exit_accounts(&mut self) -> anchor_lang_v2::Result<()> {
@@ -440,9 +465,9 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 #[cfg(not(feature = "no-log-ix-name"))]
                 anchor_lang_v2::msg!(#fn_name_log);
                 #deser_args
-                let (__ctx_accounts, __consumed) = #accounts_type::try_accounts(__program_id, __accounts)?;
+                let (__ctx_accounts, __bumps, __consumed) = #accounts_type::try_accounts(__program_id, __accounts)?;
                 let __remaining = &__accounts[__consumed..];
-                let mut __ctx = anchor_lang_v2::Context::new(*__program_id, __ctx_accounts, __remaining);
+                let mut __ctx = anchor_lang_v2::Context::new(*__program_id, __ctx_accounts, __remaining, __bumps);
                 #mod_name::#fn_name(&mut __ctx, #(#extra_arg_names),*)?;
                 __ctx.accounts.exit_accounts()?;
                 Ok(())

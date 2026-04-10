@@ -16,7 +16,7 @@ mod traits;
 
 pub use pinocchio::account::AccountView;
 pub use pinocchio::address::Address;
-pub use context::Context;
+pub use context::{Context, Bumps};
 pub use cpi::{create_account, create_account_signed, find_program_address, realloc_account};
 pub use traits::*;
 pub use event::{Event, sol_log_data};
@@ -55,6 +55,13 @@ pub enum ErrorCode {
     InstructionDidNotDeserialize,
     DeclaredProgramIdMismatch,
     InstructionFallbackNotFound,
+    RequireViolated,
+    RequireEqViolated,
+    RequireNeqViolated,
+    RequireKeysEqViolated,
+    RequireKeysNeqViolated,
+    RequireGtViolated,
+    RequireGteViolated,
 }
 
 impl From<ErrorCode> for solana_program_error::ProgramError {
@@ -68,6 +75,216 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             ErrorCode::InstructionDidNotDeserialize => solana_program_error::ProgramError::InvalidInstructionData,
             ErrorCode::DeclaredProgramIdMismatch => solana_program_error::ProgramError::IncorrectProgramId,
             ErrorCode::InstructionFallbackNotFound => solana_program_error::ProgramError::InvalidInstructionData,
+            ErrorCode::RequireViolated => solana_program_error::ProgramError::Custom(2500),
+            ErrorCode::RequireEqViolated => solana_program_error::ProgramError::Custom(2501),
+            ErrorCode::RequireNeqViolated => solana_program_error::ProgramError::Custom(2502),
+            ErrorCode::RequireKeysEqViolated => solana_program_error::ProgramError::Custom(2503),
+            ErrorCode::RequireKeysNeqViolated => solana_program_error::ProgramError::Custom(2504),
+            ErrorCode::RequireGtViolated => solana_program_error::ProgramError::Custom(2505),
+            ErrorCode::RequireGteViolated => solana_program_error::ProgramError::Custom(2506),
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// require! macros — no_std compatible
+// ---------------------------------------------------------------------------
+
+/// Ensures a condition is true, otherwise returns an error.
+///
+/// Can be used with or without a custom error code.
+///
+/// # Example
+/// ```rust,ignore
+/// require!(amount > 0, ErrorCode::ConstraintRaw);
+/// require!(amount > 0, MyError::InvalidAmount);
+/// ```
+#[macro_export]
+macro_rules! require {
+    ($invariant:expr, $error:tt $(,)?) => {
+        if !($invariant) {
+            return Err($crate::ErrorCode::$error.into());
+        }
+    };
+    ($invariant:expr, $error:expr $(,)?) => {
+        if !($invariant) {
+            return Err(core::convert::Into::into($error));
+        }
+    };
+}
+
+/// Ensures two NON-PUBKEY values are equal.
+///
+/// Use [require_keys_eq] to compare two pubkeys/addresses.
+///
+/// # Example
+/// ```rust,ignore
+/// require_eq!(ctx.accounts.data.count, 0);
+/// require_eq!(ctx.accounts.data.count, 0, MyError::InvalidCount);
+/// ```
+#[macro_export]
+macro_rules! require_eq {
+    ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
+        if $value1 != $value2 {
+            $crate::msg!(
+                "require_eq violation: left = {:?}, right = {:?}",
+                $value1,
+                $value2
+            );
+            return Err(core::convert::Into::into($error_code));
+        }
+    };
+    ($value1:expr, $value2:expr $(,)?) => {
+        if $value1 != $value2 {
+            $crate::msg!(
+                "require_eq violation: left = {:?}, right = {:?}",
+                $value1,
+                $value2
+            );
+            return Err($crate::ErrorCode::RequireEqViolated.into());
+        }
+    };
+}
+
+/// Ensures two NON-PUBKEY values are not equal.
+///
+/// Use [require_keys_neq] to compare two pubkeys/addresses.
+///
+/// # Example
+/// ```rust,ignore
+/// require_neq!(ctx.accounts.data.count, 0);
+/// require_neq!(ctx.accounts.data.count, 0, MyError::InvalidCount);
+/// ```
+#[macro_export]
+macro_rules! require_neq {
+    ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
+        if $value1 == $value2 {
+            $crate::msg!(
+                "require_neq violation: left = {:?}, right = {:?}",
+                $value1,
+                $value2
+            );
+            return Err(core::convert::Into::into($error_code));
+        }
+    };
+    ($value1:expr, $value2:expr $(,)?) => {
+        if $value1 == $value2 {
+            $crate::msg!(
+                "require_neq violation: left = {:?}, right = {:?}",
+                $value1,
+                $value2
+            );
+            return Err($crate::ErrorCode::RequireNeqViolated.into());
+        }
+    };
+}
+
+/// Ensures two pubkey/address values are equal.
+///
+/// Use [require_eq] to compare two non-pubkey values.
+///
+/// # Example
+/// ```rust,ignore
+/// require_keys_eq!(*ctx.accounts.data.authority(), ctx.accounts.authority.key());
+/// ```
+#[macro_export]
+macro_rules! require_keys_eq {
+    ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
+        if $value1 != $value2 {
+            $crate::msg!("require_keys_eq violation");
+            return Err(core::convert::Into::into($error_code));
+        }
+    };
+    ($value1:expr, $value2:expr $(,)?) => {
+        if $value1 != $value2 {
+            $crate::msg!("require_keys_eq violation");
+            return Err($crate::ErrorCode::RequireKeysEqViolated.into());
+        }
+    };
+}
+
+/// Ensures two pubkey/address values are not equal.
+///
+/// Use [require_neq] to compare two non-pubkey values.
+///
+/// # Example
+/// ```rust,ignore
+/// require_keys_neq!(*ctx.accounts.data.authority(), ctx.accounts.other.key());
+/// ```
+#[macro_export]
+macro_rules! require_keys_neq {
+    ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
+        if $value1 == $value2 {
+            $crate::msg!("require_keys_neq violation");
+            return Err(core::convert::Into::into($error_code));
+        }
+    };
+    ($value1:expr, $value2:expr $(,)?) => {
+        if $value1 == $value2 {
+            $crate::msg!("require_keys_neq violation");
+            return Err($crate::ErrorCode::RequireKeysNeqViolated.into());
+        }
+    };
+}
+
+/// Ensures the first value is greater than the second.
+///
+/// # Example
+/// ```rust,ignore
+/// require_gt!(ctx.accounts.data.count, 0);
+/// require_gt!(ctx.accounts.data.count, 0, MyError::InvalidCount);
+/// ```
+#[macro_export]
+macro_rules! require_gt {
+    ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
+        if $value1 <= $value2 {
+            $crate::msg!(
+                "require_gt violation: left = {:?}, right = {:?}",
+                $value1,
+                $value2
+            );
+            return Err(core::convert::Into::into($error_code));
+        }
+    };
+    ($value1:expr, $value2:expr $(,)?) => {
+        if $value1 <= $value2 {
+            $crate::msg!(
+                "require_gt violation: left = {:?}, right = {:?}",
+                $value1,
+                $value2
+            );
+            return Err($crate::ErrorCode::RequireGtViolated.into());
+        }
+    };
+}
+
+/// Ensures the first value is greater than or equal to the second.
+///
+/// # Example
+/// ```rust,ignore
+/// require_gte!(ctx.accounts.data.count, 1);
+/// require_gte!(ctx.accounts.data.count, 1, MyError::InvalidCount);
+/// ```
+#[macro_export]
+macro_rules! require_gte {
+    ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
+        if $value1 < $value2 {
+            $crate::msg!(
+                "require_gte violation: left = {:?}, right = {:?}",
+                $value1,
+                $value2
+            );
+            return Err(core::convert::Into::into($error_code));
+        }
+    };
+    ($value1:expr, $value2:expr $(,)?) => {
+        if $value1 < $value2 {
+            $crate::msg!(
+                "require_gte violation: left = {:?}, right = {:?}",
+                $value1,
+                $value2
+            );
+            return Err($crate::ErrorCode::RequireGteViolated.into());
+        }
+    };
 }

@@ -13,7 +13,7 @@ pub use crate::{
     // Programs
     programs::System,
     // Context
-    Context,
+    Context, Bumps,
     // CPI
     create_account, create_account_signed, find_program_address,
     // Derive macros
@@ -32,6 +32,10 @@ pub use crate::{
     msg,
     // ID
     declare_id,
+    // Require macros (re-exported via #[macro_export])
+    require, require_eq, require_neq,
+    require_keys_eq, require_keys_neq,
+    require_gt, require_gte,
 };
 
 pub use pinocchio::account::AccountView;
