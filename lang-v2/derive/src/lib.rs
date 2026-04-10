@@ -8,7 +8,6 @@ use {
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
     syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, ItemMod, Pat, Type},
-    parse::{parse_account_attrs, field_ty_str, is_nested_type, extract_inner_data_type, extract_inner_type_for_init},
 };
 
 // ---------------------------------------------------------------------------
@@ -24,361 +23,26 @@ pub fn derive_accounts(input: TokenStream) -> TokenStream {
 fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let name = &input.ident;
     let bumps_name = syn::Ident::new(&format!("{name}Bumps"), name.span());
-    let fields = match &input.data {
+    let fields: Vec<parse::AccountField> = match &input.data {
         Data::Struct(data) => match &data.fields {
-            Fields::Named(fields) => &fields.named,
+            Fields::Named(named) => named.named.iter().map(parse::parse_field).collect(),
             _ => panic!("Accounts derive only supports named fields"),
         },
         _ => panic!("Accounts derive only supports structs"),
     };
 
-    let mut load_stmts = Vec::new();
-    let mut constraint_stmts = Vec::new();
-    let mut exit_stmts = Vec::new();
-    let mut field_names = Vec::new();
-    // (name, writable, signer, optional_program_address)
-    let mut idl_accounts: Vec<(String, bool, bool, Option<String>)> = Vec::new();
-    let mut idl_data_types: Vec<TokenStream2> = Vec::new(); // inner T from BorshAccount<T>/Account<T>
+    let field_names: Vec<_> = fields.iter().map(|f| &f.name).collect();
+    let loads: Vec<_> = fields.iter().map(|f| &f.load).collect();
+    let constraints: Vec<_> = fields.iter().flat_map(|f| &f.constraints).collect();
+    let exits: Vec<_> = fields.iter().filter_map(|f| f.exit.as_ref()).collect();
+    let bump_fields: Vec<_> = fields.iter().filter(|f| f.has_bump).map(|f| &f.name).collect();
 
-    // Bumps: collect fields that have seeds (init with seeds, init_if_needed with seeds,
-    // or non-init with seeds constraint). Each gets a u8 entry in the bumps struct.
-    let mut bump_field_names: Vec<syn::Ident> = Vec::new();
-
-
-
-    for field in fields.iter() {
-        let field_name = field.ident.as_ref().expect("named field");
-        let field_ty = &field.ty;
-        let attrs = parse_account_attrs(&field.attrs);
-        let name_str = field_name.to_string();
-
-        field_names.push(field_name.clone());
-
-        let is_signer = field_ty_str(field_ty) == "Signer";
-        // init/init_if_needed accounts are only signers if they are NOT PDAs (no seeds)
-        let is_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
-        let program_address = parse::extract_program_address(field_ty);
-        idl_accounts.push((name_str.clone(), attrs.is_mut, is_signer || is_init_signer, program_address));
-
-        // Extract inner data type T from BorshAccount<T> or Account<T> for IDL
-        if let Some(inner) = extract_inner_data_type(field_ty) {
-            idl_data_types.push(inner);
-        }
-
-        // Track whether this field needs a bump entry
-        let has_seeds = attrs.seeds.is_some();
-        if has_seeds {
-            bump_field_names.push(field_name.clone());
-        }
-
-        if is_nested_type(field_ty) {
-            load_stmts.push(quote! { compile_error!("Nested<T> codegen not yet implemented"); });
-            continue;
-        }
-
-        // --- Init ---
-        if attrs.is_init {
-            let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
-            let space = attrs.space.as_ref()
-                .expect("#[account(init)] requires space");
-            {
-            // Unified init: AccountInitialize::create_and_initialize handles all types.
-            let inner_ty = extract_inner_type_for_init(field_ty)
-                .expect("#[account(init)] requires Account<T> or BorshAccount<T>");
-
-            // Build init param assignments from namespaced constraints.
-            let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-                let key = syn::Ident::new(
-                    &nc.key.to_lowercase(),
-                    proc_macro2::Span::call_site(),
-                );
-                let value = &nc.value;
-                if nc.is_field_ref {
-                    quote! { __p.#key = Some(#value.account()); }
-                } else {
-                    quote! { __p.#key = Some(#value); }
-                }
-            }).collect();
-
-            let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-                let seed_exprs = seeds;
-                quote! {
-                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], __program_id,
-                    );
-                    if *__target.address() != __pda {
-                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                    }
-                    __bumps.#field_name = __bump;
-                    let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
-                }
-            } else {
-                quote! { let __seeds: Option<&[&[u8]]> = None; }
-            };
-
-            load_stmts.push(quote! {
-                let mut #field_name = {
-                    let __target = __loader.next_view()?;
-                    let __payer = #payer.account();
-                    #seeds_arg
-                    let __init_params = {
-                        type __P<'__a> = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
-                        let mut __p = <__P as Default>::default();
-                        #(#param_assignments)*
-                        __p
-                    };
-                    <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
-                        __payer, &__target, #space, __program_id, &__init_params, __seeds,
-                    )?;
-                    <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
-                };
-            });
-            }
-        } else if attrs.is_init_if_needed {
-            // --- init_if_needed ---
-            // Same as init, but skips creation if already initialized.
-            let payer = attrs.payer.as_ref().expect("#[account(init_if_needed)] requires payer");
-            let space = attrs.space.as_ref()
-                .expect("#[account(init_if_needed)] requires space");
-            let inner_ty = extract_inner_type_for_init(field_ty)
-                .expect("#[account(init_if_needed)] requires Account<T> or BorshAccount<T>");
-
-            let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-                let seed_exprs = seeds;
-                quote! {
-                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], __program_id,
-                    );
-                    if *__target.address() != __pda {
-                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                    }
-                    __bumps.#field_name = __bump;
-                    let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
-                }
-            } else {
-                quote! { let __seeds: Option<&[&[u8]]> = None; }
-            };
-
-            let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-                let key = syn::Ident::new(
-                    &nc.key.to_lowercase(),
-                    proc_macro2::Span::call_site(),
-                );
-                let value = &nc.value;
-                if nc.is_field_ref {
-                    quote! { __p.#key = Some(#value.account()); }
-                } else {
-                    quote! { __p.#key = Some(#value); }
-                }
-            }).collect();
-
-            load_stmts.push(quote! {
-                let mut #field_name = {
-                    let __target = __loader.next_view()?;
-                    let __already_init = __target.owned_by(__program_id) && __target.data_len() > 0;
-                    if __already_init {
-                        <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
-                    } else {
-                        let __payer = #payer.account();
-                        #seeds_arg
-                        let __init_params = {
-                            type __P<'__a> = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
-                            let mut __p = <__P as Default>::default();
-                            #(#param_assignments)*
-                            __p
-                        };
-                        <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
-                            __payer, &__target, #space, __program_id, &__init_params, __seeds,
-                        )?;
-                        <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
-                    }
-                };
-            });
-        } else {
-            // --- Normal load ---
-            if attrs.is_mut {
-                load_stmts.push(quote! {
-                    let mut #field_name = __loader.next_mut::<#field_ty>()?;
-                });
-            } else {
-                load_stmts.push(quote! {
-                    let #field_name = __loader.next::<#field_ty>()?;
-                });
-            }
-        }
-
-        // --- mut writability check ---
-        if attrs.is_mut && !attrs.is_init && !attrs.is_init_if_needed {
-            constraint_stmts.push(quote! {
-                if !#field_name.account().is_writable() {
-                    return Err(anchor_lang_v2::ErrorCode::ConstraintMut.into());
-                }
-            });
-        }
-
-        // --- signer check (explicit #[account(signer)] on non-Signer types) ---
-        if attrs.is_signer {
-            constraint_stmts.push(quote! {
-                if !#field_name.account().is_signer() {
-                    return Err(anchor_lang_v2::ErrorCode::ConstraintSigner.into());
-                }
-            });
-        }
-
-        // --- Seeds constraint (non-init, non-init_if_needed) ---
-        if !attrs.is_init && !attrs.is_init_if_needed {
-            if let Some(ref seeds) = attrs.seeds {
-                let seed_exprs = seeds;
-                // When bump = <expr> is provided, use verify_program_address
-                // (sha256 only, ~200 CU) instead of find_program_address
-                // (sha256 + curve per bump, ~544 CU). Skips the curve check
-                // since the bump was already validated during account creation.
-                if let Some(Some(ref bump_expr)) = attrs.bump {
-                    constraint_stmts.push(quote! {
-                        {
-                            let __bump_val: u8 = #bump_expr;
-                            anchor_lang_v2::verify_program_address(
-                                &[#(#seed_exprs),* , &[__bump_val]],
-                                __program_id,
-                                #field_name.account().address(),
-                            )?;
-                            __bumps.#field_name = __bump_val;
-                        }
-                    });
-                } else {
-                    constraint_stmts.push(quote! {
-                        let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                            &[#(#seed_exprs),*], __program_id,
-                        );
-                        if *#field_name.account().address() != __pda {
-                            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                        }
-                        __bumps.#field_name = __bump;
-                    });
-                }
-            }
-        }
-
-        // --- has_one ---
-        for (ho, ho_err) in &attrs.has_one {
-            let err = if let Some(ref e) = ho_err {
-                quote! { core::convert::Into::into(#e) }
-            } else {
-                quote! { anchor_lang_v2::ErrorCode::ConstraintHasOne.into() }
-            };
-            constraint_stmts.push(quote! {
-                if AsRef::<[u8]>::as_ref(&#field_name.#ho) != AsRef::<[u8]>::as_ref(#ho.account().address()) {
-                    return Err(#err);
-                }
-            });
-        }
-
-        // --- address ---
-        if let Some(ref addr) = attrs.address {
-            let err = if let Some(ref e) = attrs.address_error {
-                quote! { core::convert::Into::into(#e) }
-            } else {
-                quote! { anchor_lang_v2::ErrorCode::ConstraintAddress.into() }
-            };
-            constraint_stmts.push(quote! {
-                if *#field_name.account().address() != #addr {
-                    return Err(#err);
-                }
-            });
-        }
-
-        // --- owner ---
-        if let Some(ref owner_expr) = attrs.owner {
-            let err = if let Some(ref e) = attrs.owner_error {
-                quote! { core::convert::Into::into(#e) }
-            } else {
-                quote! { anchor_lang_v2::ErrorCode::ConstraintOwner.into() }
-            };
-            constraint_stmts.push(quote! {
-                if !#field_name.account().owned_by(&#owner_expr) {
-                    return Err(#err);
-                }
-            });
-        }
-
-        // --- constraint ---
-        if let Some(ref expr) = attrs.constraint {
-            let err = if let Some(ref custom_err) = attrs.constraint_error {
-                quote! { core::convert::Into::into(#custom_err) }
-            } else {
-                quote! { anchor_lang_v2::ErrorCode::ConstraintRaw.into() }
-            };
-            constraint_stmts.push(quote! {
-                if !(#expr) {
-                    return Err(#err);
-                }
-            });
-        }
-
-        // --- namespaced constraints (token::mint, mint::authority, etc.) ---
-        // Skip for init/init_if_needed accounts: namespaced constraints on init
-        // accounts are only used as init parameters (e.g. mint::decimals = 6),
-        // not runtime validation. Literal values like `6` can't be converted to
-        // &Address, and the account may not be fully initialized when constraints run.
-        if !attrs.is_init && !attrs.is_init_if_needed {
-            for nc in &attrs.namespaced {
-                let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
-                let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
-                let value = &nc.value;
-                constraint_stmts.push(quote! {
-                    anchor_lang_v2::constraints::Constrain::<
-                        anchor_lang_v2::constraints::#ns::#key
-                    >::constrain(
-                        &#field_name,
-                        AsRef::<anchor_lang_v2::Address>::as_ref(&#value),
-                    )?;
-                });
-            }
-        }
-
-        // --- realloc ---
-        if let Some(ref new_space) = attrs.realloc {
-            let realloc_payer = attrs.realloc_payer.as_ref().expect("realloc requires realloc_payer");
-            let zero_fill = attrs.realloc_zero;
-            constraint_stmts.push(quote! {
-                {
-                    let __new_space = #new_space;
-                    let __info = #field_name.account();
-                    let __current_len = __info.data_len();
-                    if __new_space != __current_len {
-                        // Resize the account
-                        let mut __view = *__info;
-                        anchor_lang_v2::realloc_account(
-                            &mut __view,
-                            __new_space,
-                            #realloc_payer.account(),
-                            #zero_fill,
-                        )?;
-                    }
-                }
-            });
-        }
-
-        // --- exit / close ---
-        if let Some(ref close_target) = attrs.close {
-            // Prevent self-closing: closing an account to itself would zero its data
-            // and lamports, effectively destroying the account with no destination.
-            constraint_stmts.push(quote! {
-                if #field_name.account().address() == #close_target.account().address() {
-                    return Err(anchor_lang_v2::ErrorCode::ConstraintClose.into());
-                }
-            });
-            exit_stmts.push(quote! {
-                anchor_lang_v2::AnchorAccount::close(&mut self.#field_name, *self.#close_target.account())?;
-            });
-        } else if attrs.is_mut {
-            exit_stmts.push(quote! {
-                anchor_lang_v2::AnchorAccount::exit(&mut self.#field_name)?;
-            });
-        }
-    }
-
+    // IDL collection
+    let idl_accounts: Vec<_> = fields.iter().map(|f| {
+        (f.name.to_string(), f.idl_writable, f.idl_signer, f.idl_program_address.clone())
+    }).collect();
     let idl_json = idl::build_accounts_json(&idl_accounts);
+    let idl_data_types: Vec<_> = fields.iter().filter_map(|f| f.idl_data_type.as_ref()).collect();
 
     // --- Client-side struct for off-chain usage (tests, CPI, SDK) ---
     let client_mod_name = syn::Ident::new(
@@ -418,7 +82,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         /// Auto-generated bumps struct for PDA fields.
         #[derive(Debug, Default, Clone)]
         pub struct #bumps_name {
-            #(pub #bump_field_names: u8,)*
+            #(pub #bump_fields: u8,)*
         }
 
         impl anchor_lang_v2::Bumps for #name {
@@ -433,14 +97,14 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 use anchor_lang_v2::AnchorAccount as _;
                 let mut __loader = anchor_lang_v2::AccountLoader::new(__program_id, __accounts);
                 let mut __bumps = #bumps_name::default();
-                #(#load_stmts)*
-                #(#constraint_stmts)*
+                #(#loads)*
+                #(#constraints)*
                 Ok((Self { #(#field_names),* }, __bumps, __loader.consumed()))
             }
 
             fn exit_accounts(&mut self) -> anchor_lang_v2::Result<()> {
                 use anchor_lang_v2::AnchorAccount as _;
-                #(#exit_stmts)*
+                #(#exits)*
                 Ok(())
             }
         }
