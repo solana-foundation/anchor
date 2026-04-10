@@ -79,6 +79,7 @@ impl AccountInitialize for TokenAccount {
     fn create_and_initialize<'a>(
         payer: &AccountView,
         account: &AccountView,
+        _space: usize,
         _program_id: &Address,
         params: &Self::Params<'a>,
         signer_seeds: Option<&[&[u8]]>,
@@ -205,6 +206,7 @@ impl AccountInitialize for Mint {
     fn create_and_initialize<'a>(
         payer: &AccountView,
         account: &AccountView,
+        _space: usize,
         _program_id: &Address,
         params: &Self::Params<'a>,
         signer_seeds: Option<&[&[u8]]>,

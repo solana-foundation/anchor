@@ -79,101 +79,28 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         // --- Init ---
         if attrs.is_init {
             let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
-            let has_namespaced = !attrs.namespaced.is_empty();
+            let space = attrs.space.as_ref()
+                .expect("#[account(init)] requires space");
+            {
+            // Unified init: AccountInitialize::create_and_initialize handles all types.
+            let inner_ty = extract_inner_data_type(field_ty)
+                .expect("#[account(init)] requires Account<T> or BorshAccount<T>");
 
-            if has_namespaced {
-                // External account init (TokenAccount, Mint, etc.)
-                // The type's AccountInitialize impl handles create + init CPI.
-                let inner_ty = extract_inner_data_type(field_ty)
-                    .expect("init with namespaced constraints requires Account<T>");
-
-                // Build init params from namespaced constraints.
-                let param_fields: Vec<_> = attrs.namespaced.iter().map(|nc| {
-                    let key = syn::Ident::new(
-                        &nc.key.to_lowercase(),
-                        proc_macro2::Span::call_site(),
-                    );
-                    let value = &nc.value;
-                    if nc.is_field_ref {
-                        quote! { #key: Some(#value.account()) }
-                    } else {
-                        quote! { #key: Some(#value) }
-                    }
-                }).collect();
-
-                let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-                    let seed_exprs = seeds;
-                    quote! {
-                        let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                            &[#(#seed_exprs),*], __program_id,
-                        );
-                        if *__target.address() != __pda {
-                            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                        }
-                        __bumps.#field_name = __bump;
-                        let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
-                    }
+            // Build init param assignments from namespaced constraints.
+            let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
+                let key = syn::Ident::new(
+                    &nc.key.to_lowercase(),
+                    proc_macro2::Span::call_site(),
+                );
+                let value = &nc.value;
+                if nc.is_field_ref {
+                    quote! { __p.#key = Some(#value.account()); }
                 } else {
-                    quote! { let __seeds: Option<&[&[u8]]> = None; }
-                };
+                    quote! { __p.#key = Some(#value); }
+                }
+            }).collect();
 
-                load_stmts.push(quote! {
-                    let mut #field_name = {
-                        let __target = __accounts[__account_idx];
-                        let __payer = #payer.account();
-                        #seeds_arg
-                        let __init_params = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params {
-                            #(#param_fields,)*
-                            ..Default::default()
-                        };
-                        <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
-                            __payer, &__target, __program_id, &__init_params, __seeds,
-                        )?;
-                        <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
-                    };
-                    __account_idx += 1;
-                });
-            } else {
-                // Anchor program account init — use space + AnchorAccountInit::init()
-                let space = attrs.space.as_ref().expect("#[account(init)] requires space");
-
-                let create_call = if let Some(ref seeds) = attrs.seeds {
-                    let seed_exprs = seeds;
-                    quote! {
-                        let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                            &[#(#seed_exprs),*], __program_id,
-                        );
-                        if *__target.address() != __pda {
-                            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                        }
-                        __bumps.#field_name = __bump;
-                        anchor_lang_v2::create_account_signed(
-                            __payer, &__target, #space, __program_id,
-                            &[#(#seed_exprs),* , &[__bump]],
-                        )?;
-                    }
-                } else {
-                    quote! {
-                        anchor_lang_v2::create_account(__payer, &__target, #space, __program_id)?;
-                    }
-                };
-
-                load_stmts.push(quote! {
-                    let mut #field_name = {
-                        let __target = __accounts[__account_idx];
-                        let __payer = #payer.account();
-                        #create_call
-                        <#field_ty as anchor_lang_v2::AnchorAccountInit>::init(__target, __program_id)?
-                    };
-                    __account_idx += 1;
-                });
-            }
-        } else if attrs.is_init_if_needed {
-            // --- init_if_needed ---
-            let payer = attrs.payer.as_ref().expect("#[account(init_if_needed)] requires payer");
-            let space = attrs.space.as_ref().expect("#[account(init_if_needed)] requires space");
-
-            let create_call = if let Some(ref seeds) = attrs.seeds {
+            let seeds_arg = if let Some(ref seeds) = attrs.seeds {
                 let seed_exprs = seeds;
                 quote! {
                     let (__pda, __bump) = anchor_lang_v2::find_program_address(
@@ -183,16 +110,68 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                         return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
                     }
                     __bumps.#field_name = __bump;
-                    anchor_lang_v2::create_account_signed(
-                        __payer, &__target, #space, __program_id,
-                        &[#(#seed_exprs),* , &[__bump]],
-                    )?;
+                    let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
                 }
             } else {
-                quote! {
-                    anchor_lang_v2::create_account(__payer, &__target, #space, __program_id)?;
-                }
+                quote! { let __seeds: Option<&[&[u8]]> = None; }
             };
+
+            load_stmts.push(quote! {
+                let mut #field_name = {
+                    let __target = __accounts[__account_idx];
+                    let __payer = #payer.account();
+                    #seeds_arg
+                    let __init_params = {
+                        type __P<'__a> = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
+                        let mut __p = <__P as Default>::default();
+                        #(#param_assignments)*
+                        __p
+                    };
+                    <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
+                        __payer, &__target, #space, __program_id, &__init_params, __seeds,
+                    )?;
+                    <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
+                };
+                __account_idx += 1;
+            });
+            }
+        } else if attrs.is_init_if_needed {
+            // --- init_if_needed ---
+            // Same as init, but skips creation if already initialized.
+            let payer = attrs.payer.as_ref().expect("#[account(init_if_needed)] requires payer");
+            let space = attrs.space.as_ref()
+                .expect("#[account(init_if_needed)] requires space");
+            let inner_ty = extract_inner_data_type(field_ty)
+                .expect("#[account(init_if_needed)] requires Account<T> or BorshAccount<T>");
+
+            let seeds_arg = if let Some(ref seeds) = attrs.seeds {
+                let seed_exprs = seeds;
+                quote! {
+                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
+                        &[#(#seed_exprs),*], __program_id,
+                    );
+                    if *__target.address() != __pda {
+                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+                    }
+                    __bumps.#field_name = __bump;
+                    let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
+                }
+            } else {
+                quote! { let __seeds: Option<&[&[u8]]> = None; }
+            };
+
+            let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
+                let key = syn::Ident::new(
+                    &nc.key.to_lowercase(),
+                    proc_macro2::Span::call_site(),
+                );
+                let value = &nc.value;
+                if nc.is_field_ref {
+                    quote! { __p.#key = Some(#value.account()); }
+                } else {
+                    quote! { __p.#key = Some(#value); }
+                }
+            }).collect();
 
             load_stmts.push(quote! {
                 let mut #field_name = {
@@ -202,8 +181,17 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                         <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
                     } else {
                         let __payer = #payer.account();
-                        #create_call
-                        <#field_ty as anchor_lang_v2::AnchorAccountInit>::init(__target, __program_id)?
+                        #seeds_arg
+                        let __init_params = {
+                            type __P<'__a> = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
+                            let mut __p = <__P as Default>::default();
+                            #(#param_assignments)*
+                            __p
+                        };
+                        <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
+                            __payer, &__target, #space, __program_id, &__init_params, __seeds,
+                        )?;
+                        <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
                     }
                 };
                 __account_idx += 1;

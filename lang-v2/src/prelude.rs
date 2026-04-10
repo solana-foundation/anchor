@@ -2,7 +2,7 @@
 
 pub use crate::{
     // Core trait
-    AnchorAccount, AnchorAccountInit,
+    AnchorAccount,
     // Marker traits
     Owner, Id, Discriminator,
     // Account types

@@ -32,10 +32,6 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     }
 }
 
-pub trait AnchorAccountInit: AnchorAccount {
-    fn init(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError>;
-}
-
 pub trait Owner {
     fn owner() -> Address;
 }
