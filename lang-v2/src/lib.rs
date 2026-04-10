@@ -39,6 +39,8 @@ pub use anchor_derive_accounts_v2::emit;
 // Re-export borsh and bytemuck for generated code
 pub use borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
 pub use bytemuck;
+// Re-export wincode for instruction data serialization
+pub use wincode;
 
 // ---------------------------------------------------------------------------
 // Client-side types — for building instructions off-chain (tests, CPI, SDK)
@@ -56,14 +58,9 @@ pub trait ToAccountMetas {
     fn to_account_metas(&self, is_signer: Option<bool>) -> alloc::vec::Vec<AccountMeta>;
 }
 
-/// Serializes instruction data: discriminator prefix + borsh-encoded args.
-pub trait InstructionData: Discriminator + AnchorSerialize {
-    fn data(&self) -> alloc::vec::Vec<u8> {
-        let mut data = alloc::vec::Vec::with_capacity(256);
-        data.extend_from_slice(Self::DISCRIMINATOR);
-        self.serialize(&mut data).unwrap();
-        data
-    }
+/// Serializes instruction data: discriminator prefix + LE-encoded args.
+pub trait InstructionData: Discriminator {
+    fn data(&self) -> alloc::vec::Vec<u8>;
 }
 
 /// Result type.

@@ -385,6 +385,7 @@ dependencies = [
  "solana-define-syscall 4.0.1",
  "solana-msg",
  "solana-program-error",
+ "wincode",
 ]
 
 [[package]]

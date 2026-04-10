@@ -20,6 +20,7 @@ solana-program-error = { version = "3.0", features = ["borsh"] }
 solana-msg = { workspace = true }
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
+wincode = { version = "0.4", features = ["derive"] }
 
 [target.'cfg(target_os = "solana")'.dependencies]
 solana-define-syscall = "4.0"

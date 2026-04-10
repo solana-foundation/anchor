@@ -604,11 +604,11 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             quote! {}
         } else {
             quote! {
-                #[derive(anchor_lang_v2::AnchorDeserialize)]
+                // Wincode zerocopy instruction arg deserialization.
+                #[derive(anchor_lang_v2::wincode::SchemaRead)]
                 struct __Args { #(#extra_arg_names: #extra_arg_types,)* }
-                let __args = <__Args as anchor_lang_v2::AnchorDeserialize>::deserialize(
-                    &mut &__ix_data[..]
-                ).map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
+                let __args: __Args = anchor_lang_v2::wincode::deserialize(__ix_data)
+                    .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
                 #(let #extra_arg_names = __args.#extra_arg_names;)*
             }
         };
@@ -625,14 +625,23 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         );
         let disc_literal_bytes: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
         instruction_structs.push(quote! {
-            #[derive(anchor_lang_v2::AnchorSerialize, anchor_lang_v2::AnchorDeserialize)]
+            /// Instruction data struct. `.data()` returns discriminator + wincode-encoded args.
+            #[derive(anchor_lang_v2::wincode::SchemaWrite)]
             pub struct #ix_struct_name {
                 #(pub #extra_arg_names: #extra_arg_types,)*
             }
             impl anchor_lang_v2::Discriminator for #ix_struct_name {
                 const DISCRIMINATOR: &'static [u8] = &[#(#disc_literal_bytes),*];
             }
-            impl anchor_lang_v2::InstructionData for #ix_struct_name {}
+            impl anchor_lang_v2::InstructionData for #ix_struct_name {
+                fn data(&self) -> alloc::vec::Vec<u8> {
+                    let mut data = alloc::vec::Vec::with_capacity(256);
+                    data.extend_from_slice(Self::DISCRIMINATOR);
+                    anchor_lang_v2::wincode::serialize_into(&mut data, self)
+                        .expect("instruction serialization failed");
+                    data
+                }
+            }
         });
 
         // --- Client accounts re-export ---
@@ -713,6 +722,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         #[cfg(feature = "cpi")]
         pub mod instruction {
             extern crate alloc;
+            use anchor_lang_v2::Discriminator as _;
             #(#instruction_structs)*
         }
 
