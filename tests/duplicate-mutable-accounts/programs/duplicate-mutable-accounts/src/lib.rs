@@ -56,7 +56,7 @@ pub mod duplicate_mutable_accounts {
             ctx.remaining_accounts.len()
         );
         for account_info in ctx.remaining_accounts.iter() {
-            if account_info.is_writable {
+            if account_info.is_writable() {
                 msg!("Remaining account {} is writable", account_info.key());
             }
         }

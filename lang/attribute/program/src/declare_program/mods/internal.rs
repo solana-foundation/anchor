@@ -114,11 +114,8 @@ fn gen_internal_accounts_common(
         .iter()
         .map(|accs| {
             let ident = format_ident!("{}", accs.name.to_camel_case());
-            let generics = if accs.accounts.is_empty() {
-                quote!()
-            } else {
-                quote!(<'info>)
-            };
+            // AccountInfo (pinocchio AccountView) has no lifetime parameters,
+            // so generated structs should not use `<'info>`.
             let accounts = accs.accounts.iter().map(|acc| match acc {
                 IdlInstructionAccountItem::Single(acc) => {
                     let name = format_ident!("{}", acc.name);
@@ -136,9 +133,9 @@ fn gen_internal_accounts_common(
                     };
 
                     let acc_expr = if acc.optional {
-                        quote! { Option<AccountInfo #generics> }
+                        quote! { Option<AccountInfo> }
                     } else {
-                        quote! { AccountInfo #generics }
+                        quote! { AccountInfo }
                     };
 
                     quote! {
@@ -155,14 +152,14 @@ fn gen_internal_accounts_common(
                         .expect("Accounts must exist");
 
                     quote! {
-                        pub #name: #ty_name #generics
+                        pub #name: #ty_name
                     }
                 }
             });
 
             quote! {
                 #[derive(Accounts)]
-                pub struct #ident #generics {
+                pub struct #ident {
                     #(#accounts,)*
                 }
             }

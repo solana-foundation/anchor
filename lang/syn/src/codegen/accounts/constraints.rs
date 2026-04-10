@@ -1815,7 +1815,7 @@ pub fn generate_constraint_executable(
     // because we are only acting on the field, we know it isn't optional at this point
     // as it was unwrapped in `generate_constraint`
     quote! {
-        if !#account_ref.executable {
+        if !#account_ref.executable() {
             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintExecutable).with_account_name(#name_str));
         }
     }

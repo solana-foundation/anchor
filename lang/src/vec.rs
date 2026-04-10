@@ -43,7 +43,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 mod tests {
     use {
         super::*,
-        crate::{pinocchio_runtime::pubkey::Pubkey, Key},
+        crate::{pinocchio_runtime::pubkey::Pubkey},
     };
 
     #[derive(Accounts)]

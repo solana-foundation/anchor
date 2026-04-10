@@ -1,4 +1,5 @@
-use anchor_lang::{prelude::*, pinocchio_runtime::entrypoint::ProgramResult};
+use anchor_lang::prelude::*;
+use anchor_lang::pinocchio_runtime::program_error::ProgramResult;
 
 use anchor_spl::{
     associated_token::AssociatedToken,

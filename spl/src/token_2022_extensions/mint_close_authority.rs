@@ -9,17 +9,16 @@ use {
     spl_token_2022_interface as spl_token_2022,
 };
 
-pub fn mint_close_authority_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, MintCloseAuthorityInitialize<'info>>,
+pub fn mint_close_authority_initialize(
+    ctx: CpiContext<'_, '_, MintCloseAuthorityInitialize>,
     authority: Option<&Pubkey>,
 ) -> Result<()> {
     let ix = spl_token_2022::instruction::initialize_mint_close_authority(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
+        ctx.accounts.token_program_id.address(),
+        ctx.accounts.mint.address(),
         authority,
     )?;
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
     )
@@ -27,7 +26,7 @@ pub fn mint_close_authority_initialize<'info>(
 }
 
 #[derive(Accounts)]
-pub struct MintCloseAuthorityInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct MintCloseAuthorityInitialize {
+    pub token_program_id: AccountInfo,
+    pub mint: AccountInfo,
 }

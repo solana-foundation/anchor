@@ -242,6 +242,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 __bumps: &mut #bumps_struct_name,
                 __reallocs: &mut std::collections::BTreeSet<anchor_lang::pinocchio_runtime::pubkey::Pubkey>,
             ) -> anchor_lang::Result<Self> {
+                use anchor_lang::Key as _;
                 // Deserialize instruction, if declared.
                 #ix_de
                 // Deserialize each account.

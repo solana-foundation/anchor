@@ -580,6 +580,8 @@ pub mod prelude {
     pub use super::idl::IdlBuild;
     #[cfg(feature = "event-cpi")]
     pub use super::{emit_cpi, event_cpi};
+    // Re-export the crate as anchor_lang for declare_program! macro
+    pub use crate as anchor_lang;
     // V2: Using pinocchio_runtime types
     pub use crate::pinocchio_runtime::account_info::{next_account_info, AccountInfo};
     pub use {

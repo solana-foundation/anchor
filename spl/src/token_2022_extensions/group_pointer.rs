@@ -9,19 +9,18 @@ use {
     spl_token_2022_interface as spl_token_2022,
 };
 
-pub fn group_pointer_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, GroupPointerInitialize<'info>>,
+pub fn group_pointer_initialize(
+    ctx: CpiContext<'_, '_, GroupPointerInitialize>,
     authority: Option<Pubkey>,
     group_address: Option<Pubkey>,
 ) -> Result<()> {
     let ix = spl_token_2022::extension::group_pointer::instruction::initialize(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
+        ctx.accounts.token_program_id.address(),
+        ctx.accounts.mint.address(),
         authority,
         group_address,
     )?;
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
     )
@@ -29,24 +28,23 @@ pub fn group_pointer_initialize<'info>(
 }
 
 #[derive(Accounts)]
-pub struct GroupPointerInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct GroupPointerInitialize {
+    pub token_program_id: AccountInfo,
+    pub mint: AccountInfo,
 }
 
-pub fn group_pointer_update<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, GroupPointerUpdate<'info>>,
+pub fn group_pointer_update(
+    ctx: CpiContext<'_, '_, GroupPointerUpdate>,
     group_address: Option<Pubkey>,
 ) -> Result<()> {
     let ix = spl_token_2022::extension::group_pointer::instruction::update(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.authority.key,
-        &[ctx.accounts.authority.key],
+        ctx.accounts.token_program_id.address(),
+        ctx.accounts.mint.address(),
+        ctx.accounts.authority.address(),
+        &[ctx.accounts.authority.address()],
         group_address,
     )?;
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
     )
@@ -54,8 +52,8 @@ pub fn group_pointer_update<'info>(
 }
 
 #[derive(Accounts)]
-pub struct GroupPointerUpdate<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
+pub struct GroupPointerUpdate {
+    pub token_program_id: AccountInfo,
+    pub mint: AccountInfo,
+    pub authority: AccountInfo,
 }

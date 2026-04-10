@@ -382,18 +382,18 @@ pub struct Unsized {
 }
 
 #[derive(Accounts)]
-pub struct AccountInfo1<'info> {
+pub struct AccountInfo1 {
     pub account1: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct AccountInfo2<'info> {
+pub struct AccountInfo2 {
     pub account1: AccountInfo,
     pub account2: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct AccountInfo4<'info> {
+pub struct AccountInfo4 {
     pub account1: AccountInfo,
     pub account2: AccountInfo,
     pub account3: AccountInfo,
@@ -401,7 +401,7 @@ pub struct AccountInfo4<'info> {
 }
 
 #[derive(Accounts)]
-pub struct AccountInfo8<'info> {
+pub struct AccountInfo8 {
     pub account1: AccountInfo,
     pub account2: AccountInfo,
     pub account3: AccountInfo,

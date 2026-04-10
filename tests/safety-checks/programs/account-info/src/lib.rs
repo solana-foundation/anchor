@@ -11,6 +11,6 @@ pub mod account_info {
 }
 
 #[derive(Accounts)]
-pub struct Initialize<'info> {
+pub struct Initialize {
     unchecked: AccountInfo,
 }

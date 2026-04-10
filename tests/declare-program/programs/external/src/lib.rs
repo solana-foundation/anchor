@@ -155,7 +155,7 @@ pub struct Init<'info> {
         init,
         payer = authority,
         space = 8 + 4,
-        seeds = [authority.key.as_ref()],
+        seeds = [authority.key().as_ref()],
         bump
     )]
     pub my_account: Account<'info, MyAccount>,
@@ -165,7 +165,7 @@ pub struct Init<'info> {
 #[derive(Accounts)]
 pub struct Update<'info> {
     pub authority: Signer<'info>,
-    #[account(mut, seeds = [authority.key.as_ref()], bump)]
+    #[account(mut, seeds = [authority.key().as_ref()], bump)]
     pub my_account: Account<'info, MyAccount>,
 }
 
@@ -190,7 +190,7 @@ pub struct UpdateNonInstructionComposite2<'info> {
 #[derive(Accounts)]
 pub struct NonInstructionUpdate<'info> {
     pub authority: Signer<'info>,
-    #[account(mut, seeds = [authority.key.as_ref()], bump)]
+    #[account(mut, seeds = [authority.key().as_ref()], bump)]
     pub my_account: Account<'info, MyAccount>,
     pub program: Program<'info, program::External>,
 }
@@ -203,7 +203,7 @@ pub struct NonInstructionUpdate2<'info> {
 #[derive(Accounts)]
 pub struct UpdateWithOptional<'info> {
     pub authority: Signer<'info>,
-    #[account(mut, seeds = [authority.key.as_ref()], bump)]
+    #[account(mut, seeds = [authority.key().as_ref()], bump)]
     pub my_account: Account<'info, MyAccount>,
     /// CHECK: Optional account for testing
     #[account(mut)]

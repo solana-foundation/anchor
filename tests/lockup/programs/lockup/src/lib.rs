@@ -126,12 +126,14 @@ pub mod lockup {
         }
 
         // Transfer funds out.
-        let seeds = &[
-            ctx.accounts.vesting.to_account_info().key().as_ref(),
-            &[ctx.accounts.vesting.nonce],
+        let vesting_key = ctx.accounts.vesting.to_account_info().key();
+        let bump = ctx.accounts.vesting.nonce;
+        let signer_seeds = [
+            Seed::from(vesting_key.as_ref()),
+            Seed::from(slice::from_ref(&bump)),
         ];
-        let signer = &[&seeds[..]];
-        let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        let signers = [CpiSigner::from(&signer_seeds[..])];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(&signers);
         token::transfer(cpi_ctx, amount)?;
 
         // Bookkeeping.
@@ -211,8 +213,7 @@ pub mod lockup {
 
 #[derive(Accounts)]
 pub struct Auth<'info> {
-    #[account(signer)]
-    authority: AccountInfo,
+    authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -228,7 +229,7 @@ pub struct CreateVesting<'info> {
     #[account(signer)]
     pub depositor_authority: AccountInfo,
     // Misc.
-    #[account(constraint = token_program.key() == &token::ID)]
+    #[account(constraint = token_program.key() == token::ID)]
     pub token_program: AccountInfo,
     pub clock: Sysvar<'info, Clock>,
 }
@@ -270,7 +271,7 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     token: Account<'info, TokenAccount>,
     // Misc.
-    #[account(constraint = token_program.key() == &token::ID)]
+    #[account(constraint = token_program.key() == token::ID)]
     token_program: AccountInfo,
     clock: Sysvar<'info, Clock>,
 }
@@ -294,14 +295,14 @@ pub struct WhitelistTransfer<'info> {
     // Whitelist interface.
     #[account(mut, has_one = beneficiary, has_one = vault)]
     vesting: Account<'info, Vesting>,
-    #[account(mut, constraint = &vault.owner == vesting_signer.key())]
+    #[account(mut, constraint = vault.owner == vesting_signer.key())]
     vault: Account<'info, TokenAccount>,
     #[account(
         seeds = [vesting.to_account_info().key().as_ref()],
         bump = vesting.nonce,
     )]
     vesting_signer: AccountInfo,
-    #[account("token_program.key() == &token::ID")]
+    #[account(constraint = token_program.key() == token::ID)]
     token_program: AccountInfo,
     #[account(mut)]
     whitelisted_program_vault: AccountInfo,
@@ -415,35 +416,35 @@ pub enum ErrorCode {
     InvalidSchedule,
 }
 
-impl<'a, 'b, 'c, 'info> From<&mut CreateVesting<'info>>
-    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+impl<'a, 'b> From<&mut CreateVesting<'_>>
+    for CpiContext<'a, 'b, Transfer>
 {
-    fn from(accounts: &mut CreateVesting<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &mut CreateVesting<'_>) -> CpiContext<'a, 'b, Transfer> {
         let cpi_accounts = Transfer {
             from: accounts.depositor.clone(),
             to: accounts.vault.to_account_info(),
             authority: accounts.depositor_authority.clone(),
         };
-        let cpi_program = accounts.token_program.clone();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = accounts.token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
-impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
-    fn from(accounts: &Withdraw<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+impl<'a, 'b> From<&Withdraw<'_>> for CpiContext<'a, 'b, Transfer> {
+    fn from(accounts: &Withdraw<'_>) -> CpiContext<'a, 'b, Transfer> {
         let cpi_accounts = Transfer {
             from: accounts.vault.to_account_info(),
             to: accounts.token.to_account_info(),
             authority: accounts.vesting_signer.to_account_info(),
         };
-        let cpi_program = accounts.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = accounts.token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
 #[access_control(is_whitelisted(transfer))]
-pub fn whitelist_relay_cpi<'info>(
-    transfer: &WhitelistTransfer<'info>,
+pub fn whitelist_relay_cpi(
+    transfer: &WhitelistTransfer<'_>,
     remaining_accounts: &[AccountInfo],
     instruction_data: Vec<u8>,
 ) -> Result<()> {
@@ -465,10 +466,10 @@ pub fn whitelist_relay_cpi<'info>(
         ),
     ];
     meta_accounts.extend(remaining_accounts.iter().map(|a| {
-        if a.is_writable {
-            IxAccountMeta::new(a.key(), a.is_signer)
+        if a.is_writable() {
+            IxAccountMeta::new(a.key(), a.is_signer())
         } else {
-            IxAccountMeta::new_readonly(a.key(), a.is_signer)
+            IxAccountMeta::new_readonly(a.key(), a.is_signer())
         }
     }));
     let relay_instruction = Instruction {
@@ -503,7 +504,7 @@ pub fn whitelist_relay_cpi<'info>(
     })
 }
 
-pub fn is_whitelisted<'info>(transfer: &WhitelistTransfer<'info>) -> Result<()> {
+pub fn is_whitelisted(transfer: &WhitelistTransfer<'_>) -> Result<()> {
     if !transfer.lockup.whitelist.contains(&WhitelistEntry {
         program_id: transfer.whitelisted_program.key(),
     }) {
@@ -537,15 +538,15 @@ pub fn is_valid_schedule(start_ts: i64, end_ts: i64, period_count: u64) -> bool 
 // unstake before being able to earn locked tokens.
 fn is_realized(ctx: &Context<Withdraw>) -> Result<()> {
     if let Some(realizor) = &ctx.accounts.vesting.realizor {
-        let cpi_program = {
+        let cpi_program_id = {
             let p = ctx.remaining_accounts[0].clone();
             if p.key() != realizor.program {
                 return err!(ErrorCode::InvalidLockRealizor);
             }
-            p
+            p.key()
         };
         let cpi_accounts = ctx.remaining_accounts.to_vec()[1..].to_vec();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        let cpi_ctx = CpiContext::new(cpi_program_id, cpi_accounts);
         let vesting = (*ctx.accounts.vesting).clone();
         realize_lock::is_realized(cpi_ctx, vesting)
             .map_err(|_| error!(ErrorCode::UnrealizedVesting))?;

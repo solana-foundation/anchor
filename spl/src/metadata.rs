@@ -9,38 +9,35 @@ use {
     std::ops::Deref,
 };
 
-pub fn approve_collection_authority<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, ApproveCollectionAuthority<'info>>,
+pub fn approve_collection_authority(
+    ctx: CpiContext<'_, '_, ApproveCollectionAuthority>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::ApproveCollectionAuthority {
-        collection_authority_record: *ctx.accounts.collection_authority_record.key,
-        metadata: *ctx.accounts.metadata.key,
-        mint: *ctx.accounts.mint.key,
-        new_collection_authority: *ctx.accounts.new_collection_authority.key,
-        payer: *ctx.accounts.payer.key,
+        collection_authority_record: *ctx.accounts.collection_authority_record.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        mint: *ctx.accounts.mint.address(),
+        new_collection_authority: *ctx.accounts.new_collection_authority.address(),
+        payer: *ctx.accounts.payer.address(),
         rent: None,
         system_program: system_program::ID,
-        update_authority: *ctx.accounts.update_authority.key,
+        update_authority: *ctx.accounts.update_authority.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn bubblegum_set_collection_size<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, BubblegumSetCollectionSize<'info>>,
+pub fn bubblegum_set_collection_size(
+    ctx: CpiContext<'_, '_, BubblegumSetCollectionSize>,
     collection_authority_record: Option<Pubkey>,
     size: u64,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::BubblegumSetCollectionSize {
-        collection_metadata: *ctx.accounts.metadata_account.key,
-        collection_authority: *ctx.accounts.update_authority.key,
-        collection_mint: *ctx.accounts.mint.key,
-        bubblegum_signer: *ctx.accounts.bubblegum_signer.key,
+        collection_metadata: *ctx.accounts.metadata_account.address(),
+        collection_authority: *ctx.accounts.update_authority.address(),
+        collection_mint: *ctx.accounts.mint.address(),
+        bubblegum_signer: *ctx.accounts.bubblegum_signer.address(),
         collection_authority_record,
     }
     .instruction(
@@ -48,36 +45,28 @@ pub fn bubblegum_set_collection_size<'info>(
             set_collection_size_args: mpl_token_metadata::types::SetCollectionSizeArgs { size },
         },
     );
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn burn_edition_nft<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, BurnEditionNft<'info>>,
-) -> Result<()> {
+pub fn burn_edition_nft(ctx: CpiContext<'_, '_, BurnEditionNft>) -> Result<()> {
     let ix = mpl_token_metadata::instructions::BurnEditionNft {
-        edition_marker_account: *ctx.accounts.edition_marker.key,
-        master_edition_account: *ctx.accounts.master_edition.key,
-        master_edition_mint: *ctx.accounts.master_edition_mint.key,
-        master_edition_token_account: *ctx.accounts.master_edition_token.key,
-        metadata: *ctx.accounts.metadata.key,
-        owner: *ctx.accounts.owner.key,
-        print_edition_account: *ctx.accounts.print_edition.key,
-        print_edition_mint: *ctx.accounts.print_edition_mint.key,
-        print_edition_token_account: *ctx.accounts.print_edition_token.key,
-        spl_token_program: *ctx.accounts.spl_token.key,
+        edition_marker_account: *ctx.accounts.edition_marker.address(),
+        master_edition_account: *ctx.accounts.master_edition.address(),
+        master_edition_mint: *ctx.accounts.master_edition_mint.address(),
+        master_edition_token_account: *ctx.accounts.master_edition_token.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        owner: *ctx.accounts.owner.address(),
+        print_edition_account: *ctx.accounts.print_edition.address(),
+        print_edition_mint: *ctx.accounts.print_edition_mint.address(),
+        print_edition_token_account: *ctx.accounts.print_edition_token.address(),
+        spl_token_program: *ctx.accounts.spl_token.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
 /// Burn an NFT by closing its token, metadata and edition accounts.
@@ -95,44 +84,41 @@ pub fn burn_edition_nft<'info>(
 /// CpiContext::new(program, BurnNft { .. })
 ///     .with_remaining_accounts(vec![ctx.accounts.collection_metadata]);
 /// ```
-pub fn burn_nft<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, BurnNft<'info>>,
+pub fn burn_nft(
+    ctx: CpiContext<'_, '_, BurnNft>,
     collection_metadata: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::BurnNft {
         collection_metadata,
-        master_edition_account: *ctx.accounts.edition.key,
-        metadata: *ctx.accounts.metadata.key,
-        mint: *ctx.accounts.mint.key,
-        owner: *ctx.accounts.owner.key,
-        spl_token_program: *ctx.accounts.spl_token.key,
-        token_account: *ctx.accounts.token.key,
+        master_edition_account: *ctx.accounts.edition.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        mint: *ctx.accounts.mint.address(),
+        owner: *ctx.accounts.owner.address(),
+        spl_token_program: *ctx.accounts.spl_token.address(),
+        token_account: *ctx.accounts.token.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn create_metadata_accounts_v3<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, CreateMetadataAccountsV3<'info>>,
+pub fn create_metadata_accounts_v3(
+    ctx: CpiContext<'_, '_, CreateMetadataAccountsV3>,
     data: mpl_token_metadata::types::DataV2,
     is_mutable: bool,
     update_authority_is_signer: bool,
     collection_details: Option<mpl_token_metadata::types::CollectionDetails>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::CreateMetadataAccountV3 {
-        metadata: *ctx.accounts.metadata.key,
-        mint: *ctx.accounts.mint.key,
-        mint_authority: *ctx.accounts.mint_authority.key,
-        payer: *ctx.accounts.payer.key,
+        metadata: *ctx.accounts.metadata.address(),
+        mint: *ctx.accounts.mint.address(),
+        mint_authority: *ctx.accounts.mint_authority.address(),
+        payer: *ctx.accounts.payer.address(),
         rent: None,
         system_program: system_program::ID,
         update_authority: (
-            *ctx.accounts.update_authority.key,
+            *ctx.accounts.update_authority.address(),
             update_authority_is_signer,
         ),
     }
@@ -143,24 +129,21 @@ pub fn create_metadata_accounts_v3<'info>(
             is_mutable,
         },
     );
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn update_metadata_accounts_v2<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, UpdateMetadataAccountsV2<'info>>,
+pub fn update_metadata_accounts_v2(
+    ctx: CpiContext<'_, '_, UpdateMetadataAccountsV2>,
     new_update_authority: Option<Pubkey>,
     data: Option<mpl_token_metadata::types::DataV2>,
     primary_sale_happened: Option<bool>,
     is_mutable: Option<bool>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::UpdateMetadataAccountV2 {
-        metadata: *ctx.accounts.metadata.key,
-        update_authority: *ctx.accounts.update_authority.key,
+        metadata: *ctx.accounts.metadata.address(),
+        update_authority: *ctx.accounts.update_authority.address(),
     }
     .instruction(
         mpl_token_metadata::instructions::UpdateMetadataAccountV2InstructionArgs {
@@ -170,58 +153,52 @@ pub fn update_metadata_accounts_v2<'info>(
             is_mutable,
         },
     );
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn create_master_edition_v3<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, CreateMasterEditionV3<'info>>,
+pub fn create_master_edition_v3(
+    ctx: CpiContext<'_, '_, CreateMasterEditionV3>,
     max_supply: Option<u64>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::CreateMasterEditionV3 {
-        edition: *ctx.accounts.edition.key,
-        metadata: *ctx.accounts.metadata.key,
-        mint: *ctx.accounts.mint.key,
-        mint_authority: *ctx.accounts.mint_authority.key,
-        payer: *ctx.accounts.payer.key,
+        edition: *ctx.accounts.edition.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        mint: *ctx.accounts.mint.address(),
+        mint_authority: *ctx.accounts.mint_authority.address(),
+        payer: *ctx.accounts.payer.address(),
         rent: None,
         system_program: system_program::ID,
         token_program: spl_token_interface::ID,
-        update_authority: *ctx.accounts.update_authority.key,
+        update_authority: *ctx.accounts.update_authority.address(),
     }
     .instruction(
         mpl_token_metadata::instructions::CreateMasterEditionV3InstructionArgs { max_supply },
     );
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn mint_new_edition_from_master_edition_via_token<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, MintNewEditionFromMasterEditionViaToken<'info>>,
+pub fn mint_new_edition_from_master_edition_via_token(
+    ctx: CpiContext<'_, '_, MintNewEditionFromMasterEditionViaToken>,
     edition: u64,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::MintNewEditionFromMasterEditionViaToken {
-        edition_mark_pda: *ctx.accounts.edition_mark_pda.key,
-        master_edition: *ctx.accounts.master_edition.key,
-        metadata: *ctx.accounts.metadata.key,
-        new_edition: *ctx.accounts.new_edition.key,
-        new_metadata: *ctx.accounts.new_metadata.key,
-        new_metadata_update_authority: *ctx.accounts.new_metadata_update_authority.key,
-        new_mint: *ctx.accounts.new_mint.key,
-        new_mint_authority: *ctx.accounts.new_mint_authority.key,
-        payer: *ctx.accounts.payer.key,
+        edition_mark_pda: *ctx.accounts.edition_mark_pda.address(),
+        master_edition: *ctx.accounts.master_edition.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        new_edition: *ctx.accounts.new_edition.address(),
+        new_metadata: *ctx.accounts.new_metadata.address(),
+        new_metadata_update_authority: *ctx.accounts.new_metadata_update_authority.address(),
+        new_mint: *ctx.accounts.new_mint.address(),
+        new_mint_authority: *ctx.accounts.new_mint_authority.address(),
+        payer: *ctx.accounts.payer.address(),
         rent: None,
         system_program: system_program::ID,
-        token_account: *ctx.accounts.token_account.key,
-        token_account_owner: *ctx.accounts.token_account_owner.key,
+        token_account: *ctx.accounts.token_account.address(),
+        token_account_owner: *ctx.accounts.token_account_owner.address(),
         token_program: spl_token_interface::ID,
     }
     .instruction(
@@ -230,253 +207,223 @@ pub fn mint_new_edition_from_master_edition_via_token<'info>(
                 mpl_token_metadata::types::MintNewEditionFromMasterEditionViaTokenArgs { edition },
         },
     );
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn revoke_collection_authority<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, RevokeCollectionAuthority<'info>>,
+pub fn revoke_collection_authority(
+    ctx: CpiContext<'_, '_, RevokeCollectionAuthority>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::RevokeCollectionAuthority {
-        collection_authority_record: *ctx.accounts.collection_authority_record.key,
-        delegate_authority: *ctx.accounts.delegate_authority.key,
-        metadata: *ctx.accounts.metadata.key,
-        mint: *ctx.accounts.mint.key,
-        revoke_authority: *ctx.accounts.revoke_authority.key,
+        collection_authority_record: *ctx.accounts.collection_authority_record.address(),
+        delegate_authority: *ctx.accounts.delegate_authority.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        mint: *ctx.accounts.mint.address(),
+        revoke_authority: *ctx.accounts.revoke_authority.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn set_collection_size<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, SetCollectionSize<'info>>,
+pub fn set_collection_size(
+    ctx: CpiContext<'_, '_, SetCollectionSize>,
     collection_authority_record: Option<Pubkey>,
     size: u64,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::SetCollectionSize {
-        collection_authority: *ctx.accounts.update_authority.key,
+        collection_authority: *ctx.accounts.update_authority.address(),
         collection_authority_record,
-        collection_metadata: *ctx.accounts.metadata.key,
-        collection_mint: *ctx.accounts.mint.key,
+        collection_metadata: *ctx.accounts.metadata.address(),
+        collection_mint: *ctx.accounts.mint.address(),
     }
     .instruction(
         mpl_token_metadata::instructions::SetCollectionSizeInstructionArgs {
             set_collection_size_args: mpl_token_metadata::types::SetCollectionSizeArgs { size },
         },
     );
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn verify_collection<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, VerifyCollection<'info>>,
+pub fn verify_collection(
+    ctx: CpiContext<'_, '_, VerifyCollection>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::VerifyCollection {
-        collection: *ctx.accounts.collection_metadata.key,
-        collection_authority: *ctx.accounts.collection_authority.key,
+        collection: *ctx.accounts.collection_metadata.address(),
+        collection_authority: *ctx.accounts.collection_authority.address(),
         collection_authority_record,
-        collection_master_edition_account: *ctx.accounts.collection_master_edition.key,
-        collection_mint: *ctx.accounts.collection_mint.key,
-        metadata: *ctx.accounts.metadata.key,
-        payer: *ctx.accounts.payer.key,
+        collection_master_edition_account: *ctx.accounts.collection_master_edition.address(),
+        collection_mint: *ctx.accounts.collection_mint.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        payer: *ctx.accounts.payer.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn verify_sized_collection_item<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, VerifySizedCollectionItem<'info>>,
+pub fn verify_sized_collection_item(
+    ctx: CpiContext<'_, '_, VerifySizedCollectionItem>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::VerifySizedCollectionItem {
-        collection: *ctx.accounts.collection_metadata.key,
-        collection_authority: *ctx.accounts.collection_authority.key,
+        collection: *ctx.accounts.collection_metadata.address(),
+        collection_authority: *ctx.accounts.collection_authority.address(),
         collection_authority_record,
-        collection_master_edition_account: *ctx.accounts.collection_master_edition.key,
-        collection_mint: *ctx.accounts.collection_mint.key,
-        metadata: *ctx.accounts.metadata.key,
-        payer: *ctx.accounts.payer.key,
+        collection_master_edition_account: *ctx.accounts.collection_master_edition.address(),
+        collection_mint: *ctx.accounts.collection_mint.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        payer: *ctx.accounts.payer.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn set_and_verify_collection<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, SetAndVerifyCollection<'info>>,
+pub fn set_and_verify_collection(
+    ctx: CpiContext<'_, '_, SetAndVerifyCollection>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::SetAndVerifyCollection {
-        collection: *ctx.accounts.collection_metadata.key,
-        collection_authority: *ctx.accounts.collection_authority.key,
+        collection: *ctx.accounts.collection_metadata.address(),
+        collection_authority: *ctx.accounts.collection_authority.address(),
         collection_authority_record,
-        collection_master_edition_account: *ctx.accounts.collection_master_edition.key,
-        collection_mint: *ctx.accounts.collection_mint.key,
-        metadata: *ctx.accounts.metadata.key,
-        payer: *ctx.accounts.payer.key,
-        update_authority: *ctx.accounts.update_authority.key,
+        collection_master_edition_account: *ctx.accounts.collection_master_edition.address(),
+        collection_mint: *ctx.accounts.collection_mint.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        payer: *ctx.accounts.payer.address(),
+        update_authority: *ctx.accounts.update_authority.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn set_and_verify_sized_collection_item<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, SetAndVerifySizedCollectionItem<'info>>,
+pub fn set_and_verify_sized_collection_item(
+    ctx: CpiContext<'_, '_, SetAndVerifySizedCollectionItem>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::SetAndVerifySizedCollectionItem {
-        collection: *ctx.accounts.collection_metadata.key,
-        collection_authority: *ctx.accounts.collection_authority.key,
+        collection: *ctx.accounts.collection_metadata.address(),
+        collection_authority: *ctx.accounts.collection_authority.address(),
         collection_authority_record,
-        collection_master_edition_account: *ctx.accounts.collection_master_edition.key,
-        collection_mint: *ctx.accounts.collection_mint.key,
-        metadata: *ctx.accounts.metadata.key,
-        payer: *ctx.accounts.payer.key,
-        update_authority: *ctx.accounts.update_authority.key,
+        collection_master_edition_account: *ctx.accounts.collection_master_edition.address(),
+        collection_mint: *ctx.accounts.collection_mint.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        payer: *ctx.accounts.payer.address(),
+        update_authority: *ctx.accounts.update_authority.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn freeze_delegated_account<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, FreezeDelegatedAccount<'info>>,
+pub fn freeze_delegated_account(
+    ctx: CpiContext<'_, '_, FreezeDelegatedAccount>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::FreezeDelegatedAccount {
-        delegate: *ctx.accounts.delegate.key,
-        edition: *ctx.accounts.edition.key,
-        mint: *ctx.accounts.mint.key,
-        token_account: *ctx.accounts.token_account.key,
-        token_program: *ctx.accounts.token_program.key,
+        delegate: *ctx.accounts.delegate.address(),
+        edition: *ctx.accounts.edition.address(),
+        mint: *ctx.accounts.mint.address(),
+        token_account: *ctx.accounts.token_account.address(),
+        token_program: *ctx.accounts.token_program.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn thaw_delegated_account<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, ThawDelegatedAccount<'info>>,
+pub fn thaw_delegated_account(
+    ctx: CpiContext<'_, '_, ThawDelegatedAccount>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::ThawDelegatedAccount {
-        delegate: *ctx.accounts.delegate.key,
-        edition: *ctx.accounts.edition.key,
-        mint: *ctx.accounts.mint.key,
-        token_account: *ctx.accounts.token_account.key,
-        token_program: *ctx.accounts.token_program.key,
+        delegate: *ctx.accounts.delegate.address(),
+        edition: *ctx.accounts.edition.address(),
+        mint: *ctx.accounts.mint.address(),
+        token_account: *ctx.accounts.token_account.address(),
+        token_program: *ctx.accounts.token_program.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
+}
+
+pub fn update_primary_sale_happened_via_token(
+    ctx: CpiContext<'_, '_, UpdatePrimarySaleHappenedViaToken>,
+) -> Result<()> {
+    let ix = mpl_token_metadata::instructions::UpdatePrimarySaleHappenedViaToken {
+        metadata: *ctx.accounts.metadata.address(),
+        owner: *ctx.accounts.owner.address(),
+        token: *ctx.accounts.token.address(),
+    }
+    .instruction();
+    crate::cpi_util::invoke_signed_solana_instruction(
+        ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-pub fn update_primary_sale_happened_via_token<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, UpdatePrimarySaleHappenedViaToken<'info>>,
-) -> Result<()> {
-    let ix = mpl_token_metadata::instructions::UpdatePrimarySaleHappenedViaToken {
-        metadata: *ctx.accounts.metadata.key,
-        owner: *ctx.accounts.owner.key,
-        token: *ctx.accounts.token.key,
-    }
-    .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )?;
-    Ok(())
-}
-
-pub fn set_token_standard<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, SetTokenStandard<'info>>,
+pub fn set_token_standard(
+    ctx: CpiContext<'_, '_, SetTokenStandard>,
     edition_account: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::SetTokenStandard {
         edition: edition_account,
-        metadata: *ctx.accounts.metadata_account.key,
-        mint: *ctx.accounts.mint_account.key,
-        update_authority: *ctx.accounts.update_authority.key,
+        metadata: *ctx.accounts.metadata_account.address(),
+        mint: *ctx.accounts.mint_account.address(),
+        update_authority: *ctx.accounts.update_authority.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
+}
+
+pub fn sign_metadata(ctx: CpiContext<'_, '_, SignMetadata>) -> Result<()> {
+    let ix = mpl_token_metadata::instructions::SignMetadata {
+        creator: *ctx.accounts.creator.address(),
+        metadata: *ctx.accounts.metadata.address(),
+    }
+    .instruction();
+    crate::cpi_util::invoke_signed_solana_instruction(
+        ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
     )
     .map_err(Into::into)
 }
 
-pub fn sign_metadata<'info>(ctx: CpiContext<'_, '_, '_, 'info, SignMetadata<'info>>) -> Result<()> {
-    let ix = mpl_token_metadata::instructions::SignMetadata {
-        creator: *ctx.accounts.creator.key,
-        metadata: *ctx.accounts.metadata.key,
-    }
-    .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )?;
-    Ok(())
-}
-
-pub fn remove_creator_verification<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, RemoveCreatorVerification<'info>>,
+pub fn remove_creator_verification(
+    ctx: CpiContext<'_, '_, RemoveCreatorVerification>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::RemoveCreatorVerification {
-        creator: *ctx.accounts.creator.key,
-        metadata: *ctx.accounts.metadata.key,
+        creator: *ctx.accounts.creator.address(),
+        metadata: *ctx.accounts.metadata.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(
+        ix,
         &ToAccountInfos::to_account_infos(&ctx),
         ctx.signer_seeds,
-    )?;
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
-pub fn utilize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, Utilize<'info>>,
+pub fn utilize(
+    ctx: CpiContext<'_, '_, Utilize>,
     use_authority_record: Option<Pubkey>,
     burner: Option<Pubkey>,
     number_of_uses: u64,
@@ -484,156 +431,153 @@ pub fn utilize<'info>(
     let ix = mpl_token_metadata::instructions::Utilize {
         ata_program: spl_associated_token_account_interface::program::ID,
         burner,
-        metadata: *ctx.accounts.metadata.key,
-        mint: *ctx.accounts.mint.key,
-        owner: *ctx.accounts.owner.key,
+        metadata: *ctx.accounts.metadata.address(),
+        mint: *ctx.accounts.mint.address(),
+        owner: *ctx.accounts.owner.address(),
         rent: solana_sysvar::rent::ID,
         system_program: system_program::ID,
-        token_account: *ctx.accounts.token_account.key,
+        token_account: *ctx.accounts.token_account.address(),
         token_program: spl_token_interface::ID,
-        use_authority: *ctx.accounts.use_authority.key,
+        use_authority: *ctx.accounts.use_authority.address(),
         use_authority_record,
     }
     .instruction(mpl_token_metadata::instructions::UtilizeInstructionArgs { number_of_uses });
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn unverify_collection<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, UnverifyCollection<'info>>,
+pub fn unverify_collection(
+    ctx: CpiContext<'_, '_, UnverifyCollection>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::UnverifyCollection {
-        collection: *ctx.accounts.metadata.key,
-        collection_authority: *ctx.accounts.collection_authority.key,
+        collection: *ctx.accounts.metadata.address(),
+        collection_authority: *ctx.accounts.collection_authority.address(),
         collection_authority_record,
-        collection_master_edition_account: *ctx.accounts.collection_master_edition_account.key,
-        collection_mint: *ctx.accounts.collection_mint.key,
-        metadata: *ctx.accounts.metadata.key,
+        collection_master_edition_account: *ctx
+            .accounts
+            .collection_master_edition_account
+            .address(),
+        collection_mint: *ctx.accounts.collection_mint.address(),
+        metadata: *ctx.accounts.metadata.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
-pub fn unverify_sized_collection_item<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, UnverifySizedCollectionItem<'info>>,
+pub fn unverify_sized_collection_item(
+    ctx: CpiContext<'_, '_, UnverifySizedCollectionItem>,
     collection_authority_record: Option<Pubkey>,
 ) -> Result<()> {
     let ix = mpl_token_metadata::instructions::UnverifySizedCollectionItem {
-        collection: *ctx.accounts.metadata.key,
-        collection_authority: *ctx.accounts.collection_authority.key,
+        collection: *ctx.accounts.metadata.address(),
+        collection_authority: *ctx.accounts.collection_authority.address(),
         collection_authority_record,
-        collection_master_edition_account: *ctx.accounts.collection_master_edition_account.key,
-        collection_mint: *ctx.accounts.collection_mint.key,
-        metadata: *ctx.accounts.metadata.key,
-        payer: *ctx.accounts.payer.key,
+        collection_master_edition_account: *ctx
+            .accounts
+            .collection_master_edition_account
+            .address(),
+        collection_mint: *ctx.accounts.collection_mint.address(),
+        metadata: *ctx.accounts.metadata.address(),
+        payer: *ctx.accounts.payer.address(),
     }
     .instruction();
-    anchor_lang::pinocchio_runtime::program::invoke_signed(
-        &ix,
-        &ToAccountInfos::to_account_infos(&ctx),
-        ctx.signer_seeds,
-    )
-    .map_err(Into::into)
+    let cpi_accounts = anchor_lang::ToAccountInfos::to_account_infos(&ctx);
+    crate::cpi_util::invoke_signed_solana_instruction(ix, cpi_accounts.as_slice(), ctx.signer_seeds)
+        .map_err(Into::into)
 }
 
 #[derive(Accounts)]
-pub struct ApproveCollectionAuthority<'info> {
-    pub collection_authority_record: AccountInfo<'info>,
-    pub new_collection_authority: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct ApproveCollectionAuthority {
+    pub collection_authority_record: AccountInfo,
+    pub new_collection_authority: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub metadata: AccountInfo,
+    pub mint: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct BubblegumSetCollectionSize<'info> {
-    pub metadata_account: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub bubblegum_signer: AccountInfo<'info>,
+pub struct BubblegumSetCollectionSize {
+    pub metadata_account: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub mint: AccountInfo,
+    pub bubblegum_signer: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct BurnEditionNft<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub print_edition_mint: AccountInfo<'info>,
-    pub master_edition_mint: AccountInfo<'info>,
-    pub print_edition_token: AccountInfo<'info>,
-    pub master_edition_token: AccountInfo<'info>,
-    pub master_edition: AccountInfo<'info>,
-    pub print_edition: AccountInfo<'info>,
-    pub edition_marker: AccountInfo<'info>,
-    pub spl_token: AccountInfo<'info>,
+pub struct BurnEditionNft {
+    pub metadata: AccountInfo,
+    pub owner: AccountInfo,
+    pub print_edition_mint: AccountInfo,
+    pub master_edition_mint: AccountInfo,
+    pub print_edition_token: AccountInfo,
+    pub master_edition_token: AccountInfo,
+    pub master_edition: AccountInfo,
+    pub print_edition: AccountInfo,
+    pub edition_marker: AccountInfo,
+    pub spl_token: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct BurnNft<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub spl_token: AccountInfo<'info>,
+pub struct BurnNft {
+    pub metadata: AccountInfo,
+    pub owner: AccountInfo,
+    pub mint: AccountInfo,
+    pub token: AccountInfo,
+    pub edition: AccountInfo,
+    pub spl_token: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct CreateMetadataAccountsV3<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+pub struct CreateMetadataAccountsV3 {
+    pub metadata: AccountInfo,
+    pub mint: AccountInfo,
+    pub mint_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub system_program: AccountInfo,
+    pub rent: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct UpdateMetadataAccountsV2<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
+pub struct UpdateMetadataAccountsV2 {
+    pub metadata: AccountInfo,
+    pub update_authority: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct CreateMasterEditionV3<'info> {
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+pub struct CreateMasterEditionV3 {
+    pub edition: AccountInfo,
+    pub mint: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub mint_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub metadata: AccountInfo,
+    pub token_program: AccountInfo,
+    pub system_program: AccountInfo,
+    pub rent: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct MintNewEditionFromMasterEditionViaToken<'info> {
-    pub new_metadata: AccountInfo<'info>,
-    pub new_edition: AccountInfo<'info>,
-    pub master_edition: AccountInfo<'info>,
-    pub new_mint: AccountInfo<'info>,
-    pub edition_mark_pda: AccountInfo<'info>,
-    pub new_mint_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub token_account_owner: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub new_metadata_update_authority: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
-    pub rent: AccountInfo<'info>,
+pub struct MintNewEditionFromMasterEditionViaToken {
+    pub new_metadata: AccountInfo,
+    pub new_edition: AccountInfo,
+    pub master_edition: AccountInfo,
+    pub new_mint: AccountInfo,
+    pub edition_mark_pda: AccountInfo,
+    pub new_mint_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub token_account_owner: AccountInfo,
+    pub token_account: AccountInfo,
+    pub new_metadata_update_authority: AccountInfo,
+    pub metadata: AccountInfo,
+    pub token_program: AccountInfo,
+    pub system_program: AccountInfo,
+    pub rent: AccountInfo,
     //
     // Not actually used by the program but still needed because it's needed
     // for the pda calculation in the helper. :/
@@ -641,140 +585,140 @@ pub struct MintNewEditionFromMasterEditionViaToken<'info> {
     // The better thing to do would be to remove this and have the instruction
     // helper pass in the `edition_mark_pda` directly.
     //
-    pub metadata_mint: AccountInfo<'info>,
+    pub metadata_mint: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct RevokeCollectionAuthority<'info> {
-    pub collection_authority_record: AccountInfo<'info>,
-    pub delegate_authority: AccountInfo<'info>,
-    pub revoke_authority: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct RevokeCollectionAuthority {
+    pub collection_authority_record: AccountInfo,
+    pub delegate_authority: AccountInfo,
+    pub revoke_authority: AccountInfo,
+    pub metadata: AccountInfo,
+    pub mint: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SetCollectionSize<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub system_program: AccountInfo<'info>,
+pub struct SetCollectionSize {
+    pub metadata: AccountInfo,
+    pub mint: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub system_program: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SetTokenStandard<'info> {
-    pub metadata_account: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub mint_account: AccountInfo<'info>,
+pub struct SetTokenStandard {
+    pub metadata_account: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub mint_account: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct VerifyCollection<'info> {
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+pub struct VerifyCollection {
+    pub payer: AccountInfo,
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection_metadata: AccountInfo,
+    pub collection_master_edition: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct VerifySizedCollectionItem<'info> {
-    pub payer: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+pub struct VerifySizedCollectionItem {
+    pub payer: AccountInfo,
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection_metadata: AccountInfo,
+    pub collection_master_edition: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SetAndVerifyCollection<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+pub struct SetAndVerifyCollection {
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection_metadata: AccountInfo,
+    pub collection_master_edition: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SetAndVerifySizedCollectionItem<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub update_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection_metadata: AccountInfo<'info>,
-    pub collection_master_edition: AccountInfo<'info>,
+pub struct SetAndVerifySizedCollectionItem {
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub update_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection_metadata: AccountInfo,
+    pub collection_master_edition: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct FreezeDelegatedAccount<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub delegate: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+pub struct FreezeDelegatedAccount {
+    pub metadata: AccountInfo,
+    pub delegate: AccountInfo,
+    pub token_account: AccountInfo,
+    pub edition: AccountInfo,
+    pub mint: AccountInfo,
+    pub token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct ThawDelegatedAccount<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub delegate: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub edition: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub token_program: AccountInfo<'info>,
+pub struct ThawDelegatedAccount {
+    pub metadata: AccountInfo,
+    pub delegate: AccountInfo,
+    pub token_account: AccountInfo,
+    pub edition: AccountInfo,
+    pub mint: AccountInfo,
+    pub token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct UpdatePrimarySaleHappenedViaToken<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
-    pub token: AccountInfo<'info>,
+pub struct UpdatePrimarySaleHappenedViaToken {
+    pub metadata: AccountInfo,
+    pub owner: AccountInfo,
+    pub token: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct SignMetadata<'info> {
-    pub creator: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
+pub struct SignMetadata {
+    pub creator: AccountInfo,
+    pub metadata: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct RemoveCreatorVerification<'info> {
-    pub creator: AccountInfo<'info>,
-    pub metadata: AccountInfo<'info>,
+pub struct RemoveCreatorVerification {
+    pub creator: AccountInfo,
+    pub metadata: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct Utilize<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub token_account: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub use_authority: AccountInfo<'info>,
-    pub owner: AccountInfo<'info>,
+pub struct Utilize {
+    pub metadata: AccountInfo,
+    pub token_account: AccountInfo,
+    pub mint: AccountInfo,
+    pub use_authority: AccountInfo,
+    pub owner: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct UnverifyCollection<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection: AccountInfo<'info>,
-    pub collection_master_edition_account: AccountInfo<'info>,
+pub struct UnverifyCollection {
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection: AccountInfo,
+    pub collection_master_edition_account: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct UnverifySizedCollectionItem<'info> {
-    pub metadata: AccountInfo<'info>,
-    pub collection_authority: AccountInfo<'info>,
-    pub payer: AccountInfo<'info>,
-    pub collection_mint: AccountInfo<'info>,
-    pub collection: AccountInfo<'info>,
-    pub collection_master_edition_account: AccountInfo<'info>,
+pub struct UnverifySizedCollectionItem {
+    pub metadata: AccountInfo,
+    pub collection_authority: AccountInfo,
+    pub payer: AccountInfo,
+    pub collection_mint: AccountInfo,
+    pub collection: AccountInfo,
+    pub collection_master_edition_account: AccountInfo,
 }
 
 #[derive(Clone, Debug, PartialEq)]

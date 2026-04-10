@@ -132,14 +132,14 @@ pub struct InitMyAccount<'info> {
         bump,
     )]
     account: Account<'info, MyAccount>,
-    nested: Nested<'info>,
+    nested: Nested,
     #[account(mut)]
     payer: Signer<'info>,
     system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-pub struct Nested<'info> {
+pub struct Nested {
     #[account(
         seeds = [
             "nested-seed".as_bytes(),

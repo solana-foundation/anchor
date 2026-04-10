@@ -27,11 +27,9 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
         let method_name = format_ident!("{}", ix.name);
         let accounts_ident = format_ident!("{}", ix.name.to_camel_case());
 
-        let accounts_generic = if ix.accounts.is_empty() {
-           quote!()
-        } else {
-            quote!(<'info>)
-        };
+        // AccountInfo (pinocchio AccountView) has no lifetime parameters,
+        // so CPI account structs don't need `<'info>`.
+        let accounts_generic = quote!();
 
         let args = ix.args.iter().map(|arg| {
             let name = format_ident!("{}", arg.name);
@@ -91,7 +89,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                     acc_infos.as_slice(),
                     ctx.signer_seeds,
                 )
-                .map_err(Into::into)?;
+                .map_err(|e| anchor_lang::error::Error::from(e))?;
                 #ret_value
             }
         }

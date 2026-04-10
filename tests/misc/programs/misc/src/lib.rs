@@ -73,7 +73,7 @@ pub mod misc {
         let sol_dest_info = ctx.accounts.sol_dest.to_account_info();
         data_account.close(sol_dest_info)?;
         let data_account_info: &AccountInfo = data_account.as_ref();
-        require_keys_eq!(*data_account_info.owner, System::id());
+        require_keys_eq!(*data_account_info.owner(), System::id());
         Ok(())
     }
 
@@ -82,7 +82,7 @@ pub mod misc {
         let sol_dest_info = ctx.accounts.sol_dest.to_account_info();
         data_account.close(sol_dest_info)?;
         let data_account_info: &AccountInfo = data_account.as_ref();
-        require_keys_eq!(*data_account_info.owner, System::id());
+        require_keys_eq!(*data_account_info.owner(), System::id());
         Ok(())
     }
 
@@ -282,8 +282,10 @@ pub mod misc {
     }
 
     pub fn init_decrease_lamports(ctx: Context<InitDecreaseLamports>) -> Result<()> {
-        **ctx.accounts.data.try_borrow_mut_lamports()? -= 1;
-        **ctx.accounts.user.try_borrow_mut_lamports()? += 1;
+        let mut data = ctx.accounts.data;
+        data.set_lamports(data.lamports() - 1);
+        let mut user = *ctx.accounts.user;
+        user.set_lamports(user.lamports() + 1);
         Ok(())
     }
 

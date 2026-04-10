@@ -35,7 +35,7 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
             if value.starts_with(#name::DISCRIMINATOR) {
                 return #name::try_deserialize_unchecked(&mut &value[..])
                     .map(Self::#name)
-                    .map_err(Into::into)
+                    .map_err(|e| anchor_lang::error::Error::from(e))
             }
         }
     });
@@ -63,7 +63,7 @@ fn gen_account(idl: &Idl) -> proc_macro2::TokenStream {
 
             fn try_from(value: &[u8]) -> Result<Self> {
                 #(#if_statements)*
-                Err(ProgramError::InvalidArgument.into())
+                Err(anchor_lang::error::Error::from(ProgramError::InvalidArgument))
             }
         }
     }
@@ -81,7 +81,7 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
             if value.starts_with(#name::DISCRIMINATOR) {
                 return #name::try_from_slice(&value[#name::DISCRIMINATOR.len()..])
                     .map(Self::#name)
-                    .map_err(Into::into)
+                    .map_err(|e| anchor_lang::error::Error::from(e))
             }
         }
     });
@@ -109,7 +109,7 @@ fn gen_event(idl: &Idl) -> proc_macro2::TokenStream {
 
             fn try_from(value: &[u8]) -> Result<Self> {
                 #(#if_statements)*
-                Err(ProgramError::InvalidArgument.into())
+                Err(anchor_lang::error::Error::from(ProgramError::InvalidArgument))
             }
         }
     }
@@ -140,16 +140,16 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                         let program_id = get_canonical_program_id();
                         quote! {
                             #name: {
-                                let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys)?;
+                                let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys).map_err(anchor_lang::error::Error::from)?;
                                 // Check if this is a placeholder (program_id used for missing optional accounts)
                                 if acc.pubkey == #program_id {
                                     None
                                 } else {
                                     if acc.is_signer != #signer {
-                                        return Err(ProgramError::InvalidAccountData.into());
+                                        return Err(anchor_lang::error::Error::from(ProgramError::InvalidAccountData));
                                     }
                                     if acc.is_writable != #writable {
-                                        return Err(ProgramError::InvalidAccountData.into());
+                                        return Err(anchor_lang::error::Error::from(ProgramError::InvalidAccountData));
                                     }
                                     Some(acc.pubkey)
                                 }
@@ -158,12 +158,12 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                     } else {
                         quote! {
                             #name: {
-                                let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys)?;
+                                let acc = accs.next().ok_or_else(|| ProgramError::NotEnoughAccountKeys).map_err(anchor_lang::error::Error::from)?;
                                 if acc.is_signer != #signer {
-                                    return Err(ProgramError::InvalidAccountData.into());
+                                    return Err(anchor_lang::error::Error::from(ProgramError::InvalidAccountData));
                                 }
                                 if acc.is_writable != #writable {
-                                    return Err(ProgramError::InvalidAccountData.into());
+                                    return Err(anchor_lang::error::Error::from(ProgramError::InvalidAccountData));
                                 }
 
                                 acc.pubkey
@@ -242,11 +242,11 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
 
             fn try_from(ix: &#solana_instruction) -> Result<Self> {
                 if ix.program_id != #program_id {
-                    return Err(ProgramError::IncorrectProgramId.into())
+                    return Err(anchor_lang::error::Error::from(ProgramError::IncorrectProgramId))
                 }
 
                 #(#if_statements)*
-                Err(ProgramError::InvalidInstructionData.into())
+                Err(anchor_lang::error::Error::from(ProgramError::InvalidInstructionData))
             }
         }
     }

@@ -391,7 +391,7 @@ pub struct Generic<'info> {
         init,
         payer = signer,
         space = 1024,
-        seeds = [b"generic", signer.key.as_ref()],
+        seeds = [b"generic", signer.key().as_ref()],
         bump
     )]
     pub my_account: Account<'info, GenericAccount>,
@@ -406,7 +406,7 @@ pub struct GenericCustomStruct<'info> {
         init,
         payer = signer,
         space = 1024,
-        seeds = [b"genericCustomStruct", signer.key.as_ref()],
+        seeds = [b"genericCustomStruct", signer.key().as_ref()],
         bump
     )]
     pub my_account: Account<'info, GenericAccountCustomStruct>,

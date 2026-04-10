@@ -2,13 +2,13 @@ use anchor_lang::{
     prelude::Result,
     pinocchio_runtime::{
         account_info::AccountInfo,
-        instruction::{get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT},
         pubkey::Pubkey,
         rent::Rent,
         system_instruction::Transfer,
     },
     Lamports,
 };
+use solana_instruction::{syscalls::get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT};
 use anchor_spl::token_interface::spl_token_2022::{
     extension::{BaseStateWithExtensions, Extension, StateWithExtensions},
     state::Mint,
@@ -40,7 +40,7 @@ pub fn update_account_lamports_to_minimum_balance(
 pub fn get_mint_extensible_extension_data<T: Extension + VariableLenPack>(
     account: &mut AccountInfo,
 ) -> Result<T> {
-    let mint_data = account.data.borrow();
+    let mint_data = account.try_borrow()?;
     let mint_with_extension = StateWithExtensions::<Mint>::unpack(&mint_data)?;
     let extension_data = mint_with_extension.get_variable_len_extension::<T>()?;
     Ok(extension_data)

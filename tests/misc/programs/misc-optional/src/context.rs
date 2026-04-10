@@ -80,7 +80,7 @@ pub struct TestValidateAssociatedToken<'info> {
 
 #[derive(Accounts)]
 #[instruction(nonce: u8)]
-pub struct TestInstructionConstraint<'info> {
+pub struct TestInstructionConstraint {
     #[account(
         seeds = [b"my-seed", my_account.as_ref().unwrap().key().as_ref()],
         bump = nonce,
@@ -149,13 +149,13 @@ pub struct InitializeSkipRentExempt<'info> {
 }
 
 #[derive(Accounts)]
-pub struct InitializeNoRentExempt<'info> {
+pub struct InitializeNoRentExempt {
     /// CHECK:
     pub data: Option<AccountInfo>,
 }
 
 #[derive(Accounts)]
-pub struct TestOwner<'info> {
+pub struct TestOwner {
     #[account(owner = misc.key())]
     /// CHECK:
     pub data: Option<AccountInfo>,
@@ -164,7 +164,7 @@ pub struct TestOwner<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TestExecutable<'info> {
+pub struct TestExecutable {
     #[account(executable)]
     /// CHECK:
     pub program: Option<AccountInfo>,
@@ -298,7 +298,7 @@ pub struct TestInitWithEmptySeeds<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TestEmptySeedsConstraint<'info> {
+pub struct TestEmptySeedsConstraint {
     #[account(seeds = [], bump)]
     /// CHECK:
     pub pda: Option<AccountInfo>,
@@ -477,13 +477,13 @@ pub struct TestMultidimensionalArrayConstSizes<'info> {
 }
 
 #[derive(Accounts)]
-pub struct NoRentExempt<'info> {
+pub struct NoRentExempt {
     /// CHECK:
     pub data: Option<AccountInfo>,
 }
 
 #[derive(Accounts)]
-pub struct EnforceRentExempt<'info> {
+pub struct EnforceRentExempt {
     #[account(rent_exempt = enforce)]
     /// CHECK:
     pub data: Option<AccountInfo>,
@@ -511,7 +511,7 @@ pub struct InitIfNeededChecksRentExemption<'info> {
 
 #[derive(Accounts)]
 #[instruction(bump: u8, second_bump: u8)]
-pub struct TestProgramIdConstraint<'info> {
+pub struct TestProgramIdConstraint {
     // not a real associated token account
     // just deriving like this for testing purposes
     #[account(seeds = [b"seed"], bump = bump, seeds::program = anchor_spl::associated_token::ID)]
@@ -524,7 +524,7 @@ pub struct TestProgramIdConstraint<'info> {
 }
 
 #[derive(Accounts)]
-pub struct TestProgramIdConstraintUsingFindPda<'info> {
+pub struct TestProgramIdConstraintUsingFindPda {
     // not a real associated token account
     // just deriving like this for testing purposes
     #[account(seeds = [b"seed"], bump, seeds::program = anchor_spl::associated_token::ID)]
