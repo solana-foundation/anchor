@@ -49,6 +49,31 @@ impl<T: Owner + Discriminator> AccountValidate for T {
     }
 }
 
+/// Defines how to create and initialize an account type via CPI.
+///
+/// The `Params` struct acts as a compile-time hashmap: its fields are the valid
+/// init parameter keys. The macro constructs it from namespaced constraints
+/// (`token::mint = mint` → `params.mint = Some(mint.account())`).
+/// Missing fields get `None` from `Default`. Unknown fields → compile error.
+///
+/// The `create_and_initialize` method handles both account creation
+/// (system program CPI) and type-specific initialization (e.g. token program CPI).
+/// This keeps all account creation logic in the type, not in the macro.
+pub trait AccountInitialize {
+    type Params<'a>: Default;
+
+    /// Create the account and initialize it.
+    /// `payer` funds the account, `account` is the target, `program_id` is the
+    /// owning program. For PDA accounts, `signer_seeds` contains the seeds + bump.
+    fn create_and_initialize<'a>(
+        payer: &AccountView,
+        account: &AccountView,
+        program_id: &Address,
+        params: &Self::Params<'a>,
+        signer_seeds: Option<&[&[u8]]>,
+    ) -> Result<(), ProgramError>;
+}
+
 /// Zero-copy account type (new default in Anchor v2).
 ///
 /// Maps `T` directly from the account's data buffer without deserialization.

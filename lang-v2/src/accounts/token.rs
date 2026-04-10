@@ -8,7 +8,7 @@ use {
     pinocchio::account::AccountView,
     solana_address::Address,
     solana_program_error::ProgramError,
-    super::{account::AccountValidate, Account},
+    super::{account::{AccountValidate, AccountInitialize}, Account},
     crate::constraints::{self, Constrain},
     crate::programs::{Token, Token2022},
     crate::Id,
@@ -64,6 +64,47 @@ impl AccountValidate for TokenAccount {
     }
 
     fn data_offset() -> usize { 0 }
+}
+
+/// Init params for `#[account(init, token::mint = ..., token::authority = ...)]`.
+#[derive(Default)]
+pub struct TokenAccountInitParams<'a> {
+    pub mint: Option<&'a AccountView>,
+    pub authority: Option<&'a AccountView>,
+}
+
+impl AccountInitialize for TokenAccount {
+    type Params<'a> = TokenAccountInitParams<'a>;
+
+    fn create_and_initialize<'a>(
+        payer: &AccountView,
+        account: &AccountView,
+        _program_id: &Address,
+        params: &Self::Params<'a>,
+        signer_seeds: Option<&[&[u8]]>,
+    ) -> Result<(), ProgramError> {
+        let mint = params.mint.ok_or(ProgramError::InvalidArgument)?;
+        let authority = params.authority.ok_or(ProgramError::InvalidArgument)?;
+
+        // Create the account owned by the token program.
+        let token_program_id = Token::id();
+        match signer_seeds {
+            Some(seeds) => crate::create_account_signed(
+                payer, account, core::mem::size_of::<Self>(), &token_program_id, seeds,
+            )?,
+            None => crate::create_account(
+                payer, account, core::mem::size_of::<Self>(), &token_program_id,
+            )?,
+        }
+
+        // Initialize the token account.
+        pinocchio_token::instructions::InitializeAccount3 {
+            account,
+            mint,
+            owner: authority.address(),
+        }
+        .invoke()
+    }
 }
 
 impl TokenAccount {
@@ -148,6 +189,49 @@ impl AccountValidate for Mint {
     }
 
     fn data_offset() -> usize { 0 }
+}
+
+/// Init params for `#[account(init, mint::decimals = 6, mint::authority = ..., ...)]`.
+#[derive(Default)]
+pub struct MintInitParams<'a> {
+    pub decimals: Option<u8>,
+    pub authority: Option<&'a AccountView>,
+    pub freeze_authority: Option<&'a AccountView>,
+}
+
+impl AccountInitialize for Mint {
+    type Params<'a> = MintInitParams<'a>;
+
+    fn create_and_initialize<'a>(
+        payer: &AccountView,
+        account: &AccountView,
+        _program_id: &Address,
+        params: &Self::Params<'a>,
+        signer_seeds: Option<&[&[u8]]>,
+    ) -> Result<(), ProgramError> {
+        let decimals = params.decimals.ok_or(ProgramError::InvalidArgument)?;
+        let authority = params.authority.ok_or(ProgramError::InvalidArgument)?;
+
+        // Create the account owned by the token program.
+        let token_program_id = Token::id();
+        match signer_seeds {
+            Some(seeds) => crate::create_account_signed(
+                payer, account, core::mem::size_of::<Self>(), &token_program_id, seeds,
+            )?,
+            None => crate::create_account(
+                payer, account, core::mem::size_of::<Self>(), &token_program_id,
+            )?,
+        }
+
+        // Initialize the mint.
+        pinocchio_token::instructions::InitializeMint2 {
+            mint: account,
+            decimals,
+            mint_authority: authority.address(),
+            freeze_authority: params.freeze_authority.map(|v| v.address()),
+        }
+        .invoke()
+    }
 }
 
 impl Mint {

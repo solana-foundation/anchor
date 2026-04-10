@@ -6,8 +6,11 @@ pub struct NamespacedConstraint {
     pub namespace: String,
     /// e.g. "mint" → "Mint" (capitalized for struct lookup)
     pub key: String,
-    /// The RHS field/expression
-    pub value: Ident,
+    /// The RHS expression.
+    pub value: Expr,
+    /// True if the RHS is a simple ident (field reference → call .account()).
+    /// False if it's a literal or complex expression (pass directly).
+    pub is_field_ref: bool,
 }
 
 pub struct AccountAttrs {
@@ -163,7 +166,10 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             input.parse::<Token![::]>()?;
                             let key_ident = Ident::parse_any(input)?;
                             input.parse::<Token![=]>()?;
-                            let value: Ident = input.parse()?;
+                            // Peek to determine if RHS is a simple ident (field ref)
+                            // or a literal/expression (value).
+                            let is_field_ref = input.peek(syn::Ident);
+                            let value: Expr = input.parse()?;
                             // Capitalize key: "mint" → "Mint"
                             let key = {
                                 let s = key_ident.to_string();
@@ -177,6 +183,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                                 namespace: ident.to_string(),
                                 key,
                                 value,
+                                is_field_ref,
                             });
                         }
                         // else: unknown attribute, silently skip
