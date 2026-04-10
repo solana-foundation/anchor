@@ -526,15 +526,17 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
             let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
             let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
             let value = &nc.value;
-            // Resolve namespace::Key via normal use imports (BYOC).
-            // The trait path is fully qualified; the marker path resolves
-            // through whatever the user imported (e.g. use anchor_spl::token;).
+            // BYOC: marker path resolves via user's `use` imports.
+            // Field refs (is_field_ref=true) → convert to Address via AsRef.
+            // Literals (is_field_ref=false) → pass directly (e.g. mint::Decimals = 6).
+            let expected = if nc.is_field_ref {
+                quote! { AsRef::<anchor_lang_v2::Address>::as_ref(&#value) }
+            } else {
+                quote! { &#value }
+            };
             constraints.push(quote! {
-                anchor_lang_v2::constraints::Constrain::<
-                    #ns::#key
-                >::constrain(
-                    &#field_name,
-                    AsRef::<anchor_lang_v2::Address>::as_ref(&#value),
+                anchor_lang_v2::constraints::Constrain::<#ns::#key, _>::constrain(
+                    &#field_name, #expected,
                 )?;
             });
         }
