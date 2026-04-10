@@ -17,7 +17,7 @@ mod traits;
 pub use pinocchio::account::AccountView;
 pub use pinocchio::address::Address;
 pub use context::{Context, Bumps};
-pub use cpi::{create_account, create_account_signed, find_program_address, realloc_account};
+pub use cpi::{create_account, create_account_signed, find_program_address, create_program_address, verify_program_address, realloc_account};
 pub use traits::*;
 pub use event::{Event, sol_log_data};
 
@@ -37,6 +37,32 @@ pub use anchor_derive_accounts_v2::emit;
 // Re-export borsh and bytemuck for generated code
 pub use borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
 pub use bytemuck;
+
+// ---------------------------------------------------------------------------
+// Client-side types — for building instructions off-chain (tests, CPI, SDK)
+// ---------------------------------------------------------------------------
+
+/// Metadata for a single account in a transaction instruction.
+pub struct AccountMeta {
+    pub address: Address,
+    pub is_writable: bool,
+    pub is_signer: bool,
+}
+
+/// Converts a struct of account addresses into a list of [`AccountMeta`]s.
+pub trait ToAccountMetas {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> alloc::vec::Vec<AccountMeta>;
+}
+
+/// Serializes instruction data: discriminator prefix + borsh-encoded args.
+pub trait InstructionData: Discriminator + AnchorSerialize {
+    fn data(&self) -> alloc::vec::Vec<u8> {
+        let mut data = alloc::vec::Vec::with_capacity(256);
+        data.extend_from_slice(Self::DISCRIMINATOR);
+        self.serialize(&mut data).unwrap();
+        data
+    }
+}
 
 /// Result type.
 pub type Result<T> = core::result::Result<T, solana_program_error::ProgramError>;

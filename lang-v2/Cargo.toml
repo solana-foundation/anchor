@@ -20,6 +20,9 @@ solana-msg = { workspace = true }
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 
+[target.'cfg(target_os = "solana")'.dependencies]
+solana-define-syscall = "4.0"
+
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = ['cfg(target_os, values("solana"))']
