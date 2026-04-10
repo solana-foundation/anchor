@@ -9,6 +9,7 @@ extern crate alloc;
 pub mod accounts;
 mod context;
 mod cpi;
+pub mod event;
 pub mod prelude;
 pub mod programs;
 mod traits;
@@ -18,6 +19,7 @@ pub use pinocchio::address::Address;
 pub use context::Context;
 pub use cpi::{create_account, create_account_signed, find_program_address};
 pub use traits::*;
+pub use event::{Event, sol_log_data};
 
 /// Re-export msg for generated code.
 pub use solana_msg::msg;
@@ -26,6 +28,8 @@ pub use solana_msg::msg;
 pub use anchor_derive_accounts_v2::Accounts;
 pub use anchor_derive_accounts_v2::account;
 pub use anchor_derive_accounts_v2::program;
+pub use anchor_derive_accounts_v2::event;
+pub use anchor_derive_accounts_v2::emit;
 
 // Re-export borsh and bytemuck for generated code
 pub use borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};

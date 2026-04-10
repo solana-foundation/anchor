@@ -19,3 +19,7 @@ solana-program-error = { version = "3.0", features = ["borsh"] }
 solana-msg = { workspace = true }
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(target_os, values("solana"))']

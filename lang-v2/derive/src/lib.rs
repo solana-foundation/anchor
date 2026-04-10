@@ -8,7 +8,7 @@ use {
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
     syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, ItemMod, Pat, Type},
-    parse::{parse_account_attrs, field_ty_str, is_nested_type},
+    parse::{parse_account_attrs, field_ty_str, is_nested_type, extract_inner_data_type},
 };
 
 // ---------------------------------------------------------------------------
@@ -36,6 +36,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let mut exit_stmts = Vec::new();
     let mut field_names = Vec::new();
     let mut idl_accounts: Vec<(String, bool, bool)> = Vec::new();
+    let mut idl_data_types: Vec<TokenStream2> = Vec::new(); // inner T from BorshAccount<T>/Account<T>
 
     let account_count = fields.iter().filter(|f| !is_nested_type(&f.ty)).count();
 
@@ -49,6 +50,11 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
         let is_signer = field_ty_str(field_ty) == "Signer";
         idl_accounts.push((name_str.clone(), attrs.is_mut, is_signer || attrs.is_init));
+
+        // Extract inner data type T from BorshAccount<T> or Account<T> for IDL
+        if let Some(inner) = extract_inner_data_type(field_ty) {
+            idl_data_types.push(inner);
+        }
 
         if is_nested_type(field_ty) {
             load_stmts.push(quote! { compile_error!("Nested<T> codegen not yet implemented"); });
@@ -155,6 +161,11 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         impl #name {
             #[cfg(feature = "idl-build")]
             pub const __IDL_ACCOUNTS: &'static str = #idl_json;
+
+            #[cfg(feature = "idl-build")]
+            pub fn __idl_types() -> Vec<&'static str> {
+                vec![#(#idl_data_types::__IDL_TYPE),*]
+            }
 
             pub fn try_accounts(
                 __program_id: &anchor_lang_v2::Address,
@@ -430,10 +441,35 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                         )
                     ),*
                 ];
+
+                // Collect types from all accounts structs, dedup by content
+                let mut all_types: Vec<&str> = Vec::new();
+                #(all_types.extend(#idl_accounts_types::__idl_types());)*
+                all_types.sort();
+                all_types.dedup();
+
+                // Split each __IDL_TYPE into accounts entry and types entry
+                let mut accounts_entries = Vec::new();
+                let mut types_entries = Vec::new();
+                for ty in &all_types {
+                    // __IDL_TYPE is: {"name":"X","discriminator":[...],"type":{"kind":"struct","fields":[...]}}
+                    // Split at ,"type": to get accounts part and types part
+                    if let Some(pos) = ty.find(",\"type\":") {
+                        let name_disc = &ty[..pos];
+                        let type_def = &ty[pos+1..ty.len()-1]; // skip trailing }
+                        accounts_entries.push(format!("{}}}", name_disc));
+                        // Extract name for the types entry
+                        let name = ty.split("\"name\":\"").nth(1).unwrap().split("\"").next().unwrap();
+                        types_entries.push(format!("{{\"name\":\"{}\",{}}}", name, type_def));
+                    }
+                }
+
                 let idl = format!(
-                    "{{\"metadata\":{{\"name\":\"{}\",\"version\":\"0.1.0\",\"spec\":\"0.1.0\"}},\"instructions\":[{}],\"accounts\":[],\"types\":[]}}",
+                    "{{\"metadata\":{{\"name\":\"{}\",\"version\":\"0.1.0\",\"spec\":\"0.1.0\"}},\"instructions\":[{}],\"accounts\":[{}],\"types\":[{}]}}",
                     stringify!(#mod_name),
                     instructions.join(","),
+                    accounts_entries.join(","),
+                    types_entries.join(","),
                 );
                 println!("--- IDL begin program ---");
                 println!("{}", idl);
@@ -441,6 +477,79 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// #[event]
+// ---------------------------------------------------------------------------
+
+/// Attribute macro that marks a struct as an event.
+///
+/// Generates:
+/// - `#[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]` on the struct
+/// - `impl Discriminator` with discriminator = `sha256("event:StructName")[..8]`
+/// - `impl Event` (provides `.data()` which serializes discriminator + borsh data)
+///
+/// # Example
+///
+/// ```ignore
+/// #[event]
+/// pub struct DepositRecorded {
+///     pub ledger: Address,
+///     pub amount: u64,
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn event(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as DeriveInput);
+    let name = &input.ident;
+    let name_str = name.to_string();
+    let vis = &input.vis;
+    let attrs = &input.attrs;
+    let fields = match &input.data {
+        Data::Struct(data) => &data.fields,
+        _ => panic!("#[event] only supports structs"),
+    };
+
+    use sha2::Digest;
+    let hash = sha2::Sha256::digest(format!("event:{name_str}").as_bytes());
+    let disc_bytes = &hash[..8];
+    let disc_literals: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
+
+    TokenStream::from(quote! {
+        #[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]
+        #(#attrs)*
+        #vis struct #name #fields
+
+        impl anchor_lang_v2::Discriminator for #name {
+            const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
+        }
+
+        impl anchor_lang_v2::Event for #name {}
+    })
+}
+
+// ---------------------------------------------------------------------------
+// emit!
+// ---------------------------------------------------------------------------
+
+/// Logs an event that can be subscribed to by clients.
+///
+/// Uses the `sol_log_data` syscall which emits a `Program data: <Base64>` log.
+///
+/// # Example
+///
+/// ```ignore
+/// emit!(DepositRecorded { ledger: *ctx.accounts.ledger.account().address(), amount });
+/// ```
+#[proc_macro]
+pub fn emit(input: TokenStream) -> TokenStream {
+    let data: proc_macro2::TokenStream = input.into();
+    TokenStream::from(quote! {
+        {
+            anchor_lang_v2::sol_log_data(&[&anchor_lang_v2::Event::data(&#data)]);
+        }
+    })
 }
 
 fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {

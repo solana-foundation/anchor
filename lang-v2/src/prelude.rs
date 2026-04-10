@@ -18,6 +18,8 @@ pub use crate::{
     create_account, create_account_signed, find_program_address,
     // Derive macros
     Accounts, account, program,
+    // Event
+    event, emit, Event, sol_log_data,
     // Serialization
     AnchorSerialize, AnchorDeserialize,
     // Error

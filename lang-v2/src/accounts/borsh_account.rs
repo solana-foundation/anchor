@@ -1,37 +1,44 @@
 use {
     core::ops::{Deref, DerefMut},
-    pinocchio::{account::AccountView, address::Address},
+    pinocchio::account::{AccountView, Ref, RefMut},
+    pinocchio::address::Address,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program_error::ProgramError,
     crate::{AnchorAccount, AnchorAccountInit, Discriminator, Owner, DISC_LEN},
 };
 
-/// Borsh-serialized account type (legacy path).
+/// Borsh-serialized account type.
 ///
-/// Equivalent to Anchor v1's `Account<T>`. Validates owner, checks discriminator,
-/// deserializes via borsh. On `exit()`, serializes back to the data buffer.
+/// Validates owner, checks discriminator, deserializes via borsh.
+/// Holds a pinocchio borrow guard to prevent duplicate mutable accounts:
+/// - `load()` takes an immutable borrow (blocks subsequent `load_mut` on same account)
+/// - `load_mut()` takes a mutable borrow (blocks any other borrow on same account)
+/// - `exit()` serializes through the held `RefMut`
 pub struct BorshAccount<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> {
     view: AccountView,
     data: T,
-    mutable: bool,
+    borrow: BorshBorrow,
+}
+
+enum BorshBorrow {
+    Immutable { _guard: Ref<'static, [u8]> },
+    Mutable { guard: RefMut<'static, [u8]> },
+    Released,
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<T> {
-    fn validate_and_deserialize(view: AccountView, mutable: bool) -> Result<Self, ProgramError> {
+    fn validate_and_load(view: AccountView, data: &[u8]) -> Result<T, ProgramError> {
         if !view.owned_by(&T::owner()) {
             return Err(ProgramError::IllegalOwner);
         }
-        // SAFETY: slice consumed by try_from_slice (copies data out); no reference escapes.
-        let data_slice = unsafe { view.borrow_unchecked() };
-        if data_slice.len() < DISC_LEN {
+        if data.len() < DISC_LEN {
             return Err(ProgramError::AccountDataTooSmall);
         }
-        if &data_slice[..DISC_LEN] != T::DISCRIMINATOR {
+        if &data[..DISC_LEN] != T::DISCRIMINATOR {
             return Err(ProgramError::InvalidAccountData);
         }
-        let data = T::try_from_slice(&data_slice[DISC_LEN..])
-            .map_err(|_| ProgramError::InvalidAccountData)?;
-        Ok(Self { view, data, mutable })
+        T::try_from_slice(&data[DISC_LEN..])
+            .map_err(|_| ProgramError::InvalidAccountData)
     }
 }
 
@@ -39,36 +46,66 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
     type Data = T;
 
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        Self::validate_and_deserialize(view, false)
+        let data_ref = view.try_borrow()?;
+        let data = Self::validate_and_load(view, &data_ref)?;
+        // SAFETY: AccountView's raw pointer is valid for the entire instruction
+        // lifetime (Solana runtime guarantee). We hold the Ref to prevent
+        // subsequent mutable borrows on the same account (duplicate detection).
+        let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        Ok(Self { view, data, borrow: BorshBorrow::Immutable { _guard: guard } })
     }
 
     fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        Self::validate_and_deserialize(view, true)
+        let mut view_mut = view;
+        let data_ref = view_mut.try_borrow_mut()?;
+        let data = Self::validate_and_load(view, &data_ref)?;
+        // SAFETY: Same as load(). RefMut provides exclusive access and prevents
+        // any other borrow on the same account.
+        let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        Ok(Self { view, data, borrow: BorshBorrow::Mutable { guard } })
     }
 
     fn account(&self) -> &AccountView { &self.view }
 
+    fn close(&mut self, mut destination: AccountView) -> pinocchio::ProgramResult {
+        // Release the borrow guard before closing so pinocchio's close() can proceed
+        self.borrow = BorshBorrow::Released;
+        let mut self_view = self.view;
+        let dest_lamports = destination
+            .lamports()
+            .checked_add(self_view.lamports())
+            .ok_or(ProgramError::ArithmeticOverflow)?;
+        destination.set_lamports(dest_lamports);
+        self_view.set_lamports(0);
+        self_view.close()?;
+        Ok(())
+    }
+
     fn exit(&mut self) -> pinocchio::ProgramResult {
-        if !self.mutable { return Ok(()); }
-        let mut data_ref = self.view.try_borrow_mut()?;
-        self.data.serialize(&mut &mut data_ref[DISC_LEN..])
-            .map_err(|_| ProgramError::InvalidAccountData)?;
+        // Write through the held RefMut — no need to re-acquire the borrow
+        if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
+            self.data.serialize(&mut &mut guard[DISC_LEN..])
+                .map_err(|_| ProgramError::InvalidAccountData)?;
+        }
         Ok(())
     }
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator + Default> AnchorAccountInit for BorshAccount<T> {
     fn init(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        let mut account = Self { view, data: T::default(), mutable: true };
-        let mut data_ref = account.view.try_borrow_mut()?;
+        let mut view_mut = view;
+        let mut data_ref = view_mut.try_borrow_mut()?;
         if data_ref.len() < DISC_LEN {
             return Err(ProgramError::AccountDataTooSmall);
         }
+        // Write discriminator + default data
         data_ref[..DISC_LEN].copy_from_slice(T::DISCRIMINATOR);
-        account.data.serialize(&mut &mut data_ref[DISC_LEN..])
+        let data = T::default();
+        data.serialize(&mut &mut data_ref[DISC_LEN..])
             .map_err(|_| ProgramError::InvalidAccountData)?;
-        drop(data_ref);
-        Ok(account)
+        // Keep the mutable borrow for exit()
+        let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        Ok(Self { view, data, borrow: BorshBorrow::Mutable { guard } })
     }
 }
 
@@ -79,10 +116,11 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> Deref for Bor
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> DerefMut for BorshAccount<T> {
     fn deref_mut(&mut self) -> &mut T {
-        if !self.mutable {
-            panic!("cannot mutably deref an account loaded with load() — use #[account(mut)]");
+        match &self.borrow {
+            BorshBorrow::Mutable { .. } => &mut self.data,
+            BorshBorrow::Immutable { .. } => panic!("use #[account(mut)] for mutable access"),
+            BorshBorrow::Released => panic!("account borrow released (closed)"),
         }
-        &mut self.data
     }
 }
 
