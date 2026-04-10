@@ -6,6 +6,7 @@ mod boxed;
 mod option;
 mod borsh_account;
 mod account;
+pub mod token;
 mod sysvar;
 
 pub use unchecked_account::UncheckedAccount;
