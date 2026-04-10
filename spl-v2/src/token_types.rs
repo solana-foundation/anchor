@@ -207,6 +207,8 @@ pub mod token {
 pub mod mint {
     pub struct Authority;
     pub struct FreezeAuthority;
+    pub struct Decimals;
+    pub struct TokenProgram;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,5 +236,23 @@ impl Constrain<mint::Authority> for Account<Mint> {
 impl Constrain<mint::FreezeAuthority> for Account<Mint> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !self.has_freeze_authority() || self.freeze_authority != *expected { Err(ProgramError::InvalidAccountData) } else { Ok(()) }
+    }
+}
+
+impl Constrain<mint::Decimals, u8> for Account<Mint> {
+    fn constrain(&self, expected: &u8) -> Result<(), ProgramError> {
+        if self.decimals != *expected { Err(ProgramError::InvalidAccountData) } else { Ok(()) }
+    }
+}
+
+impl Constrain<token::TokenProgram> for Account<TokenAccount> {
+    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+        if !AsRef::<pinocchio::account::AccountView>::as_ref(self).owned_by(expected) { Err(ProgramError::IllegalOwner) } else { Ok(()) }
+    }
+}
+
+impl Constrain<mint::TokenProgram> for Account<Mint> {
+    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+        if !AsRef::<pinocchio::account::AccountView>::as_ref(self).owned_by(expected) { Err(ProgramError::IllegalOwner) } else { Ok(()) }
     }
 }

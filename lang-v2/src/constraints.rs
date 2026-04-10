@@ -1,6 +1,6 @@
 //! Trait-based constraint system for account validation.
 //!
-//! The `Constrain<C>` trait lets account types declare what constraint keys
+//! The `Constrain<C, V>` trait lets account types declare what constraint keys
 //! they support. The `#[derive(Accounts)]` macro generates trait calls for
 //! `namespace::key = expr` constraints. The marker type path resolves through
 //! normal `use` imports — external crates provide their own markers.
@@ -10,15 +10,15 @@
 //! 2. An `impl Constrain<marker>` on the relevant account type
 //! 3. `use anchor_spl::token;` in the user's program
 
-use {
-    solana_address::Address,
-    solana_program_error::ProgramError,
-};
+use solana_program_error::ProgramError;
 
 /// A constraint check on an account. Each account type opts in to specific
 /// constraint keys by implementing this trait for the corresponding marker.
 ///
+/// `V` is the expected value type — defaults to `Address` for address comparisons.
+/// Use a different `V` for non-address checks (e.g. `mint::Decimals` uses `u8`).
+///
 /// Unknown keys → compile error ("Constrain<X> is not implemented for Y").
-pub trait Constrain<C> {
-    fn constrain(&self, expected: &Address) -> Result<(), ProgramError>;
+pub trait Constrain<C, V = solana_address::Address> {
+    fn constrain(&self, expected: &V) -> Result<(), ProgramError>;
 }
