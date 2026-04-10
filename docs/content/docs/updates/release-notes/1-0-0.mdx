@@ -104,9 +104,17 @@ longer needs to be on your `PATH` for Anchor commands to work.
 
 ### `anchor test` / `anchor localnet` now use Surfpool by default
 
-[Surfpool](https://github.com/txtx/surfpool) replaces the local validator as
+[Surfpool](https://github.com/solana-foundation/surfpool) replaces the local validator as
 the default backend for `anchor test` and `anchor localnet`. If you want to
 keep using the `solana-test-validator`, pass `--validator legacy`.
+
+To use the default `anchor test` or `anchor localnet` commands, Surfpool will need to be installed on your machine. 
+Check to see if you have Surfpool installed by running
+```sh
+surfpool --version
+```
+The lowest recommended Surfpool version for use with Anchor is [v1.1.2](https://github.com/solana-foundation/surfpool/releases/tag/v1.1.2).
+To install Surfpool, follow the [Surfpool installation instructions](https://github.com/solana-foundation/surfpool?tab=readme-ov-file#installation).
 
 ### Duplicate mutable accounts disallowed by default
 
