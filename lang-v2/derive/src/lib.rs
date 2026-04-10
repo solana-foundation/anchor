@@ -223,19 +223,43 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
 
         // --- has_one ---
-        for ho in &attrs.has_one {
+        for (ho, ho_err) in &attrs.has_one {
+            let err = if let Some(ref e) = ho_err {
+                quote! { core::convert::Into::into(#e) }
+            } else {
+                quote! { anchor_lang_v2::ErrorCode::ConstraintHasOne.into() }
+            };
             constraint_stmts.push(quote! {
                 if AsRef::<[u8]>::as_ref(&#field_name.#ho) != AsRef::<[u8]>::as_ref(#ho.account().address()) {
-                    return Err(anchor_lang_v2::ErrorCode::ConstraintHasOne.into());
+                    return Err(#err);
                 }
             });
         }
 
         // --- address ---
         if let Some(ref addr) = attrs.address {
+            let err = if let Some(ref e) = attrs.address_error {
+                quote! { core::convert::Into::into(#e) }
+            } else {
+                quote! { anchor_lang_v2::ErrorCode::ConstraintAddress.into() }
+            };
             constraint_stmts.push(quote! {
                 if *#field_name.account().address() != #addr {
-                    return Err(anchor_lang_v2::ErrorCode::ConstraintAddress.into());
+                    return Err(#err);
+                }
+            });
+        }
+
+        // --- owner ---
+        if let Some(ref owner_expr) = attrs.owner {
+            let err = if let Some(ref e) = attrs.owner_error {
+                quote! { core::convert::Into::into(#e) }
+            } else {
+                quote! { anchor_lang_v2::ErrorCode::ConstraintOwner.into() }
+            };
+            constraint_stmts.push(quote! {
+                if !#field_name.account().owned_by(&#owner_expr) {
+                    return Err(#err);
                 }
             });
         }

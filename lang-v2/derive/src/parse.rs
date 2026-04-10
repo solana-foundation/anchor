@@ -10,8 +10,11 @@ pub struct AccountAttrs {
     pub payer: Option<Ident>,
     pub space: Option<Expr>,
     pub seeds: Option<Vec<Expr>>,
-    pub has_one: Vec<Ident>,
+    pub has_one: Vec<(Ident, Option<Expr>)>,
     pub address: Option<Expr>,
+    pub address_error: Option<Expr>,
+    pub owner: Option<Expr>,
+    pub owner_error: Option<Expr>,
     pub close: Option<Ident>,
     pub constraint: Option<Expr>,
     pub constraint_error: Option<Expr>,
@@ -32,6 +35,9 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         seeds: None,
         has_one: Vec::new(),
         address: None,
+        address_error: None,
+        owner: None,
+        owner_error: None,
         close: None,
         constraint: None,
         constraint_error: None,
@@ -86,11 +92,30 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     }
                     "has_one" => {
                         input.parse::<Token![=]>()?;
-                        result.has_one.push(input.parse()?);
+                        let target: Ident = input.parse()?;
+                        let err = if input.peek(Token![@]) {
+                            input.parse::<Token![@]>()?;
+                            Some(input.parse()?)
+                        } else {
+                            None
+                        };
+                        result.has_one.push((target, err));
                     }
                     "address" => {
                         input.parse::<Token![=]>()?;
                         result.address = Some(input.parse()?);
+                        if input.peek(Token![@]) {
+                            input.parse::<Token![@]>()?;
+                            result.address_error = Some(input.parse()?);
+                        }
+                    }
+                    "owner" => {
+                        input.parse::<Token![=]>()?;
+                        result.owner = Some(input.parse()?);
+                        if input.peek(Token![@]) {
+                            input.parse::<Token![@]>()?;
+                            result.owner_error = Some(input.parse()?);
+                        }
                     }
                     "realloc" => {
                         input.parse::<Token![=]>()?;
