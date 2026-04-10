@@ -27,13 +27,13 @@ use {
 ///
 /// # Basic Functionality
 ///
-/// InterfaceAccount checks that `T::owners().contains(Account.info.owner)`.
-/// This means that the data type that Accounts wraps around (`=T`) needs to
-/// implement the [Owners trait](crate::Owners).
-/// The `#[account]` attribute implements the Owners trait for
-/// a struct using multiple `crate::ID`s declared by [`declareId`](crate::declare_id)
-/// in the same program. It follows that InterfaceAccount can also be used
-/// with a `T` that comes from a different program.
+/// At deserialization, `InterfaceAccount` checks ownership via [`CheckOwner::check_owner`].
+/// [`Owner`] types get [`CheckOwner`] for free; [`Owners`] types must implement [`CheckOwner`]
+/// manually (see `anchor_spl::token_interface`) because Rust does not allow a second blanket
+/// `CheckOwner` impl for [`Owners`] without overlapping the [`Owner`] blanket.
+///
+/// For exit bookkeeping, `T` must still implement [`Owners`] so Anchor can verify the account
+/// remains owned by an expected program.
 ///
 /// Checks:
 ///
@@ -240,14 +240,12 @@ impl<'a, T: AccountSerialize + AccountDeserialize + CheckOwner + Clone> Interfac
     /// Deserializes the given `info` into an `InterfaceAccount`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo) -> Result<Self> {
-        // `InterfaceAccount` targets foreign program accounts (e.g., SPL Token
-        // accounts) that do not have Anchor discriminators. Because of that, we
-        // intentionally skip the Anchor discriminator check here and instead:
-        //
-        // 1) Validate program ownership via `T::check_owner(info.owner)?`
-        // 2) Deserialize without a discriminator by delegating to
-        //    `T::try_deserialize_unchecked`
-        Self::try_from_unchecked(info)
+        if info.owned_by(&system_program::ID) && info.lamports() == 0 {
+            return Err(ErrorCode::AccountNotInitialized.into());
+        }
+        T::check_owner(info.owner())?;
+        let mut data: &[u8] = &info.try_borrow()?;
+        Ok(Self::new(info, T::try_deserialize(&mut data)?))
     }
 
     /// Deserializes the given `info` into an `InterfaceAccount` without checking the account

@@ -2,7 +2,7 @@ use {
     anchor_lang::{
         pinocchio_runtime::account::{RuntimeAccount, NOT_BORROWED},
         prelude::*,
-        RefMut,
+        Owners, RefMut,
     },
     std::{mem::size_of, ptr},
 };
@@ -49,6 +49,13 @@ impl OwnedPinocchioAccount {
 #[derive(Default, Debug)]
 struct Dummy {
     val: u64,
+}
+
+impl Owners for Dummy {
+    fn owners() -> &'static [Pubkey] {
+        const IDS: [Pubkey; 1] = [crate::ID_CONST];
+        &IDS
+    }
 }
 
 fn serialize_dummy(val: u64) -> Vec<u8> {

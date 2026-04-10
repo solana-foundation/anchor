@@ -516,9 +516,9 @@ pub trait CheckOwner {
     fn check_owner(owner: &Pubkey) -> Result<()>;
 }
 
-impl<T: Owner> CheckOwner for T {
+impl<T: Owners> CheckOwner for T {
     fn check_owner(owner: &Pubkey) -> Result<()> {
-        if Self::owner() != *owner {
+        if !Self::owners().contains(owner) {
             Err(
                 error::Error::from(error::ErrorCode::AccountOwnedByWrongProgram)
                     .with_account_name(pubkey_to_string(owner)),
