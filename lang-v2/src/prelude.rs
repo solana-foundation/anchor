@@ -15,7 +15,7 @@ pub use crate::{
     // Context
     Context, Bumps,
     // CPI
-    create_account, create_account_signed, find_program_address,
+    create_account, create_account_signed, find_program_address, create_program_address,
     // Derive macros
     Accounts, account, program,
     // Event
@@ -28,6 +28,8 @@ pub use crate::{
     DISC_LEN,
     // Nested
     Nested,
+    // Client
+    AccountMeta as AnchorAccountMeta, InstructionData, ToAccountMetas,
     // Msg
     msg,
     // ID
