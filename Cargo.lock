@@ -406,6 +406,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-spl-v2"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang-v2",
+ "bytemuck",
+ "pinocchio",
+ "pinocchio-token",
+ "solana-address 2.4.0",
+ "solana-program-error",
+]
+
+[[package]]
 name = "anchor-syn"
 version = "1.0.0"
 dependencies = [

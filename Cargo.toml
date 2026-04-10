@@ -11,6 +11,7 @@ members = [
     "spl",
     "lang-v2",
     "lang-v2/derive",
+    "spl-v2",
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
