@@ -211,6 +211,35 @@ pub mod mint {
     pub struct TokenProgram;
 }
 
+/// Token2022 extension constraint markers.
+/// These are placeholders — full impls require Token2022 extension parsing
+/// which depends on `spl-token-2022` types. The trait impls can be added
+/// when Token2022 extension support is integrated.
+pub mod extensions {
+    pub mod group_pointer {
+        pub struct Authority;
+        pub struct GroupAddress;
+    }
+    pub mod group_member_pointer {
+        pub struct Authority;
+        pub struct MemberAddress;
+    }
+    pub mod metadata_pointer {
+        pub struct Authority;
+        pub struct MetadataAddress;
+    }
+    pub mod close_authority {
+        pub struct Authority;
+    }
+    pub mod permanent_delegate {
+        pub struct Delegate;
+    }
+    pub mod transfer_hook {
+        pub struct Authority;
+        pub struct ProgramId;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Constrain impls
 // ---------------------------------------------------------------------------
