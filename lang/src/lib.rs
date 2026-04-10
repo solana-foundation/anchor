@@ -37,6 +37,7 @@ use {
 mod account_meta;
 pub mod accounts;
 mod bpf_upgradeable_state;
+pub mod v2;
 mod bpf_writer;
 mod common;
 pub mod context;
