@@ -401,19 +401,44 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             #(#handler_wrappers)*
         }
 
-        #[cfg(feature = "idl-build")]
-        pub fn __build_idl_instructions() -> Vec<String> {
-            vec![
-                #(
-                    format!(
-                        "{{\"name\":\"{}\",\"discriminator\":{},\"accounts\":{},\"args\":{}}}",
-                        #idl_ix_names,
-                        #idl_ix_discs,
-                        #idl_accounts_types::__IDL_ACCOUNTS,
-                        #idl_ix_args,
-                    )
-                ),*
-            ]
+        // IDL generation: prints structured output consumed by `anchor idl build`.
+        // The CLI runs `cargo test __anchor_private_print_idl --features idl-build`
+        // and parses the marker-delimited sections from stdout.
+        #[cfg(all(test, feature = "idl-build"))]
+        mod __anchor_private_idl {
+            use super::*;
+
+            #[test]
+            fn __anchor_private_print_idl_address() {
+                println!("--- IDL begin address ---");
+                let addr = crate::ID;
+                // Print base58 address
+                println!("{}", anchor_lang_v2::Address::from(addr));
+                println!("--- IDL end address ---");
+            }
+
+            #[test]
+            fn __anchor_private_print_idl_program() {
+                let instructions = vec![
+                    #(
+                        format!(
+                            "{{\"name\":\"{}\",\"discriminator\":{},\"accounts\":{},\"args\":{}}}",
+                            #idl_ix_names,
+                            #idl_ix_discs,
+                            #idl_accounts_types::__IDL_ACCOUNTS,
+                            #idl_ix_args,
+                        )
+                    ),*
+                ];
+                let idl = format!(
+                    "{{\"metadata\":{{\"name\":\"{}\",\"version\":\"0.1.0\",\"spec\":\"0.1.0\"}},\"instructions\":[{}],\"accounts\":[],\"types\":[]}}",
+                    stringify!(#mod_name),
+                    instructions.join(","),
+                );
+                println!("--- IDL begin program ---");
+                println!("{}", idl);
+                println!("--- IDL end program ---");
+            }
         }
     }
 }
