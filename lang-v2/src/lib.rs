@@ -74,9 +74,12 @@ pub type Error = solana_program_error::ProgramError;
 /// Used by constraint codegen.
 pub enum ErrorCode {
     AccountNotEnoughKeys,
+    ConstraintMut,
+    ConstraintSigner,
     ConstraintSeeds,
     ConstraintHasOne,
     ConstraintAddress,
+    ConstraintClose,
     ConstraintRaw,
     InstructionDidNotDeserialize,
     DeclaredProgramIdMismatch,
@@ -94,10 +97,13 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
     fn from(e: ErrorCode) -> Self {
         match e {
             ErrorCode::AccountNotEnoughKeys => solana_program_error::ProgramError::NotEnoughAccountKeys,
+            ErrorCode::ConstraintMut => solana_program_error::ProgramError::Custom(2000),
+            ErrorCode::ConstraintSigner => solana_program_error::ProgramError::MissingRequiredSignature,
             ErrorCode::ConstraintSeeds => solana_program_error::ProgramError::InvalidSeeds,
             ErrorCode::ConstraintHasOne => solana_program_error::ProgramError::InvalidAccountData,
             ErrorCode::ConstraintAddress => solana_program_error::ProgramError::InvalidAccountData,
-            ErrorCode::ConstraintRaw => solana_program_error::ProgramError::Custom(2000),
+            ErrorCode::ConstraintClose => solana_program_error::ProgramError::InvalidAccountData,
+            ErrorCode::ConstraintRaw => solana_program_error::ProgramError::Custom(2001),
             ErrorCode::InstructionDidNotDeserialize => solana_program_error::ProgramError::InvalidInstructionData,
             ErrorCode::DeclaredProgramIdMismatch => solana_program_error::ProgramError::IncorrectProgramId,
             ErrorCode::InstructionFallbackNotFound => solana_program_error::ProgramError::InvalidInstructionData,

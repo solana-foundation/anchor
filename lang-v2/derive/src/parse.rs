@@ -2,6 +2,7 @@ use syn::{ext::IdentExt, parse::{Parse, ParseStream}, Attribute, Expr, Ident, To
 
 pub struct AccountAttrs {
     pub is_mut: bool,
+    pub is_signer: bool,
     pub is_init: bool,
     pub is_init_if_needed: bool,
     /// None = no bump attr, Some(None) = `bump` without value, Some(Some(expr)) = `bump = expr`
@@ -22,6 +23,7 @@ pub struct AccountAttrs {
 pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
     let mut result = AccountAttrs {
         is_mut: false,
+        is_signer: false,
         is_init: false,
         is_init_if_needed: false,
         bump: None,
@@ -63,7 +65,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             result.bump = Some(None);
                         }
                     }
-                    "signer" => {}
+                    "signer" => result.is_signer = true,
                     "payer" => {
                         input.parse::<Token![=]>()?;
                         result.payer = Some(input.parse()?);
