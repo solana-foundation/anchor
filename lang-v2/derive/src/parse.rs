@@ -6,8 +6,10 @@ use proc_macro2::TokenStream as TokenStream2;
 pub struct NamespacedConstraint {
     /// e.g. "token"
     pub namespace: String,
-    /// e.g. "mint" → "Mint" (capitalized for struct lookup)
+    /// e.g. "MintConstraint" (capitalized + suffixed for Constrain trait lookup)
     pub key: String,
+    /// e.g. "mint" (original lowercase key, used as init param field name)
+    pub raw_key: String,
     /// The RHS expression.
     pub value: Expr,
     /// True if the RHS is a simple ident (field reference → call .account()).
@@ -199,18 +201,21 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             // or a literal/expression (value).
                             let is_field_ref = input.peek(syn::Ident);
                             let value: Expr = input.parse()?;
-                            // Capitalize key: "mint" → "Mint"
+                            // Capitalize key and append Constraint: "mint" → "MintConstraint"
                             let key = {
                                 let s = key_ident.to_string();
                                 let mut c = s.chars();
-                                match c.next() {
+                                let capitalized = match c.next() {
                                     Some(first) => first.to_uppercase().to_string() + c.as_str(),
                                     None => String::new(),
-                                }
+                                };
+                                format!("{capitalized}Constraint")
                             };
+                            let raw_key = key_ident.to_string();
                             result.namespaced.push(NamespacedConstraint {
                                 namespace: ident.to_string(),
                                 key,
+                                raw_key,
                                 value,
                                 is_field_ref,
                             });
@@ -334,7 +339,7 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
             .expect("#[account(init)] requires Account<T> or BorshAccount<T>");
 
         let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-            let key = syn::Ident::new(&nc.key.to_lowercase(), proc_macro2::Span::call_site());
+            let key = syn::Ident::new(&nc.raw_key.clone(), proc_macro2::Span::call_site());
             let value = &nc.value;
             if nc.is_field_ref {
                 quote! { __p.#key = Some(#value.account()); }
@@ -399,7 +404,7 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
         };
 
         let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-            let key = syn::Ident::new(&nc.key.to_lowercase(), proc_macro2::Span::call_site());
+            let key = syn::Ident::new(&nc.raw_key.clone(), proc_macro2::Span::call_site());
             let value = &nc.value;
             if nc.is_field_ref {
                 quote! { __p.#key = Some(#value.account()); }
@@ -610,7 +615,7 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
                 quote! { &#value }
             };
             constraints.push(quote! {
-                anchor_lang_v2::constraints::Constrain::<#ns::#key, _>::constrain(
+                anchor_lang_v2::Constrain::<#ns::#key, _>::constrain(
                     &#field_name, #expected,
                 )?;
             });

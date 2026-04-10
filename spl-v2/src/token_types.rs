@@ -10,7 +10,7 @@ use {
     solana_program_error::ProgramError,
     anchor_lang_v2::{
         accounts::{Account, AccountValidate, AccountInitialize},
-        constraints::Constrain,
+        Constrain,
         Id,
     },
 };

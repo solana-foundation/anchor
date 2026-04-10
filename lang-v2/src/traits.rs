@@ -55,6 +55,17 @@ pub trait Discriminator {
     const DISCRIMINATOR: &'static [u8];
 }
 
+/// A constraint check on an account. Each account type opts in to specific
+/// constraint keys by implementing this trait for the corresponding marker.
+///
+/// `V` is the expected value type — defaults to `Address` for address comparisons.
+/// Use a different `V` for non-address checks (e.g. `mint::DecimalsConstraint` uses `u8`).
+///
+/// Unknown keys → compile error ("Constrain<X> is not implemented for Y").
+pub trait Constrain<C, V = Address> {
+    fn constrain(&self, expected: &V) -> core::result::Result<(), ProgramError>;
+}
+
 pub struct Nested<T>(pub T);
 
 impl<T> Deref for Nested<T> {

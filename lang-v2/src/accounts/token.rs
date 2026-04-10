@@ -9,7 +9,7 @@ use {
     solana_address::Address,
     solana_program_error::ProgramError,
     super::{account::{AccountValidate, AccountInitialize}, Account},
-    crate::constraints::Constrain,
+    crate::Constrain,
     crate::programs::{Token, Token2022},
     crate::Id,
 };
@@ -254,15 +254,24 @@ impl Mint {
     }
 }
 
-// Constraint marker modules are in crate::constraints::{token, mint}.
-
 // ---------------------------------------------------------------------------
-// Constrain impls — Account<TokenAccount>
+// Constraint markers + impls
 // ---------------------------------------------------------------------------
 
-use crate::constraints::{token, mint};
+/// Constraint markers for `token::*` constraints on `Account<TokenAccount>`.
+pub struct MintConstraint;
+pub struct AuthorityConstraint;
+pub struct TokenProgramConstraint;
 
-impl Constrain<token::Mint> for Account<TokenAccount> {
+/// Constraint markers for `mint::*` constraints on `Account<Mint>`.
+pub mod mint {
+    pub struct AuthorityConstraint;
+    pub struct FreezeAuthorityConstraint;
+    pub struct DecimalsConstraint;
+    pub struct TokenProgramConstraint;
+}
+
+impl Constrain<MintConstraint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if self.mint != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -272,7 +281,7 @@ impl Constrain<token::Mint> for Account<TokenAccount> {
     }
 }
 
-impl Constrain<token::Authority> for Account<TokenAccount> {
+impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if self.authority != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -286,7 +295,7 @@ impl Constrain<token::Authority> for Account<TokenAccount> {
 // Constrain impls — Account<Mint>
 // ---------------------------------------------------------------------------
 
-impl Constrain<mint::Authority> for Account<Mint> {
+impl Constrain<mint::AuthorityConstraint> for Account<Mint> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !self.has_mint_authority() || self.mint_authority != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -296,7 +305,7 @@ impl Constrain<mint::Authority> for Account<Mint> {
     }
 }
 
-impl Constrain<mint::FreezeAuthority> for Account<Mint> {
+impl Constrain<mint::FreezeAuthorityConstraint> for Account<Mint> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !self.has_freeze_authority() || self.freeze_authority != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -307,7 +316,7 @@ impl Constrain<mint::FreezeAuthority> for Account<Mint> {
 }
 
 /// `mint::Decimals = 6` — non-address constraint, compares u8.
-impl Constrain<mint::Decimals, u8> for Account<Mint> {
+impl Constrain<mint::DecimalsConstraint, u8> for Account<Mint> {
     fn constrain(&self, expected: &u8) -> Result<(), ProgramError> {
         if self.decimals != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -318,7 +327,7 @@ impl Constrain<mint::Decimals, u8> for Account<Mint> {
 }
 
 /// `token::TokenProgram = token_program` — check account is owned by given program.
-impl Constrain<token::TokenProgram> for Account<TokenAccount> {
+impl Constrain<TokenProgramConstraint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !AsRef::<AccountView>::as_ref(self).owned_by(expected) {
             Err(ProgramError::IllegalOwner)
@@ -329,7 +338,7 @@ impl Constrain<token::TokenProgram> for Account<TokenAccount> {
 }
 
 /// `mint::TokenProgram = token_program` — check mint is owned by given program.
-impl Constrain<mint::TokenProgram> for Account<Mint> {
+impl Constrain<mint::TokenProgramConstraint> for Account<Mint> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !AsRef::<AccountView>::as_ref(self).owned_by(expected) {
             Err(ProgramError::IllegalOwner)

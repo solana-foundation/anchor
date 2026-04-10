@@ -9,7 +9,7 @@ pub use crate::{
     accounts::{
         Account, AccountValidate, BorshAccount, Optional, Program, Signer,
         SystemAccount, UncheckedAccount, Sysvar, SysvarId,
-        token::{TokenAccount, Mint},
+        token::{self as token, TokenAccount, Mint, mint},
     },
     // Programs
     programs::{System, Token, Token2022},
@@ -32,7 +32,7 @@ pub use crate::{
     // Constants
     DISC_LEN,
     // Constraints
-    constraints::{Constrain, token, mint},
+    Constrain,
     // Nested
     Nested,
     // Client

@@ -312,24 +312,16 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         let extra_arg_names: Vec<_> = extra_args.iter().map(|(n, _)| *n).collect();
         let extra_arg_types: Vec<_> = extra_args.iter().map(|(_, t)| *t).collect();
 
-        let deser_args = match extra_args.len() {
-            0 => quote! {},
-            1 => {
-                let arg_name = extra_arg_names[0];
-                let arg_type = extra_arg_types[0];
-                quote! {
-                    let #arg_name = <#arg_type as anchor_lang_v2::AnchorDeserialize>::deserialize(
-                        &mut &__ix_data[..]
-                    ).map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
-                }
-            }
-            _ => quote! {
-                #[derive(anchor_lang_v2::AnchorDeserialize)]
+        let deser_args = if extra_args.is_empty() {
+            quote! {}
+        } else {
+            quote! {
+                #[derive(anchor_lang_v2::wincode::SchemaRead)]
                 struct __Args { #(#extra_arg_names: #extra_arg_types,)* }
                 let __args: __Args = anchor_lang_v2::wincode::deserialize(__ix_data)
                     .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
                 #(let #extra_arg_names = __args.#extra_arg_names;)*
-            },
+            }
         };
 
         idl_ix_names.push(fn_name_str.clone());
