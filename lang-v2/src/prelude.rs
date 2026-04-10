@@ -27,6 +27,8 @@ pub use crate::{
     Result, Error, ErrorCode,
     // Constants
     DISC_LEN,
+    // Constraints
+    constraints::Constrain,
     // Nested
     Nested,
     // Client

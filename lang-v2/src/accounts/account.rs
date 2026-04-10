@@ -165,3 +165,7 @@ impl<T: Pod + Zeroable + AccountValidate> DerefMut for Account<T> {
 impl<T: Pod + Zeroable + AccountValidate> AsRef<AccountView> for Account<T> {
     fn as_ref(&self) -> &AccountView { &self.view }
 }
+
+impl<T: Pod + Zeroable + AccountValidate> AsRef<Address> for Account<T> {
+    fn as_ref(&self) -> &Address { self.view.address() }
+}
