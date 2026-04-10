@@ -17,7 +17,7 @@ mod traits;
 pub use pinocchio::account::AccountView;
 pub use pinocchio::address::Address;
 pub use context::Context;
-pub use cpi::{create_account, create_account_signed, find_program_address};
+pub use cpi::{create_account, create_account_signed, find_program_address, realloc_account};
 pub use traits::*;
 pub use event::{Event, sol_log_data};
 

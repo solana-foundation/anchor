@@ -31,11 +31,14 @@ pub fn rust_type_to_idl(ty: &Type) -> String {
 }
 
 /// Build IDL accounts JSON from parsed field metadata.
-pub fn build_accounts_json(accounts: &[(String, bool, bool)]) -> String {
-    let parts: Vec<String> = accounts.iter().map(|(name, writable, signer)| {
+pub fn build_accounts_json(accounts: &[(String, bool, bool, Option<String>)]) -> String {
+    let parts: Vec<String> = accounts.iter().map(|(name, writable, signer, address)| {
         let mut obj = format!("{{\"name\":\"{name}\"");
         if *writable { obj.push_str(",\"writable\":true"); }
         if *signer { obj.push_str(",\"signer\":true"); }
+        if let Some(addr) = address {
+            obj.push_str(&format!(",\"address\":\"{addr}\""));
+        }
         obj.push('}');
         obj
     }).collect();

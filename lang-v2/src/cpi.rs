@@ -96,3 +96,46 @@ fn create_prefunded(
     }.invoke_signed(signers)?;
     Ok(())
 }
+
+/// Realloc an account to a new size, adjusting rent as needed.
+pub fn realloc_account(
+    account: &mut AccountView,
+    new_space: usize,
+    payer: &AccountView,
+    zero: bool,
+) -> Result<(), ProgramError> {
+    use pinocchio::Resize;
+
+    let old_space = account.data_len();
+    let required = rent_exempt_lamports(new_space);
+    let current_lamports = account.lamports();
+
+    if new_space > old_space {
+        let deficit = required.saturating_sub(current_lamports);
+        if deficit > 0 {
+            pinocchio_system::instructions::Transfer {
+                from: payer, to: account, lamports: deficit,
+            }.invoke()?;
+        }
+    } else if new_space < old_space {
+        let excess = current_lamports.saturating_sub(required);
+        if excess > 0 {
+            let mut payer_mut = *payer;
+            payer_mut.set_lamports(payer_mut.lamports() + excess);
+            account.set_lamports(required);
+        }
+    }
+
+    account.resize(new_space)?;
+
+    if zero && new_space > old_space {
+        unsafe {
+            let data = account.borrow_unchecked_mut();
+            for byte in &mut data[old_space..new_space] {
+                *byte = 0;
+            }
+        }
+    }
+
+    Ok(())
+}

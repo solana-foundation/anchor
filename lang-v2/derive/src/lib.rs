@@ -35,7 +35,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let mut constraint_stmts = Vec::new();
     let mut exit_stmts = Vec::new();
     let mut field_names = Vec::new();
-    let mut idl_accounts: Vec<(String, bool, bool)> = Vec::new();
+    // (name, writable, signer, optional_program_address)
+    let mut idl_accounts: Vec<(String, bool, bool, Option<String>)> = Vec::new();
     let mut idl_data_types: Vec<TokenStream2> = Vec::new(); // inner T from BorshAccount<T>/Account<T>
 
     let account_count = fields.iter().filter(|f| !is_nested_type(&f.ty)).count();
@@ -49,7 +50,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         field_names.push(field_name.clone());
 
         let is_signer = field_ty_str(field_ty) == "Signer";
-        idl_accounts.push((name_str.clone(), attrs.is_mut, is_signer || attrs.is_init));
+        // init/init_if_needed accounts are only signers if they are NOT PDAs (no seeds)
+        let is_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
+        let program_address = parse::extract_program_address(field_ty);
+        idl_accounts.push((name_str.clone(), attrs.is_mut, is_signer || is_init_signer, program_address));
 
         // Extract inner data type T from BorshAccount<T> or Account<T> for IDL
         if let Some(inner) = extract_inner_data_type(field_ty) {
@@ -98,6 +102,49 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 };
                 __account_idx += 1;
             });
+        } else if attrs.is_init_if_needed {
+            // --- init_if_needed ---
+            // Check if account is already initialized (owned by program + valid discriminator).
+            // If yes: load normally with load_mut.
+            // If no: create via CPI + init.
+            let payer = attrs.payer.as_ref().expect("#[account(init_if_needed)] requires payer");
+            let space = attrs.space.as_ref().expect("#[account(init_if_needed)] requires space");
+
+            let create_call = if let Some(ref seeds) = attrs.seeds {
+                let seed_exprs = seeds;
+                quote! {
+                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
+                        &[#(#seed_exprs),*], __program_id,
+                    );
+                    if *__target.address() != __pda {
+                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+                    }
+                    anchor_lang_v2::create_account_signed(
+                        __payer, &__target, #space, __program_id,
+                        &[#(#seed_exprs),* , &[__bump]],
+                    )?;
+                }
+            } else {
+                quote! {
+                    anchor_lang_v2::create_account(__payer, &__target, #space, __program_id)?;
+                }
+            };
+
+            load_stmts.push(quote! {
+                let mut #field_name = {
+                    let __target = __accounts[__account_idx];
+                    // Check if already initialized: owned by program and has data
+                    let __already_init = __target.owned_by(__program_id) && __target.data_len() > 0;
+                    if __already_init {
+                        <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
+                    } else {
+                        let __payer = #payer.account();
+                        #create_call
+                        <#field_ty as anchor_lang_v2::AnchorAccountInit>::init(__target, __program_id)?
+                    }
+                };
+                __account_idx += 1;
+            });
         } else {
             // --- Normal load ---
             let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
@@ -110,8 +157,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             });
         }
 
-        // --- Seeds constraint (non-init) ---
-        if !attrs.is_init {
+        // --- Seeds constraint (non-init, non-init_if_needed) ---
+        if !attrs.is_init && !attrs.is_init_if_needed {
             if let Some(ref seeds) = attrs.seeds {
                 let seed_exprs = seeds;
                 constraint_stmts.push(quote! {
@@ -139,6 +186,38 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             constraint_stmts.push(quote! {
                 if *#field_name.account().address() != #addr {
                     return Err(anchor_lang_v2::ErrorCode::ConstraintAddress.into());
+                }
+            });
+        }
+
+        // --- constraint ---
+        if let Some(ref expr) = attrs.constraint {
+            constraint_stmts.push(quote! {
+                if !(#expr) {
+                    return Err(anchor_lang_v2::ErrorCode::ConstraintRaw.into());
+                }
+            });
+        }
+
+        // --- realloc ---
+        if let Some(ref new_space) = attrs.realloc {
+            let realloc_payer = attrs.realloc_payer.as_ref().expect("realloc requires realloc_payer");
+            let zero_fill = attrs.realloc_zero;
+            constraint_stmts.push(quote! {
+                {
+                    let __new_space = #new_space;
+                    let __info = #field_name.account();
+                    let __current_len = __info.data_len();
+                    if __new_space != __current_len {
+                        // Resize the account
+                        let mut __view = *__info;
+                        anchor_lang_v2::realloc_account(
+                            &mut __view,
+                            __new_space,
+                            #realloc_payer.account(),
+                            #zero_fill,
+                        )?;
+                    }
                 }
             });
         }
@@ -464,9 +543,10 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                     }
                 }
 
+                let crate_name = env!("CARGO_CRATE_NAME").replace('-', "_");
                 let idl = format!(
                     "{{\"address\":\"\",\"metadata\":{{\"name\":\"{}\",\"version\":\"0.1.0\",\"spec\":\"0.1.0\"}},\"instructions\":[{}],\"accounts\":[{}],\"types\":[{}]}}",
-                    stringify!(#mod_name),
+                    crate_name,
                     instructions.join(","),
                     accounts_entries.join(","),
                     types_entries.join(","),

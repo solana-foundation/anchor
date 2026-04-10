@@ -12,6 +12,9 @@ pub struct AccountAttrs {
     pub address: Option<Expr>,
     pub close: Option<Ident>,
     pub constraint: Option<Expr>,
+    pub realloc: Option<Expr>,
+    pub realloc_payer: Option<Ident>,
+    pub realloc_zero: bool,
 }
 
 pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
@@ -27,6 +30,9 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         address: None,
         close: None,
         constraint: None,
+        realloc: None,
+        realloc_payer: None,
+        realloc_zero: false,
     };
 
     for attr in attrs {
@@ -73,6 +79,20 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     "address" => {
                         input.parse::<Token![=]>()?;
                         result.address = Some(input.parse()?);
+                    }
+                    "realloc" => {
+                        input.parse::<Token![=]>()?;
+                        result.realloc = Some(input.parse()?);
+                        result.is_mut = true;
+                    }
+                    "realloc_payer" => {
+                        input.parse::<Token![=]>()?;
+                        result.realloc_payer = Some(input.parse()?);
+                    }
+                    "realloc_zero" => {
+                        input.parse::<Token![=]>()?;
+                        let val: syn::LitBool = input.parse()?;
+                        result.realloc_zero = val.value;
                     }
                     "close" => {
                         input.parse::<Token![=]>()?;
@@ -128,4 +148,30 @@ pub fn is_nested_type(ty: &Type) -> bool {
         }
     }
     false
+}
+
+/// Extract the well-known address from `Program<T>` types.
+/// Returns the base58 address string for known program types (System, Token, etc.).
+pub fn extract_program_address(ty: &Type) -> Option<String> {
+    if let Type::Path(tp) = ty {
+        if let Some(seg) = tp.path.segments.last() {
+            if seg.ident == "Program" {
+                if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
+                    if let Some(syn::GenericArgument::Type(Type::Path(inner_tp))) = args.args.first() {
+                        if let Some(inner_seg) = inner_tp.path.segments.last() {
+                            return match inner_seg.ident.to_string().as_str() {
+                                "System" => Some("11111111111111111111111111111111".to_string()),
+                                "Token" => Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string()),
+                                "Token2022" => Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".to_string()),
+                                "AssociatedToken" => Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".to_string()),
+                                "Memo" => Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr".to_string()),
+                                _ => None,
+                            };
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }
