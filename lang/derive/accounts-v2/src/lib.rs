@@ -206,6 +206,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             }
 
             pub fn exit_accounts(&mut self) -> anchor_lang::Result<()> {
+                use anchor_lang::v2::AnchorAccount as _;
                 #(#exit_stmts)*
                 Ok(())
             }
