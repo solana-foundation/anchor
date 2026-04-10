@@ -6,9 +6,8 @@
 //! normal `use` imports — external crates provide their own markers.
 //!
 //! Adding a new constraint requires only:
-//! 1. A marker struct in a module (e.g. `anchor_spl::token::Mint`)
+//! 1. A marker struct in the appropriate namespace module below
 //! 2. An `impl Constrain<marker>` on the relevant account type
-//! 3. `use anchor_spl::token;` in the user's program
 
 use solana_program_error::ProgramError;
 
@@ -21,4 +20,19 @@ use solana_program_error::ProgramError;
 /// Unknown keys → compile error ("Constrain<X> is not implemented for Y").
 pub trait Constrain<C, V = solana_address::Address> {
     fn constrain(&self, expected: &V) -> Result<(), ProgramError>;
+}
+
+/// Constraint markers for SPL Token accounts.
+pub mod token {
+    pub struct Mint;
+    pub struct Authority;
+    pub struct TokenProgram;
+}
+
+/// Constraint markers for SPL Mint accounts.
+pub mod mint {
+    pub struct Authority;
+    pub struct FreezeAuthority;
+    pub struct Decimals;
+    pub struct TokenProgram;
 }

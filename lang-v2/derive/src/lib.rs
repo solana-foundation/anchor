@@ -7,42 +7,8 @@ use {
     proc_macro::TokenStream,
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
-    syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, ItemMod, Pat, Type},
+    syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, Ident, ItemMod, Pat, Type},
 };
-
-/// Generate PDA seeds derivation + validation + optional signer seeds.
-/// Used by init, init_if_needed, and non-init seeds constraints.
-fn gen_init_seeds(
-    seeds: &[syn::Expr],
-    field_name: &Ident,
-) -> TokenStream2 {
-    quote! {
-        let (__pda, __bump) = anchor_lang_v2::find_program_address(
-            &[#(#seeds),*], __program_id,
-        );
-        if *__target.address() != __pda {
-            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-        }
-        __bumps.#field_name = __bump;
-        let __seeds: Option<&[&[u8]]> = Some(&[#(#seeds),* , &[__bump]]);
-    }
-}
-
-/// Build init param assignments from namespaced constraints.
-fn gen_init_params(namespaced: &[NamespacedConstraint]) -> Vec<TokenStream2> {
-    namespaced.iter().map(|nc| {
-        let key = Ident::new(
-            &nc.key.to_lowercase(),
-            proc_macro2::Span::call_site(),
-        );
-        let value = &nc.value;
-        if nc.is_field_ref {
-            quote! { __p.#key = Some(#value.account()); }
-        } else {
-            quote! { __p.#key = Some(#value); }
-        }
-    }).collect()
-}
 
 // ---------------------------------------------------------------------------
 // #[derive(Accounts)]
@@ -89,6 +55,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         _ => panic!("Accounts derive only supports structs"),
     };
 
+    // Parse #[instruction(arg: Type, ...)] for early deserialization
+    let ix_args = parse_instruction_attrs(&input.attrs);
+
     let field_names: Vec<_> = fields.iter().map(|f| &f.name).collect();
     let loads: Vec<_> = fields.iter().map(|f| &f.load).collect();
     let constraints: Vec<_> = fields.iter().flat_map(|f| &f.constraints).collect();
@@ -101,6 +70,21 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     }).collect();
     let idl_json = idl::build_accounts_json(&idl_accounts);
     let idl_data_types: Vec<_> = fields.iter().filter_map(|f| f.idl_data_type.as_ref()).collect();
+
+    // Generate instruction arg deserialization if #[instruction(...)] is present
+    let ix_deser = if ix_args.is_empty() {
+        quote! {}
+    } else {
+        let ix_arg_names: Vec<_> = ix_args.iter().map(|(n, _)| n).collect();
+        let ix_arg_types: Vec<_> = ix_args.iter().map(|(_, t)| t).collect();
+        quote! {
+            #[derive(anchor_lang_v2::wincode::SchemaRead)]
+            struct __IxArgs { #(#ix_arg_names: #ix_arg_types,)* }
+            let __ix_args: __IxArgs = anchor_lang_v2::wincode::deserialize(__ix_data)
+                .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
+            #(let #ix_arg_names = __ix_args.#ix_arg_names;)*
+        }
+    };
 
     // Conditional bumps: empty → type alias, non-empty → struct
     let has_bumps = !bump_fields.is_empty();
@@ -166,6 +150,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 __ix_data: &[u8],
             ) -> anchor_lang_v2::Result<(Self, #bumps_name, usize)> {
                 use anchor_lang_v2::AnchorAccount as _;
+                #ix_deser
                 let mut __loader = anchor_lang_v2::AccountLoader::new(__program_id, __accounts);
                 #bumps_init
                 #(#loads)*
@@ -401,7 +386,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 #[cfg(not(feature = "no-log-ix-name"))]
                 anchor_lang_v2::msg!(#fn_name_log);
                 #deser_args
-                anchor_lang_v2::run_handler::<#accounts_type>(__program_id, __accounts, |__ctx| {
+                anchor_lang_v2::run_handler::<#accounts_type>(__program_id, __accounts, __ix_data, |__ctx| {
                     #mod_name::#fn_name(__ctx, #(#extra_arg_names),*)
                 })
             }
@@ -423,7 +408,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             __data: &[u8],
         ) -> pinocchio::ProgramResult {
             if *__program_id != crate::ID {
-                return Err(solana_program_error::ProgramError::IncorrectProgramId);
+                return Err(anchor_lang_v2::ErrorCode::DeclaredProgramIdMismatch.into());
             }
             let (__disc, __ix_data) = anchor_lang_v2::parse_instruction(__data)?;
             (match __disc {

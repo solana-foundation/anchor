@@ -14,17 +14,6 @@ use {
     crate::Id,
 };
 
-/// Shared validation for SPL Token-owned accounts (Token or Token2022).
-fn validate_token_account<T>(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
-    if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
-        return Err(ProgramError::IllegalOwner);
-    }
-    if data.len() != core::mem::size_of::<T>() {
-        return Err(ProgramError::InvalidAccountData);
-    }
-    Ok(())
-}
-
 /// Create a Token-program-owned account, handling PDA signing if needed.
 fn create_token_account(
     payer: &AccountView,
@@ -265,30 +254,13 @@ impl Mint {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Constraint marker types — these will move to spl-v2 crate.
-// Users import them via `use anchor_lang_v2::accounts::token;`
-// then write `#[account(token::Mint = mint_account)]`.
-// ---------------------------------------------------------------------------
-
-/// Constraint markers for SPL Token accounts.
-pub mod token {
-    pub struct Mint;
-    pub struct Authority;
-    pub struct TokenProgram;
-}
-
-/// Constraint markers for SPL Mint accounts.
-pub mod mint {
-    pub struct Authority;
-    pub struct FreezeAuthority;
-    pub struct Decimals;
-    pub struct TokenProgram;
-}
+// Constraint marker modules are in crate::constraints::{token, mint}.
 
 // ---------------------------------------------------------------------------
 // Constrain impls — Account<TokenAccount>
 // ---------------------------------------------------------------------------
+
+use crate::constraints::{token, mint};
 
 impl Constrain<token::Mint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {

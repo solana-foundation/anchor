@@ -15,6 +15,7 @@ pub trait TryAccounts: Bumps + Sized {
     fn try_accounts(
         program_id: &Address,
         accounts: &[AccountView],
+        ix_data: &[u8],
     ) -> Result<(Self, Self::Bumps, usize), ProgramError>;
 
     fn exit_accounts(&mut self) -> Result<(), ProgramError>;
@@ -37,9 +38,10 @@ pub fn parse_instruction(data: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
 pub fn run_handler<T: TryAccounts>(
     program_id: &Address,
     accounts: &[AccountView],
+    ix_data: &[u8],
     handler: impl FnOnce(&mut Context<T>) -> Result<(), ProgramError>,
 ) -> Result<(), ProgramError> {
-    let (ctx_accounts, bumps, consumed) = T::try_accounts(program_id, accounts)?;
+    let (ctx_accounts, bumps, consumed) = T::try_accounts(program_id, accounts, ix_data)?;
     let remaining = &accounts[consumed..];
     let mut ctx = Context::new(*program_id, ctx_accounts, remaining, bumps);
     handler(&mut ctx)?;
