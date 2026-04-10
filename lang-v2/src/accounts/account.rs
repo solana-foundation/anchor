@@ -16,7 +16,8 @@ use {
 /// this directly with custom validation (exact length checks, no discriminator).
 pub trait AccountValidate {
     /// Validate the raw account data before mapping.
-    fn validate(view: &AccountView, data: &[u8]) -> Result<(), ProgramError>;
+    /// `program_id` is available for owner checks via `Owner::owner(program_id)`.
+    fn validate(view: &AccountView, data: &[u8], program_id: &Address) -> Result<(), ProgramError>;
 
     /// Byte offset where `T`'s data starts in the account buffer.
     /// Anchor accounts: discriminator length. External accounts: 0.
@@ -24,13 +25,13 @@ pub trait AccountValidate {
 }
 
 /// Blanket impl: every `#[account]` type (Owner + Discriminator) gets standard
-/// Anchor validation — owner check, discriminator check, length check.
+/// Anchor validation — owner check via Owner::owner(program_id).
 impl<T: Owner + Discriminator> AccountValidate for T {
-    fn validate(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
+    fn validate(view: &AccountView, data: &[u8], program_id: &Address) -> Result<(), ProgramError> {
         if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
             return Err(ProgramError::UninitializedAccount);
         }
-        if !view.owned_by(&T::owner()) {
+        if !view.owned_by(&T::owner(program_id)) {
             return Err(ProgramError::IllegalOwner);
         }
         let disc = T::DISCRIMINATOR;
@@ -157,9 +158,9 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
         Ok(())
     }
 
-    fn from_ref(view: AccountView) -> Result<Self, ProgramError> {
+    fn from_ref(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         let data_ref = view.try_borrow()?;
-        T::validate(&view, &data_ref)?;
+        T::validate(&view, &data_ref, program_id)?;
         let offset = T::data_offset();
         // SAFETY: AccountView's raw pointer is valid for the entire instruction
         // lifetime (Solana runtime guarantee). The Ref guard prevents mutable
@@ -170,10 +171,10 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
         Ok(Self { view, borrow: BorrowState::Immutable { _guard: guard, ptr } })
     }
 
-    fn from_ref_mut(view: AccountView) -> Result<Self, ProgramError> {
+    fn from_ref_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         let mut view_mut = view;
         let data_ref = view_mut.try_borrow_mut()?;
-        T::validate(&view, &data_ref)?;
+        T::validate(&view, &data_ref, program_id)?;
         let offset = T::data_offset();
         // SAFETY: Same as from_ref. RefMut provides exclusive access.
         let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
@@ -185,15 +186,15 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
 impl<T: Pod + Zeroable + AccountValidate> AnchorAccount for Account<T> {
     type Data = T;
 
-    fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        Self::from_ref(view)
+    fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+        Self::from_ref(view, program_id)
     }
 
-    fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
+    fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         if !view.is_writable() {
             return Err(ProgramError::InvalidAccountData);
         }
-        Self::from_ref_mut(view)
+        Self::from_ref_mut(view, program_id)
     }
 
     fn account(&self) -> &AccountView { &self.view }

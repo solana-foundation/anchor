@@ -27,12 +27,11 @@ enum BorshBorrow {
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<T> {
-    fn validate_and_load(view: AccountView, data: &[u8]) -> Result<T, ProgramError> {
-        // Reject uninitialized accounts (system-owned with zero lamports).
+    fn validate_and_load(view: AccountView, data: &[u8], program_id: &Address) -> Result<T, ProgramError> {
         if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
             return Err(ProgramError::UninitializedAccount);
         }
-        if !view.owned_by(&T::owner()) {
+        if !view.owned_by(&T::owner(program_id)) {
             return Err(ProgramError::IllegalOwner);
         }
         if data.len() < DISC_LEN {
@@ -49,9 +48,9 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount for BorshAccount<T> {
     type Data = T;
 
-    fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
+    fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         let data_ref = view.try_borrow()?;
-        let data = Self::validate_and_load(view, &data_ref)?;
+        let data = Self::validate_and_load(view, &data_ref, program_id)?;
         // SAFETY: AccountView's raw pointer is valid for the entire instruction
         // lifetime (Solana runtime guarantee). We hold the Ref to prevent
         // subsequent mutable borrows on the same account (duplicate detection).
@@ -59,13 +58,13 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         Ok(Self { view, data, borrow: BorshBorrow::Immutable { _guard: guard } })
     }
 
-    fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
+    fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         if !view.is_writable() {
             return Err(ProgramError::InvalidAccountData);
         }
         let mut view_mut = view;
         let data_ref = view_mut.try_borrow_mut()?;
-        let data = Self::validate_and_load(view, &data_ref)?;
+        let data = Self::validate_and_load(view, &data_ref, program_id)?;
         // SAFETY: Same as load(). RefMut provides exclusive access and prevents
         // any other borrow on the same account.
         let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };

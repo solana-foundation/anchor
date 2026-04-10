@@ -189,7 +189,7 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
         #pod_impls
 
         impl anchor_lang_v2::Owner for #name {
-            fn owner() -> anchor_lang_v2::Address { crate::ID }
+            fn owner(program_id: &anchor_lang_v2::Address) -> anchor_lang_v2::Address { *program_id }
         }
         impl anchor_lang_v2::Discriminator for #name {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
