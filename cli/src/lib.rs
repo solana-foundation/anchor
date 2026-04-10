@@ -1490,11 +1490,9 @@ fn install_solana_skill() {
 
     // Skip if globally installed (active across all projects already).
     // If the home directory is unavailable, we can only check the project-scoped install.
-    if let Some(global_path) = home_dir().map(|home| {
-        home.join(".agents")
-            .join("skills")
-            .join(SKILL_NAME)
-    }) {
+    if let Some(global_path) =
+        home_dir().map(|home| home.join(".agents").join("skills").join(SKILL_NAME))
+    {
         if global_path.exists() {
             return;
         }
