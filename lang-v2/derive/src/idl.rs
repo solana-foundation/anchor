@@ -1,32 +1,38 @@
 //! IDL generation helpers.
-//!
-//! Generates IDL JSON fragments from macro metadata. Gated behind
-//! `#[cfg(feature = "idl-build")]` in the generated code.
 
 use {quote::quote, syn::Type};
 
 /// Convert a Rust type to its IDL JSON representation.
 pub fn rust_type_to_idl(ty: &Type) -> String {
-    let s = quote!(#ty).to_string().replace(' ', "");
-    match s.as_str() {
-        "u8" => "\"u8\"".into(),
-        "u16" => "\"u16\"".into(),
-        "u32" => "\"u32\"".into(),
-        "u64" => "\"u64\"".into(),
-        "u128" => "\"u128\"".into(),
-        "i8" => "\"i8\"".into(),
-        "i16" => "\"i16\"".into(),
-        "i32" => "\"i32\"".into(),
-        "i64" => "\"i64\"".into(),
-        "i128" => "\"i128\"".into(),
-        "bool" => "\"bool\"".into(),
-        "String" => "\"string\"".into(),
-        "Pubkey" | "Address" => "\"pubkey\"".into(),
+    type_str_to_idl(&quote!(#ty).to_string().replace(' ', ""))
+}
+
+/// Convert a stringified Rust type to IDL JSON.
+fn type_str_to_idl(s: &str) -> String {
+    match s {
+        "u8" | "u16" | "u32" | "u64" | "u128" |
+        "i8" | "i16" | "i32" | "i64" | "i128" |
+        "bool" => format!("\"{s}\""),
+        "String" | "string" => "\"string\"".into(),
+        "Pubkey" | "Address" | "pubkey" => "\"pubkey\"".into(),
+        "bytes" => "\"bytes\"".into(),
         _ if s.starts_with("[u8;") => {
             let n = s.trim_start_matches("[u8;").trim_end_matches(']');
             format!("{{\"array\":[\"u8\",{n}]}}")
         }
-        _ => format!("{{\"defined\":\"{s}\"}}")
+        _ if s.starts_with("Vec<") => {
+            let inner = s.strip_prefix("Vec<").unwrap().strip_suffix('>').unwrap();
+            format!("{{\"vec\":{}}}", type_str_to_idl(inner))
+        }
+        _ if s.starts_with("Option<") => {
+            let inner = s.strip_prefix("Option<").unwrap().strip_suffix('>').unwrap();
+            format!("{{\"option\":{}}}", type_str_to_idl(inner))
+        }
+        _ if s.starts_with("Box<") => {
+            let inner = s.strip_prefix("Box<").unwrap().strip_suffix('>').unwrap();
+            type_str_to_idl(inner)
+        }
+        other => format!("{{\"defined\":\"{other}\"}}")
     }
 }
 

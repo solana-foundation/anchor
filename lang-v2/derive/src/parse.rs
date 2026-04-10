@@ -12,6 +12,7 @@ pub struct AccountAttrs {
     pub address: Option<Expr>,
     pub close: Option<Ident>,
     pub constraint: Option<Expr>,
+    pub constraint_error: Option<Expr>,
     pub realloc: Option<Expr>,
     pub realloc_payer: Option<Ident>,
     pub realloc_zero: bool,
@@ -30,6 +31,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         address: None,
         close: None,
         constraint: None,
+        constraint_error: None,
         realloc: None,
         realloc_payer: None,
         realloc_zero: false,
@@ -101,6 +103,11 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     "constraint" => {
                         input.parse::<Token![=]>()?;
                         result.constraint = Some(input.parse()?);
+                        // Optional: @ ErrorExpr
+                        if input.peek(Token![@]) {
+                            input.parse::<Token![@]>()?;
+                            result.constraint_error = Some(input.parse()?);
+                        }
                     }
                     _ => {}
                 }

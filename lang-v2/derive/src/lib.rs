@@ -206,9 +206,14 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
         // --- constraint ---
         if let Some(ref expr) = attrs.constraint {
+            let err = if let Some(ref custom_err) = attrs.constraint_error {
+                quote! { core::convert::Into::into(#custom_err) }
+            } else {
+                quote! { anchor_lang_v2::ErrorCode::ConstraintRaw.into() }
+            };
             constraint_stmts.push(quote! {
                 if !(#expr) {
-                    return Err(anchor_lang_v2::ErrorCode::ConstraintRaw.into());
+                    return Err(#err);
                 }
             });
         }
