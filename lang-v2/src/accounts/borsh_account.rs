@@ -41,7 +41,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
         if &data[..DISC_LEN] != T::DISCRIMINATOR {
             return Err(ProgramError::InvalidAccountData);
         }
-        T::try_from_slice(&data[DISC_LEN..])
+        T::deserialize(&mut &data[DISC_LEN..])
             .map_err(|_| ProgramError::InvalidAccountData)
     }
 }
