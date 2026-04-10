@@ -35,6 +35,12 @@ impl<'a> AccountLoader<'a> {
         Ok(view)
     }
 
+    /// Consume the next account and return its raw view.
+    /// Used by init codegen which handles creation + loading itself.
+    pub fn next_view(&mut self) -> Result<AccountView, ProgramError> {
+        self.peek()
+    }
+
     // -- Load --
 
     pub fn next<T: AnchorAccount>(&mut self) -> Result<T, ProgramError> {
