@@ -49,10 +49,34 @@ fn gen_init_params(namespaced: &[NamespacedConstraint]) -> Vec<TokenStream2> {
 // #[derive(Accounts)]
 // ---------------------------------------------------------------------------
 
-#[proc_macro_derive(Accounts, attributes(account))]
+#[proc_macro_derive(Accounts, attributes(account, instruction))]
 pub fn derive_accounts(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     TokenStream::from(impl_accounts(&input))
+}
+
+/// Parse `#[instruction(name: Type, ...)]` from struct-level attributes.
+/// Returns a list of (name, type) pairs.
+fn parse_instruction_attrs(attrs: &[syn::Attribute]) -> Vec<(Ident, Type)> {
+    let mut result = Vec::new();
+    for attr in attrs {
+        if !attr.path().is_ident("instruction") {
+            continue;
+        }
+        let _ = attr.parse_args_with(|input: syn::parse::ParseStream| {
+            while !input.is_empty() {
+                let name: Ident = input.parse()?;
+                input.parse::<syn::Token![:]>()?;
+                let ty: Type = input.parse()?;
+                result.push((name, ty));
+                if !input.is_empty() {
+                    input.parse::<syn::Token![,]>()?;
+                }
+            }
+            Ok(())
+        });
+    }
+    result
 }
 
 fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
@@ -65,6 +89,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         },
         _ => panic!("Accounts derive only supports structs"),
     };
+
+    // Parse #[instruction(arg: Type, ...)] for early deserialization
+    let ix_args = parse_instruction_attrs(&input.attrs);
 
     let mut load_stmts = Vec::new();
     let mut constraint_stmts = Vec::new();
@@ -365,6 +392,21 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
     }
 
+    // Generate instruction arg deserialization if #[instruction(...)] is present
+    let ix_deser = if ix_args.is_empty() {
+        quote! {}
+    } else {
+        let ix_arg_names: Vec<_> = ix_args.iter().map(|(n, _)| n).collect();
+        let ix_arg_types: Vec<_> = ix_args.iter().map(|(_, t)| t).collect();
+        quote! {
+            #[derive(anchor_lang_v2::wincode::SchemaRead)]
+            struct __IxArgs { #(#ix_arg_names: #ix_arg_types,)* }
+            let __ix_args: __IxArgs = anchor_lang_v2::wincode::deserialize(__ix_data)
+                .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
+            #(let #ix_arg_names = __ix_args.#ix_arg_names;)*
+        }
+    };
+
     let idl_json = idl::build_accounts_json(&idl_accounts);
 
     // --- Client-side struct for off-chain usage (tests, CPI, SDK) ---
@@ -424,11 +466,13 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             pub fn try_accounts(
                 __program_id: &anchor_lang_v2::Address,
                 __accounts: &[anchor_lang_v2::AccountView],
+                __ix_data: &[u8],
             ) -> anchor_lang_v2::Result<(Self, #bumps_name, usize)> {
                 use anchor_lang_v2::AnchorAccount as _;
                 if __accounts.len() < #account_count {
                     return Err(anchor_lang_v2::ErrorCode::AccountNotEnoughKeys.into());
                 }
+                #ix_deser
                 let mut __account_idx: usize = 0;
                 let mut __bumps = #bumps_name::default();
                 #(#load_stmts)*
@@ -653,7 +697,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 #[cfg(not(feature = "no-log-ix-name"))]
                 anchor_lang_v2::msg!(#fn_name_log);
                 #deser_args
-                let (__ctx_accounts, __bumps, __consumed) = #accounts_type::try_accounts(__program_id, __accounts)?;
+                let (__ctx_accounts, __bumps, __consumed) = #accounts_type::try_accounts(__program_id, __accounts, __ix_data)?;
                 let __remaining = &__accounts[__consumed..];
                 let mut __ctx = anchor_lang_v2::Context::new(*__program_id, __ctx_accounts, __remaining, __bumps);
                 #mod_name::#fn_name(&mut __ctx, #(#extra_arg_names),*)?;
