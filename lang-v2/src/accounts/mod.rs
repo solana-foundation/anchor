@@ -15,5 +15,5 @@ pub use system_account::SystemAccount;
 pub use program::Program;
 pub use option::Optional;
 pub use borsh_account::BorshAccount;
-pub use account::{Account, AccountValidate};
+pub use account::{Account, AccountValidate, AccountInitialize};
 pub use sysvar::{Sysvar, SysvarId};
