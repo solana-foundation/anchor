@@ -17,7 +17,7 @@ pub use crate::{
     // CPI
     create_account, create_account_signed, find_program_address,
     // Derive macros
-    Accounts, AnchorData, account, program,
+    Accounts, account, program,
     // Serialization
     AnchorSerialize, AnchorDeserialize,
     // Error

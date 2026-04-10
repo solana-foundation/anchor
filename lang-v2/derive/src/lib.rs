@@ -7,7 +7,7 @@ use {
     proc_macro::TokenStream,
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
-    syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, Ident, ItemMod, Pat, Type},
+    syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, ItemMod, Pat, Type},
     parse::{parse_account_attrs, field_ty_str, is_nested_type},
 };
 
@@ -55,98 +55,89 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             continue;
         }
 
-        if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs = seeds;
-            if attrs.is_init {
-                let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
-                let space = attrs.space.as_ref().expect("#[account(init)] requires space");
-                load_stmts.push(quote! {
-                    let mut #field_name = {
-                        let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                            &[#(#seed_exprs),*], __program_id,
-                        );
-                        let __target = __accounts[__account_idx];
-                        if *__target.address() != __pda {
-                            return Err(anchor_lang_v2::Error::from(
-                                anchor_lang_v2::ErrorCode::ConstraintSeeds
-                            ));
-                        }
-                        let __payer = #payer.account();
-                        anchor_lang_v2::create_account_signed(
-                            __payer, &__target, #space, __program_id,
-                            &[#(#seed_exprs),* , &[__bump]],
-                        )?;
-                        <#field_ty as anchor_lang_v2::AnchorAccountInit>::init(
-                            __target, __program_id,
-                        ).map_err(|e| anchor_lang_v2::Error::from(e))?
-                    };
-                    __account_idx += 1;
-                });
-            } else {
-                let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
-                let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
-                load_stmts.push(quote! {
-                    #binding #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::#load_fn(
-                        __accounts[__account_idx], __program_id,
-                    ).map_err(|e| anchor_lang_v2::Error::from(e))?;
-                    __account_idx += 1;
-                });
-                constraint_stmts.push(quote! {
-                    let (__pda, _) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], __program_id,
-                    );
-                    if *#field_name.account().address() != __pda {
-                        return Err(anchor_lang_v2::Error::from(
-                            anchor_lang_v2::ErrorCode::ConstraintSeeds
-                        ));
-                    }
-                });
-            }
-        } else if attrs.is_init {
+        // --- Init ---
+        // TODO: move init logic into creator structs (SystemCreate, TokenAccountCreate, etc.)
+        // so it's testable library code instead of codegen. The macro would construct the
+        // appropriate creator and call .create(), then T::init(). See plan.md.
+        if attrs.is_init {
             let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
             let space = attrs.space.as_ref().expect("#[account(init)] requires space");
+
+            let create_call = if let Some(ref seeds) = attrs.seeds {
+                let seed_exprs = seeds;
+                quote! {
+                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
+                        &[#(#seed_exprs),*], __program_id,
+                    );
+                    if *__target.address() != __pda {
+                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+                    }
+                    anchor_lang_v2::create_account_signed(
+                        __payer, &__target, #space, __program_id,
+                        &[#(#seed_exprs),* , &[__bump]],
+                    )?;
+                }
+            } else {
+                quote! {
+                    anchor_lang_v2::create_account(__payer, &__target, #space, __program_id)?;
+                }
+            };
+
             load_stmts.push(quote! {
                 let mut #field_name = {
                     let __target = __accounts[__account_idx];
                     let __payer = #payer.account();
-                    anchor_lang_v2::create_account(__payer, &__target, #space, __program_id)?;
-                    <#field_ty as anchor_lang_v2::AnchorAccountInit>::init(
-                        __target, __program_id,
-                    ).map_err(|e| anchor_lang_v2::Error::from(e))?
+                    #create_call
+                    <#field_ty as anchor_lang_v2::AnchorAccountInit>::init(__target, __program_id)?
                 };
                 __account_idx += 1;
             });
         } else {
+            // --- Normal load ---
             let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
             let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
             load_stmts.push(quote! {
                 #binding #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::#load_fn(
                     __accounts[__account_idx], __program_id,
-                ).map_err(|e| anchor_lang_v2::Error::from(e))?;
+                )?;
                 __account_idx += 1;
             });
         }
 
+        // --- Seeds constraint (non-init) ---
+        if !attrs.is_init {
+            if let Some(ref seeds) = attrs.seeds {
+                let seed_exprs = seeds;
+                constraint_stmts.push(quote! {
+                    let (__pda, _) = anchor_lang_v2::find_program_address(
+                        &[#(#seed_exprs),*], __program_id,
+                    );
+                    if *#field_name.account().address() != __pda {
+                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+                    }
+                });
+            }
+        }
+
+        // --- has_one ---
         for ho in &attrs.has_one {
             constraint_stmts.push(quote! {
                 if AsRef::<[u8]>::as_ref(&#field_name.#ho) != AsRef::<[u8]>::as_ref(#ho.account().address()) {
-                    return Err(anchor_lang_v2::Error::from(
-                        anchor_lang_v2::ErrorCode::ConstraintHasOne
-                    ));
+                    return Err(anchor_lang_v2::ErrorCode::ConstraintHasOne.into());
                 }
             });
         }
 
+        // --- address ---
         if let Some(ref addr) = attrs.address {
             constraint_stmts.push(quote! {
                 if *#field_name.account().address() != #addr {
-                    return Err(anchor_lang_v2::Error::from(
-                        anchor_lang_v2::ErrorCode::ConstraintAddress
-                    ));
+                    return Err(anchor_lang_v2::ErrorCode::ConstraintAddress.into());
                 }
             });
         }
 
+        // --- exit / close ---
         if let Some(ref close_target) = attrs.close {
             exit_stmts.push(quote! {
                 anchor_lang_v2::AnchorAccount::close(&mut self.#field_name, *self.#close_target.account())?;
@@ -189,29 +180,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 }
 
 // ---------------------------------------------------------------------------
-// #[account] — attribute macro for account data structs
+// #[account]
 // ---------------------------------------------------------------------------
 
-/// Attribute macro for account data structs.
-///
-/// For zerocopy (default):
-/// ```ignore
-/// #[account]
-/// pub struct Market {
-///     pub authority: Address,
-///     pub base_reserve: u64,
-/// }
-/// ```
-/// Generates: `#[derive(Clone, Copy, Pod, Zeroable)]`, `#[repr(C)]`, `Owner`, `Discriminator`.
-///
-/// For borsh:
-/// ```ignore
-/// #[account(borsh)]
-/// pub struct Counter {
-///     pub count: u64,
-/// }
-/// ```
-/// Generates: `#[derive(BorshSerialize, BorshDeserialize, Default)]`, `Owner`, `Discriminator`.
 #[proc_macro_attribute]
 pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     let is_borsh = attr.to_string().contains("borsh");
@@ -237,41 +208,27 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let (struct_attrs, pod_impls) = if is_borsh {
-        (
-            quote! {
-                #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)]
-            },
-            quote! {},
-        )
+        (quote! { #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)] }, quote! {})
     } else {
-        (
-            quote! {
-                #[derive(Clone, Copy)]
-                #[repr(C)]
-            },
-            {
-                // Generate compile-time assertions that each field is Pod
-                let field_checks: Vec<_> = if let Fields::Named(named) = fields {
-                    named.named.iter().map(|f| {
-                        let fty = &f.ty;
-                        quote! {
-                            const _: fn() = || {
-                                fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
-                                assert_pod::<#fty>();
-                            };
-                        }
-                    }).collect()
-                } else {
-                    vec![]
-                };
+        let field_checks: Vec<_> = if let Fields::Named(named) = fields {
+            named.named.iter().map(|f| {
+                let fty = &f.ty;
                 quote! {
-                    // Compile-time verification that all fields are Pod
-                    #(#field_checks)*
-                    // SAFETY: all fields verified Pod above, struct is #[repr(C)].
-                    // Account::load() validates alignment at runtime before casting.
-                    unsafe impl anchor_lang_v2::bytemuck::Pod for #name {}
-                    unsafe impl anchor_lang_v2::bytemuck::Zeroable for #name {}
+                    const _: fn() = || {
+                        fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
+                        assert_pod::<#fty>();
+                    };
                 }
+            }).collect()
+        } else {
+            vec![]
+        };
+        (
+            quote! { #[derive(Clone, Copy)] #[repr(C)] },
+            quote! {
+                #(#field_checks)*
+                unsafe impl anchor_lang_v2::bytemuck::Pod for #name {}
+                unsafe impl anchor_lang_v2::bytemuck::Zeroable for #name {}
             },
         )
     };
@@ -283,45 +240,6 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         #pod_impls
 
-        impl anchor_lang_v2::Owner for #name {
-            fn owner() -> anchor_lang_v2::Address { crate::ID }
-        }
-        impl anchor_lang_v2::Discriminator for #name {
-            const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
-        }
-        #[cfg(feature = "idl-build")]
-        impl #name {
-            pub const __IDL_TYPE: &'static str = #idl_type_json;
-        }
-    })
-}
-
-// ---------------------------------------------------------------------------
-// #[derive(AnchorData)] — kept for backwards compatibility
-// ---------------------------------------------------------------------------
-
-#[proc_macro_derive(AnchorData)]
-pub fn derive_anchor_data(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
-    let name_str = name.to_string();
-
-    use sha2::Digest;
-    let hash = sha2::Sha256::digest(format!("account:{name_str}").as_bytes());
-    let disc_bytes = &hash[..8];
-    let disc_literals: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
-
-    let idl_type_json = if let Data::Struct(data) = &input.data {
-        if let Fields::Named(fields) = &data.fields {
-            idl::build_type_json(&name_str, disc_bytes, &fields.named)
-        } else {
-            idl::build_type_json(&name_str, disc_bytes, &syn::punctuated::Punctuated::new())
-        }
-    } else {
-        idl::build_type_json(&name_str, disc_bytes, &syn::punctuated::Punctuated::new())
-    };
-
-    TokenStream::from(quote! {
         impl anchor_lang_v2::Owner for #name {
             fn owner() -> anchor_lang_v2::Address { crate::ID }
         }
@@ -485,10 +403,10 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         }
 
         #[cfg(feature = "idl-build")]
-        pub fn __build_idl_instructions() -> Vec<String> {
-            vec![
+        pub fn __build_idl_instructions() -> alloc::vec::Vec<alloc::string::String> {
+            alloc::vec![
                 #(
-                    format!(
+                    alloc::format!(
                         "{{\"name\":\"{}\",\"discriminator\":{},\"accounts\":{},\"args\":{}}}",
                         #idl_ix_names,
                         #idl_ix_discs,

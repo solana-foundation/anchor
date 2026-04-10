@@ -24,7 +24,6 @@ pub use solana_msg::msg;
 
 // Re-export derive macros
 pub use anchor_derive_accounts_v2::Accounts;
-pub use anchor_derive_accounts_v2::AnchorData;
 pub use anchor_derive_accounts_v2::account;
 pub use anchor_derive_accounts_v2::program;
 
