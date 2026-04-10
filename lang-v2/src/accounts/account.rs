@@ -6,8 +6,48 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program_error::ProgramError,
-    crate::{AnchorAccount, AnchorAccountInit, Discriminator, Id, Owner, DISC_LEN},
+    crate::{AnchorAccount, AnchorAccountInit, Discriminator, Id, Owner},
 };
+
+/// Controls how `Account<T>` validates and maps account data.
+///
+/// Types marked with `#[account]` get this automatically via the blanket impl
+/// over `Owner + Discriminator`. External types (e.g. SPL TokenAccount) implement
+/// this directly with custom validation (exact length checks, no discriminator).
+pub trait AccountValidate {
+    /// Validate the raw account data before mapping.
+    fn validate(view: &AccountView, data: &[u8]) -> Result<(), ProgramError>;
+
+    /// Byte offset where `T`'s data starts in the account buffer.
+    /// Anchor accounts: discriminator length. External accounts: 0.
+    fn data_offset() -> usize;
+}
+
+/// Blanket impl: every `#[account]` type (Owner + Discriminator) gets standard
+/// Anchor validation — owner check, discriminator check, length check.
+impl<T: Owner + Discriminator> AccountValidate for T {
+    fn validate(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
+        if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
+            return Err(ProgramError::UninitializedAccount);
+        }
+        if !view.owned_by(&T::owner()) {
+            return Err(ProgramError::IllegalOwner);
+        }
+        let disc = T::DISCRIMINATOR;
+        let min_len = disc.len() + core::mem::size_of::<T>();
+        if data.len() < min_len {
+            return Err(ProgramError::AccountDataTooSmall);
+        }
+        if &data[..disc.len()] != disc {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        Ok(())
+    }
+
+    fn data_offset() -> usize {
+        T::DISCRIMINATOR.len()
+    }
+}
 
 /// Zero-copy account type (new default in Anchor v2).
 ///
@@ -15,7 +55,7 @@ use {
 /// Uses pinocchio's borrow tracking to prevent aliasing:
 /// - `load()` → immutable borrow, `Deref` only
 /// - `load_mut()` → mutable borrow, `Deref` + `DerefMut`
-pub struct Account<T: Pod + Zeroable + Owner + Discriminator> {
+pub struct Account<T: Pod + Zeroable + AccountValidate> {
     view: AccountView,
     borrow: BorrowState<T>,
 }
@@ -26,52 +66,33 @@ enum BorrowState<T> {
     Released,
 }
 
-impl<T: Pod + Zeroable + Owner + Discriminator> Account<T> {
-    fn check_owner_and_disc(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
-        // Reject uninitialized accounts (system-owned with zero lamports).
-        if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
-            return Err(ProgramError::UninitializedAccount);
-        }
-        if !view.owned_by(&T::owner()) {
-            return Err(ProgramError::IllegalOwner);
-        }
-        let min_len = DISC_LEN + core::mem::size_of::<T>();
-        if data.len() < min_len {
-            return Err(ProgramError::AccountDataTooSmall);
-        }
-        if &data[..DISC_LEN] != T::DISCRIMINATOR {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        if (data[DISC_LEN..].as_ptr() as usize) % core::mem::align_of::<T>() != 0 {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(())
-    }
-
+impl<T: Pod + Zeroable + AccountValidate> Account<T> {
     fn from_ref(view: AccountView) -> Result<Self, ProgramError> {
         let data_ref = view.try_borrow()?;
-        Self::check_owner_and_disc(&view, &data_ref)?;
+        T::validate(&view, &data_ref)?;
+        let offset = T::data_offset();
         // SAFETY: AccountView's raw pointer is valid for the entire instruction
         // lifetime (Solana runtime guarantee). The Ref guard prevents mutable
         // aliasing. We extend its lifetime to 'static because the underlying
         // data outlives any local scope within the instruction.
         let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let ptr = guard[DISC_LEN..].as_ptr() as *const T;
+        let ptr = guard[offset..].as_ptr() as *const T;
         Ok(Self { view, borrow: BorrowState::Immutable { _guard: guard, ptr } })
     }
 
     fn from_ref_mut(view: AccountView) -> Result<Self, ProgramError> {
         let mut view_mut = view;
         let data_ref = view_mut.try_borrow_mut()?;
-        Self::check_owner_and_disc(&view, &data_ref)?;
+        T::validate(&view, &data_ref)?;
+        let offset = T::data_offset();
         // SAFETY: Same as from_ref. RefMut provides exclusive access.
         let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let ptr = guard[DISC_LEN..].as_mut_ptr() as *mut T;
+        let ptr = guard[offset..].as_mut_ptr() as *mut T;
         Ok(Self { view, borrow: BorrowState::Mutable { _guard: guard, ptr } })
     }
 }
 
-impl<T: Pod + Zeroable + Owner + Discriminator> AnchorAccount for Account<T> {
+impl<T: Pod + Zeroable + AccountValidate> AnchorAccount for Account<T> {
     type Data = T;
 
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
@@ -88,7 +109,6 @@ impl<T: Pod + Zeroable + Owner + Discriminator> AnchorAccount for Account<T> {
     fn account(&self) -> &AccountView { &self.view }
 
     fn close(&mut self, mut destination: AccountView) -> pinocchio::ProgramResult {
-        // Release the borrow guard before closing so pinocchio's close() can proceed
         self.borrow = BorrowState::Released;
         let mut self_view = self.view;
         let dest_lamports = destination
@@ -102,28 +122,28 @@ impl<T: Pod + Zeroable + Owner + Discriminator> AnchorAccount for Account<T> {
     }
 }
 
-impl<T: Pod + Zeroable + Owner + Discriminator> AnchorAccountInit for Account<T> {
+impl<T: Pod + Zeroable + AccountValidate + Discriminator> AnchorAccountInit for Account<T> {
     fn init(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
         let mut view_mut = view;
         let mut data_ref = view_mut.try_borrow_mut()?;
-        let min_len = DISC_LEN + core::mem::size_of::<T>();
+        let disc = T::DISCRIMINATOR;
+        let min_len = disc.len() + core::mem::size_of::<T>();
         if data_ref.len() < min_len {
             return Err(ProgramError::AccountDataTooSmall);
         }
-        data_ref[..DISC_LEN].copy_from_slice(T::DISCRIMINATOR);
-        data_ref[DISC_LEN..DISC_LEN + core::mem::size_of::<T>()].fill(0);
-        // Reuse the existing RefMut — no double borrow
+        data_ref[..disc.len()].copy_from_slice(disc);
+        data_ref[disc.len()..min_len].fill(0);
+        let offset = disc.len();
         // SAFETY: same lifetime reasoning as from_ref_mut
         let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let ptr = guard[DISC_LEN..].as_mut_ptr() as *mut T;
+        let ptr = guard[offset..].as_mut_ptr() as *mut T;
         Ok(Self { view, borrow: BorrowState::Mutable { _guard: guard, ptr } })
     }
 }
 
-impl<T: Pod + Zeroable + Owner + Discriminator> Deref for Account<T> {
+impl<T: Pod + Zeroable + AccountValidate> Deref for Account<T> {
     type Target = T;
     fn deref(&self) -> &T {
-        // SAFETY: ptr was validated during load. Guard is held.
         match &self.borrow {
             BorrowState::Immutable { ptr, .. } => unsafe { &**ptr },
             BorrowState::Mutable { ptr, .. } => unsafe { &*(*ptr as *const T) },
@@ -132,7 +152,7 @@ impl<T: Pod + Zeroable + Owner + Discriminator> Deref for Account<T> {
     }
 }
 
-impl<T: Pod + Zeroable + Owner + Discriminator> DerefMut for Account<T> {
+impl<T: Pod + Zeroable + AccountValidate> DerefMut for Account<T> {
     fn deref_mut(&mut self) -> &mut T {
         match &mut self.borrow {
             BorrowState::Mutable { ptr, .. } => unsafe { &mut **ptr },
@@ -142,6 +162,6 @@ impl<T: Pod + Zeroable + Owner + Discriminator> DerefMut for Account<T> {
     }
 }
 
-impl<T: Pod + Zeroable + Owner + Discriminator> AsRef<AccountView> for Account<T> {
+impl<T: Pod + Zeroable + AccountValidate> AsRef<AccountView> for Account<T> {
     fn as_ref(&self) -> &AccountView { &self.view }
 }
