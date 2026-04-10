@@ -20,11 +20,16 @@ pub struct AccountAttrs {
     pub is_signer: bool,
     pub is_init: bool,
     pub is_init_if_needed: bool,
+    pub is_executable: bool,
+    /// None = not specified, Some(true) = enforce, Some(false) = skip
+    pub rent_exempt: Option<bool>,
     /// None = no bump attr, Some(None) = `bump` without value, Some(Some(expr)) = `bump = expr`
     pub bump: Option<Option<Expr>>,
     pub payer: Option<Ident>,
     pub space: Option<Expr>,
     pub seeds: Option<Vec<Expr>>,
+    /// Override program_id for PDA derivation: `seeds::program = expr`
+    pub seeds_program: Option<Expr>,
     pub has_one: Vec<(Ident, Option<Expr>)>,
     pub address: Option<Expr>,
     pub address_error: Option<Expr>,
@@ -46,10 +51,13 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         is_signer: false,
         is_init: false,
         is_init_if_needed: false,
+        is_executable: false,
+        rent_exempt: None,
         bump: None,
         payer: None,
         space: None,
         seeds: None,
+        seeds_program: None,
         has_one: Vec::new(),
         address: None,
         address_error: None,
@@ -90,6 +98,12 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                         }
                     }
                     "signer" => result.is_signer = true,
+                    "executable" => result.is_executable = true,
+                    "rent_exempt" => {
+                        input.parse::<Token![=]>()?;
+                        let val: Ident = input.parse()?;
+                        result.rent_exempt = Some(val.to_string() == "enforce");
+                    }
                     "payer" => {
                         input.parse::<Token![=]>()?;
                         result.payer = Some(input.parse()?);
@@ -167,6 +181,13 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                         if input.peek(Token![::]) {
                             input.parse::<Token![::]>()?;
                             let key_ident = Ident::parse_any(input)?;
+                            // seeds::program = expr — special case, stored separately
+                            if ident == "seeds" && key_ident == "program" {
+                                input.parse::<Token![=]>()?;
+                                result.seeds_program = Some(input.parse()?);
+                                if !input.is_empty() { input.parse::<Token![,]>()?; }
+                                continue;
+                            }
                             input.parse::<Token![=]>()?;
                             // Peek to determine if RHS is a simple ident (field ref)
                             // or a literal/expression (value).
@@ -434,17 +455,40 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
         });
     }
 
+    // executable check
+    if attrs.is_executable {
+        constraints.push(quote! {
+            if !#field_name.account().is_executable() {
+                return Err(anchor_lang_v2::ErrorCode::ConstraintExecutable.into());
+            }
+        });
+    }
+
+    // rent_exempt check
+    if let Some(true) = attrs.rent_exempt {
+        constraints.push(quote! {
+            if !anchor_lang_v2::is_rent_exempt(#field_name.account()) {
+                return Err(anchor_lang_v2::ErrorCode::ConstraintRentExempt.into());
+            }
+        });
+    }
+
     // Seeds constraint (non-init, non-init_if_needed)
     if !attrs.is_init && !attrs.is_init_if_needed {
         if let Some(ref seeds) = attrs.seeds {
             let seed_exprs = seeds;
+            // seeds::program = expr overrides which program_id to derive PDA from
+            let pda_program = match &attrs.seeds_program {
+                Some(prog) => quote! { &#prog },
+                None => quote! { __program_id },
+            };
             if let Some(Some(ref bump_expr)) = attrs.bump {
                 constraints.push(quote! {
                     {
                         let __bump_val: u8 = #bump_expr;
                         anchor_lang_v2::verify_program_address(
                             &[#(#seed_exprs),* , &[__bump_val]],
-                            __program_id,
+                            #pda_program,
                             #field_name.account().address(),
                         )?;
                         __bumps.#field_name = __bump_val;
@@ -453,7 +497,7 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
             } else {
                 constraints.push(quote! {
                     let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], __program_id,
+                        &[#(#seed_exprs),*], #pda_program,
                     );
                     if *#field_name.account().address() != __pda {
                         return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
