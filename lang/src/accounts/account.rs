@@ -10,8 +10,8 @@ use {
         AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
         Result, ToAccountInfos, ToAccountMetas,
     },
-    std::{
-        collections::BTreeSet,
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::{
         fmt,
         ops::{Deref, DerefMut},
     },

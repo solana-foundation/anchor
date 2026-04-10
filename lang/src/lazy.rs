@@ -1,4 +1,7 @@
-use crate::{AnchorDeserialize, Pubkey};
+use {
+    crate::{AnchorDeserialize, Pubkey},
+    alloc::{string::String, vec::Vec},
+};
 
 /// A helper trait to make lazy deserialization work.
 ///
@@ -252,7 +255,7 @@ mod tests {
     #[test]
     fn array_variable() {
         // Test that the size of an array of variably sized types is calculated correctly
-        let messages: [Vec<u8>; 8] = std::array::from_fn(|i| vec![i as u8; i]);
+        let messages: [Vec<u8>; 8] = core::array::from_fn(|i| vec![i as u8; i]);
         let serialized = borsh::to_vec(&messages).unwrap();
         let actual_size = serialized.len();
         let lazy_size = <[Vec<u8>; 8] as Lazy>::size_of(&serialized);

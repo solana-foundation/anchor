@@ -10,10 +10,8 @@ use {
         AccountDeserialize, AccountSerialize, Accounts, AccountsExit, Key, Owner, Result,
         ToAccountInfos, ToAccountMetas,
     },
-    std::{
-        collections::BTreeSet,
-        ops::{Deref, DerefMut},
-    },
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::ops::{Deref, DerefMut},
 };
 
 /// Internal representation of the migration state.
@@ -498,9 +496,9 @@ mod tests {
     }
 
     impl AccountSerialize for AccountV1 {
-        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<()> {
+        fn try_serialize<W: crate::Write>(&self, writer: &mut W) -> Result<()> {
             writer.write_all(&TEST_DISCRIMINATOR_V1)?;
-            AnchorSerialize::serialize(self, writer)?;
+            AnchorSerialize::serialize(self, &mut crate::WriteAdapter::new(writer))?;
             Ok(())
         }
     }
@@ -541,9 +539,9 @@ mod tests {
     }
 
     impl AccountSerialize for AccountV2 {
-        fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<()> {
+        fn try_serialize<W: crate::Write>(&self, writer: &mut W) -> Result<()> {
             writer.write_all(&TEST_DISCRIMINATOR_V2)?;
-            AnchorSerialize::serialize(self, writer)?;
+            AnchorSerialize::serialize(self, &mut crate::WriteAdapter::new(writer))?;
             Ok(())
         }
     }

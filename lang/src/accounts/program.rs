@@ -12,7 +12,8 @@ use {
         AccountDeserialize, Accounts, AccountsExit, Id, Key, Result, ToAccountInfos,
         ToAccountMetas,
     },
-    std::{collections::BTreeSet, fmt, marker::PhantomData, ops::Deref},
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::{fmt, marker::PhantomData, ops::Deref},
 };
 
 /// Type validating that the account is the given Program

@@ -6,7 +6,8 @@ use {
         AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key,
         Owner, Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
     },
-    std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc},
+    alloc::{collections::BTreeSet, rc::Rc, vec::Vec},
+    core::{cell::RefCell, fmt, mem::MaybeUninit},
 };
 
 /// Deserialize account data lazily (on-demand).

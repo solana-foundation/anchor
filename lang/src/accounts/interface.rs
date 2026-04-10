@@ -8,7 +8,8 @@ use {
         AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
         ToAccountMetas,
     },
-    std::{collections::BTreeSet, ops::Deref},
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::ops::Deref,
 };
 
 /// Type validating that the account is one of a set of given Programs

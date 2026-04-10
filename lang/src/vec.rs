@@ -5,7 +5,7 @@ use {
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, Result, ToAccountInfos, ToAccountMetas,
     },
-    std::collections::BTreeSet,
+    alloc::{collections::BTreeSet, vec::Vec},
 };
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
@@ -65,7 +65,7 @@ mod tests {
         let account2 =
             AccountInfo::new(&key, true, true, &mut lamports2, &mut data2, &owner, false);
         let mut bumps = TestBumps::default();
-        let mut reallocs = std::collections::BTreeSet::new();
+        let mut reallocs = alloc::collections::BTreeSet::new();
         let mut accounts = &[account1, account2][..];
         let parsed_accounts =
             Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps, &mut reallocs)
@@ -79,7 +79,7 @@ mod tests {
     fn test_accounts_trait_for_vec_empty() {
         let program_id = Pubkey::default();
         let mut bumps = TestBumps::default();
-        let mut reallocs = std::collections::BTreeSet::new();
+        let mut reallocs = alloc::collections::BTreeSet::new();
         let mut accounts = &[][..];
         Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps, &mut reallocs)
             .unwrap();

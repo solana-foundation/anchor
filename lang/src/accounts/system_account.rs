@@ -2,7 +2,7 @@
 
 use {
     crate::{error::ErrorCode, solana_program::system_program, *},
-    std::ops::Deref,
+    core::ops::Deref,
 };
 
 /// Type validating that the account is owned by the system program
