@@ -16,9 +16,16 @@ fn type_str_to_idl(s: &str) -> String {
         "String" | "string" => "\"string\"".into(),
         "Pubkey" | "Address" | "pubkey" => "\"pubkey\"".into(),
         "bytes" => "\"bytes\"".into(),
-        _ if s.starts_with("[u8;") => {
-            let n = s.trim_start_matches("[u8;").trim_end_matches(']');
-            format!("{{\"array\":[\"u8\",{n}]}}")
+        _ if s.starts_with('[') && s.ends_with(']') && s.contains(';') => {
+            let inner = &s[1..s.len()-1];
+            if let Some((ty_part, n_part)) = inner.split_once(';') {
+                let ty_json = type_str_to_idl(ty_part);
+                // Try to parse as integer literal; if const expression, use 0 as placeholder
+                let size = n_part.trim().parse::<usize>().unwrap_or(0);
+                format!("{{\"array\":[{ty_json},{size}]}}")
+            } else {
+                format!("{{\"defined\":\"{s}\"}}")
+            }
         }
         _ if s.starts_with("Vec<") => {
             let inner = s.strip_prefix("Vec<").unwrap().strip_suffix('>').unwrap();
