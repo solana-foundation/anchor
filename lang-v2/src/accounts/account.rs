@@ -126,6 +126,9 @@ enum BorrowState<T> {
 }
 
 impl<T: Pod + Zeroable + AccountValidate> Account<T> {
+    /// Returns the account's address.
+    pub fn address(&self) -> &Address { self.view.address() }
+
     /// Release the data borrow guard so the underlying `AccountView` can be
     /// passed to CPI calls that check `is_borrowed()`. After calling this,
     /// `Deref` / `DerefMut` will panic until `reacquire_borrow()` is called.
