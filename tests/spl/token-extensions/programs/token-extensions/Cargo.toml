@@ -18,6 +18,7 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 [dependencies]
 anchor-lang = { path = "../../../../../lang", features = ["init-if-needed"] }
 anchor-spl = { path = "../../../../../spl" }
+solana-instruction = { version = "3", features = ["syscalls"] }
 solana-sysvar = "3"
 spl-tlv-account-resolution = "0.10.0"
 spl-transfer-hook-interface = "0.10.0"

@@ -43,7 +43,7 @@ pub fn add_event_cpi_accounts(
     let info_lifetime = generics
         .lifetimes()
         .next()
-        .map(|lifetime| quote! {#lifetime})
+        .map(|lifetime| quote! {#lifetime.lifetime})
         .unwrap_or(quote! {'info});
     let generics = generics
         .lt_token

@@ -191,7 +191,7 @@ describe("IDL", () => {
 
     it("Can use enum", async () => {
       const testAccountEnum = async (
-        ...args: Parameters<typeof program["methods"]["enm"]>
+        ...args: Parameters<(typeof program)["methods"]["enm"]>
       ) => {
         const kp = anchor.web3.Keypair.generate();
         await program.methods
@@ -585,7 +585,7 @@ describe("IDL", () => {
 
     it("Includes constants marked with `#[constant]`", () => {
       const checkDefined = (
-        cb: (constant: typeof program["idl"]["constants"][number]) => boolean
+        cb: (constant: (typeof program)["idl"]["constants"][number]) => boolean
       ) => {
         const constant = program.idl.constants.find(cb);
         if (!constant) throw new Error("Constant not found");

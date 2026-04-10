@@ -105,7 +105,7 @@ pub fn emit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let data: proc_macro2::TokenStream = input.into();
     proc_macro::TokenStream::from(quote! {
         {
-            anchor_lang::solana_program::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
+            anchor_lang::pinocchio_runtime::log::sol_log_data(&[&anchor_lang::Event::data(&#data)]);
         }
     })
 }
@@ -175,20 +175,29 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 .chain(inner_data.into_iter())
                 .collect();
 
-            let ix = anchor_lang::solana_program::instruction::Instruction::new_with_bytes(
-                crate::ID,
-                &ix_data,
-                vec![
-                    anchor_lang::solana_program::instruction::AccountMeta::new_readonly(
-                        *authority_info.key,
-                        true,
-                    ),
-                ],
-            );
-            anchor_lang::solana_program::program::invoke_signed(
+            let authority_meta =
+                anchor_lang::pinocchio_runtime::instruction::AccountMeta::readonly_signer(
+                    authority_info.address(),
+                );
+            let ix = anchor_lang::pinocchio_runtime::instruction::InstructionView {
+                program_id: &crate::ID,
+                data: ix_data.as_slice(),
+                accounts: ::core::slice::from_ref(&authority_meta),
+            };
+
+            let __event_authority_bump: &[u8] = &[crate::EVENT_AUTHORITY_AND_BUMP.1];
+            let __cpi_signer_seeds: [anchor_lang::pinocchio_runtime::cpi::Seed; 2] = [
+                anchor_lang::pinocchio_runtime::cpi::Seed::from(#authority_seeds),
+                anchor_lang::pinocchio_runtime::cpi::Seed::from(__event_authority_bump),
+            ];
+            let __cpi_signer =
+                anchor_lang::pinocchio_runtime::cpi::Signer::from(&__cpi_signer_seeds);
+            let __cpi_signers = [__cpi_signer];
+
+            anchor_lang::pinocchio_runtime::program::invoke_signed(
                 &ix,
                 &[authority_info],
-                &[&[#authority_seeds, &[crate::EVENT_AUTHORITY_AND_BUMP.1]]],
+                &__cpi_signers,
             )
             .map_err(anchor_lang::error::Error::from)?;
         }
@@ -216,7 +225,7 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// pub struct MyInstruction<'info> {
 ///    pub signer: Signer<'info>,
 ///    /// CHECK: Only the event authority can invoke self-CPI
-///    #[account(seeds = [b"__event_authority"], bump)]
+///    #[account(address = crate::EVENT_AUTHORITY_AND_BUMP.0)]
 ///    pub event_authority: UncheckedAccount<'info>,
 ///    /// CHECK: Self-CPI will fail if the program is not the current program
 ///    pub program: UncheckedAccount<'info>,

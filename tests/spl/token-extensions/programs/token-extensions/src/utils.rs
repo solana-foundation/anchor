@@ -1,15 +1,14 @@
 use anchor_lang::{
     prelude::Result,
-    solana_program::{
+    pinocchio_runtime::{
         account_info::AccountInfo,
-        instruction::{get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT},
-        program::invoke,
         pubkey::Pubkey,
         rent::Rent,
-        system_instruction::transfer,
+        system_instruction::Transfer,
     },
     Lamports,
 };
+use solana_instruction::{syscalls::get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT};
 use anchor_spl::token_interface::spl_token_2022::{
     extension::{BaseStateWithExtensions, Extension, StateWithExtensions},
     state::Mint,
@@ -21,17 +20,19 @@ use spl_type_length_value::variable_len_pack::VariableLenPack;
 pub const APPROVE_ACCOUNT_SEED: &[u8] = b"approve-account";
 pub const META_LIST_ACCOUNT_SEED: &[u8] = b"extra-account-metas";
 
-pub fn update_account_lamports_to_minimum_balance<'info>(
-    account: AccountInfo<'info>,
-    payer: AccountInfo<'info>,
-    system_program: AccountInfo<'info>,
+pub fn update_account_lamports_to_minimum_balance(
+    account: AccountInfo,
+    payer: AccountInfo,
+    _system_program: AccountInfo,
 ) -> Result<()> {
     let extra_lamports = Rent::get()?.minimum_balance(account.data_len()) - account.get_lamports();
     if extra_lamports > 0 {
-        invoke(
-            &transfer(payer.key, account.key, extra_lamports),
-            &[payer, account, system_program],
-        )?;
+        Transfer {
+            from: &payer,
+            to: &account,
+            lamports: extra_lamports,
+        }
+        .invoke()?;
     }
     Ok(())
 }
@@ -39,7 +40,7 @@ pub fn update_account_lamports_to_minimum_balance<'info>(
 pub fn get_mint_extensible_extension_data<T: Extension + VariableLenPack>(
     account: &mut AccountInfo,
 ) -> Result<T> {
-    let mint_data = account.data.borrow();
+    let mint_data = account.try_borrow()?;
     let mint_with_extension = StateWithExtensions::<Mint>::unpack(&mint_data)?;
     let extension_data = mint_with_extension.get_variable_len_extension::<T>()?;
     Ok(extension_data)

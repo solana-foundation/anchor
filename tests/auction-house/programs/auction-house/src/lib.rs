@@ -2,13 +2,7 @@ pub mod utils;
 
 use {
     crate::utils::*,
-    anchor_lang::{
-        prelude::*,
-        solana_program::{
-            program::{invoke, invoke_signed},
-            system_instruction,
-        },
-    },
+    anchor_lang::prelude::*,
     anchor_spl::{
         associated_token::AssociatedToken,
         token::{
@@ -19,6 +13,7 @@ use {
             Mint, Token, TokenAccount,
         },
     },
+    solana_system_interface::instruction as system_instruction,
 };
 
 declare_program!(mpl_token_metadata);
@@ -182,9 +177,9 @@ pub mod auction_house {
 
         if !is_native {
             assert_is_ata(payment_account, &wallet.key(), &treasury_mint.key())?;
-            invoke_signed(
+            invoke_instruction_signed(
                 &spl_token::instruction::transfer(
-                    token_program.key,
+                    &token_program.key(),
                     &payment_account.key(),
                     &escrow_payment_account.key(),
                     &transfer_authority.key(),
@@ -201,7 +196,7 @@ pub mod auction_house {
             )?;
         } else {
             assert_keys_equal(payment_account.key(), wallet.key())?;
-            invoke_signed(
+            invoke_instruction_signed(
                 &system_instruction::transfer(
                     &payment_account.key(),
                     &escrow_payment_account.key(),
@@ -298,9 +293,9 @@ pub mod auction_house {
             }
 
             assert_is_ata(receipt_account, &wallet.key(), &treasury_mint.key())?;
-            invoke_signed(
+            invoke_instruction_signed(
                 &spl_token::instruction::transfer(
-                    token_program.key,
+                    &token_program.key(),
                     &escrow_payment_account.key(),
                     &receipt_account.key(),
                     &auction_house.key(),
@@ -317,7 +312,7 @@ pub mod auction_house {
             )?;
         } else {
             assert_keys_equal(receipt_account.key(), wallet.key())?;
-            invoke_signed(
+            invoke_instruction_signed(
                 &system_instruction::transfer(
                     &escrow_payment_account.key(),
                     &receipt_account.key(),
@@ -394,7 +389,7 @@ pub mod auction_house {
         }
 
         if wallet.is_signer {
-            invoke_signed(
+            invoke_instruction_signed(
                 &approve(
                     &token_program.key(),
                     &token_account.key(),
@@ -487,7 +482,7 @@ pub mod auction_house {
             .ok_or(error!(ErrorCode::NumericalOverflow))?;
 
         if token_account.owner == wallet.key() && wallet.is_signer {
-            invoke_signed(
+            invoke_instruction_signed(
                 &revoke(
                     &token_program.key(),
                     &token_account.key(),
@@ -573,7 +568,7 @@ pub mod auction_house {
                 let diff = buyer_price
                     .checked_sub(escrow_payment_account.lamports())
                     .ok_or(error!(ErrorCode::NumericalOverflow))?;
-                invoke_signed(
+                invoke_instruction_signed(
                     &system_instruction::transfer(
                         &payment_account.key(),
                         &escrow_payment_account.key(),
@@ -595,7 +590,7 @@ pub mod auction_house {
                 let diff = buyer_price
                     .checked_sub(escrow_payment_loaded.amount)
                     .ok_or(error!(ErrorCode::NumericalOverflow))?;
-                invoke(
+                invoke_instruction(
                     &spl_token::instruction::transfer(
                         &token_program.key(),
                         &payment_account.key(),
@@ -820,9 +815,9 @@ pub mod auction_house {
                 return err!(ErrorCode::SellerATACannotHaveDelegate);
             }
 
-            invoke_signed(
+            invoke_instruction_signed(
                 &spl_token::instruction::transfer(
-                    token_program.key,
+                    &token_program.key(),
                     &escrow_payment_account.key(),
                     &seller_payment_receipt_account.key(),
                     &auction_house.key(),
@@ -839,10 +834,10 @@ pub mod auction_house {
             )?;
         } else {
             assert_keys_equal(seller_payment_receipt_account.key(), seller.key())?;
-            invoke_signed(
+            invoke_instruction_signed(
                 &system_instruction::transfer(
-                    &escrow_payment_account.key,
-                    seller_payment_receipt_account.key,
+                    &escrow_payment_account.key(),
+                    &seller_payment_receipt_account.key(),
                     buyer_leftover_after_royalties_and_house_fee,
                 ),
                 &[
@@ -884,9 +879,9 @@ pub mod auction_house {
             &[program_as_signer_bump],
         ];
 
-        invoke_signed(
+        invoke_instruction_signed(
             &spl_token::instruction::transfer(
-                token_program.key,
+                &token_program.key(),
                 &token_account.key(),
                 &buyer_receipt_token_account.key(),
                 &program_as_signer.key(),
@@ -944,7 +939,7 @@ pub mod auction_house {
             &[auction_house.fee_payer_bump],
         ];
 
-        invoke_signed(
+        invoke_instruction_signed(
             &system_instruction::transfer(
                 &auction_house_fee_account.key(),
                 &fee_withdrawal_destination.key(),
@@ -985,9 +980,9 @@ pub mod auction_house {
             &[auction_house.treasury_bump],
         ];
         if !is_native {
-            invoke_signed(
+            invoke_instruction_signed(
                 &spl_token::instruction::transfer(
-                    token_program.key,
+                    &token_program.key(),
                     &auction_house_treasury.key(),
                     &treasury_withdrawal_destination.key(),
                     &auction_house.key(),
@@ -1003,7 +998,7 @@ pub mod auction_house {
                 &[&auction_house_seeds],
             )?;
         } else {
-            invoke_signed(
+            invoke_instruction_signed(
                 &system_instruction::transfer(
                     &auction_house_treasury.key(),
                     &treasury_withdrawal_destination.key(),
@@ -1095,7 +1090,7 @@ pub struct CreateAuctionHouse<'info> {
     treasury_mint: Account<'info, Mint>,
     #[account(mut)]
     payer: Signer<'info>,
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     #[account(mut)]
     fee_withdrawal_destination: UncheckedAccount<'info>,
     treasury_withdrawal_destination_owner: UncheckedAccount<'info>,
@@ -1148,7 +1143,7 @@ pub struct Deposit<'info> {
     #[account(
         seeds=[
             PREFIX.as_bytes(),
-            authority.key.as_ref(),
+            authority.key().as_ref(),
             treasury_mint.key().as_ref(),
         ],
         bump,
@@ -1169,7 +1164,7 @@ pub struct Deposit<'info> {
     escrow_payment_account: UncheckedAccount<'info>,
     treasury_mint: Account<'info, Mint>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     #[account(
         mut,
         seeds=[
@@ -1224,7 +1219,7 @@ pub struct Withdraw<'info> {
     escrow_payment_account: UncheckedAccount<'info>,
     treasury_mint: Account<'info, Mint>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     token_program: Program<'info, Token>,
     system_program: Program<'info, System>,
     associated_token_program: Program<'info, AssociatedToken>,
@@ -1238,7 +1233,7 @@ pub struct Sell<'info> {
     token_account: Account<'info, TokenAccount>,
     metadata: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
@@ -1312,13 +1307,13 @@ pub struct Cancel<'info> {
     #[account(mut)]
     token_account: Account<'info, TokenAccount>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     treasury_mint: UncheckedAccount<'info>,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
-            authority.key.as_ref(),
-            treasury_mint.key.as_ref(),
+            authority.key().as_ref(),
+            treasury_mint.key().as_ref(),
         ],
         bump=auction_house.bump,
         has_one=authority,
@@ -1365,11 +1360,11 @@ pub struct Buy<'info> {
     token_account: Account<'info, TokenAccount>,
     metadata: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
-            authority.key.as_ref(),
+            authority.key().as_ref(),
             treasury_mint.key().as_ref(),
         ],
         bump=auction_house.bump,
@@ -1437,12 +1432,12 @@ pub struct ExecuteSale<'info> {
     #[account(mut)]
     buyer_receipt_token_account: UncheckedAccount<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     #[account(
         seeds=[
             PREFIX.as_bytes(),
-            authority.key.as_ref(),
-            treasury_mint.key.as_ref(),
+            authority.key().as_ref(),
+            treasury_mint.key().as_ref(),
         ],
         bump=auction_house.bump,
         has_one=authority,
@@ -1549,7 +1544,7 @@ pub struct WithdrawFromTreasury<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            authority.key.as_ref(),
+            authority.key().as_ref(),
             treasury_mint.key().as_ref(),
         ],
         bump=auction_house.bump,
@@ -1583,7 +1578,7 @@ pub struct WithdrawFromFee<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            authority.key.as_ref(),
+            authority.key().as_ref(),
             treasury_mint.key().as_ref(),
         ],
         bump=auction_house.bump,
@@ -1620,7 +1615,7 @@ pub struct UpdateAuctionHouse<'info> {
         mut,
         seeds=[
             PREFIX.as_bytes(),
-            authority.key.as_ref(),
+            authority.key().as_ref(),
             treasury_mint.key().as_ref(),
         ],
         bump=auction_house.bump,

@@ -96,7 +96,7 @@ pub enum AuthorityType {
 pub struct ProxyTransfer<'info> {
     #[account(signer)]
     /// CHECK:
-    pub authority: AccountInfo<'info>,
+    pub authority: AccountInfo,
     #[account(mut)]
     pub from: InterfaceAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -108,7 +108,7 @@ pub struct ProxyTransfer<'info> {
 pub struct ProxyOptionalTransfer<'info> {
     #[account(signer)]
     /// CHECK:
-    pub authority: AccountInfo<'info>,
+    pub authority: AccountInfo,
     #[account(mut)]
     pub from: InterfaceAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -121,7 +121,7 @@ pub struct ProxyOptionalTransfer<'info> {
 pub struct ProxyMintTo<'info> {
     #[account(signer)]
     /// CHECK:
-    pub authority: AccountInfo<'info>,
+    pub authority: AccountInfo,
     #[account(mut)]
     pub mint: InterfaceAccount<'info, Mint>,
     #[account(mut)]
@@ -133,7 +133,7 @@ pub struct ProxyMintTo<'info> {
 pub struct ProxyBurn<'info> {
     #[account(signer)]
     /// CHECK:
-    pub authority: AccountInfo<'info>,
+    pub authority: AccountInfo,
     #[account(mut)]
     pub mint: InterfaceAccount<'info, Mint>,
     #[account(mut)]
@@ -145,10 +145,10 @@ pub struct ProxyBurn<'info> {
 pub struct ProxySetAuthority<'info> {
     #[account(signer)]
     /// CHECK:
-    pub current_authority: AccountInfo<'info>,
+    pub current_authority: AccountInfo,
     #[account(mut)]
     /// CHECK:
-    pub account_or_mint: AccountInfo<'info>,
+    pub account_or_mint: AccountInfo,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
@@ -204,10 +204,10 @@ pub struct ProxyCreateMint<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-impl<'a, 'b, 'c, 'info> From<&mut ProxyTransfer<'info>>
-    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+impl<'a, 'b, 'info> From<&mut ProxyTransfer<'info>>
+    for CpiContext<'a, 'b, Transfer>
 {
-    fn from(accounts: &mut ProxyTransfer<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &mut ProxyTransfer<'info>) -> CpiContext<'a, 'b, Transfer> {
         let cpi_accounts = Transfer {
             from: accounts.from.to_account_info(),
             to: accounts.to.to_account_info(),
@@ -218,10 +218,10 @@ impl<'a, 'b, 'c, 'info> From<&mut ProxyTransfer<'info>>
     }
 }
 
-impl<'a, 'b, 'c, 'info> From<&mut ProxyMintTo<'info>>
-    for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
+impl<'a, 'b, 'info> From<&mut ProxyMintTo<'info>>
+    for CpiContext<'a, 'b, MintTo>
 {
-    fn from(accounts: &mut ProxyMintTo<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+    fn from(accounts: &mut ProxyMintTo<'info>) -> CpiContext<'a, 'b, MintTo> {
         let cpi_accounts = MintTo {
             mint: accounts.mint.to_account_info(),
             to: accounts.to.to_account_info(),
@@ -232,8 +232,8 @@ impl<'a, 'b, 'c, 'info> From<&mut ProxyMintTo<'info>>
     }
 }
 
-impl<'a, 'b, 'c, 'info> From<&mut ProxyBurn<'info>> for CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
-    fn from(accounts: &mut ProxyBurn<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+impl<'a, 'b, 'info> From<&mut ProxyBurn<'info>> for CpiContext<'a, 'b, Burn> {
+    fn from(accounts: &mut ProxyBurn<'info>) -> CpiContext<'a, 'b, Burn> {
         let cpi_accounts = Burn {
             mint: accounts.mint.to_account_info(),
             from: accounts.from.to_account_info(),
@@ -244,12 +244,12 @@ impl<'a, 'b, 'c, 'info> From<&mut ProxyBurn<'info>> for CpiContext<'a, 'b, 'c, '
     }
 }
 
-impl<'a, 'b, 'c, 'info> From<&mut ProxySetAuthority<'info>>
-    for CpiContext<'a, 'b, 'c, 'info, SetAuthority<'info>>
+impl<'a, 'b, 'info> From<&mut ProxySetAuthority<'info>>
+    for CpiContext<'a, 'b, SetAuthority>
 {
     fn from(
         accounts: &mut ProxySetAuthority<'info>,
-    ) -> CpiContext<'a, 'b, 'c, 'info, SetAuthority<'info>> {
+    ) -> CpiContext<'a, 'b, SetAuthority> {
         let cpi_accounts = SetAuthority {
             account_or_mint: accounts.account_or_mint.clone(),
             current_authority: accounts.current_authority.clone(),

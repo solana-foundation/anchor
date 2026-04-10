@@ -300,7 +300,7 @@ impl Field {
                 UncheckedAccount
             },
             Ty::Signer => quote! {
-                Signer
+                anchor_lang::accounts::signer::Signer<'info>
             },
             Ty::ProgramData => quote! {
                 ProgramData
@@ -514,7 +514,7 @@ impl Field {
                 UncheckedAccount
             },
             Ty::Signer => quote! {
-                Signer
+                anchor_lang::accounts::signer::Signer<'info>
             },
             Ty::SystemAccount => quote! {
                 SystemAccount
@@ -927,8 +927,8 @@ pub struct ConstraintInitGroup {
     pub kind: InitKind,
 }
 
-/// Seeds can be written as a literal slice (`[ a, b ]`) or any
-/// expression that produces `&[&[u8]]` at run time.
+/// Literal `seeds = [ a, b, … ]` entries (must be convertible to `&[u8]`), or an expression for
+/// dynamic slices (often `&[&[u8]]`).
 #[derive(Debug, Clone)]
 pub enum SeedsExpr {
     /// Example: `[ b"prefix".as_ref(), key.as_ref() ]`

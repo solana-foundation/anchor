@@ -141,16 +141,16 @@ mod errors {
 pub struct Hello {}
 
 #[derive(Accounts)]
-pub struct MutError<'info> {
+pub struct MutError {
     #[account(mut)]
-    my_account: AccountInfo<'info>,
+    my_account: AccountInfo,
 }
 
 #[derive(Accounts)]
 pub struct HasOneError<'info> {
     #[account(zero, has_one = owner)]
     my_account: Account<'info, HasOneAccount>,
-    owner: AccountInfo<'info>,
+    owner: AccountInfo,
 }
 
 #[derive(Accounts)]
@@ -164,9 +164,9 @@ pub struct HasOneAccount {
 }
 
 #[derive(Accounts)]
-pub struct RawCustomError<'info> {
-    #[account(constraint = *my_account.key == ID @ MyError::HelloCustom)]
-    my_account: AccountInfo<'info>,
+pub struct RawCustomError {
+    #[account(constraint = my_account.key() == ID @ MyError::HelloCustom)]
+    my_account: AccountInfo,
 }
 
 #[account]

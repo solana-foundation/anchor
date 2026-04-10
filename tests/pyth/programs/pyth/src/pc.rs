@@ -1,7 +1,7 @@
 use crate::*;
 use anchor_lang::prelude::AccountInfo;
+use anchor_lang::pinocchio_runtime::account_info::RefMut;
 use bytemuck::{cast_slice_mut, from_bytes_mut, try_cast_slice_mut, Pod, Zeroable};
-use std::cell::RefMut;
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
@@ -98,11 +98,11 @@ pub struct Price {
 
 impl Price {
     #[inline]
-    pub fn load<'a>(price_feed: &'a AccountInfo) -> Result<RefMut<'a, Price>> {
+    pub fn load<'a>(price_feed: &'a mut AccountInfo) -> Result<RefMut<'a, Price>> {
         let account_data: RefMut<'a, [u8]>;
         let state: RefMut<'a, Self>;
 
-        account_data = RefMut::map(price_feed.try_borrow_mut_data().unwrap(), |data| *data);
+        account_data = price_feed.try_borrow_mut().unwrap();
 
         state = RefMut::map(account_data, |data| {
             from_bytes_mut(cast_slice_mut::<u8, u8>(try_cast_slice_mut(data).unwrap()))

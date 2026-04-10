@@ -4,6 +4,7 @@
 //! the check can cancel the check at any time to get back the funds.
 
 use anchor_lang::prelude::*;
+use anchor_lang::pinocchio_runtime::cpi::{Seed, Signer as CpiSigner};
 use anchor_spl::token::{self, TokenAccount, Transfer};
 use std::convert::Into;
 
@@ -33,9 +34,9 @@ pub mod cashiers_check {
         // Print the check.
         let check = &mut ctx.accounts.check;
         check.amount = amount;
-        check.from = *ctx.accounts.from.to_account_info().key;
-        check.to = *ctx.accounts.to.to_account_info().key;
-        check.vault = *ctx.accounts.vault.to_account_info().key;
+        check.from = ctx.accounts.from.to_account_info().key();
+        check.to = ctx.accounts.to.to_account_info().key();
+        check.vault = ctx.accounts.vault.to_account_info().key();
         check.nonce = nonce;
         check.memo = memo;
 
@@ -44,18 +45,20 @@ pub mod cashiers_check {
 
     #[access_control(not_burned(&ctx.accounts.check))]
     pub fn cash_check(ctx: Context<CashCheck>) -> Result<()> {
-        let seeds = &[
-            ctx.accounts.check.to_account_info().key.as_ref(),
-            &[ctx.accounts.check.nonce],
+        let check_key = ctx.accounts.check.to_account_info().key();
+        let nonce = [ctx.accounts.check.nonce];
+        let signer_seeds = [
+            Seed::from(check_key.as_ref()),
+            Seed::from(&nonce[..]),
         ];
-        let signer = &[&seeds[..]];
+        let signer = [CpiSigner::from(&signer_seeds[..])];
         let cpi_program_id = ctx.accounts.token_program.key();
         let cpi_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.to.to_account_info(),
             authority: ctx.accounts.check_signer.clone(),
         };
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, &signer);
         token::transfer(cpi_ctx, ctx.accounts.check.amount)?;
         // Burn the check for one time use.
         ctx.accounts.check.burned = true;
@@ -64,18 +67,20 @@ pub mod cashiers_check {
 
     #[access_control(not_burned(&ctx.accounts.check))]
     pub fn cancel_check(ctx: Context<CancelCheck>) -> Result<()> {
-        let seeds = &[
-            ctx.accounts.check.to_account_info().key.as_ref(),
-            &[ctx.accounts.check.nonce],
+        let check_key = ctx.accounts.check.to_account_info().key();
+        let nonce = [ctx.accounts.check.nonce];
+        let signer_seeds = [
+            Seed::from(check_key.as_ref()),
+            Seed::from(&nonce[..]),
         ];
-        let signer = &[&seeds[..]];
+        let signer = [CpiSigner::from(&signer_seeds[..])];
         let cpi_program_id = ctx.accounts.token_program.key();
         let cpi_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.from.to_account_info(),
             authority: ctx.accounts.check_signer.clone(),
         };
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, &signer);
         token::transfer(cpi_ctx, ctx.accounts.check.amount)?;
         ctx.accounts.check.burned = true;
         Ok(())
@@ -88,10 +93,10 @@ pub struct CreateCheck<'info> {
     #[account(zero)]
     check: Account<'info, Check>,
     // Check's token vault.
-    #[account(mut, constraint = &vault.owner == check_signer.key)]
+    #[account(mut, constraint = vault.owner == check_signer.key())]
     vault: Account<'info, TokenAccount>,
     // Program derived address for the check.
-    check_signer: AccountInfo<'info>,
+    check_signer: AccountInfo,
     // Token account the check is made from.
     #[account(mut, has_one = owner)]
     from: Account<'info, TokenAccount>,
@@ -99,18 +104,18 @@ pub struct CreateCheck<'info> {
     #[account(constraint = from.mint == to.mint)]
     to: Account<'info, TokenAccount>,
     // Owner of the `from` token account.
-    owner: AccountInfo<'info>,
-    token_program: AccountInfo<'info>,
+    owner: AccountInfo,
+    token_program: AccountInfo,
 }
 
 impl<'info> CreateCheck<'info> {
     pub fn accounts(ctx: &Context<CreateCheck>, nonce: u8) -> Result<()> {
         let signer = Pubkey::create_program_address(
-            &[ctx.accounts.check.to_account_info().key.as_ref(), &[nonce]],
+            &[ctx.accounts.check.to_account_info().key().as_ref(), &[nonce]],
             ctx.program_id,
         )
         .map_err(|_| error!(ErrorCode::InvalidCheckNonce))?;
-        if &signer != ctx.accounts.check_signer.to_account_info().key {
+        if signer != ctx.accounts.check_signer.to_account_info().key() {
             return err!(ErrorCode::InvalidCheckSigner);
         }
         Ok(())
@@ -122,16 +127,16 @@ pub struct CashCheck<'info> {
     #[account(mut, has_one = vault, has_one = to)]
     check: Account<'info, Check>,
     #[account(mut)]
-    vault: AccountInfo<'info>,
+    vault: AccountInfo,
     #[account(
-        seeds = [check.to_account_info().key.as_ref()],
+        seeds = [check.to_account_info().key().as_ref()],
         bump = check.nonce,
     )]
-    check_signer: AccountInfo<'info>,
+    check_signer: AccountInfo,
     #[account(mut, has_one = owner)]
     to: Account<'info, TokenAccount>,
     owner: Signer<'info>,
-    token_program: AccountInfo<'info>,
+    token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
@@ -139,16 +144,16 @@ pub struct CancelCheck<'info> {
     #[account(mut, has_one = vault, has_one = from)]
     check: Account<'info, Check>,
     #[account(mut)]
-    vault: AccountInfo<'info>,
+    vault: AccountInfo,
     #[account(
-        seeds = [check.to_account_info().key.as_ref()],
+        seeds = [check.to_account_info().key().as_ref()],
         bump = check.nonce,
     )]
-    check_signer: AccountInfo<'info>,
+    check_signer: AccountInfo,
     #[account(mut, has_one = owner)]
     from: Account<'info, TokenAccount>,
     owner: Signer<'info>,
-    token_program: AccountInfo<'info>,
+    token_program: AccountInfo,
 }
 
 #[account]

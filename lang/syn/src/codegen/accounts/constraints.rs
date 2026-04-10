@@ -11,7 +11,7 @@ pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
         .iter()
         .any(|c| matches!(c, Constraint::RentExempt(ConstraintRentExempt::Enforce)))
     {
-        quote! { let __anchor_rent = Rent::get()?; }
+        quote! { let __anchor_rent = <Rent as anchor_lang::prelude::AgaveSysvar>::get()?; }
     } else {
         quote! {}
     };
@@ -245,13 +245,13 @@ pub fn generate_constraint_zeroed(
             };
             if other_field.is_optional {
                 quote! {
-                    if #other.is_some() && #field.key == &#other.as_ref().unwrap().key() {
+                    if #other.is_some() && #field.key() == #other.as_ref().unwrap().key() {
                         return #err;
                     }
                 }
             } else {
                 quote! {
-                    if #field.key == &#other.key() {
+                    if #field.key() == #other.key() {
                         return #err;
                     }
                 }
@@ -260,7 +260,7 @@ pub fn generate_constraint_zeroed(
 
     quote! {
         let #field: #ty_decl = {
-            let mut __data: &[u8] = &#field.try_borrow_data()?;
+            let mut __data: &[u8] = &#field.try_borrow()?;
             let __disc = &__data[..#discriminator.len()];
             let __has_disc = __disc.iter().any(|b| *b != 0);
             if __has_disc {
@@ -297,7 +297,7 @@ pub fn generate_constraint_mut(f: &Field, c: &ConstraintMut) -> proc_macro2::Tok
     let account_ref = generate_account_ref(f);
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintMut }, &None);
     quote! {
-        if !#account_ref.is_writable {
+        if !#account_ref.is_writable() {
             return #error;
         }
     }
@@ -348,7 +348,7 @@ pub fn generate_constraint_signer(f: &Field, c: &ConstraintSigner) -> proc_macro
 
     let error = generate_custom_error(ident, &c.error, quote! { ConstraintSigner }, &None);
     quote! {
-        if !#account_ref.is_signer {
+        if !#account_ref.is_signer() {
             return #error;
         }
     }
@@ -385,7 +385,7 @@ pub fn generate_constraint_owner(f: &Field, c: &ConstraintOwner) -> proc_macro2:
 
     quote! {
         {
-            let my_owner = AsRef::<AccountInfo>::as_ref(& #maybe_deref #ident).owner;
+            let my_owner = AsRef::<AccountInfo>::as_ref(& #maybe_deref #ident).owner();
             let owner_address = #owner_address;
             if my_owner != &owner_address {
                 return #error;
@@ -406,7 +406,7 @@ pub fn generate_constraint_rent_exempt(
     match c {
         ConstraintRentExempt::Skip => quote! {},
         ConstraintRentExempt::Enforce => quote! {
-            if !__anchor_rent.is_exempt(#info.lamports(), #info.try_data_len()?) {
+            if !__anchor_rent.is_exempt(#info.lamports(), #info.data_len()) {
                 return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintRentExempt).with_account_name(#name_str));
             }
         },
@@ -436,8 +436,9 @@ fn generate_constraint_realloc(
             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountDuplicateReallocs).with_account_name(#account_name));
         }
 
-        let __anchor_rent = anchor_lang::prelude::Rent::get()?;
-        let __field_info = #field.to_account_info();
+        let __anchor_rent =
+            <anchor_lang::prelude::Rent as anchor_lang::prelude::AgaveSysvar>::get()?;
+        let mut __field_info = #field.to_account_info();
         let __new_rent_minimum = __anchor_rent.minimum_balance(#new_space);
 
         let __delta_space = (::std::convert::TryInto::<isize>::try_into(#new_space).unwrap())
@@ -448,7 +449,7 @@ fn generate_constraint_realloc(
             #payer_optional_check
             if __delta_space > 0 {
                 #system_program_optional_check
-                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
+                if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::pinocchio_runtime::account::MAX_PERMITTED_DATA_INCREASE {
                     return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountReallocExceedsLimit).with_account_name(#account_name));
                 }
 
@@ -458,7 +459,7 @@ fn generate_constraint_realloc(
                             system_program.key(),
                             anchor_lang::system_program::Transfer {
                                 from: #payer.to_account_info(),
-                                to: __field_info.clone(),
+                                to: __field_info,
                             },
                         ),
                         __new_rent_minimum.checked_sub(__field_info.lamports()).unwrap(),
@@ -466,11 +467,12 @@ fn generate_constraint_realloc(
                 }
             } else {
                 let __lamport_amt = __field_info.lamports().checked_sub(__new_rent_minimum).unwrap();
-                **#payer.to_account_info().lamports.borrow_mut() = #payer.to_account_info().lamports().checked_add(__lamport_amt).unwrap();
-                **__field_info.lamports.borrow_mut() = __field_info.lamports().checked_sub(__lamport_amt).unwrap();
+                let mut __payer_info = #payer.to_account_info();
+                __payer_info.set_lamports(__payer_info.lamports().checked_add(__lamport_amt).unwrap());
+                __field_info.set_lamports(__field_info.lamports().checked_sub(__lamport_amt).unwrap());
             }
 
-            __field_info.resize(#new_space)?;
+            anchor_lang::pinocchio_runtime::Resize::resize(&mut __field_info, #new_space)?;
             __reallocs.insert(#field.key());
         }
     }
@@ -499,9 +501,10 @@ fn generate_constraint_init_group(
 
     let account_ref = generate_account_ref(f);
 
-    // PDA bump seeds.
+    // PDA bumps: list seeds are copied into `Vec<u8>` so `Seed` pointers stay valid (e.g.
+    // `user.key().as_ref()` would otherwise dangle). CPI uses `&[Signer]`.
     let (find_pda, seeds_with_bump) = match &c.seeds {
-        None => (quote! {}, quote! {}),
+        None => (quote! {}, quote! { &[] }),
         Some(c) => match &c.seeds {
             // If the bump is provided with init *and target*, then force it to be the
             // canonical bump.
@@ -509,8 +512,13 @@ fn generate_constraint_init_group(
             // Note that for `#[account(init, seeds)]`, find_program_address has already
             // been run in the init constraint find_pda variable.
             SeedsExpr::List(list) => {
-                // Optional prefix (either empty or "<list>,")
-                let maybe_seeds_plus_comma = (!list.is_empty()).then(|| quote! { #list, });
+                let (seed_binds, owned_idents) = seeds_list_owned_bytes(list, field);
+                let refs_for_find: Vec<_> = owned_idents
+                    .iter()
+                    .map(|id| {
+                        quote! { &#id[..] }
+                    })
+                    .collect();
 
                 let validate_pda = if let Some(b) = &c.bump {
                     quote! {
@@ -544,21 +552,29 @@ fn generate_constraint_init_group(
                     quote!(__bump)
                 };
 
+                let seeds_var = format_ident!("__{}_anchor_cpi_seeds", field);
+                let signers_arr_var = format_ident!("__{}_anchor_cpi_signers_arr", field);
+                let bump_seed_var = format_ident!("__{}_anchor_bump_seed", field);
+
                 (
                     quote! {
+                        #seed_binds
                         let (__pda_address, __bump) = Pubkey::find_program_address(
-                            &[ #maybe_seeds_plus_comma ],
+                            &[ #(#refs_for_find),* ],
                             __program_id,
                         );
                         __bumps.#field = #bump_tok;
                         #validate_pda
+                        let #bump_seed_var = [__bump];
+                        let #seeds_var = [
+                            #(
+                                anchor_lang::pinocchio_runtime::cpi::Seed::from(&#owned_idents[..]),
+                            )*
+                            anchor_lang::pinocchio_runtime::cpi::Seed::from(&#bump_seed_var[..]),
+                        ];
+                        let #signers_arr_var = [anchor_lang::pinocchio_runtime::cpi::Signer::from(&#seeds_var[..])];
                     },
-                    quote! {
-                        &[
-                            #maybe_seeds_plus_comma
-                            &[__bump][..]
-                        ][..]
-                    },
+                    quote! { &#signers_arr_var },
                 )
             }
             SeedsExpr::Expr(expr) => {
@@ -568,17 +584,26 @@ fn generate_constraint_init_group(
                     quote!(__bump)
                 };
 
+                let seeds_var = format_ident!("__{}_anchor_cpi_seeds_vec", field);
+                let signers_arr_var = format_ident!("__{}_anchor_cpi_signers_arr", field);
+                let bump_seed_var = format_ident!("__{}_anchor_bump_seed", field);
+                let user_seed_slices = format_ident!("__{}_anchor_user_seed_slices", field);
+
                 (
                     quote! {
-                        let __seeds_slice: &[&[u8]] = #expr;
+                        let #user_seed_slices = #expr;
                         let (__pda_address, __bump) =
-                            Pubkey::find_program_address(__seeds_slice, __program_id);
+                            Pubkey::find_program_address(#user_seed_slices, __program_id);
                         __bumps.#field = #bump_tok;
 
-                        // Build signer seeds at runtime = seeds + bump
-                        let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> = __seeds_slice.to_vec();
-                        __signer_seeds_vec.push(&[__bump][..]);
-                        let __signer_seeds = __signer_seeds_vec;
+                        let #bump_seed_var = [__bump];
+                        let mut #seeds_var: ::std::vec::Vec<anchor_lang::pinocchio_runtime::cpi::Seed> =
+                            #user_seed_slices
+                                .iter()
+                                .map(|__s| anchor_lang::pinocchio_runtime::cpi::Seed::from(*__s))
+                                .collect();
+                        #seeds_var.push(anchor_lang::pinocchio_runtime::cpi::Seed::from(&#bump_seed_var[..]));
+                        let #signers_arr_var = [anchor_lang::pinocchio_runtime::cpi::Signer::from(&#seeds_var[..])];
 
                         if #field.key() != __pda_address {
                             return Err(anchor_lang::error::Error::from(
@@ -587,7 +612,7 @@ fn generate_constraint_init_group(
                              .with_pubkeys((#field.key(), __pda_address)));
                         }
                     },
-                    quote! { &__signer_seeds[..] },
+                    quote! { &#signers_arr_var },
                 )
             }
         },
@@ -645,8 +670,8 @@ fn generate_constraint_init_group(
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
-                    let owner_program = #account_ref.owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    let owner_program = #account_ref.owner();
+                    if !#if_needed || owner_program == &anchor_lang::pinocchio_runtime::system_program::ID {
                         #payer_optional_check
 
                         // Create the account with the system program.
@@ -716,8 +741,8 @@ fn generate_constraint_init_group(
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
-                    let owner_program = #account_ref.owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    let owner_program = #account_ref.owner();
+                    if !#if_needed || owner_program == &anchor_lang::pinocchio_runtime::system_program::ID {
                         #payer_optional_check
 
                         ::anchor_spl::associated_token::create(
@@ -971,8 +996,8 @@ fn generate_constraint_init_group(
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
-                    let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner;
-                    if !#if_needed || owner_program == &anchor_lang::solana_program::system_program::ID {
+                    let owner_program = AsRef::<AccountInfo>::as_ref(&#field).owner();
+                    if !#if_needed || owner_program == &anchor_lang::pinocchio_runtime::system_program::ID {
                         // Define payer variable.
                         #payer_optional_check
 
@@ -1045,7 +1070,7 @@ fn generate_constraint_init_group(
 
                     let pa: #ty_decl = #from_account_info_unchecked;
                     if #if_needed {
-                        if pa.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#owner.key()) {
+                        if pa.mint_authority != anchor_lang::pinocchio_runtime::program_option::COption::Some(#owner.key()) {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority).with_account_name(#name_str));
                         }
                         if pa.freeze_authority
@@ -1119,14 +1144,14 @@ fn generate_constraint_init_group(
                     #optional_checks
 
                     let actual_field = #account_ref;
-                    let actual_owner = actual_field.owner;
+                    let actual_owner = actual_field.owner();
 
                     // Define the account space variable.
                     #space
 
                     // Create the account. Always do this in the event
                     // if needed is not specified or the system program is the owner.
-                    let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::solana_program::system_program::ID {
+                    let pa: #ty_decl = if !#if_needed || actual_owner == &anchor_lang::pinocchio_runtime::system_program::ID {
                         #payer_optional_check
 
                         // CPI to the system program to create.
@@ -1194,10 +1219,17 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
         let define_pda = match (&c.seeds, &c.bump) {
             // [list], no bump -> find_program_address + store __bump.
             (SeedsExpr::List(list), None) => {
-                let maybe_seeds_plus_comma = (!list.is_empty()).then(|| quote! { #list, });
+                let (seed_binds, owned_idents) = seeds_list_owned_bytes(list, name);
+                let refs_for_find: Vec<_> = owned_idents
+                    .iter()
+                    .map(|id| {
+                        quote! { &#id[..] }
+                    })
+                    .collect();
                 quote! {
+                    #seed_binds
                     let (__pda_address, __bump) = Pubkey::find_program_address(
-                        &[ #maybe_seeds_plus_comma ],
+                        &[ #(#refs_for_find),* ],
                         &#deriving_program_id,
                     );
                     __bumps.#name = #bump_store;
@@ -1206,10 +1238,22 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
 
             // [list], explicit bump -> create_program_address with list + bump.
             (SeedsExpr::List(list), Some(b)) => {
-                let maybe_seeds_plus_comma = (!list.is_empty()).then(|| quote! { #list, });
+                let (seed_binds, owned_idents) = seeds_list_owned_bytes(list, name);
+                let bump_arr = format_ident!("__{}_constraint_bump_arr", name);
+                let bump_seed = format_ident!("__{}_constraint_bump_seed", name);
+                let mut create_elems: Vec<_> = owned_idents
+                    .iter()
+                    .map(|id| {
+                        quote! { &#id[..] }
+                    })
+                    .collect();
+                create_elems.push(quote! { &*#bump_seed });
                 quote! {
+                    #seed_binds
+                    let #bump_arr = [#b];
+                    let #bump_seed = anchor_lang::pinocchio_runtime::cpi::Seed::from(&#bump_arr[..]);
                     let __pda_address = Pubkey::create_program_address(
-                        &[ #maybe_seeds_plus_comma &[#b][..] ],
+                        &[ #(#create_elems),* ],
                         &#deriving_program_id,
                     ).map_err(|_| anchor_lang::error::Error::from(
                         anchor_lang::error::ErrorCode::ConstraintSeeds
@@ -1218,24 +1262,44 @@ fn generate_constraint_seeds(f: &Field, c: &ConstraintSeedsGroup) -> proc_macro2
             }
 
             // expr, no bump -> find_program_address + store __bump.
-            (SeedsExpr::Expr(expr), None) => quote! {
-                let __seeds_slice: &[&[u8]] = #expr;
-                let (__pda_address, __bump) =
-                    Pubkey::find_program_address(__seeds_slice, &#deriving_program_id);
-                __bumps.#name = #bump_store;
-            },
+            (SeedsExpr::Expr(expr), None) => {
+                let user_sl = format_ident!("__{}_constraint_user_seeds", name);
+                quote! {
+                    let #user_sl = #expr;
+                    let (__pda_address, __bump) =
+                        Pubkey::find_program_address(#user_sl, &#deriving_program_id);
+                    __bumps.#name = #bump_store;
+                }
+            }
 
-            // expr, explicit bump -> concat slice + bump, then create_program_address.
-            (SeedsExpr::Expr(expr), Some(b)) => quote! {
-                let __bump_bytes = [#b];
-                let __seeds_vec: ::std::vec::Vec<&[u8]> = [#expr, &[&__bump_bytes[..]]].concat();
-                let __pda_address = Pubkey::create_program_address(
-                    &__seeds_vec[..],
-                    &#deriving_program_id,
-                ).map_err(|_| anchor_lang::error::Error::from(
-                    anchor_lang::error::ErrorCode::ConstraintSeeds
-                ).with_account_name(#name_str))?;
-            },
+            // expr, explicit bump -> slice expr + bump as Seeds, then create_program_address.
+            (SeedsExpr::Expr(expr), Some(b)) => {
+                let user_sl = format_ident!("__{}_constraint_user_seeds", name);
+                let bump_arr = format_ident!("__{}_constraint_bump_arr", name);
+                let seeds_with_bump = format_ident!("__{}_constraint_seeds_with_bump", name);
+                let create_arg = format_ident!("__{}_constraint_create_slices", name);
+                quote! {
+                    let #user_sl = #expr;
+                    let mut #seeds_with_bump: ::std::vec::Vec<anchor_lang::pinocchio_runtime::cpi::Seed> =
+                        #user_sl
+                            .iter()
+                            .map(|__s| anchor_lang::pinocchio_runtime::cpi::Seed::from(*__s))
+                            .collect();
+                    let #bump_arr = [#b];
+                    #seeds_with_bump
+                        .push(anchor_lang::pinocchio_runtime::cpi::Seed::from(&#bump_arr[..]));
+                    let #create_arg: ::std::vec::Vec<&[u8]> = #seeds_with_bump
+                        .iter()
+                        .map(::core::ops::Deref::deref)
+                        .collect();
+                    let __pda_address = Pubkey::create_program_address(
+                        &#create_arg[..],
+                        &#deriving_program_id,
+                    ).map_err(|_| anchor_lang::error::Error::from(
+                        anchor_lang::error::ErrorCode::ConstraintSeeds
+                    ).with_account_name(#name_str))?;
+                }
+            }
         };
 
         quote! {
@@ -1275,7 +1339,7 @@ fn generate_constraint_associated_token(
             let token_program_optional_check = optional_check_scope.generate_check(token_program);
             quote! {
                 #token_program_optional_check
-                if #account_ref.owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintAssociatedTokenTokenProgram.into()); }
+                if #account_ref.owner() != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintAssociatedTokenTokenProgram.into()); }
             }
         }
         None => quote! {},
@@ -1341,7 +1405,7 @@ fn generate_constraint_token_account(
             let token_program_optional_check = optional_check_scope.generate_check(token_program);
             quote! {
                 #token_program_optional_check
-                if #account_ref.owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintTokenTokenProgram.into()); }
+                if #account_ref.owner() != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintTokenTokenProgram.into()); }
             }
         }
         None => quote! {},
@@ -1377,7 +1441,7 @@ fn generate_constraint_mint(
             let mint_authority_optional_check = optional_check_scope.generate_check(mint_authority);
             quote! {
                 #mint_authority_optional_check
-                if #name.mint_authority != anchor_lang::solana_program::program_option::COption::Some(#mint_authority.key()) {
+                if #name.mint_authority != anchor_lang::pinocchio_runtime::program_option::COption::Some(#mint_authority.key()) {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintMintAuthority.into());
                 }
             }
@@ -1390,7 +1454,7 @@ fn generate_constraint_mint(
                 optional_check_scope.generate_check(freeze_authority);
             quote! {
                 #freeze_authority_optional_check
-                if #name.freeze_authority != anchor_lang::solana_program::program_option::COption::Some(#freeze_authority.key()) {
+                if #name.freeze_authority != anchor_lang::pinocchio_runtime::program_option::COption::Some(#freeze_authority.key()) {
                     return Err(anchor_lang::error::ErrorCode::ConstraintMintFreezeAuthority.into());
                 }
             }
@@ -1402,7 +1466,7 @@ fn generate_constraint_mint(
             let token_program_optional_check = optional_check_scope.generate_check(token_program);
             quote! {
                 #token_program_optional_check
-                if #account_ref.owner != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintMintTokenProgram.into()); }
+                if #account_ref.owner() != &#token_program.key() { return Err(anchor_lang::error::ErrorCode::ConstraintMintTokenProgram.into()); }
             }
         }
         None => quote! {},
@@ -1647,14 +1711,33 @@ impl<'a> OptionalCheckScope<'a> {
     }
 }
 
+/// Copy each `seeds = [ ... ]` element into a `Vec<u8>` so Pinocchio `Seed` does not point at
+/// stack temporaries (e.g. from `some_account.key().as_ref()`).
+fn seeds_list_owned_bytes(
+    list: &Punctuated<Expr, Token![,]>,
+    prefix: &Ident,
+) -> (proc_macro2::TokenStream, Vec<Ident>) {
+    let owned_idents: Vec<Ident> = (0..list.len())
+        .map(|i| format_ident!("__{}_seed_owned_{}", prefix, i))
+        .collect();
+    let seed_exprs = list.iter();
+    let binds = quote! {
+        #(
+            let #owned_idents: ::std::vec::Vec<u8> =
+                ::std::convert::AsRef::<[u8]>::as_ref(&(#seed_exprs)).to_vec();
+        )*
+    };
+    (binds, owned_idents)
+}
+
 fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
     quote! {
         {
             let mint_info = #mint.to_account_info();
-            if *mint_info.owner == ::anchor_spl::token_2022::Token2022::id() {
+            if mint_info.owner() == &::anchor_spl::token_2022::Token2022::id() {
                 use ::anchor_spl::token_2022::spl_token_2022::extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions};
                 use ::anchor_spl::token_2022::spl_token_2022::state::{Account, Mint};
-                let mint_data = mint_info.try_borrow_data()?;
+                let mint_data = mint_info.try_borrow()?;
                 let mint_state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
                 let mint_extensions = mint_state.get_extension_types()?;
                 let required_extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
@@ -1666,13 +1749,7 @@ fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
     }
 }
 
-// Generated code to create an account with system program with the
-// given `space` amount of data, owned by `owner`.
-//
-// `seeds_with_nonce` should be given for creating PDAs. Otherwise it's an
-// empty stream.
-//
-// This should only be run within scopes where `system_program` is not Optional
+// `seeds_with_nonce`: `&[Signer]` for `CpiContext::with_signer`, or `&[]`.
 fn generate_create_account(
     field: &Ident,
     space: proc_macro2::TokenStream,
@@ -1696,7 +1773,7 @@ fn generate_create_account(
                 to: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::create_account(cpi_context.with_signer(&[#seeds_with_nonce]), lamports, space as u64, #owner)?;
+            anchor_lang::system_program::create_account(cpi_context.with_signer(#seeds_with_nonce), lamports, space as u64, #owner)?;
         } else {
             require_keys_neq!(#payer.key(), #field.key(), anchor_lang::error::ErrorCode::TryingToInitPayerAsProgramAccount);
             // Fund the account for rent exemption.
@@ -1717,13 +1794,13 @@ fn generate_create_account(
                 account_to_allocate: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::allocate(cpi_context.with_signer(&[#seeds_with_nonce]), #space as u64)?;
+            anchor_lang::system_program::allocate(cpi_context.with_signer(#seeds_with_nonce), #space as u64)?;
             // Assign to the spl token program.
             let cpi_accounts = anchor_lang::system_program::Assign {
                 account_to_assign: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
-            anchor_lang::system_program::assign(cpi_context.with_signer(&[#seeds_with_nonce]), #owner)?;
+            anchor_lang::system_program::assign(cpi_context.with_signer(#seeds_with_nonce), #owner)?;
         }
     }
 }
@@ -1738,7 +1815,7 @@ pub fn generate_constraint_executable(
     // because we are only acting on the field, we know it isn't optional at this point
     // as it was unwrapped in `generate_constraint`
     quote! {
-        if !#account_ref.executable {
+        if !#account_ref.executable() {
             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintExecutable).with_account_name(#name_str));
         }
     }

@@ -4,19 +4,15 @@ use {
     crate::{
         bpf_writer::BpfWriter,
         error::{Error, ErrorCode},
-        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
-        Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfos, ToAccountMetas,
-        ZeroCopy,
+        pinocchio_runtime::{
+            account_info::{AccountInfo, Ref, RefMut},
+            instruction::AccountMeta,
+            pubkey::Pubkey,
+        },
+        Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfo, ToAccountInfos,
+        ToAccountMetas, ZeroCopy,
     },
-    std::{
-        cell::{Ref, RefMut},
-        collections::BTreeSet,
-        fmt,
-        io::Write,
-        marker::PhantomData,
-        mem,
-        ops::DerefMut,
-    },
+    std::{collections::BTreeSet, fmt, io::Write, marker::PhantomData, mem},
 };
 
 /// Type facilitating on demand zero copy deserialization.
@@ -96,7 +92,7 @@ use {
 /// ```
 #[derive(Clone)]
 pub struct AccountLoader<'info, T: ZeroCopy + Owner> {
-    acc_info: &'info AccountInfo<'info>,
+    acc_info: AccountInfo,
     phantom: PhantomData<&'info T>,
 }
 
@@ -110,22 +106,22 @@ impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
-    fn new(acc_info: &'info AccountInfo<'info>) -> AccountLoader<'info, T> {
+    fn new(acc_info: &'info AccountInfo) -> AccountLoader<'info, T> {
         Self {
-            acc_info,
+            acc_info: *acc_info,
             phantom: PhantomData,
         }
     }
 
     /// Constructs a new `Loader` from a previously initialized account.
     #[inline(never)]
-    pub fn try_from(acc_info: &'info AccountInfo<'info>) -> Result<AccountLoader<'info, T>> {
-        if acc_info.owner != &T::owner() {
+    pub fn try_from(acc_info: &'info AccountInfo) -> Result<AccountLoader<'info, T>> {
+        if !acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*acc_info.owner, T::owner())));
+                .with_pubkeys((*acc_info.owner(), T::owner())));
         }
 
-        let data = &acc_info.try_borrow_data()?;
+        let data = &acc_info.try_borrow()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
@@ -143,18 +139,18 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     #[inline(never)]
     pub fn try_from_unchecked(
         _program_id: &Pubkey,
-        acc_info: &'info AccountInfo<'info>,
+        acc_info: &'info AccountInfo,
     ) -> Result<AccountLoader<'info, T>> {
-        if acc_info.owner != &T::owner() {
+        if !acc_info.owned_by(&T::owner()) {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*acc_info.owner, T::owner())));
+                .with_pubkeys((*acc_info.owner(), T::owner())));
         }
         Ok(AccountLoader::new(acc_info))
     }
 
     /// Returns a Ref to the account data structure for reading.
     pub fn load(&self) -> Result<Ref<'_, T>> {
-        let data = self.acc_info.try_borrow_data()?;
+        let data: Ref<'_, [u8]> = self.acc_info.try_borrow()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
@@ -165,20 +161,19 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
-        Ok(Ref::map(data, |data| {
+        Ok(Ref::map(data, |data: &[u8]| {
             bytemuck::from_bytes(&data[disc.len()..mem::size_of::<T>() + disc.len()])
         }))
     }
-
     /// Returns a `RefMut` to the account data structure for reading or writing.
-    pub fn load_mut(&self) -> Result<RefMut<'_, T>> {
+    pub fn load_mut(&mut self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
-        if !self.acc_info.is_writable {
+        if !self.acc_info.is_writable() {
             return Err(ErrorCode::AccountNotMutable.into());
         }
 
-        let data = self.acc_info.try_borrow_mut_data()?;
+        let data: RefMut<'_, [u8]> = self.acc_info.try_borrow_mut()?;
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
@@ -189,23 +184,21 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
-        Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(
-                &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],
-            )
+        Ok(RefMut::map(data, |data: &mut [u8]| {
+            bytemuck::from_bytes_mut(&mut data[disc.len()..mem::size_of::<T>() + disc.len()])
         }))
     }
 
     /// Returns a `RefMut` to the account data structure for reading or writing.
     /// Should only be called once, when the account is being initialized.
-    pub fn load_init(&self) -> Result<RefMut<'_, T>> {
+    pub fn load_init(&mut self) -> Result<RefMut<'_, T>> {
         // AccountInfo api allows you to borrow mut even if the account isn't
         // writable, so add this check for a better dev experience.
-        if !self.acc_info.is_writable {
+        if !self.acc_info.is_writable() {
             return Err(ErrorCode::AccountNotMutable.into());
         }
 
-        let data = self.acc_info.try_borrow_mut_data()?;
+        let data: RefMut<'_, [u8]> = self.acc_info.try_borrow_mut()?;
 
         // The discriminator should be zero, since we're initializing.
         let disc = T::DISCRIMINATOR;
@@ -215,10 +208,8 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorAlreadySet.into());
         }
 
-        Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(
-                &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],
-            )
+        Ok(RefMut::map(data, |data: &mut [u8]| {
+            bytemuck::from_bytes_mut(&mut data[disc.len()..mem::size_of::<T>() + disc.len()])
         }))
     }
 }
@@ -227,7 +218,7 @@ impl<'info, B, T: ZeroCopy + Owner> Accounts<'info, B> for AccountLoader<'info, 
     #[inline(never)]
     fn try_accounts(
         _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
+        accounts: &mut &'info [AccountInfo],
         _ix_data: &[u8],
         _bumps: &mut B,
         _reallocs: &mut BTreeSet<Pubkey>,
@@ -246,8 +237,9 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
     // The account *cannot* be loaded when this is called.
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
         // Only persist if the owner is the current program and the account is not closed.
-        if &T::owner() == program_id && !crate::common::is_closed(self.acc_info) {
-            let mut data = self.acc_info.try_borrow_mut_data()?;
+        if &T::owner() == program_id && !crate::common::is_closed(&self.acc_info) {
+            let mut acc_info = self.acc_info;
+            let mut data = acc_info.try_borrow_mut()?;
             let dst: &mut [u8] = &mut data;
             let mut writer = BpfWriter::new(dst);
             writer.write_all(T::DISCRIMINATOR).unwrap();
@@ -257,36 +249,38 @@ impl<'info, T: ZeroCopy + Owner> AccountsExit<'info> for AccountLoader<'info, T>
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountsClose<'info> for AccountLoader<'info, T> {
-    fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
-        crate::common::close(self.as_ref(), sol_destination.as_ref())
+    fn close(&self, sol_destination: AccountInfo) -> Result<()> {
+        crate::common::close(self.to_account_info(), sol_destination)
     }
 }
 
 impl<T: ZeroCopy + Owner> ToAccountMetas for AccountLoader<'_, T> {
-    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
-        let is_signer = is_signer.unwrap_or(self.acc_info.is_signer);
-        let meta = match self.acc_info.is_writable {
-            false => AccountMeta::new_readonly(*self.acc_info.key, is_signer),
-            true => AccountMeta::new(*self.acc_info.key, is_signer),
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        let is_signer = is_signer.unwrap_or(self.acc_info.is_signer());
+        let meta = match (self.acc_info.is_writable(), is_signer) {
+            (false, false) => AccountMeta::readonly(self.acc_info.address()),
+            (false, true) => AccountMeta::readonly_signer(self.acc_info.address()),
+            (true, false) => AccountMeta::writable(self.acc_info.address()),
+            (true, true) => AccountMeta::writable_signer(self.acc_info.address()),
         };
         vec![meta]
     }
 }
 
-impl<'info, T: ZeroCopy + Owner> AsRef<AccountInfo<'info>> for AccountLoader<'info, T> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
-        self.acc_info
+impl<'info, T: ZeroCopy + Owner> AsRef<AccountInfo> for AccountLoader<'info, T> {
+    fn as_ref(&self) -> &AccountInfo {
+        &self.acc_info
     }
 }
 
 impl<'info, T: ZeroCopy + Owner> ToAccountInfos<'info> for AccountLoader<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.acc_info.clone()]
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
+        vec![self.acc_info]
     }
 }
 
 impl<T: ZeroCopy + Owner> Key for AccountLoader<'_, T> {
     fn key(&self) -> Pubkey {
-        *self.acc_info.key
+        self.acc_info.key()
     }
 }

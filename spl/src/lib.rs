@@ -2,6 +2,8 @@
 
 //! Anchor CPI wrappers for popular programs in the Solana ecosystem.
 
+pub(crate) mod cpi_util;
+
 #[cfg(feature = "associated_token")]
 pub mod associated_token;
 

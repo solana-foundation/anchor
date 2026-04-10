@@ -3,25 +3,24 @@
 use {
     anchor_lang::{
         context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        pinocchio_runtime::{account_info::AccountInfo, pubkey::Pubkey},
         Accounts, Result,
     },
     spl_token_2022_interface as spl_token_2022,
 };
 
-pub fn transfer_hook_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, TransferHookInitialize<'info>>,
+pub fn transfer_hook_initialize(
+    ctx: CpiContext<'_, '_, TransferHookInitialize>,
     authority: Option<Pubkey>,
     transfer_hook_program_id: Option<Pubkey>,
 ) -> Result<()> {
     let ix = spl_token_2022::extension::transfer_hook::instruction::initialize(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
+        ctx.accounts.token_program_id.address(),
+        ctx.accounts.mint.address(),
         authority,
         transfer_hook_program_id,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
     )
@@ -29,24 +28,23 @@ pub fn transfer_hook_initialize<'info>(
 }
 
 #[derive(Accounts)]
-pub struct TransferHookInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct TransferHookInitialize {
+    pub token_program_id: AccountInfo,
+    pub mint: AccountInfo,
 }
 
-pub fn transfer_hook_update<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, TransferHookUpdate<'info>>,
+pub fn transfer_hook_update(
+    ctx: CpiContext<'_, '_, TransferHookUpdate>,
     transfer_hook_program_id: Option<Pubkey>,
 ) -> Result<()> {
     let ix = spl_token_2022::extension::transfer_hook::instruction::update(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.authority.key,
+        ctx.accounts.token_program_id.address(),
+        ctx.accounts.mint.address(),
+        ctx.accounts.authority.address(),
         &[],
         transfer_hook_program_id,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(ix,
         &[
             ctx.accounts.token_program_id,
             ctx.accounts.mint,
@@ -58,8 +56,8 @@ pub fn transfer_hook_update<'info>(
 }
 
 #[derive(Accounts)]
-pub struct TransferHookUpdate<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
+pub struct TransferHookUpdate {
+    pub token_program_id: AccountInfo,
+    pub mint: AccountInfo,
+    pub authority: AccountInfo,
 }

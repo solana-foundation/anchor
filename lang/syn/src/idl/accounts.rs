@@ -1,6 +1,6 @@
 use {
     super::common::{get_idl_module_path, get_no_docs},
-    crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, Ty},
+    crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, SysvarTy, Ty},
     anyhow::{anyhow, Result},
     proc_macro2::TokenStream,
     quote::{quote, ToTokens},
@@ -159,9 +159,30 @@ pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStr
     }
 }
 
+fn sysvar_id_pubkey(ty: &SysvarTy) -> TokenStream {
+    match ty {
+        SysvarTy::Clock => quote! { ::anchor_lang::__idl_sysvar_ids::clock::ID },
+        SysvarTy::Rent => quote! { ::anchor_lang::__idl_sysvar_ids::rent::ID },
+        SysvarTy::EpochSchedule => quote! { ::anchor_lang::__idl_sysvar_ids::epoch_schedule::ID },
+        SysvarTy::Fees => quote! { ::anchor_lang::__idl_sysvar_ids::fees::ID },
+        SysvarTy::RecentBlockhashes => {
+            quote! { ::anchor_lang::__idl_sysvar_ids::recent_blockhashes::ID }
+        }
+        SysvarTy::SlotHashes => quote! { ::anchor_lang::__idl_sysvar_ids::slot_hashes::ID },
+        SysvarTy::SlotHistory => quote! { ::anchor_lang::__idl_sysvar_ids::slot_history::ID },
+        SysvarTy::StakeHistory => quote! { ::anchor_lang::__idl_sysvar_ids::stake_history::ID },
+        SysvarTy::Instructions => quote! { ::anchor_lang::__idl_sysvar_ids::instructions::ID },
+        SysvarTy::Rewards => quote! { ::anchor_lang::__idl_sysvar_ids::rewards::ID },
+    }
+}
+
 fn get_address(acc: &Field) -> TokenStream {
     match &acc.ty {
-        Ty::Program(_) | Ty::Sysvar(_) => {
+        Ty::Sysvar(sy_ty) => {
+            let id = sysvar_id_pubkey(sy_ty);
+            quote! { Some(#id.to_string()) }
+        }
+        Ty::Program(_) => {
             let ty = acc.account_ty();
             // Check if this is the unit type marker (for generic Program<'info>)
             let ty_str = quote!(#ty).to_string();
@@ -169,10 +190,7 @@ fn get_address(acc: &Field) -> TokenStream {
                 // For generic programs, we don't have a specific address
                 quote! { None }
             } else {
-                let id_trait = matches!(acc.ty, Ty::Program(_))
-                    .then(|| quote!(anchor_lang::Id))
-                    .unwrap_or_else(|| quote!(anchor_lang::solana_program::sysvar::SysvarId));
-                quote! { Some(<#ty as #id_trait>::id().to_string()) }
+                quote! { Some(<#ty as anchor_lang::Id>::id().to_string()) }
             }
         }
         _ => acc

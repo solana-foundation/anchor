@@ -3,9 +3,13 @@
 
 use anchor_lang::accounts::state::ProgramState;
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::account_info::next_account_info;
-use anchor_lang::solana_program::program_option::COption;
+use anchor_lang::pinocchio_runtime::{
+    account_info::next_account_info,
+    cpi::{Seed, Signer as CpiSigner},
+    program_option::COption,
+};
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
+use core::slice;
 use lockup::{CreateVesting, RealizeLock, Realizor, Vesting};
 use std::convert::Into;
 
@@ -23,7 +27,7 @@ mod registry {
     impl Registry {
         pub fn new(ctx: Context<Ctor>) -> Result<Self> {
             Ok(Registry {
-                lockup_program: *ctx.accounts.lockup_program.key,
+                lockup_program: ctx.accounts.lockup_program.key(),
             })
         }
 
@@ -40,7 +44,7 @@ mod registry {
             let expected: Pubkey = "HUgFuN4PbvF5YzjDSw9dQ8uTJUcwm2ANsMXwvRdY4ABx"
                 .parse()
                 .unwrap();
-            if ctx.accounts.authority.key != &expected {
+            if ctx.accounts.authority.key() != expected {
                 return err!(ErrorCode::InvalidProgramAuthority);
             }
 
@@ -53,7 +57,7 @@ mod registry {
     impl<'info> RealizeLock<'info, IsRealized<'info>> for Registry {
         fn is_realized(ctx: Context<IsRealized>, v: Vesting) -> Result<()> {
             if let Some(realizor) = &v.realizor {
-                if &realizor.metadata != ctx.accounts.member.to_account_info().key {
+                if realizor.metadata != ctx.accounts.member.to_account_info().key() {
                     return err!(ErrorCode::InvalidRealizorMetadata);
                 }
                 assert!(ctx.accounts.member.beneficiary == v.beneficiary);
@@ -82,9 +86,9 @@ mod registry {
         registrar.authority = authority;
         registrar.nonce = nonce;
         registrar.mint = mint;
-        registrar.pool_mint = *ctx.accounts.pool_mint.to_account_info().key;
+        registrar.pool_mint = ctx.accounts.pool_mint.to_account_info().key();
         registrar.stake_rate = stake_rate;
-        registrar.reward_event_q = *ctx.accounts.reward_event_q.to_account_info().key;
+        registrar.reward_event_q = ctx.accounts.reward_event_q.to_account_info().key();
         registrar.withdrawal_timelock = withdrawal_timelock;
 
         let reward_q = &mut ctx.accounts.reward_event_q;
@@ -116,8 +120,8 @@ mod registry {
     #[access_control(CreateMember::accounts(&ctx, nonce))]
     pub fn create_member(ctx: Context<CreateMember>, nonce: u8) -> Result<()> {
         let member = &mut ctx.accounts.member;
-        member.registrar = *ctx.accounts.registrar.to_account_info().key;
-        member.beneficiary = *ctx.accounts.beneficiary.key;
+        member.registrar = ctx.accounts.registrar.to_account_info().key();
+        member.beneficiary = ctx.accounts.beneficiary.key();
         member.balances = (&ctx.accounts.balances).into();
         member.balances_locked = (&ctx.accounts.balances_locked).into();
         member.nonce = nonce;
@@ -159,20 +163,23 @@ mod registry {
 
         // Transfer tokens into the stake vault.
         {
-            let seeds = &[
-                ctx.accounts.registrar.to_account_info().key.as_ref(),
-                ctx.accounts.member.to_account_info().key.as_ref(),
-                &[ctx.accounts.member.nonce],
+            let registrar_key = ctx.accounts.registrar.to_account_info().key();
+            let member_key = ctx.accounts.member.to_account_info().key();
+            let member_nonce = ctx.accounts.member.nonce;
+            let signer_seeds = [
+                Seed::from(registrar_key.as_ref()),
+                Seed::from(member_key.as_ref()),
+                Seed::from(slice::from_ref(&member_nonce)),
             ];
-            let member_signer = &[&seeds[..]];
+            let member_signer = [CpiSigner::from(&signer_seeds[..])];
             let cpi_ctx = CpiContext::new_with_signer(
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.key(),
                 token::Transfer {
                     from: balances.vault.to_account_info(),
                     to: balances.vault_stake.to_account_info(),
                     authority: ctx.accounts.member_signer.to_account_info(),
                 },
-                member_signer,
+                &member_signer,
             );
             // Convert from stake-token units to mint-token units.
             let token_amount = spt_amount
@@ -183,20 +190,22 @@ mod registry {
 
         // Mint pool tokens to the staker.
         {
-            let seeds = &[
-                ctx.accounts.registrar.to_account_info().key.as_ref(),
-                &[ctx.accounts.registrar.nonce],
+            let registrar_key = ctx.accounts.registrar.to_account_info().key();
+            let registrar_nonce = ctx.accounts.registrar.nonce;
+            let signer_seeds = [
+                Seed::from(registrar_key.as_ref()),
+                Seed::from(slice::from_ref(&registrar_nonce)),
             ];
-            let registrar_signer = &[&seeds[..]];
+            let registrar_signer = [CpiSigner::from(&signer_seeds[..])];
 
             let cpi_ctx = CpiContext::new_with_signer(
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.key(),
                 token::MintTo {
                     mint: ctx.accounts.pool_mint.to_account_info(),
                     to: balances.spt.to_account_info(),
                     authority: ctx.accounts.registrar_signer.to_account_info(),
                 },
-                registrar_signer,
+                &registrar_signer,
             );
             token::mint_to(cpi_ctx, spt_amount)?;
         }
@@ -224,23 +233,26 @@ mod registry {
         };
 
         // Program signer.
-        let seeds = &[
-            ctx.accounts.registrar.to_account_info().key.as_ref(),
-            ctx.accounts.member.to_account_info().key.as_ref(),
-            &[ctx.accounts.member.nonce],
+        let registrar_key = ctx.accounts.registrar.to_account_info().key();
+        let member_key = ctx.accounts.member.to_account_info().key();
+        let member_nonce = ctx.accounts.member.nonce;
+        let signer_seeds = [
+            Seed::from(registrar_key.as_ref()),
+            Seed::from(member_key.as_ref()),
+            Seed::from(slice::from_ref(&member_nonce)),
         ];
-        let member_signer = &[&seeds[..]];
+        let member_signer = [CpiSigner::from(&signer_seeds[..])];
 
         // Burn pool tokens.
         {
             let cpi_ctx = CpiContext::new_with_signer(
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.key(),
                 token::Burn {
                     mint: ctx.accounts.pool_mint.to_account_info(),
                     from: balances.spt.to_account_info(),
                     authority: ctx.accounts.member_signer.to_account_info(),
                 },
-                member_signer,
+                &member_signer,
             );
             token::burn(cpi_ctx, spt_amount)?;
         }
@@ -253,13 +265,13 @@ mod registry {
         // Transfer tokens from the stake to pending vault.
         {
             let cpi_ctx = CpiContext::new_with_signer(
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.key(),
                 token::Transfer {
                     from: balances.vault_stake.to_account_info(),
                     to: balances.vault_pw.to_account_info(),
                     authority: ctx.accounts.member_signer.to_account_info(),
                 },
-                member_signer,
+                &member_signer,
             );
             token::transfer(cpi_ctx, token_amount)?;
         }
@@ -267,13 +279,13 @@ mod registry {
         // Print receipt.
         let pending_withdrawal = &mut ctx.accounts.pending_withdrawal;
         pending_withdrawal.burned = false;
-        pending_withdrawal.member = *ctx.accounts.member.to_account_info().key;
+        pending_withdrawal.member = ctx.accounts.member.to_account_info().key();
         pending_withdrawal.start_ts = ctx.accounts.clock.unix_timestamp;
         pending_withdrawal.end_ts =
             ctx.accounts.clock.unix_timestamp + ctx.accounts.registrar.withdrawal_timelock;
         pending_withdrawal.amount = token_amount;
         pending_withdrawal.pool = ctx.accounts.registrar.pool_mint;
-        pending_withdrawal.registrar = *ctx.accounts.registrar.to_account_info().key;
+        pending_withdrawal.registrar = ctx.accounts.registrar.to_account_info().key();
         pending_withdrawal.locked = locked;
 
         // Update stake timestamp.
@@ -297,29 +309,32 @@ mod registry {
             }
         };
         // Check the vaults given are correct.
-        if &balances.vault != ctx.accounts.vault.key {
+        if balances.vault != ctx.accounts.vault.key() {
             return err!(ErrorCode::InvalidVault);
         }
-        if &balances.vault_pw != ctx.accounts.vault_pw.key {
+        if balances.vault_pw != ctx.accounts.vault_pw.key() {
             return err!(ErrorCode::InvalidVault);
         }
 
         // Transfer tokens between vaults.
         {
-            let seeds = &[
-                ctx.accounts.registrar.to_account_info().key.as_ref(),
-                ctx.accounts.member.to_account_info().key.as_ref(),
-                &[ctx.accounts.member.nonce],
+            let registrar_key = ctx.accounts.registrar.to_account_info().key();
+            let member_key = ctx.accounts.member.to_account_info().key();
+            let member_nonce = ctx.accounts.member.nonce;
+            let signer_seeds = [
+                Seed::from(registrar_key.as_ref()),
+                Seed::from(member_key.as_ref()),
+                Seed::from(slice::from_ref(&member_nonce)),
             ];
-            let signer = &[&seeds[..]];
+            let signer = [CpiSigner::from(&signer_seeds[..])];
             let cpi_ctx = CpiContext::new_with_signer(
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.key(),
                 Transfer {
                     from: ctx.accounts.vault_pw.to_account_info(),
                     to: ctx.accounts.vault.to_account_info(),
                     authority: ctx.accounts.member_signer.clone(),
                 },
-                signer,
+                &signer,
             );
             token::transfer(cpi_ctx, ctx.accounts.pending_withdrawal.amount)?;
         }
@@ -332,37 +347,41 @@ mod registry {
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-        let seeds = &[
-            ctx.accounts.registrar.to_account_info().key.as_ref(),
-            ctx.accounts.member.to_account_info().key.as_ref(),
-            &[ctx.accounts.member.nonce],
+        let registrar_key = ctx.accounts.registrar.to_account_info().key();
+        let member_key = ctx.accounts.member.to_account_info().key();
+        let member_nonce = ctx.accounts.member.nonce;
+        let signer_seeds = [
+            Seed::from(registrar_key.as_ref()),
+            Seed::from(member_key.as_ref()),
+            Seed::from(slice::from_ref(&member_nonce)),
         ];
-        let signer = &[&seeds[..]];
+        let signer = [CpiSigner::from(&signer_seeds[..])];
         let cpi_accounts = Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.depositor.to_account_info(),
             authority: ctx.accounts.member_signer.clone(),
         };
-        let cpi_program = ctx.accounts.token_program.clone();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.key(), cpi_accounts, &signer);
 
         token::transfer(cpi_ctx, amount).map_err(Into::into)
     }
 
     pub fn withdraw_locked(ctx: Context<WithdrawLocked>, amount: u64) -> Result<()> {
-        let seeds = &[
-            ctx.accounts.registrar.to_account_info().key.as_ref(),
-            ctx.accounts.member.to_account_info().key.as_ref(),
-            &[ctx.accounts.member.nonce],
+        let registrar_key = ctx.accounts.registrar.to_account_info().key();
+        let member_key = ctx.accounts.member.to_account_info().key();
+        let member_nonce = ctx.accounts.member.nonce;
+        let signer_seeds = [
+            Seed::from(registrar_key.as_ref()),
+            Seed::from(member_key.as_ref()),
+            Seed::from(slice::from_ref(&member_nonce)),
         ];
-        let signer = &[&seeds[..]];
+        let signer = [CpiSigner::from(&signer_seeds[..])];
         let cpi_accounts = Transfer {
             from: ctx.accounts.member_vault.to_account_info(),
             to: ctx.accounts.vesting_vault.to_account_info(),
             authority: ctx.accounts.member_signer.clone(),
         };
-        let cpi_program = ctx.accounts.token_program.clone();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.key(), cpi_accounts, &signer);
 
         token::transfer(cpi_ctx, amount).map_err(Into::into)
     }
@@ -399,15 +418,15 @@ mod registry {
         // Add the event to the reward queue.
         let reward_q = &mut ctx.accounts.reward_event_q;
         let cursor = reward_q.append(RewardEvent {
-            vendor: *ctx.accounts.vendor.to_account_info().key,
+            vendor: ctx.accounts.vendor.to_account_info().key(),
             ts: ctx.accounts.clock.unix_timestamp,
             locked: kind != RewardVendorKind::Unlocked,
         })?;
 
         // Initialize the vendor.
         let vendor = &mut ctx.accounts.vendor;
-        vendor.registrar = *ctx.accounts.registrar.to_account_info().key;
-        vendor.vault = *ctx.accounts.vendor_vault.to_account_info().key;
+        vendor.registrar = ctx.accounts.registrar.to_account_info().key();
+        vendor.vault = ctx.accounts.vendor_vault.to_account_info().key();
         vendor.mint = ctx.accounts.vendor_vault.mint;
         vendor.nonce = nonce;
         vendor.pool_token_supply = ctx.accounts.pool_mint.supply;
@@ -415,7 +434,7 @@ mod registry {
         vendor.start_ts = ctx.accounts.clock.unix_timestamp;
         vendor.expiry_ts = expiry_ts;
         vendor.expiry_receiver = expiry_receiver;
-        vendor.from = *ctx.accounts.depositor_authority.key;
+        vendor.from = ctx.accounts.depositor_authority.key();
         vendor.total = total;
         vendor.expired = false;
         vendor.kind = kind;
@@ -439,20 +458,23 @@ mod registry {
         assert!(reward_amount > 0);
 
         // Send reward to the given token account.
-        let seeds = &[
-            ctx.accounts.cmn.registrar.to_account_info().key.as_ref(),
-            ctx.accounts.cmn.vendor.to_account_info().key.as_ref(),
-            &[ctx.accounts.cmn.vendor.nonce],
+        let registrar_key = ctx.accounts.cmn.registrar.to_account_info().key();
+        let vendor_key = ctx.accounts.cmn.vendor.to_account_info().key();
+        let vendor_nonce = ctx.accounts.cmn.vendor.nonce;
+        let signer_seeds = [
+            Seed::from(registrar_key.as_ref()),
+            Seed::from(vendor_key.as_ref()),
+            Seed::from(slice::from_ref(&vendor_nonce)),
         ];
-        let signer = &[&seeds[..]];
+        let signer = [CpiSigner::from(&signer_seeds[..])];
         let cpi_ctx = CpiContext::new_with_signer(
-            ctx.accounts.cmn.token_program.clone(),
+            ctx.accounts.cmn.token_program.key(),
             token::Transfer {
                 from: ctx.accounts.cmn.vault.to_account_info(),
                 to: ctx.accounts.to.to_account_info(),
                 authority: ctx.accounts.cmn.vendor_signer.to_account_info(),
             },
-            signer,
+            &signer,
         );
         token::transfer(cpi_ctx, reward_amount)?;
 
@@ -488,18 +510,21 @@ mod registry {
         // execute once completely unstaked.
         let realizor = Some(Realizor {
             program: *ctx.program_id,
-            metadata: *ctx.accounts.cmn.member.to_account_info().key,
+            metadata: ctx.accounts.cmn.member.to_account_info().key(),
         });
 
         // CPI: Create lockup account for the member's beneficiary.
-        let seeds = &[
-            ctx.accounts.cmn.registrar.to_account_info().key.as_ref(),
-            ctx.accounts.cmn.vendor.to_account_info().key.as_ref(),
-            &[ctx.accounts.cmn.vendor.nonce],
+        let registrar_key = ctx.accounts.cmn.registrar.to_account_info().key();
+        let vendor_key = ctx.accounts.cmn.vendor.to_account_info().key();
+        let vendor_nonce = ctx.accounts.cmn.vendor.nonce;
+        let signer_seeds = [
+            Seed::from(registrar_key.as_ref()),
+            Seed::from(vendor_key.as_ref()),
+            Seed::from(slice::from_ref(&vendor_nonce)),
         ];
-        let signer = &[&seeds[..]];
+        let signer = [CpiSigner::from(&signer_seeds[..])];
         let remaining_accounts: &[AccountInfo] = ctx.remaining_accounts;
-        let cpi_program = ctx.accounts.lockup_program.clone();
+        let cpi_program_id = ctx.accounts.lockup_program.key();
         let cpi_accounts = {
             let accs = &mut remaining_accounts.iter();
             lockup::cpi::accounts::CreateVesting {
@@ -511,7 +536,7 @@ mod registry {
                 clock: next_account_info(accs)?.to_account_info(),
             }
         };
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program_id, cpi_accounts, &signer);
         lockup::cpi::create_vesting(
             cpi_ctx,
             ctx.accounts.cmn.member.beneficiary,
@@ -536,20 +561,23 @@ mod registry {
         }
 
         // Send all remaining funds to the expiry receiver's token.
-        let seeds = &[
-            ctx.accounts.registrar.to_account_info().key.as_ref(),
-            ctx.accounts.vendor.to_account_info().key.as_ref(),
-            &[ctx.accounts.vendor.nonce],
+        let registrar_key = ctx.accounts.registrar.to_account_info().key();
+        let vendor_key = ctx.accounts.vendor.to_account_info().key();
+        let vendor_nonce = ctx.accounts.vendor.nonce;
+        let signer_seeds = [
+            Seed::from(registrar_key.as_ref()),
+            Seed::from(vendor_key.as_ref()),
+            Seed::from(slice::from_ref(&vendor_nonce)),
         ];
-        let signer = &[&seeds[..]];
+        let signer = [CpiSigner::from(&signer_seeds[..])];
         let cpi_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.clone(),
+            ctx.accounts.token_program.key(),
             token::Transfer {
                 to: ctx.accounts.expiry_receiver_token.to_account_info(),
                 from: ctx.accounts.vault.to_account_info(),
                 authority: ctx.accounts.vendor_signer.to_account_info(),
             },
-            signer,
+            &signer,
         );
         token::transfer(cpi_ctx, ctx.accounts.vault.amount)?;
 
@@ -567,7 +595,7 @@ pub struct Initialize<'info> {
     registrar: Account<'info, Registrar>,
     #[account(zero)]
     reward_event_q: Account<'info, RewardQueue>,
-    #[account("pool_mint.decimals == 0")]
+    #[account(constraint = pool_mint.decimals == 0)]
     pool_mint: Account<'info, Mint>,
 }
 
@@ -575,7 +603,7 @@ impl<'info> Initialize<'info> {
     fn accounts(ctx: &Context<Initialize<'info>>, nonce: u8) -> Result<()> {
         let registrar_signer = Pubkey::create_program_address(
             &[
-                ctx.accounts.registrar.to_account_info().key.as_ref(),
+                ctx.accounts.registrar.to_account_info().key().as_ref(),
                 &[nonce],
             ],
             ctx.program_id,
@@ -605,33 +633,33 @@ pub struct CreateMember<'info> {
     member: Box<Account<'info, Member>>,
     beneficiary: Signer<'info>,
     #[account(
-        "&balances.spt.owner == member_signer.key",
-        "balances.spt.mint == registrar.pool_mint",
-        "balances.vault.mint == registrar.mint"
+        constraint = balances.spt.owner == member_signer.key(),
+        constraint = balances.spt.mint == registrar.pool_mint,
+        constraint = balances.vault.mint == registrar.mint
     )]
     balances: BalanceSandboxAccounts<'info>,
     #[account(
-        "&balances_locked.spt.owner == member_signer.key",
-        "balances_locked.spt.mint == registrar.pool_mint",
-        "balances_locked.vault.mint == registrar.mint"
+        constraint = balances_locked.spt.owner == member_signer.key(),
+        constraint = balances_locked.spt.mint == registrar.pool_mint,
+        constraint = balances_locked.vault.mint == registrar.mint
     )]
     balances_locked: BalanceSandboxAccounts<'info>,
-    member_signer: AccountInfo<'info>,
+    member_signer: AccountInfo,
     // Misc.
-    #[account("token_program.key == &token::ID")]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
 }
 
 impl<'info> CreateMember<'info> {
     fn accounts(ctx: &Context<CreateMember>, nonce: u8) -> Result<()> {
         let seeds = &[
-            ctx.accounts.registrar.to_account_info().key.as_ref(),
-            ctx.accounts.member.to_account_info().key.as_ref(),
+            ctx.accounts.registrar.to_account_info().key().as_ref(),
+            ctx.accounts.member.to_account_info().key().as_ref(),
             &[nonce],
         ];
         let member_signer = Pubkey::create_program_address(seeds, ctx.program_id)
             .map_err(|_| error!(ErrorCode::InvalidNonce))?;
-        if &member_signer != ctx.accounts.member_signer.to_account_info().key {
+        if member_signer != ctx.accounts.member_signer.to_account_info().key() {
             return err!(ErrorCode::InvalidMemberSigner);
         }
 
@@ -662,7 +690,7 @@ pub struct BalanceSandboxAccounts<'info> {
 
 #[derive(Accounts)]
 pub struct Ctor<'info> {
-    lockup_program: AccountInfo<'info>,
+    lockup_program: AccountInfo,
 }
 
 #[derive(Accounts)]
@@ -673,8 +701,8 @@ pub struct SetLockupProgram<'info> {
 #[derive(Accounts)]
 pub struct IsRealized<'info> {
     #[account(
-        constraint = &member.balances.spt == member_spt.to_account_info().key,
-        constraint = &member.balances_locked.spt == member_spt_locked.to_account_info().key
+        constraint = member.balances.spt == member_spt.to_account_info().key(),
+        constraint = member.balances_locked.spt == member_spt_locked.to_account_info().key()
     )]
     member: Account<'info, Member>,
     member_spt: Account<'info, TokenAccount>,
@@ -694,43 +722,43 @@ pub struct Deposit<'info> {
     #[account(has_one = beneficiary)]
     member: Account<'info, Member>,
     beneficiary: Signer<'info>,
-    #[account(mut, constraint = vault.to_account_info().key == &member.balances.vault)]
+    #[account(mut, constraint = vault.to_account_info().key() == member.balances.vault)]
     vault: Account<'info, TokenAccount>,
     // Depositor.
     #[account(mut)]
-    depositor: AccountInfo<'info>,
-    #[account(signer, constraint = depositor_authority.key == &member.beneficiary)]
-    depositor_authority: AccountInfo<'info>,
+    depositor: AccountInfo,
+    #[account(signer, constraint = depositor_authority.key() == member.beneficiary)]
+    depositor_authority: AccountInfo,
     // Misc.
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
 pub struct DepositLocked<'info> {
     // Lockup whitelist relay interface.
     #[account(
-        constraint = vesting.to_account_info().owner == &registry.lockup_program,
+        constraint = *vesting.to_account_info().owner() == registry.lockup_program,
         constraint = vesting.beneficiary == member.beneficiary
     )]
     vesting: Box<Account<'info, Vesting>>,
-    #[account(mut, constraint = vesting_vault.key == &vesting.vault)]
-    vesting_vault: AccountInfo<'info>,
+    #[account(mut, constraint = vesting_vault.key() == vesting.vault)]
+    vesting_vault: AccountInfo,
     // Note: no need to verify the depositor_authority since the SPL program
     //       will fail the transaction if it's not correct.
     pub depositor_authority: Signer<'info>,
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
     #[account(
         mut,
-        constraint = member_vault.to_account_info().key == &member.balances_locked.vault
+        constraint = member_vault.to_account_info().key() == member.balances_locked.vault
     )]
     member_vault: Box<Account<'info, TokenAccount>>,
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref(), member.to_account_info().key().as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: AccountInfo,
 
     // Program specific.
     registry: ProgramState<'info, Registry>,
@@ -760,20 +788,20 @@ pub struct Stake<'info> {
 
     // Program signers.
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref(), member.to_account_info().key().as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: AccountInfo,
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref()],
         bump = registrar.nonce,
     )]
-    registrar_signer: AccountInfo<'info>,
+    registrar_signer: AccountInfo,
 
     // Misc.
     clock: Sysvar<'info, Clock>,
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
@@ -783,7 +811,7 @@ pub struct StartUnstake<'info> {
     registrar: Account<'info, Registrar>,
     reward_event_q: Account<'info, RewardQueue>,
     #[account(mut)]
-    pool_mint: AccountInfo<'info>,
+    pool_mint: AccountInfo,
 
     // Member.
     #[account(zero)]
@@ -798,14 +826,14 @@ pub struct StartUnstake<'info> {
 
     // Programmatic signers.
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref(), member.to_account_info().key().as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: AccountInfo,
 
     // Misc.
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
     clock: Sysvar<'info, Clock>,
 }
 
@@ -824,19 +852,19 @@ pub struct EndUnstake<'info> {
     //
     // Note: we do the constraints check in the handler, not here.
     #[account(mut)]
-    vault: AccountInfo<'info>,
+    vault: AccountInfo,
     #[account(mut)]
-    vault_pw: AccountInfo<'info>,
+    vault_pw: AccountInfo,
 
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref(), member.to_account_info().key().as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: AccountInfo,
 
     clock: Sysvar<'info, Clock>,
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
@@ -847,44 +875,44 @@ pub struct Withdraw<'info> {
     #[account(has_one = registrar, has_one = beneficiary)]
     member: Account<'info, Member>,
     beneficiary: Signer<'info>,
-    #[account(mut, constraint = vault.to_account_info().key == &member.balances.vault)]
+    #[account(mut, constraint = vault.to_account_info().key() == member.balances.vault)]
     vault: Account<'info, TokenAccount>,
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref(), member.to_account_info().key().as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: AccountInfo,
     // Receiver.
     #[account(mut)]
-    depositor: AccountInfo<'info>,
+    depositor: AccountInfo,
     // Misc.
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
 }
 
 #[derive(Accounts)]
 pub struct WithdrawLocked<'info> {
     // Lockup whitelist relay interface.
     #[account(
-        constraint = vesting.to_account_info().owner == &registry.lockup_program,
+        constraint = *vesting.to_account_info().owner() == registry.lockup_program,
         constraint = vesting.beneficiary == member.beneficiary,
     )]
     vesting: Box<Account<'info, Vesting>>,
-    #[account(mut, constraint = vesting_vault.key == &vesting.vault)]
-    vesting_vault: AccountInfo<'info>,
+    #[account(mut, constraint = vesting_vault.key() == vesting.vault)]
+    vesting_vault: AccountInfo,
     vesting_signer: Signer<'info>,
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
     #[account(
         mut,
-        constraint = member_vault.to_account_info().key == &member.balances_locked.vault
+        constraint = member_vault.to_account_info().key() == member.balances_locked.vault
     )]
     member_vault: Box<Account<'info, TokenAccount>>,
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref(), member.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref(), member.to_account_info().key().as_ref()],
         bump = member.nonce,
     )]
-    member_signer: AccountInfo<'info>,
+    member_signer: AccountInfo,
 
     // Program specific.
     registry: ProgramState<'info, Registry>,
@@ -909,12 +937,12 @@ pub struct DropReward<'info> {
     vendor_vault: Account<'info, TokenAccount>,
     // Depositor.
     #[account(mut)]
-    depositor: AccountInfo<'info>,
+    depositor: AccountInfo,
     #[account(signer)]
-    depositor_authority: AccountInfo<'info>,
+    depositor_authority: AccountInfo,
     // Misc.
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
     clock: Sysvar<'info, Clock>,
 }
 
@@ -922,8 +950,8 @@ impl<'info> DropReward<'info> {
     fn accounts(ctx: &Context<DropReward>, nonce: u8) -> Result<()> {
         let vendor_signer = Pubkey::create_program_address(
             &[
-                ctx.accounts.registrar.to_account_info().key.as_ref(),
-                ctx.accounts.vendor.to_account_info().key.as_ref(),
+                ctx.accounts.registrar.to_account_info().key().as_ref(),
+                ctx.accounts.vendor.to_account_info().key().as_ref(),
                 &[nonce],
             ],
             ctx.program_id,
@@ -942,15 +970,15 @@ pub struct ClaimReward<'info> {
     cmn: ClaimRewardCommon<'info>,
     // Account to send reward to.
     #[account(mut)]
-    to: AccountInfo<'info>,
+    to: AccountInfo,
 }
 
 #[derive(Accounts)]
 pub struct ClaimRewardLocked<'info> {
     cmn: ClaimRewardCommon<'info>,
     registry: ProgramState<'info, Registry>,
-    #[account("lockup_program.key == &registry.lockup_program")]
-    lockup_program: AccountInfo<'info>,
+    #[account(constraint = lockup_program.key() == registry.lockup_program)]
+    lockup_program: AccountInfo,
 }
 
 // Accounts common to both claim reward locked/unlocked instructions.
@@ -970,15 +998,15 @@ pub struct ClaimRewardCommon<'info> {
     #[account(has_one = registrar, has_one = vault)]
     vendor: Account<'info, RewardVendor>,
     #[account(mut)]
-    vault: AccountInfo<'info>,
+    vault: AccountInfo,
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref(), vendor.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref(), vendor.to_account_info().key().as_ref()],
         bump = vendor.nonce,
     )]
-    vendor_signer: AccountInfo<'info>,
+    vendor_signer: AccountInfo,
     // Misc.
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
     clock: Sysvar<'info, Clock>,
 }
 
@@ -992,17 +1020,17 @@ pub struct ExpireReward<'info> {
     #[account(mut)]
     vault: Account<'info, TokenAccount>,
     #[account(
-        seeds = [registrar.to_account_info().key.as_ref(), vendor.to_account_info().key.as_ref()],
+        seeds = [registrar.to_account_info().key().as_ref(), vendor.to_account_info().key().as_ref()],
         bump = vendor.nonce
     )]
-    vendor_signer: AccountInfo<'info>,
+    vendor_signer: AccountInfo,
     // Receiver.
     expiry_receiver: Signer<'info>,
     #[account(mut)]
-    expiry_receiver_token: AccountInfo<'info>,
+    expiry_receiver_token: AccountInfo,
     // Misc.
-    #[account(constraint = token_program.key == &token::ID)]
-    token_program: AccountInfo<'info>,
+    #[account(constraint = token_program.key() == token::ID)]
+    token_program: AccountInfo,
     clock: Sysvar<'info, Clock>,
 }
 
@@ -1224,55 +1252,55 @@ pub enum ErrorCode {
     InvalidProgramAuthority,
 }
 
-impl<'a, 'b, 'c, 'info> From<&mut Deposit<'info>>
-    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+impl<'a, 'b> From<&mut Deposit<'_>>
+    for CpiContext<'a, 'b, Transfer>
 {
-    fn from(accounts: &mut Deposit<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &mut Deposit<'_>) -> CpiContext<'a, 'b, Transfer> {
         let cpi_accounts = Transfer {
             from: accounts.depositor.clone(),
             to: accounts.vault.to_account_info(),
             authority: accounts.depositor_authority.clone(),
         };
-        let cpi_program = accounts.token_program.clone();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = accounts.token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
-impl<'a, 'b, 'c, 'info> From<&mut DepositLocked<'info>>
-    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+impl<'a, 'b> From<&mut DepositLocked<'_>>
+    for CpiContext<'a, 'b, Transfer>
 {
-    fn from(accounts: &mut DepositLocked<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &mut DepositLocked<'_>) -> CpiContext<'a, 'b, Transfer> {
         let cpi_accounts = Transfer {
             from: accounts.vesting_vault.clone(),
             to: accounts.member_vault.to_account_info(),
             authority: accounts.depositor_authority.to_account_info(),
         };
-        let cpi_program = accounts.token_program.clone();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = accounts.token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
-impl<'a, 'b, 'c, 'info> From<&mut DropReward<'info>>
-    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+impl<'a, 'b> From<&mut DropReward<'_>>
+    for CpiContext<'a, 'b, Transfer>
 {
-    fn from(accounts: &mut DropReward<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &mut DropReward<'_>) -> CpiContext<'a, 'b, Transfer> {
         let cpi_accounts = Transfer {
             from: accounts.depositor.clone(),
             to: accounts.vendor_vault.to_account_info(),
             authority: accounts.depositor_authority.clone(),
         };
-        let cpi_program = accounts.token_program.clone();
-        CpiContext::new(cpi_program, cpi_accounts)
+        let cpi_program_id = accounts.token_program.key();
+        CpiContext::new(cpi_program_id, cpi_accounts)
     }
 }
 
-impl<'info> From<&BalanceSandboxAccounts<'info>> for BalanceSandbox {
-    fn from(accs: &BalanceSandboxAccounts<'info>) -> Self {
+impl From<&BalanceSandboxAccounts<'_>> for BalanceSandbox {
+    fn from(accs: &BalanceSandboxAccounts<'_>) -> Self {
         Self {
-            spt: *accs.spt.to_account_info().key,
-            vault: *accs.vault.to_account_info().key,
-            vault_stake: *accs.vault_stake.to_account_info().key,
-            vault_pw: *accs.vault_pw.to_account_info().key,
+            spt: accs.spt.to_account_info().key(),
+            vault: accs.vault.to_account_info().key(),
+            vault_stake: accs.vault_stake.to_account_info().key(),
+            vault_pw: accs.vault_pw.to_account_info().key(),
         }
     }
 }
@@ -1294,11 +1322,11 @@ fn reward_eligible(cmn: &ClaimRewardCommon) -> Result<()> {
 
 // Asserts the user calling the `Stake` instruction has no rewards available
 // in the reward queue.
-pub fn no_available_rewards<'info>(
-    reward_q: &Account<'info, RewardQueue>,
-    member: &Account<'info, Member>,
-    balances: &BalanceSandboxAccounts<'info>,
-    balances_locked: &BalanceSandboxAccounts<'info>,
+pub fn no_available_rewards(
+    reward_q: &Account<'_, RewardQueue>,
+    member: &Account<'_, Member>,
+    balances: &BalanceSandboxAccounts<'_>,
+    balances_locked: &BalanceSandboxAccounts<'_>,
 ) -> Result<()> {
     let mut cursor = member.rewards_cursor;
 

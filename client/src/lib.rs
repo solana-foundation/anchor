@@ -69,6 +69,7 @@ pub use nonblocking::ThreadSafeSigner;
 pub use {
     anchor_lang,
     cluster::Cluster,
+    solana_account_decoder,
     solana_commitment_config::CommitmentConfig,
     solana_instruction::Instruction,
     solana_program::hash::Hash,
@@ -82,7 +83,7 @@ pub use {
 };
 use {
     anchor_lang::{
-        solana_program::{program_error::ProgramError, pubkey::Pubkey},
+        pinocchio_runtime::{program_error::ProgramError, pubkey::Pubkey},
         AccountDeserialize, Discriminator, InstructionData, ToAccountMetas,
     },
     futures::{Future, StreamExt},
@@ -577,7 +578,15 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     /// ```
     #[must_use]
     pub fn accounts(mut self, accounts: impl ToAccountMetas) -> Self {
-        let mut metas = accounts.to_account_metas(None);
+        let mut metas = accounts
+            .to_account_metas(None)
+            .into_iter()
+            .map(|meta| AccountMeta {
+                pubkey: *meta.address,
+                is_signer: meta.is_signer,
+                is_writable: meta.is_writable,
+            })
+            .collect::<Vec<_>>();
         self.accounts.append(&mut metas);
         self
     }

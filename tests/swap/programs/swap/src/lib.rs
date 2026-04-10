@@ -72,7 +72,7 @@ pub mod swap {
 
         // Safety checks.
         apply_risk_checks(DidSwap {
-            authority: *ctx.accounts.authority.key,
+            authority: ctx.accounts.authority.key(),
             given_amount: amount,
             min_expected_swap_amount,
             from_amount,
@@ -168,7 +168,7 @@ pub mod swap {
             from_mint: token::accessor::mint(&ctx.accounts.from.coin_wallet)?,
             to_mint: token::accessor::mint(&ctx.accounts.to.coin_wallet)?,
             quote_mint: token::accessor::mint(&ctx.accounts.pc_wallet)?,
-            authority: *ctx.accounts.authority.key,
+            authority: ctx.accounts.authority.key(),
         })?;
 
         Ok(())
@@ -192,14 +192,14 @@ fn apply_risk_checks(event: DidSwap) -> Result<()> {
 pub struct Swap<'info> {
     market: MarketAccounts<'info>,
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     #[account(mut)]
-    pc_wallet: AccountInfo<'info>,
+    pc_wallet: AccountInfo,
     // Programs.
-    dex_program: AccountInfo<'info>,
-    token_program: AccountInfo<'info>,
+    dex_program: AccountInfo,
+    token_program: AccountInfo,
     // Sysvars.
-    rent: AccountInfo<'info>,
+    rent: AccountInfo,
 }
 
 impl<'info> From<&Swap<'info>> for OrderbookClient<'info> {
@@ -225,14 +225,14 @@ pub struct SwapTransitive<'info> {
     to: MarketAccounts<'info>,
     // Must be the authority over all open orders accounts used.
     #[account(signer)]
-    authority: AccountInfo<'info>,
+    authority: AccountInfo,
     #[account(mut)]
-    pc_wallet: AccountInfo<'info>,
+    pc_wallet: AccountInfo,
     // Programs.
-    dex_program: AccountInfo<'info>,
-    token_program: AccountInfo<'info>,
+    dex_program: AccountInfo,
+    token_program: AccountInfo,
     // Sysvars.
-    rent: AccountInfo<'info>,
+    rent: AccountInfo,
 }
 
 impl<'info> SwapTransitive<'info> {
@@ -261,11 +261,11 @@ impl<'info> SwapTransitive<'info> {
 // Client for sending orders to the Serum DEX.
 struct OrderbookClient<'info> {
     market: MarketAccounts<'info>,
-    authority: AccountInfo<'info>,
-    pc_wallet: AccountInfo<'info>,
-    dex_program: AccountInfo<'info>,
-    token_program: AccountInfo<'info>,
-    rent: AccountInfo<'info>,
+    authority: AccountInfo,
+    pc_wallet: AccountInfo,
+    dex_program: AccountInfo,
+    token_program: AccountInfo,
+    rent: AccountInfo,
 }
 
 impl<'info> OrderbookClient<'info> {
@@ -274,7 +274,7 @@ impl<'info> OrderbookClient<'info> {
     //
     // `base_amount` is the "native" amount of the base currency, i.e., token
     // amount including decimals.
-    fn sell(&self, base_amount: u64, referral: Option<AccountInfo<'info>>) -> Result<()> {
+    fn sell(&self, base_amount: u64, referral: Option<AccountInfo>) -> Result<()> {
         let limit_price = 1;
         let max_coin_qty = {
             // The loaded market must be dropped before CPI.
@@ -297,7 +297,7 @@ impl<'info> OrderbookClient<'info> {
     //
     // `quote_amount` is the "native" amount of the quote currency, i.e., token
     // amount including decimals.
-    fn buy(&self, quote_amount: u64, referral: Option<AccountInfo<'info>>) -> Result<()> {
+    fn buy(&self, quote_amount: u64, referral: Option<AccountInfo>) -> Result<()> {
         let limit_price = u64::MAX;
         let max_coin_qty = u64::MAX;
         let max_native_pc_qty = quote_amount;
@@ -324,7 +324,7 @@ impl<'info> OrderbookClient<'info> {
         max_coin_qty: u64,
         max_native_pc_qty: u64,
         side: Side,
-        referral: Option<AccountInfo<'info>>,
+        referral: Option<AccountInfo>,
     ) -> Result<()> {
         // Client order id is only used for cancels. Not used here so hardcode.
         let client_order_id = 0;
@@ -364,7 +364,7 @@ impl<'info> OrderbookClient<'info> {
         )
     }
 
-    fn settle(&self, referral: Option<AccountInfo<'info>>) -> Result<()> {
+    fn settle(&self, referral: Option<AccountInfo>) -> Result<()> {
         let settle_accs = dex::SettleFunds {
             market: self.market.market.clone(),
             open_orders: self.market.open_orders.clone(),
@@ -394,36 +394,36 @@ fn coin_lots(market: &MarketState, size: u64) -> u64 {
 #[derive(Accounts, Clone)]
 pub struct MarketAccounts<'info> {
     #[account(mut)]
-    market: AccountInfo<'info>,
+    market: AccountInfo,
     #[account(mut)]
-    open_orders: AccountInfo<'info>,
+    open_orders: AccountInfo,
     #[account(mut)]
-    request_queue: AccountInfo<'info>,
+    request_queue: AccountInfo,
     #[account(mut)]
-    event_queue: AccountInfo<'info>,
+    event_queue: AccountInfo,
     #[account(mut)]
-    bids: AccountInfo<'info>,
+    bids: AccountInfo,
     #[account(mut)]
-    asks: AccountInfo<'info>,
+    asks: AccountInfo,
     // The `spl_token::Account` that funds will be taken from, i.e., transferred
     // from the user into the market's vault.
     //
     // For bids, this is the base currency. For asks, the quote.
     #[account(mut)]
-    order_payer_token_account: AccountInfo<'info>,
+    order_payer_token_account: AccountInfo,
     // Also known as the "base" currency. For a given A/B market,
     // this is the vault for the A mint.
     #[account(mut)]
-    coin_vault: AccountInfo<'info>,
+    coin_vault: AccountInfo,
     // Also known as the "quote" currency. For a given A/B market,
     // this is the vault for the B mint.
     #[account(mut)]
-    pc_vault: AccountInfo<'info>,
+    pc_vault: AccountInfo,
     // PDA owner of the DEX's token accounts for base + quote currencies.
-    vault_signer: AccountInfo<'info>,
+    vault_signer: AccountInfo,
     // User wallets.
     #[account(mut)]
-    coin_wallet: AccountInfo<'info>,
+    coin_wallet: AccountInfo,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -452,7 +452,7 @@ fn is_valid_swap_transitive(ctx: &Context<SwapTransitive>) -> Result<()> {
 }
 
 // Validates the tokens being swapped are of different mints.
-fn _is_valid_swap<'info>(from: &AccountInfo<'info>, to: &AccountInfo<'info>) -> Result<()> {
+fn _is_valid_swap<'info>(from: &AccountInfo, to: &AccountInfo) -> Result<()> {
     let from_token_mint = token::accessor::mint(from)?;
     let to_token_mint = token::accessor::mint(to)?;
     if from_token_mint == to_token_mint {

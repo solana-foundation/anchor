@@ -69,10 +69,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///
         /// If no match is found, the fallback function is executed if it exists, or an error is
         /// returned if it doesn't exist.
-        fn dispatch<'info>(
-            program_id: &'info Pubkey,
-            accounts: &'info [AccountInfo<'info>],
-            data: &'info [u8],
+        fn dispatch(
+            program_id: &Pubkey,
+            accounts: &mut [AccountInfo],
+            data: &[u8],
         ) -> anchor_lang::Result<()> {
             #(#global_ixs)*
 

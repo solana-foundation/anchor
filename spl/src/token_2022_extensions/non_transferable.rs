@@ -3,21 +3,20 @@
 use {
     anchor_lang::{
         context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        pinocchio_runtime::{account_info::AccountInfo, pubkey::Pubkey},
         Accounts, Result,
     },
     spl_token_2022_interface as spl_token_2022,
 };
 
-pub fn non_transferable_mint_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, NonTransferableMintInitialize<'info>>,
+pub fn non_transferable_mint_initialize(
+    ctx: CpiContext<'_, '_, NonTransferableMintInitialize>,
 ) -> Result<()> {
     let ix = spl_token_2022::instruction::initialize_non_transferable_mint(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
+        ctx.accounts.token_program_id.address(),
+        ctx.accounts.mint.address(),
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
     )
@@ -25,7 +24,7 @@ pub fn non_transferable_mint_initialize<'info>(
 }
 
 #[derive(Accounts)]
-pub struct NonTransferableMintInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct NonTransferableMintInitialize {
+    pub token_program_id: AccountInfo,
+    pub mint: AccountInfo,
 }

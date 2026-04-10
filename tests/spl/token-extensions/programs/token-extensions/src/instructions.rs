@@ -1,4 +1,5 @@
-use anchor_lang::{prelude::*, solana_program::entrypoint::ProgramResult};
+use anchor_lang::prelude::*;
+use anchor_lang::pinocchio_runtime::program_error::ProgramResult;
 
 use anchor_spl::{
     associated_token::AssociatedToken,

@@ -382,34 +382,34 @@ pub struct Unsized {
 }
 
 #[derive(Accounts)]
-pub struct AccountInfo1<'info> {
-    pub account1: AccountInfo<'info>,
+pub struct AccountInfo1 {
+    pub account1: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct AccountInfo2<'info> {
-    pub account1: AccountInfo<'info>,
-    pub account2: AccountInfo<'info>,
+pub struct AccountInfo2 {
+    pub account1: AccountInfo,
+    pub account2: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct AccountInfo4<'info> {
-    pub account1: AccountInfo<'info>,
-    pub account2: AccountInfo<'info>,
-    pub account3: AccountInfo<'info>,
-    pub account4: AccountInfo<'info>,
+pub struct AccountInfo4 {
+    pub account1: AccountInfo,
+    pub account2: AccountInfo,
+    pub account3: AccountInfo,
+    pub account4: AccountInfo,
 }
 
 #[derive(Accounts)]
-pub struct AccountInfo8<'info> {
-    pub account1: AccountInfo<'info>,
-    pub account2: AccountInfo<'info>,
-    pub account3: AccountInfo<'info>,
-    pub account4: AccountInfo<'info>,
-    pub account5: AccountInfo<'info>,
-    pub account6: AccountInfo<'info>,
-    pub account7: AccountInfo<'info>,
-    pub account8: AccountInfo<'info>,
+pub struct AccountInfo8 {
+    pub account1: AccountInfo,
+    pub account2: AccountInfo,
+    pub account3: AccountInfo,
+    pub account4: AccountInfo,
+    pub account5: AccountInfo,
+    pub account6: AccountInfo,
+    pub account7: AccountInfo,
+    pub account8: AccountInfo,
 }
 
 #[derive(Accounts)]

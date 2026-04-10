@@ -2,11 +2,12 @@ use {
     crate::{mpl_token_metadata, AuctionHouse, ErrorCode},
     anchor_lang::{
         prelude::*,
-        solana_program::{
-            program::invoke_signed,
+        pinocchio_runtime::{
+            cpi::{Seed, Signer as CpiSigner},
+            instruction::{InstructionAccount, InstructionView},
+            program::{invoke_signed_with_slice, invoke_with_slice},
             program_option::COption,
             program_pack::{IsInitialized, Pack},
-            system_instruction,
         },
     },
     anchor_spl::{
@@ -19,26 +20,72 @@ use {
         },
     },
     arrayref::array_ref,
+    solana_instruction::Instruction,
     solana_sysvar::SysvarSerialize,
+    solana_system_interface::instruction as system_instruction,
     std::{convert::TryInto, slice::Iter},
 };
+
+pub(crate) fn invoke_instruction(ix: &Instruction, accounts: &[AccountInfo]) -> Result<()> {
+    let cpi_accounts: Vec<InstructionAccount> = ix
+        .accounts
+        .iter()
+        .map(|m| InstructionAccount::new(&m.pubkey, m.is_writable, m.is_signer))
+        .collect();
+    let view = InstructionView {
+        program_id: &ix.program_id,
+        data: ix.data.as_slice(),
+        accounts: &cpi_accounts,
+    };
+    invoke_with_slice(&view, accounts).map_err(|e| {
+        anchor_lang::error::Error::from(anchor_lang::ProgramError::from(e))
+    })
+}
+
+pub(crate) fn invoke_instruction_signed(
+    ix: &Instruction,
+    accounts: &[AccountInfo],
+    signers_seeds: &[&[&[u8]]],
+) -> Result<()> {
+    let cpi_accounts: Vec<InstructionAccount> = ix
+        .accounts
+        .iter()
+        .map(|m| InstructionAccount::new(&m.pubkey, m.is_writable, m.is_signer))
+        .collect();
+    let view = InstructionView {
+        program_id: &ix.program_id,
+        data: ix.data.as_slice(),
+        accounts: &cpi_accounts,
+    };
+    let mut seed_storage: Vec<Vec<Seed<'_>>> = Vec::with_capacity(signers_seeds.len());
+    let mut cpi_signers: Vec<CpiSigner<'_>> = Vec::with_capacity(signers_seeds.len());
+    for signer_group in signers_seeds {
+        seed_storage.push(signer_group.iter().map(|s| Seed::from(*s)).collect());
+    }
+    for seeds in &seed_storage {
+        cpi_signers.push(CpiSigner::from(seeds.as_slice()));
+    }
+    invoke_signed_with_slice(&view, accounts, &cpi_signers).map_err(|e| {
+        anchor_lang::error::Error::from(anchor_lang::ProgramError::from(e))
+    })
+}
 
 pub fn assert_is_ata(ata: &AccountInfo, wallet: &Pubkey, mint: &Pubkey) -> Result<Account> {
     assert_owned_by(ata, &spl_token::id())?;
     let ata_account: Account = assert_initialized(ata)?;
     assert_keys_equal(ata_account.owner, *wallet)?;
-    assert_keys_equal(get_associated_token_address(wallet, mint), *ata.key)?;
+    assert_keys_equal(get_associated_token_address(wallet, mint), ata.key())?;
     Ok(ata_account)
 }
 
 pub fn make_ata<'a>(
-    ata: AccountInfo<'a>,
-    wallet: AccountInfo<'a>,
-    mint: AccountInfo<'a>,
-    fee_payer: AccountInfo<'a>,
-    ata_program: AccountInfo<'a>,
-    token_program: AccountInfo<'a>,
-    system_program: AccountInfo<'a>,
+    ata: AccountInfo,
+    wallet: AccountInfo,
+    mint: AccountInfo,
+    fee_payer: AccountInfo,
+    ata_program: AccountInfo,
+    token_program: AccountInfo,
+    system_program: AccountInfo,
     fee_payer_seeds: &[&[u8]],
 ) -> Result<()> {
     let seeds: &[&[&[u8]]];
@@ -50,8 +97,13 @@ pub fn make_ata<'a>(
         seeds = &[];
     }
 
-    invoke_signed(
-        &create_associated_token_account(&fee_payer.key, &wallet.key, &mint.key, &spl_token::ID),
+    invoke_instruction_signed(
+        &create_associated_token_account(
+            &fee_payer.key(),
+            &wallet.key(),
+            &mint.key(),
+            &spl_token::ID,
+        ),
         &[
             ata,
             wallet,
@@ -90,10 +142,10 @@ pub fn assert_metadata_valid<'a>(
 pub fn get_fee_payer<'a, 'b>(
     authority: &AccountInfo,
     auction_house: &anchor_lang::accounts::account::Account<AuctionHouse>,
-    wallet: AccountInfo<'a>,
-    auction_house_fee_account: AccountInfo<'a>,
+    wallet: AccountInfo,
+    auction_house_fee_account: AccountInfo,
     auction_house_seeds: &'b [&'b [u8]],
-) -> Result<(AccountInfo<'a>, &'b [&'b [u8]])> {
+) -> Result<(AccountInfo, &'b [&'b [u8]])> {
     let mut seeds: &[&[u8]] = &[];
     let fee_payer: AccountInfo;
     if authority.to_account_info().is_signer {
@@ -125,7 +177,7 @@ pub fn assert_valid_delegation(
             // Ensure that the delegated amount is exactly equal to the maker_size
             msg!(
                 "Delegate {}",
-                token_account.delegate.unwrap_or(*src_wallet.key)
+                token_account.delegate.unwrap_or(src_wallet.key())
             );
             msg!("Delegated Amount {}", token_account.delegated_amount);
             if token_account.delegated_amount != paysize {
@@ -133,13 +185,13 @@ pub fn assert_valid_delegation(
             }
             // Ensure that authority is the delegate of this token account
             msg!("Authority key matches");
-            if token_account.delegate != COption::Some(*transfer_authority.key) {
+            if token_account.delegate != COption::Some(transfer_authority.key()) {
                 return Err(ProgramError::InvalidAccountData.into());
             }
 
             msg!("Delegate matches");
-            assert_is_ata(src_account, src_wallet.key, &mint.key())?;
-            assert_is_ata(dst_account, dst_wallet.key, &mint.key())?;
+            assert_is_ata(src_account, &src_wallet.key(), &mint.key())?;
+            assert_is_ata(dst_account, &dst_wallet.key(), &mint.key())?;
             msg!("ATAs match")
         }
         Err(_) => {
@@ -151,8 +203,8 @@ pub fn assert_valid_delegation(
                 return err!(ErrorCode::SOLWalletMustSign);
             }
 
-            assert_keys_equal(*src_wallet.key, src_account.key())?;
-            assert_keys_equal(*dst_wallet.key, dst_account.key())?;
+            assert_keys_equal(src_wallet.key(), src_account.key())?;
+            assert_keys_equal(dst_wallet.key(), dst_account.key())?;
         }
     }
 
@@ -187,10 +239,10 @@ pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> Result<()> {
 #[allow(clippy::too_many_arguments)]
 pub fn pay_auction_house_fees<'a>(
     auction_house: &anchor_lang::accounts::account::Account<'a, AuctionHouse>,
-    auction_house_treasury: &AccountInfo<'a>,
-    escrow_payment_account: &AccountInfo<'a>,
-    token_program: &AccountInfo<'a>,
-    system_program: &AccountInfo<'a>,
+    auction_house_treasury: &AccountInfo,
+    escrow_payment_account: &AccountInfo,
+    token_program: &AccountInfo,
+    system_program: &AccountInfo,
     signer_seeds: &[&[u8]],
     size: u64,
     is_native: bool,
@@ -202,11 +254,11 @@ pub fn pay_auction_house_fees<'a>(
         .checked_div(10000)
         .ok_or(error!(ErrorCode::NumericalOverflow))? as u64;
     if !is_native {
-        invoke_signed(
+        invoke_instruction_signed(
             &spl_token::instruction::transfer(
-                token_program.key,
-                &escrow_payment_account.key,
-                &auction_house_treasury.key,
+                &token_program.key(),
+                &escrow_payment_account.key(),
+                &auction_house_treasury.key(),
                 &auction_house.key(),
                 &[],
                 total_fee,
@@ -220,10 +272,10 @@ pub fn pay_auction_house_fees<'a>(
             &[signer_seeds],
         )?;
     } else {
-        invoke_signed(
+        invoke_instruction_signed(
             &system_instruction::transfer(
-                &escrow_payment_account.key,
-                auction_house_treasury.key,
+                &escrow_payment_account.key(),
+                &auction_house_treasury.key(),
                 total_fee,
             ),
             &[
@@ -240,10 +292,10 @@ pub fn pay_auction_house_fees<'a>(
 pub fn create_program_token_account_if_not_present<'a>(
     payment_account: &UncheckedAccount<'a>,
     system_program: &Program<'a, System>,
-    fee_payer: &AccountInfo<'a>,
+    fee_payer: &AccountInfo,
     token_program: &Program<'a, Token>,
     treasury_mint: &anchor_lang::accounts::account::Account<'a, Mint>,
-    owner: &AccountInfo<'a>,
+    owner: &AccountInfo,
     rent: &Sysvar<'a, Rent>,
     signer_seeds: &[&[u8]],
     fee_seeds: &[&[u8]],
@@ -251,7 +303,7 @@ pub fn create_program_token_account_if_not_present<'a>(
 ) -> Result<()> {
     if !is_native && payment_account.data_is_empty() {
         create_or_allocate_account_raw(
-            *token_program.key,
+            token_program.key(),
             &payment_account.to_account_info(),
             &rent.to_account_info(),
             &system_program,
@@ -260,9 +312,9 @@ pub fn create_program_token_account_if_not_present<'a>(
             fee_seeds,
             signer_seeds,
         )?;
-        invoke_signed(
+        invoke_instruction_signed(
             &initialize_account2(
-                &token_program.key,
+                &token_program.key(),
                 &payment_account.key(),
                 &treasury_mint.key(),
                 &owner.key(),
@@ -284,15 +336,15 @@ pub fn create_program_token_account_if_not_present<'a>(
 
 #[allow(clippy::too_many_arguments)]
 pub fn pay_creator_fees<'a>(
-    remaining_accounts: &mut Iter<AccountInfo<'a>>,
-    metadata_info: &AccountInfo<'a>,
-    escrow_payment_account: &AccountInfo<'a>,
-    payment_account_owner: &AccountInfo<'a>,
-    fee_payer: &AccountInfo<'a>,
-    treasury_mint: &AccountInfo<'a>,
-    ata_program: &AccountInfo<'a>,
-    token_program: &AccountInfo<'a>,
-    system_program: &AccountInfo<'a>,
+    remaining_accounts: &mut Iter<AccountInfo>,
+    metadata_info: &AccountInfo,
+    escrow_payment_account: &AccountInfo,
+    payment_account_owner: &AccountInfo,
+    fee_payer: &AccountInfo,
+    treasury_mint: &AccountInfo,
+    ata_program: &AccountInfo,
+    token_program: &AccountInfo,
+    system_program: &AccountInfo,
     signer_seeds: &[&[u8]],
     fee_payer_seeds: &[&[u8]],
     size: u64,
@@ -324,7 +376,7 @@ pub fn pay_creator_fees<'a>(
                     .checked_sub(creator_fee)
                     .ok_or(error!(ErrorCode::NumericalOverflow))?;
                 let current_creator_info = next_account_info(remaining_accounts)?;
-                assert_keys_equal(creator.address, *current_creator_info.key)?;
+                assert_keys_equal(creator.address, current_creator_info.key())?;
                 if !is_native {
                     let current_creator_token_account_info = next_account_info(remaining_accounts)?;
                     if current_creator_token_account_info.data_is_empty() {
@@ -341,16 +393,16 @@ pub fn pay_creator_fees<'a>(
                     }
                     assert_is_ata(
                         current_creator_token_account_info,
-                        current_creator_info.key,
+                        &current_creator_info.key(),
                         &treasury_mint.key(),
                     )?;
                     if creator_fee > 0 {
-                        invoke_signed(
+                        invoke_instruction_signed(
                             &spl_token::instruction::transfer(
-                                token_program.key,
-                                &escrow_payment_account.key,
-                                current_creator_token_account_info.key,
-                                payment_account_owner.key,
+                                &token_program.key(),
+                                &escrow_payment_account.key(),
+                                &current_creator_token_account_info.key(),
+                                &payment_account_owner.key(),
                                 &[],
                                 creator_fee,
                             )?,
@@ -364,10 +416,10 @@ pub fn pay_creator_fees<'a>(
                         )?;
                     }
                 } else if creator_fee > 0 {
-                    invoke_signed(
+                    invoke_instruction_signed(
                         &system_instruction::transfer(
-                            &escrow_payment_account.key,
-                            current_creator_info.key,
+                            &escrow_payment_account.key(),
+                            &current_creator_info.key(),
                             creator_fee,
                         ),
                         &[
@@ -416,10 +468,10 @@ pub fn get_delegate_from_token_account(token_account_info: &AccountInfo) -> Resu
 #[inline(always)]
 pub fn create_or_allocate_account_raw<'a>(
     program_id: Pubkey,
-    new_account_info: &AccountInfo<'a>,
-    rent_sysvar_info: &AccountInfo<'a>,
-    system_program_info: &AccountInfo<'a>,
-    payer_info: &AccountInfo<'a>,
+    new_account_info: &AccountInfo,
+    rent_sysvar_info: &AccountInfo,
+    system_program_info: &AccountInfo,
+    payer_info: &AccountInfo,
     size: usize,
     signer_seeds: &[&[u8]],
     new_acct_seeds: &[&[u8]],
@@ -440,8 +492,12 @@ pub fn create_or_allocate_account_raw<'a>(
         } else {
             seeds = &[];
         }
-        invoke_signed(
-            &system_instruction::transfer(&payer_info.key, new_account_info.key, required_lamports),
+        invoke_instruction_signed(
+            &system_instruction::transfer(
+                &payer_info.key(),
+                &new_account_info.key(),
+                required_lamports,
+            ),
             &[
                 payer_info.clone(),
                 new_account_info.clone(),
@@ -453,16 +509,16 @@ pub fn create_or_allocate_account_raw<'a>(
 
     let accounts = &[new_account_info.clone(), system_program_info.clone()];
 
-    msg!("Allocate space for the account {}", new_account_info.key);
-    invoke_signed(
-        &system_instruction::allocate(new_account_info.key, size.try_into().unwrap()),
+    msg!("Allocate space for the account {}", new_account_info.key());
+    invoke_instruction_signed(
+        &system_instruction::allocate(&new_account_info.key(), size.try_into().unwrap()),
         accounts,
         &[&new_acct_seeds],
     )?;
 
     msg!("Assign the account to the owning program");
-    invoke_signed(
-        &system_instruction::assign(new_account_info.key, &program_id),
+    invoke_instruction_signed(
+        &system_instruction::assign(&new_account_info.key(), &program_id),
         accounts,
         &[&new_acct_seeds],
     )?;
@@ -473,7 +529,7 @@ pub fn create_or_allocate_account_raw<'a>(
 
 pub fn assert_derivation(program_id: &Pubkey, account: &AccountInfo, path: &[&[u8]]) -> Result<u8> {
     let (key, bump) = Pubkey::find_program_address(&path, program_id);
-    if key != *account.key {
+    if key != account.key() {
         return err!(ErrorCode::DerivedKeyInvalid);
     }
     Ok(bump)

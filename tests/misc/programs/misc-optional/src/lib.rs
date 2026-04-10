@@ -79,7 +79,7 @@ pub mod misc_optional {
         let sol_dest_info = ctx.accounts.sol_dest.as_ref().unwrap().to_account_info();
         data_account.close(sol_dest_info)?;
         let data_account_info: &AccountInfo = data_account.as_ref();
-        require_keys_eq!(*data_account_info.owner, System::id());
+        require_keys_eq!(*data_account_info.owner(), System::id());
         Ok(())
     }
 
@@ -88,7 +88,7 @@ pub mod misc_optional {
         let sol_dest_info = ctx.accounts.sol_dest.as_ref().unwrap().to_account_info();
         data_account.close(sol_dest_info)?;
         let data_account_info: &AccountInfo = data_account.as_ref();
-        require_keys_eq!(*data_account_info.owner, System::id());
+        require_keys_eq!(*data_account_info.owner(), System::id());
         Ok(())
     }
 
@@ -110,7 +110,7 @@ pub mod misc_optional {
     }
 
     pub fn test_pda_init_zero_copy(ctx: Context<TestPdaInitZeroCopy>) -> Result<()> {
-        let mut acc = ctx.accounts.my_pda.as_ref().unwrap().load_init()?;
+        let mut acc = ctx.accounts.my_pda.as_mut().unwrap().load_init()?;
         acc.data = 9;
         acc.bump = ctx.bumps.my_pda.unwrap();
         Ok(())
@@ -128,7 +128,7 @@ pub mod misc_optional {
 
     pub fn default<'info>(
         _program_id: &Pubkey,
-        _accounts: &[AccountInfo<'info>],
+        _accounts: &[AccountInfo],
         _data: &[u8],
     ) -> Result<()> {
         Err(ProgramError::Custom(1234).into())
@@ -140,7 +140,7 @@ pub mod misc_optional {
     }
 
     pub fn test_init_zero_copy(ctx: Context<TestInitZeroCopy>) -> Result<()> {
-        let mut data = ctx.accounts.data.as_ref().unwrap().load_init()?;
+        let mut data = ctx.accounts.data.as_mut().unwrap().load_init()?;
         data.data = 10;
         data.bump = 2;
         Ok(())
@@ -293,18 +293,10 @@ pub mod misc_optional {
     }
 
     pub fn init_decrease_lamports(ctx: Context<InitDecreaseLamports>) -> Result<()> {
-        **ctx
-            .accounts
-            .data
-            .as_mut()
-            .unwrap()
-            .try_borrow_mut_lamports()? -= 1;
-        **ctx
-            .accounts
-            .user
-            .as_mut()
-            .unwrap()
-            .try_borrow_mut_lamports()? += 1;
+        let mut data = *ctx.accounts.data.as_ref().unwrap();
+        data.set_lamports(data.lamports() - 1);
+        let mut user = **ctx.accounts.user.as_ref().unwrap();
+        user.set_lamports(user.lamports() + 1);
         Ok(())
     }
 

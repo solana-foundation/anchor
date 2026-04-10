@@ -15,8 +15,8 @@ pub mod zero_copy {
 
     pub fn create_foo(ctx: Context<CreateFoo>) -> Result<()> {
         let foo = &mut ctx.accounts.foo.load_init()?;
-        foo.authority = *ctx.accounts.authority.key;
-        foo.set_second_authority(ctx.accounts.authority.key);
+        foo.authority = ctx.accounts.authority.key();
+        foo.set_second_authority(&ctx.accounts.authority.key());
         Ok(())
     }
 
@@ -34,7 +34,7 @@ pub mod zero_copy {
 
     pub fn create_bar(ctx: Context<CreateBar>) -> Result<()> {
         let bar = &mut ctx.accounts.bar.load_init()?;
-        bar.authority = *ctx.accounts.authority.key;
+        bar.authority = ctx.accounts.authority.key();
         Ok(())
     }
 
@@ -56,7 +56,7 @@ pub mod zero_copy {
         let event_q = &mut ctx.accounts.event_q.load_mut()?;
         event_q.events[idx as usize] = Event {
             data,
-            from: *ctx.accounts.from.key,
+            from: ctx.accounts.from.key(),
         };
         Ok(())
     }
@@ -85,7 +85,7 @@ pub struct UpdateFoo<'info> {
 pub struct UpdateFooSecond<'info> {
     #[account(
         mut,
-        constraint = &foo.load()?.get_second_authority() == second_authority.key,
+        constraint = foo.load()?.get_second_authority() == second_authority.key(),
     )]
     foo: AccountLoader<'info, Foo>,
     second_authority: Signer<'info>,
@@ -104,7 +104,7 @@ pub struct CreateBar<'info> {
     #[account(mut)]
     authority: Signer<'info>,
     foo: AccountLoader<'info, Foo>,
-    system_program: AccountInfo<'info>,
+    system_program: AccountInfo,
 }
 #[derive(Accounts)]
 pub struct UpdateBar<'info> {

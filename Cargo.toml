@@ -8,9 +8,15 @@ members = [
     "lang/attribute/*",
     "lang/derive/*",
     "lang/syn",
-    "spl",
 ]
-exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
+
+# FIXME(pinocchio-task/spl): anchor-spl is not yet migrated to AccountView / InstructionView CPI.
+# Re-add "spl" to members when SPL is fixed; build with: cargo build --manifest-path spl/Cargo.toml
+exclude = [
+    "spl",
+    "tests/cfo/deps/openbook-dex",
+    "tests/swap/deps/openbook-dex",
+]
 resolver = "2"
 
 [workspace.package]
@@ -56,6 +62,13 @@ solana-system-interface = "2.0.0"
 solana-sysvar = "3.1.1"
 solana-sysvar-id = "3.1.0"
 solana-transaction = "3.0.1"
+
+pinocchio = { version = "0.11", features = ["cpi", "copy", "account-resize"] }
+pinocchio-system = "0.6.0"
+pinocchio-token-2022 = "0.3.0"
+pinocchio-token = "0.6.0"
+pinocchio-associated-token-account = "0.4.0"
+pinocchio-memo = "0.4.0"
 
 [profile.release]
 lto = true

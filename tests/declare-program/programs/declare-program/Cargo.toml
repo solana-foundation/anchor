@@ -18,6 +18,9 @@ idl-build = ["anchor-lang/idl-build"]
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 
+[dev-dependencies]
+solana-instruction = "3.0.0"
+
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = ['cfg(target_os, values("solana"))']

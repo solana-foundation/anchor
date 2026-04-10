@@ -19,6 +19,8 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
 anchor-spl = { path = "../../../../spl" }
+solana-instruction = "3.0.0"
+solana-system-interface = "2.0.0"
 solana-sysvar = "3"
 thiserror = "1.0"
 arrayref = "0.3.6"

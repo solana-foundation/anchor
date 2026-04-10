@@ -11,6 +11,7 @@
 //! 2. Users can call the unwrap function to burn Y and withdraw X unwrapped tokens
 
 use anchor_lang::prelude::*;
+use anchor_lang::pinocchio_runtime::cpi::{Seed, Signer as CpiSigner};
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
 
 declare_id!("4ZPcGU8MX8oL2u1EtErHzixAbgNBNeE9yoYq3kKMqnAy");
@@ -42,13 +43,16 @@ pub mod token_wrapper {
         )?;
 
         // mint wrapped tokens
-        let inner_seeds = [
-            WRAPPER_AUTH_SEED,
-            ctx.accounts.deposit_mint.to_account_info().key.as_ref(),
-            ctx.accounts.wrapped_mint.to_account_info().key.as_ref(),
-            &[ctx.bumps.wrapper_authority],
+        let deposit_mint_key = ctx.accounts.deposit_mint.to_account_info().key();
+        let wrapped_mint_key = ctx.accounts.wrapped_mint.to_account_info().key();
+        let bump = [ctx.bumps.wrapper_authority];
+        let seeds = [
+            Seed::from(WRAPPER_AUTH_SEED),
+            Seed::from(deposit_mint_key.as_ref()),
+            Seed::from(wrapped_mint_key.as_ref()),
+            Seed::from(&bump[..]),
         ];
-        let signer_seeds = &[&inner_seeds[..]];
+        let signer = [CpiSigner::from(&seeds[..])];
         token_interface::mint_to(
             CpiContext::new_with_signer(
                 ctx.accounts.wrapped_token_program.key(),
@@ -60,7 +64,7 @@ pub mod token_wrapper {
                         .to_account_info(),
                     authority: ctx.accounts.wrapper_authority.to_account_info(),
                 },
-                signer_seeds,
+                &signer,
             ),
             initializer_amount,
         )?;
@@ -85,13 +89,16 @@ pub mod token_wrapper {
         )?;
 
         // mint wrapped tokens
-        let inner_seeds = [
-            WRAPPER_AUTH_SEED,
-            ctx.accounts.deposit_mint.to_account_info().key.as_ref(),
-            ctx.accounts.wrapped_mint.to_account_info().key.as_ref(),
-            &[ctx.bumps.wrapper_authority],
+        let deposit_mint_key = ctx.accounts.deposit_mint.to_account_info().key();
+        let wrapped_mint_key = ctx.accounts.wrapped_mint.to_account_info().key();
+        let bump = [ctx.bumps.wrapper_authority];
+        let seeds = [
+            Seed::from(WRAPPER_AUTH_SEED),
+            Seed::from(deposit_mint_key.as_ref()),
+            Seed::from(wrapped_mint_key.as_ref()),
+            Seed::from(&bump[..]),
         ];
-        let signer_seeds = &[&inner_seeds[..]];
+        let signer = [CpiSigner::from(&seeds[..])];
         token_interface::mint_to(
             CpiContext::new_with_signer(
                 ctx.accounts.wrapped_token_program.key(),
@@ -100,7 +107,7 @@ pub mod token_wrapper {
                     to: ctx.accounts.user_wrapped_token_account.to_account_info(),
                     authority: ctx.accounts.wrapper_authority.to_account_info(),
                 },
-                signer_seeds,
+                &signer,
             ),
             wrap_amount,
         )?;
@@ -123,13 +130,16 @@ pub mod token_wrapper {
         )?;
 
         // withdraw from vault
-        let inner_seeds = [
-            WRAPPER_AUTH_SEED,
-            ctx.accounts.deposit_mint.to_account_info().key.as_ref(),
-            ctx.accounts.wrapped_mint.to_account_info().key.as_ref(),
-            &[ctx.bumps.wrapper_authority],
+        let deposit_mint_key = ctx.accounts.deposit_mint.to_account_info().key();
+        let wrapped_mint_key = ctx.accounts.wrapped_mint.to_account_info().key();
+        let bump = [ctx.bumps.wrapper_authority];
+        let seeds = [
+            Seed::from(WRAPPER_AUTH_SEED),
+            Seed::from(deposit_mint_key.as_ref()),
+            Seed::from(wrapped_mint_key.as_ref()),
+            Seed::from(&bump[..]),
         ];
-        let signer_seeds = &[&inner_seeds[..]];
+        let signer = [CpiSigner::from(&seeds[..])];
         token_interface::transfer_checked(
             CpiContext::new_with_signer(
                 ctx.accounts.deposit_token_program.key(),
@@ -139,7 +149,7 @@ pub mod token_wrapper {
                     to: ctx.accounts.user_deposit_token_account.to_account_info(),
                     authority: ctx.accounts.wrapper_authority.to_account_info(),
                 },
-                signer_seeds,
+                &signer,
             ),
             unwrap_amount,
             ctx.accounts.deposit_mint.decimals,
@@ -202,7 +212,7 @@ pub struct Initialize<'info> {
         seeds = [WRAPPER_AUTH_SEED, deposit_mint.key().as_ref(), wrapped_mint.key().as_ref()],
         bump,
     )]
-    pub wrapper_authority: AccountInfo<'info>,
+    pub wrapper_authority: AccountInfo,
 
     pub system_program: Program<'info, System>,
     pub deposit_token_program: Interface<'info, TokenInterface>,
@@ -253,7 +263,7 @@ pub struct Wrap<'info> {
         seeds = [WRAPPER_AUTH_SEED, deposit_mint.key().as_ref(), wrapped_mint.key().as_ref()],
         bump,
     )]
-    pub wrapper_authority: AccountInfo<'info>,
+    pub wrapper_authority: AccountInfo,
 
     pub deposit_token_program: Interface<'info, TokenInterface>,
     pub wrapped_token_program: Interface<'info, TokenInterface>,
@@ -303,7 +313,7 @@ pub struct Unwrap<'info> {
         seeds = [crate::token_wrapper::WRAPPER_AUTH_SEED, deposit_mint.key().as_ref(), wrapped_mint.key().as_ref()],
         bump,
     )]
-    pub wrapper_authority: AccountInfo<'info>,
+    pub wrapper_authority: AccountInfo,
 
     pub deposit_token_program: Interface<'info, TokenInterface>,
     pub wrapped_token_program: Interface<'info, TokenInterface>,

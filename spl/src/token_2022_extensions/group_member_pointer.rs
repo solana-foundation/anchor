@@ -3,25 +3,24 @@
 use {
     anchor_lang::{
         context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        pinocchio_runtime::{account_info::AccountInfo, pubkey::Pubkey},
         Accounts, Result,
     },
     spl_token_2022_interface as spl_token_2022,
 };
 
-pub fn group_member_pointer_initialize<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, GroupMemberPointerInitialize<'info>>,
+pub fn group_member_pointer_initialize(
+    ctx: CpiContext<'_, '_, GroupMemberPointerInitialize>,
     authority: Option<Pubkey>,
     member_address: Option<Pubkey>,
 ) -> Result<()> {
     let ix = spl_token_2022::extension::group_member_pointer::instruction::initialize(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
+        ctx.accounts.token_program_id.address(),
+        ctx.accounts.mint.address(),
         authority,
         member_address,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(ix,
         &[ctx.accounts.token_program_id, ctx.accounts.mint],
         ctx.signer_seeds,
     )
@@ -29,24 +28,23 @@ pub fn group_member_pointer_initialize<'info>(
 }
 
 #[derive(Accounts)]
-pub struct GroupMemberPointerInitialize<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+pub struct GroupMemberPointerInitialize {
+    pub token_program_id: AccountInfo,
+    pub mint: AccountInfo,
 }
 
-pub fn group_member_pointer_update<'info>(
-    ctx: CpiContext<'_, '_, '_, 'info, GroupMemberPointerUpdate<'info>>,
+pub fn group_member_pointer_update(
+    ctx: CpiContext<'_, '_, GroupMemberPointerUpdate>,
     member_address: Option<Pubkey>,
 ) -> Result<()> {
     let ix = spl_token_2022::extension::group_member_pointer::instruction::update(
-        ctx.accounts.token_program_id.key,
-        ctx.accounts.mint.key,
-        ctx.accounts.authority.key,
+        ctx.accounts.token_program_id.address(),
+        ctx.accounts.mint.address(),
+        ctx.accounts.authority.address(),
         &[],
         member_address,
     )?;
-    anchor_lang::solana_program::program::invoke_signed(
-        &ix,
+    crate::cpi_util::invoke_signed_solana_instruction(ix,
         &[
             ctx.accounts.token_program_id,
             ctx.accounts.mint,
@@ -58,8 +56,8 @@ pub fn group_member_pointer_update<'info>(
 }
 
 #[derive(Accounts)]
-pub struct GroupMemberPointerUpdate<'info> {
-    pub token_program_id: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
-    pub authority: AccountInfo<'info>,
+pub struct GroupMemberPointerUpdate {
+    pub token_program_id: AccountInfo,
+    pub mint: AccountInfo,
+    pub authority: AccountInfo,
 }

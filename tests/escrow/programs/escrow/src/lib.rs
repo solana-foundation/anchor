@@ -15,11 +15,13 @@
 //! 2. If no one has exchanged, the initializer can close the escrow account
 //! - Initializer will get back ownership of their token X account
 
+use anchor_lang::pinocchio_runtime::cpi::{Seed, Signer as CpiSigner};
 use anchor_lang::prelude::*;
 use anchor_spl::{
     token_2022::spl_token_2022::instruction::AuthorityType,
     token_interface::{self, Mint, SetAuthority, TokenAccount, TokenInterface, TransferChecked},
 };
+use core::slice;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -34,21 +36,21 @@ pub mod escrow {
         initializer_amount: u64,
         taker_amount: u64,
     ) -> Result<()> {
-        ctx.accounts.escrow_account.initializer_key = *ctx.accounts.initializer.key;
+        ctx.accounts.escrow_account.initializer_key = ctx.accounts.initializer.key();
         ctx.accounts
             .escrow_account
-            .initializer_deposit_token_account = *ctx
+            .initializer_deposit_token_account = ctx
             .accounts
             .initializer_deposit_token_account
             .to_account_info()
-            .key;
+            .key();
         ctx.accounts
             .escrow_account
-            .initializer_receive_token_account = *ctx
+            .initializer_receive_token_account = ctx
             .accounts
             .initializer_receive_token_account
             .to_account_info()
-            .key;
+            .key();
         ctx.accounts.escrow_account.initializer_amount = initializer_amount;
         ctx.accounts.escrow_account.taker_amount = taker_amount;
 
@@ -63,12 +65,16 @@ pub mod escrow {
 
     pub fn cancel_escrow(ctx: Context<CancelEscrow>) -> Result<()> {
         let (_pda, bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
-        let seeds = &[&ESCROW_PDA_SEED[..], &[bump_seed]];
+        let signer_seeds = [
+            Seed::from(&ESCROW_PDA_SEED[..]),
+            Seed::from(slice::from_ref(&bump_seed)),
+        ];
+        let signers = [CpiSigner::from(&signer_seeds[..])];
 
         token_interface::set_authority(
             ctx.accounts
                 .into_set_authority_context()
-                .with_signer(&[&seeds[..]]),
+                .with_signer(&signers),
             AuthorityType::AccountOwner,
             Some(ctx.accounts.escrow_account.initializer_key),
         )?;
@@ -79,12 +85,16 @@ pub mod escrow {
     pub fn exchange(ctx: Context<Exchange>) -> Result<()> {
         // Transferring from initializer to taker
         let (_pda, bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
-        let seeds = &[&ESCROW_PDA_SEED[..], &[bump_seed]];
+        let signer_seeds = [
+            Seed::from(&ESCROW_PDA_SEED[..]),
+            Seed::from(slice::from_ref(&bump_seed)),
+        ];
+        let signers = [CpiSigner::from(&signer_seeds[..])];
 
         token_interface::transfer_checked(
             ctx.accounts
                 .into_transfer_to_taker_context()
-                .with_signer(&[&seeds[..]]),
+                .with_signer(&signers),
             ctx.accounts.escrow_account.initializer_amount,
             ctx.accounts.receive_mint.decimals,
         )?;
@@ -98,7 +108,7 @@ pub mod escrow {
         token_interface::set_authority(
             ctx.accounts
                 .into_set_authority_context()
-                .with_signer(&[&seeds[..]]),
+                .with_signer(&signers),
             AuthorityType::AccountOwner,
             Some(ctx.accounts.escrow_account.initializer_key),
         )?;
@@ -128,7 +138,7 @@ pub struct InitializeEscrow<'info> {
 pub struct Exchange<'info> {
     #[account(signer)]
     /// CHECK:
-    pub taker: AccountInfo<'info>,
+    pub taker: AccountInfo,
     #[account(mut, token::mint = deposit_mint)]
     pub taker_deposit_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, token::mint = receive_mint)]
@@ -139,18 +149,18 @@ pub struct Exchange<'info> {
     pub initializer_receive_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut)]
     /// CHECK:
-    pub initializer_main_account: AccountInfo<'info>,
+    pub initializer_main_account: AccountInfo,
     #[account(
         mut,
         constraint = escrow_account.taker_amount <= taker_deposit_token_account.amount,
-        constraint = escrow_account.initializer_deposit_token_account == *pda_deposit_token_account.to_account_info().key,
-        constraint = escrow_account.initializer_receive_token_account == *initializer_receive_token_account.to_account_info().key,
-        constraint = escrow_account.initializer_key == *initializer_main_account.key,
+        constraint = escrow_account.initializer_deposit_token_account == pda_deposit_token_account.to_account_info().key(),
+        constraint = escrow_account.initializer_receive_token_account == initializer_receive_token_account.to_account_info().key(),
+        constraint = escrow_account.initializer_key == initializer_main_account.key(),
         close = initializer_main_account
     )]
     pub escrow_account: Account<'info, EscrowAccount>,
     /// CHECK:
-    pub pda_account: AccountInfo<'info>,
+    pub pda_account: AccountInfo,
     pub deposit_mint: Box<InterfaceAccount<'info, Mint>>,
     pub receive_mint: Box<InterfaceAccount<'info, Mint>>,
     pub deposit_token_program: Interface<'info, TokenInterface>,
@@ -160,15 +170,15 @@ pub struct Exchange<'info> {
 #[derive(Accounts)]
 pub struct CancelEscrow<'info> {
     /// CHECK:
-    pub initializer: AccountInfo<'info>,
+    pub initializer: AccountInfo,
     #[account(mut)]
     pub pda_deposit_token_account: InterfaceAccount<'info, TokenAccount>,
     /// CHECK:
-    pub pda_account: AccountInfo<'info>,
+    pub pda_account: AccountInfo,
     #[account(
         mut,
-        constraint = escrow_account.initializer_key == *initializer.key,
-        constraint = escrow_account.initializer_deposit_token_account == *pda_deposit_token_account.to_account_info().key,
+        constraint = escrow_account.initializer_key == initializer.key(),
+        constraint = escrow_account.initializer_deposit_token_account == pda_deposit_token_account.to_account_info().key(),
         close = initializer
     )]
     pub escrow_account: Account<'info, EscrowAccount>,
@@ -189,14 +199,13 @@ impl EscrowAccount {
 }
 
 impl<'info> From<&mut InitializeEscrow<'info>>
-    for CpiContext<'_, '_, '_, 'info, SetAuthority<'info>>
+    for CpiContext<'_, '_, SetAuthority>
 {
     fn from(accounts: &mut InitializeEscrow<'info>) -> Self {
         let cpi_accounts = SetAuthority {
             account_or_mint: accounts
                 .initializer_deposit_token_account
-                .to_account_info()
-                .clone(),
+                .to_account_info(),
             current_authority: accounts.initializer.to_account_info(),
         };
         let cpi_program_id = accounts.token_program.key();
@@ -205,10 +214,10 @@ impl<'info> From<&mut InitializeEscrow<'info>>
 }
 
 impl<'info> CancelEscrow<'info> {
-    fn into_set_authority_context(&self) -> CpiContext<'_, '_, '_, 'info, SetAuthority<'info>> {
+    fn into_set_authority_context(&self) -> CpiContext<'_, '_, SetAuthority> {
         let cpi_accounts = SetAuthority {
             account_or_mint: self.pda_deposit_token_account.to_account_info(),
-            current_authority: self.pda_account.clone(),
+            current_authority: self.pda_account,
         };
         let cpi_program_id = self.token_program.key();
         CpiContext::new(cpi_program_id, cpi_accounts)
@@ -216,10 +225,10 @@ impl<'info> CancelEscrow<'info> {
 }
 
 impl<'info> Exchange<'info> {
-    fn into_set_authority_context(&self) -> CpiContext<'_, '_, '_, 'info, SetAuthority<'info>> {
+    fn into_set_authority_context(&self) -> CpiContext<'_, '_, SetAuthority> {
         let cpi_accounts = SetAuthority {
             account_or_mint: self.pda_deposit_token_account.to_account_info(),
-            current_authority: self.pda_account.clone(),
+            current_authority: self.pda_account,
         };
         let cpi_program_id = self.receive_token_program.key();
         CpiContext::new(cpi_program_id, cpi_accounts)
@@ -229,12 +238,12 @@ impl<'info> Exchange<'info> {
 impl<'info> Exchange<'info> {
     fn into_transfer_to_taker_context(
         &self,
-    ) -> CpiContext<'_, '_, '_, 'info, TransferChecked<'info>> {
+    ) -> CpiContext<'_, '_, TransferChecked> {
         let cpi_accounts = TransferChecked {
             from: self.pda_deposit_token_account.to_account_info(),
             mint: self.receive_mint.to_account_info(),
             to: self.taker_receive_token_account.to_account_info(),
-            authority: self.pda_account.clone(),
+            authority: self.pda_account,
         };
         let cpi_program_id = self.receive_token_program.key();
         CpiContext::new(cpi_program_id, cpi_accounts)
@@ -244,15 +253,14 @@ impl<'info> Exchange<'info> {
 impl<'info> Exchange<'info> {
     fn into_transfer_to_initializer_context(
         &self,
-    ) -> CpiContext<'_, '_, '_, 'info, TransferChecked<'info>> {
+    ) -> CpiContext<'_, '_, TransferChecked> {
         let cpi_accounts = TransferChecked {
             from: self.taker_deposit_token_account.to_account_info(),
             mint: self.deposit_mint.to_account_info(),
             to: self
                 .initializer_receive_token_account
-                .to_account_info()
-                .clone(),
-            authority: self.taker.clone(),
+                .to_account_info(),
+            authority: self.taker,
         };
         let cpi_program_id = self.deposit_token_program.key();
         CpiContext::new(cpi_program_id, cpi_accounts)

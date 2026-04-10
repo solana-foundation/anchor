@@ -3,16 +3,111 @@
 use {
     crate::{
         error::ErrorCode,
-        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        pinocchio_runtime::{
+            account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
+            pubkey::Pubkey,
+        },
         Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas,
     },
-    solana_sysvar::{Sysvar as SolanaSysvar, SysvarSerialize as SolanaSysvarSerialize},
+    pinocchio::sysvars::Sysvar as PinocchioSysvar,
     std::{
         collections::BTreeSet,
         fmt,
         ops::{Deref, DerefMut},
     },
 };
+
+/// Loads a sysvar value after validating the account address matches the sysvar.
+pub trait SysvarFromAccount: Sized {
+    fn from_account_info(info: &AccountInfo) -> Result<Self>;
+}
+
+fn program_err(e: ProgramError) -> crate::error::Error {
+    e.into()
+}
+
+fn bincode_from_sysvar_account<T: solana_sysvar::SysvarSerialize>(info: &AccountInfo) -> Result<T> {
+    if !T::check_id(info.address()) {
+        return Err(ErrorCode::AccountSysvarMismatch.into());
+    }
+    let data = info.try_borrow().map_err(program_err)?;
+    bincode::deserialize(&data).map_err(|_| ErrorCode::AccountDidNotDeserialize.into())
+}
+
+impl SysvarFromAccount for pinocchio::sysvars::clock::Clock {
+    fn from_account_info(info: &AccountInfo) -> Result<Self> {
+        use solana_sdk_ids::sysvar::clock;
+        if !clock::check_id(info.address()) {
+            return Err(ErrorCode::AccountSysvarMismatch.into());
+        }
+        PinocchioSysvar::get().map_err(program_err)
+    }
+}
+
+impl SysvarFromAccount for pinocchio::sysvars::fees::Fees {
+    fn from_account_info(info: &AccountInfo) -> Result<Self> {
+        use solana_sdk_ids::sysvar::fees;
+        if !fees::check_id(info.address()) {
+            return Err(ErrorCode::AccountSysvarMismatch.into());
+        }
+        PinocchioSysvar::get().map_err(program_err)
+    }
+}
+
+impl SysvarFromAccount for crate::Rent {
+    fn from_account_info(info: &AccountInfo) -> Result<Self> {
+        if !crate::rent::check_id(info.address()) {
+            return Err(ErrorCode::AccountSysvarMismatch.into());
+        }
+        <Self as solana_sysvar::Sysvar>::get().map_err(program_err)
+    }
+}
+
+impl SysvarFromAccount for solana_sysvar::epoch_schedule::EpochSchedule {
+    fn from_account_info(info: &AccountInfo) -> Result<Self> {
+        use solana_sdk_ids::sysvar::epoch_schedule;
+        if !epoch_schedule::check_id(info.address()) {
+            return Err(ErrorCode::AccountSysvarMismatch.into());
+        }
+        <Self as solana_sysvar::Sysvar>::get().map_err(program_err)
+    }
+}
+
+impl SysvarFromAccount for solana_sysvar::rewards::Rewards {
+    fn from_account_info(info: &AccountInfo) -> Result<Self> {
+        bincode_from_sysvar_account(info)
+    }
+}
+
+impl SysvarFromAccount for solana_sysvar::slot_history::SlotHistory {
+    fn from_account_info(info: &AccountInfo) -> Result<Self> {
+        use solana_sysvar::slot_history::check_id;
+        if !check_id(info.address()) {
+            return Err(ErrorCode::AccountSysvarMismatch.into());
+        }
+        Err(program_err(ProgramError::UnsupportedSysvar))
+    }
+}
+
+#[allow(deprecated)]
+impl SysvarFromAccount for solana_sysvar::recent_blockhashes::RecentBlockhashes {
+    fn from_account_info(info: &AccountInfo) -> Result<Self> {
+        bincode_from_sysvar_account(info)
+    }
+}
+
+impl SysvarFromAccount for crate::stake_history::StakeHistory {
+    fn from_account_info(info: &AccountInfo) -> Result<Self> {
+        use crate::stake_history::check_id;
+        if !check_id(info.address()) {
+            return Err(ErrorCode::AccountSysvarMismatch.into());
+        }
+        let data = info.try_borrow().map_err(program_err)?;
+        bincode::deserialize(&data)
+            .map(crate::stake_history::StakeHistory)
+            .map_err(|_| ErrorCode::AccountDidNotDeserialize.into())
+    }
+}
 
 /// Type validating that the account is a sysvar and deserializing it.
 ///
@@ -35,12 +130,12 @@ use {
 ///     let clock = Clock::get()?;
 /// }
 /// ```
-pub struct Sysvar<'info, T: SolanaSysvar> {
-    info: &'info AccountInfo<'info>,
+pub struct Sysvar<'info, T> {
+    info: &'info AccountInfo,
     account: T,
 }
 
-impl<T: SolanaSysvarSerialize + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
+impl<T: fmt::Debug> fmt::Debug for Sysvar<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Sysvar")
             .field("info", &self.info)
@@ -49,63 +144,25 @@ impl<T: SolanaSysvarSerialize + fmt::Debug> fmt::Debug for Sysvar<'_, T> {
     }
 }
 
-impl<'info, T: SolanaSysvarSerialize> Sysvar<'info, T> {
-    pub fn from_account_info(acc_info: &'info AccountInfo<'info>) -> Result<Sysvar<'info, T>> {
-        match T::from_account_info(acc_info) {
-            Ok(val) => Ok(Sysvar {
-                info: acc_info,
-                account: val,
-            }),
-            Err(_) => Err(ErrorCode::AccountSysvarMismatch.into()),
-        }
+impl<T> ToAccountMetas for Sysvar<'_, T> {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta<'_>> {
+        vec![AccountMeta::readonly(self.info.address())]
     }
 }
 
-impl<T: SolanaSysvarSerialize> Clone for Sysvar<'_, T> {
-    fn clone(&self) -> Self {
-        Self {
-            info: self.info,
-            account: T::from_account_info(self.info).unwrap(),
-        }
+impl<'info, T> ToAccountInfos<'info> for Sysvar<'info, T> {
+    fn to_account_infos(&self) -> Vec<AccountInfo> {
+        vec![*self.info]
     }
 }
 
-impl<'info, B, T: SolanaSysvarSerialize> Accounts<'info, B> for Sysvar<'info, T> {
-    fn try_accounts(
-        _program_id: &Pubkey,
-        accounts: &mut &'info [AccountInfo<'info>],
-        _ix_data: &[u8],
-        _bumps: &mut B,
-        _reallocs: &mut BTreeSet<Pubkey>,
-    ) -> Result<Self> {
-        if accounts.is_empty() {
-            return Err(ErrorCode::AccountNotEnoughKeys.into());
-        }
-        let account = &accounts[0];
-        *accounts = &accounts[1..];
-        Sysvar::from_account_info(account)
-    }
-}
-
-impl<T: SolanaSysvarSerialize> ToAccountMetas for Sysvar<'_, T> {
-    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<AccountMeta> {
-        vec![AccountMeta::new_readonly(*self.info.key, false)]
-    }
-}
-
-impl<'info, T: SolanaSysvarSerialize> ToAccountInfos<'info> for Sysvar<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.info.clone()]
-    }
-}
-
-impl<'info, T: SolanaSysvarSerialize> AsRef<AccountInfo<'info>> for Sysvar<'info, T> {
-    fn as_ref(&self) -> &AccountInfo<'info> {
+impl<'info, T> AsRef<AccountInfo> for Sysvar<'info, T> {
+    fn as_ref(&self) -> &AccountInfo {
         self.info
     }
 }
 
-impl<T: SolanaSysvarSerialize> Deref for Sysvar<'_, T> {
+impl<T> Deref for Sysvar<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -113,16 +170,34 @@ impl<T: SolanaSysvarSerialize> Deref for Sysvar<'_, T> {
     }
 }
 
-impl<T: SolanaSysvarSerialize> DerefMut for Sysvar<'_, T> {
+impl<T> DerefMut for Sysvar<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.account
     }
 }
 
-impl<'info, T: SolanaSysvarSerialize> AccountsExit<'info> for Sysvar<'info, T> {}
+impl<'info, T: SysvarFromAccount, B> Accounts<'info, B> for Sysvar<'info, T> {
+    fn try_accounts(
+        _program_id: &Pubkey,
+        accounts: &mut &'info [AccountInfo],
+        _ix_data: &[u8],
+        _bumps: &mut B,
+        _reallocs: &mut BTreeSet<Pubkey>,
+    ) -> Result<Self> {
+        if accounts.is_empty() {
+            return Err(ErrorCode::AccountNotEnoughKeys.into());
+        }
+        let info = &accounts[0];
+        *accounts = &accounts[1..];
+        let account = T::from_account_info(info)?;
+        Ok(Self { info, account })
+    }
+}
 
-impl<T: SolanaSysvarSerialize> Key for Sysvar<'_, T> {
+impl<'info, T> AccountsExit<'info> for Sysvar<'info, T> {}
+
+impl<T> Key for Sysvar<'_, T> {
     fn key(&self) -> Pubkey {
-        *self.info.key
+        *self.info.address()
     }
 }
