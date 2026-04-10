@@ -6,7 +6,7 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program_error::ProgramError,
-    crate::{AnchorAccount, AnchorAccountInit, Discriminator, Id, Owner},
+    crate::{AnchorAccount, Discriminator, Id, Owner},
 };
 
 /// Controls how `Account<T>` validates and maps account data.
@@ -56,22 +56,56 @@ impl<T: Owner + Discriminator> AccountValidate for T {
 /// (`token::mint = mint` → `params.mint = Some(mint.account())`).
 /// Missing fields get `None` from `Default`. Unknown fields → compile error.
 ///
-/// The `create_and_initialize` method handles both account creation
-/// (system program CPI) and type-specific initialization (e.g. token program CPI).
-/// This keeps all account creation logic in the type, not in the macro.
+/// Blanket impl for `Owner + Discriminator` handles Anchor program accounts
+/// (create account + write discriminator). External types (TokenAccount, Mint)
+/// implement this directly with custom CPI logic.
 pub trait AccountInitialize {
     type Params<'a>: Default;
 
     /// Create the account and initialize it.
-    /// `payer` funds the account, `account` is the target, `program_id` is the
-    /// owning program. For PDA accounts, `signer_seeds` contains the seeds + bump.
+    /// `space` is the total account data size (including discriminator).
     fn create_and_initialize<'a>(
         payer: &AccountView,
         account: &AccountView,
+        space: usize,
         program_id: &Address,
         params: &Self::Params<'a>,
         signer_seeds: Option<&[&[u8]]>,
     ) -> Result<(), ProgramError>;
+}
+
+/// Blanket impl: all Anchor program accounts (Owner + Discriminator) get default
+/// init behavior — create_account + write discriminator. The remaining data is
+/// zeroed by create_account, which is valid for both Pod and borsh types
+/// (borsh zero bytes = default values for integers, empty strings/vecs).
+impl<T: Owner + Discriminator> AccountInitialize for T {
+    type Params<'a> = ();
+
+    fn create_and_initialize<'a>(
+        payer: &AccountView,
+        account: &AccountView,
+        space: usize,
+        program_id: &Address,
+        _params: &(),
+        signer_seeds: Option<&[&[u8]]>,
+    ) -> Result<(), ProgramError> {
+        let disc = T::DISCRIMINATOR;
+        match signer_seeds {
+            Some(seeds) => crate::create_account_signed(payer, account, space, program_id, seeds)?,
+            None => crate::create_account(payer, account, space, program_id)?,
+        }
+        // Write discriminator after CPI. The account data pointer may have
+        // changed after create_account (the account went from 0 to N bytes),
+        // so we must use the current view, not a stale copy.
+        // Use borrow_unchecked_mut to avoid holding a RefMut that would
+        // conflict with the subsequent load_mut.
+        let mut account_view = *account;
+        unsafe {
+            let data = account_view.borrow_unchecked_mut();
+            data[..disc.len()].copy_from_slice(disc);
+        }
+        Ok(())
+    }
 }
 
 /// Zero-copy account type (new default in Anchor v2).
@@ -175,25 +209,6 @@ impl<T: Pod + Zeroable + AccountValidate> AnchorAccount for Account<T> {
         self_view.set_lamports(0);
         self_view.close()?;
         Ok(())
-    }
-}
-
-impl<T: Pod + Zeroable + AccountValidate + Discriminator> AnchorAccountInit for Account<T> {
-    fn init(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        let mut view_mut = view;
-        let mut data_ref = view_mut.try_borrow_mut()?;
-        let disc = T::DISCRIMINATOR;
-        let min_len = disc.len() + core::mem::size_of::<T>();
-        if data_ref.len() < min_len {
-            return Err(ProgramError::AccountDataTooSmall);
-        }
-        data_ref[..disc.len()].copy_from_slice(disc);
-        data_ref[disc.len()..min_len].fill(0);
-        let offset = disc.len();
-        // SAFETY: same lifetime reasoning as from_ref_mut
-        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let ptr = guard[offset..].as_mut_ptr() as *mut T;
-        Ok(Self { view, borrow: BorrowState::Mutable { _guard: guard, ptr } })
     }
 }
 

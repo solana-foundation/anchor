@@ -4,7 +4,7 @@ use {
     pinocchio::address::Address,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program_error::ProgramError,
-    crate::{AnchorAccount, AnchorAccountInit, Discriminator, Id, Owner, DISC_LEN},
+    crate::{AnchorAccount, Discriminator, Id, Owner, DISC_LEN},
 };
 
 /// Borsh-serialized account type.
@@ -99,24 +99,6 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
                 .map_err(|_| ProgramError::InvalidAccountData)?;
         }
         Ok(())
-    }
-}
-
-impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator + Default> AnchorAccountInit for BorshAccount<T> {
-    fn init(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        let mut view_mut = view;
-        let mut data_ref = view_mut.try_borrow_mut()?;
-        if data_ref.len() < DISC_LEN {
-            return Err(ProgramError::AccountDataTooSmall);
-        }
-        // Write discriminator + default data
-        data_ref[..DISC_LEN].copy_from_slice(T::DISCRIMINATOR);
-        let data = T::default();
-        data.serialize(&mut &mut data_ref[DISC_LEN..])
-            .map_err(|_| ProgramError::InvalidAccountData)?;
-        // Keep the mutable borrow for exit()
-        let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        Ok(Self { view, data, borrow: BorshBorrow::Mutable { guard } })
     }
 }
 
