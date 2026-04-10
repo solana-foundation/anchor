@@ -12,9 +12,206 @@ fn rent_exempt_lamports(space: usize) -> u64 {
     (ACCOUNT_STORAGE_OVERHEAD + space as u64) * DEFAULT_LAMPORTS_PER_BYTE
 }
 
-/// Find a program-derived address (PDA).
+/// Find a program-derived address (PDA) and its bump seed.
+///
+/// Uses raw `sol_sha256` + `sol_curve_validate_point` syscalls directly instead
+/// of the higher-level `sol_try_find_program_address` syscall, reducing per-attempt
+/// cost from ~1,500 CU to ~544 CU.
+///
+/// Based on Quasar's implementation:
+/// https://github.com/blueshift-gg/quasar/blob/8a62367/lang/src/pda.rs#L93-L182
+#[inline(always)]
 pub fn find_program_address(seeds: &[&[u8]], program_id: &Address) -> (Address, u8) {
-    Address::find_program_address(seeds, program_id)
+    match try_find_program_address(seeds, program_id) {
+        Ok(result) => result,
+        Err(_) => panic!("could not find PDA"),
+    }
+}
+
+/// Find a program-derived address, returning an error if none exists.
+///
+/// Uses raw `sol_sha256` + `sol_curve_validate_point` syscalls for ~3x lower CU
+/// than `sol_try_find_program_address`.
+///
+/// Based on Quasar's implementation:
+/// https://github.com/blueshift-gg/quasar/blob/8a62367/lang/src/pda.rs#L93-L182
+#[inline(always)]
+pub fn try_find_program_address(
+    seeds: &[&[u8]],
+    program_id: &Address,
+) -> Result<(Address, u8), ProgramError> {
+    if seeds.len() > 16 {
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    #[cfg(target_os = "solana")]
+    {
+        use solana_define_syscall::definitions::{sol_curve_validate_point, sol_sha256};
+
+        const CURVE25519_EDWARDS: u64 = 0;
+        const PDA_MARKER: &[u8; 21] = b"ProgramDerivedAddress";
+
+        let n = seeds.len();
+
+        // Build the input array: [seeds..., bump, program_id, PDA_MARKER].
+        // Max 16 seeds + bump + program_id + marker = 19 entries.
+        let mut slices = core::mem::MaybeUninit::<[&[u8]; 19]>::uninit();
+        let sptr = slices.as_mut_ptr() as *mut &[u8];
+
+        let mut i = 0;
+        while i < n {
+            unsafe { sptr.add(i).write(seeds[i]) };
+            i += 1;
+        }
+        unsafe {
+            sptr.add(n + 1).write(program_id.as_ref());
+            sptr.add(n + 2).write(PDA_MARKER.as_slice());
+        }
+
+        // The bump slot points into bump_arr — only the byte changes per iteration.
+        let mut bump_arr = [u8::MAX];
+        let bump_ptr = bump_arr.as_mut_ptr();
+        unsafe { sptr.add(n).write(core::slice::from_raw_parts(bump_ptr, 1)) };
+
+        let input = unsafe { core::slice::from_raw_parts(sptr, n + 3) };
+        let mut hash = core::mem::MaybeUninit::<[u8; 32]>::uninit();
+
+        let mut bump: u64 = u8::MAX as u64;
+
+        loop {
+            unsafe { bump_ptr.write(bump as u8) };
+
+            unsafe {
+                sol_sha256(
+                    input as *const _ as *const u8,
+                    input.len() as u64,
+                    hash.as_mut_ptr() as *mut u8,
+                );
+            }
+
+            // Returns 0 if on curve, non-zero if off curve (valid PDA).
+            let on_curve = unsafe {
+                sol_curve_validate_point(
+                    CURVE25519_EDWARDS,
+                    hash.as_ptr() as *const u8,
+                    core::ptr::null_mut(),
+                )
+            };
+
+            if on_curve != 0 {
+                let hash_bytes = unsafe { hash.assume_init() };
+                return Ok((Address::new_from_array(hash_bytes), bump as u8));
+            }
+
+            if bump == 0 {
+                break;
+            }
+            bump -= 1;
+        }
+
+        Err(ProgramError::InvalidSeeds)
+    }
+
+    #[cfg(not(target_os = "solana"))]
+    {
+        // Off-chain fallback: use the standard SDK implementation.
+        Ok(Address::find_program_address(seeds, program_id))
+    }
+}
+
+/// Verify a program-derived address (PDA) using a known bump seed.
+///
+/// Uses `sol_sha256` directly (~200 CU) instead of `sol_create_program_address`
+/// (~1,500 CU). The seeds slice should already include the bump byte.
+///
+/// Based on Quasar's implementation:
+/// https://github.com/blueshift-gg/quasar/blob/8a62367/lang/src/pda.rs#L23-L84
+#[inline(always)]
+pub fn create_program_address(seeds: &[&[u8]], program_id: &Address) -> Result<Address, ProgramError> {
+    #[cfg(target_os = "solana")]
+    {
+        Ok(hash_pda_seeds(seeds, program_id)?)
+    }
+
+    #[cfg(not(target_os = "solana"))]
+    {
+        Address::create_program_address(seeds, program_id).map_err(Into::into)
+    }
+}
+
+/// Verify that `expected` matches the PDA derived from `seeds` and `program_id`.
+///
+/// Skips the `sol_curve_validate_point` check — the bump is assumed valid
+/// (it was derived during account creation). Only computes `sha256` and
+/// compares the hash (~200 CU vs ~544 CU for find, ~350 CU for create).
+///
+/// Based on Quasar's `verify_program_address`:
+/// https://github.com/blueshift-gg/quasar/blob/8a62367/lang/src/pda.rs#L23-L84
+#[inline(always)]
+pub fn verify_program_address(
+    seeds: &[&[u8]],
+    program_id: &Address,
+    expected: &Address,
+) -> Result<(), ProgramError> {
+    #[cfg(target_os = "solana")]
+    {
+        let computed = hash_pda_seeds(seeds, program_id)?;
+        if computed == *expected {
+            Ok(())
+        } else {
+            Err(ProgramError::InvalidSeeds)
+        }
+    }
+
+    #[cfg(not(target_os = "solana"))]
+    {
+        let computed = Address::create_program_address(seeds, program_id)
+            .map_err(|_| ProgramError::InvalidSeeds)?;
+        if computed == *expected {
+            Ok(())
+        } else {
+            Err(ProgramError::InvalidSeeds)
+        }
+    }
+}
+
+/// Hash seeds into a PDA address (sha256 only, no curve check).
+#[cfg(target_os = "solana")]
+#[inline(always)]
+fn hash_pda_seeds(seeds: &[&[u8]], program_id: &Address) -> Result<Address, ProgramError> {
+    use solana_define_syscall::definitions::sol_sha256;
+    const PDA_MARKER: &[u8; 21] = b"ProgramDerivedAddress";
+
+    if seeds.len() > 17 {
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    let n = seeds.len();
+    let mut slices = core::mem::MaybeUninit::<[&[u8]; 19]>::uninit();
+    let sptr = slices.as_mut_ptr() as *mut &[u8];
+
+    let mut i = 0;
+    while i < n {
+        unsafe { sptr.add(i).write(seeds[i]) };
+        i += 1;
+    }
+    unsafe {
+        sptr.add(n).write(program_id.as_ref());
+        sptr.add(n + 1).write(PDA_MARKER.as_slice());
+    }
+
+    let input = unsafe { core::slice::from_raw_parts(sptr, n + 2) };
+    let mut hash = core::mem::MaybeUninit::<[u8; 32]>::uninit();
+
+    unsafe {
+        sol_sha256(
+            input as *const _ as *const u8,
+            input.len() as u64,
+            hash.as_mut_ptr() as *mut u8,
+        );
+    }
+
+    Ok(Address::new_from_array(unsafe { hash.assume_init() }))
 }
 
 /// Create a new account via system program CPI (no PDA signing).
@@ -50,18 +247,13 @@ pub fn create_account_signed(
     let required = rent_exempt_lamports(space);
     let current = target.lamports();
 
-    // Stack-allocated seed array (max 16 seeds per Solana spec)
-    assert!(seeds.len() <= 16, "PDA seeds exceed maximum of 16");
-    let mut pino_seeds: [core::mem::MaybeUninit<pinocchio::cpi::Seed>; 16] =
-        unsafe { core::mem::MaybeUninit::uninit().assume_init() };
-    for (i, s) in seeds.iter().enumerate() {
-        pino_seeds[i].write(pinocchio::cpi::Seed::from(*s));
-    }
-    // SAFETY: first `seeds.len()` elements are initialized above
-    let initialized = unsafe {
-        core::slice::from_raw_parts(pino_seeds.as_ptr() as *const pinocchio::cpi::Seed, seeds.len())
+    // SAFETY: `Seed` is repr(C) with layout (*const u8, u64, PhantomData) = 16 bytes,
+    // identical to `&[u8]` on SBF (*const u8, u64) = 16 bytes. PhantomData is zero-sized.
+    // This cast avoids copying seed data into a MaybeUninit array.
+    let signer_seeds: &[pinocchio::cpi::Seed] = unsafe {
+        core::slice::from_raw_parts(seeds.as_ptr() as *const pinocchio::cpi::Seed, seeds.len())
     };
-    let signer = pinocchio::cpi::Signer::from(initialized);
+    let signer = pinocchio::cpi::Signer::from(signer_seeds);
 
     if current == 0 {
         pinocchio_system::instructions::CreateAccount {
