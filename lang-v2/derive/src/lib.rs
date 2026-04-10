@@ -170,6 +170,24 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             });
         }
 
+        // --- mut writability check ---
+        if attrs.is_mut && !attrs.is_init && !attrs.is_init_if_needed {
+            constraint_stmts.push(quote! {
+                if !#field_name.account().is_writable() {
+                    return Err(anchor_lang_v2::ErrorCode::ConstraintMut.into());
+                }
+            });
+        }
+
+        // --- signer check (explicit #[account(signer)] on non-Signer types) ---
+        if attrs.is_signer {
+            constraint_stmts.push(quote! {
+                if !#field_name.account().is_signer() {
+                    return Err(anchor_lang_v2::ErrorCode::ConstraintSigner.into());
+                }
+            });
+        }
+
         // --- Seeds constraint (non-init, non-init_if_needed) ---
         if !attrs.is_init && !attrs.is_init_if_needed {
             if let Some(ref seeds) = attrs.seeds {
@@ -261,6 +279,13 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
         // --- exit / close ---
         if let Some(ref close_target) = attrs.close {
+            // Prevent self-closing: closing an account to itself would zero its data
+            // and lamports, effectively destroying the account with no destination.
+            constraint_stmts.push(quote! {
+                if #field_name.account().address() == #close_target.account().address() {
+                    return Err(anchor_lang_v2::ErrorCode::ConstraintClose.into());
+                }
+            });
             exit_stmts.push(quote! {
                 anchor_lang_v2::AnchorAccount::close(&mut self.#field_name, *self.#close_target.account())?;
             });

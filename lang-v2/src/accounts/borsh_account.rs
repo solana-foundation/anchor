@@ -4,7 +4,7 @@ use {
     pinocchio::address::Address,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program_error::ProgramError,
-    crate::{AnchorAccount, AnchorAccountInit, Discriminator, Owner, DISC_LEN},
+    crate::{AnchorAccount, AnchorAccountInit, Discriminator, Id, Owner, DISC_LEN},
 };
 
 /// Borsh-serialized account type.
@@ -28,6 +28,10 @@ enum BorshBorrow {
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<T> {
     fn validate_and_load(view: AccountView, data: &[u8]) -> Result<T, ProgramError> {
+        // Reject uninitialized accounts (system-owned with zero lamports).
+        if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
+            return Err(ProgramError::UninitializedAccount);
+        }
         if !view.owned_by(&T::owner()) {
             return Err(ProgramError::IllegalOwner);
         }
@@ -56,6 +60,9 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
     }
 
     fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
+        if !view.is_writable() {
+            return Err(ProgramError::InvalidAccountData);
+        }
         let mut view_mut = view;
         let data_ref = view_mut.try_borrow_mut()?;
         let data = Self::validate_and_load(view, &data_ref)?;
@@ -82,6 +89,10 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
     }
 
     fn exit(&mut self) -> pinocchio::ProgramResult {
+        // Skip serialization if account was closed (lamports == 0, reassigned to system program).
+        if self.view.lamports() == 0 {
+            return Ok(());
+        }
         // Write through the held RefMut — no need to re-acquire the borrow
         if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
             self.data.serialize(&mut &mut guard[DISC_LEN..])

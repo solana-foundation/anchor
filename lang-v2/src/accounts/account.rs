@@ -6,7 +6,7 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program_error::ProgramError,
-    crate::{AnchorAccount, AnchorAccountInit, Discriminator, Owner, DISC_LEN},
+    crate::{AnchorAccount, AnchorAccountInit, Discriminator, Id, Owner, DISC_LEN},
 };
 
 /// Zero-copy account type (new default in Anchor v2).
@@ -28,6 +28,10 @@ enum BorrowState<T> {
 
 impl<T: Pod + Zeroable + Owner + Discriminator> Account<T> {
     fn check_owner_and_disc(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
+        // Reject uninitialized accounts (system-owned with zero lamports).
+        if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
+            return Err(ProgramError::UninitializedAccount);
+        }
         if !view.owned_by(&T::owner()) {
             return Err(ProgramError::IllegalOwner);
         }
@@ -75,6 +79,9 @@ impl<T: Pod + Zeroable + Owner + Discriminator> AnchorAccount for Account<T> {
     }
 
     fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
+        if !view.is_writable() {
+            return Err(ProgramError::InvalidAccountData);
+        }
         Self::from_ref_mut(view)
     }
 
