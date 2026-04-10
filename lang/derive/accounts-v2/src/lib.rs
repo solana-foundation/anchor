@@ -1,15 +1,14 @@
 extern crate proc_macro;
 
+mod idl;
+mod parse;
+
 use {
     proc_macro::TokenStream,
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
-    syn::{
-        ext::IdentExt,
-        parse::{Parse, ParseStream},
-        parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, FnArg, Ident, ItemMod,
-        Pat, Token, Type,
-    },
+    syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, Ident, ItemMod, Pat, Type},
+    parse::{parse_account_attrs, field_ty_str, is_nested_type},
 };
 
 // ---------------------------------------------------------------------------
@@ -36,6 +35,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let mut constraint_stmts = Vec::new();
     let mut exit_stmts = Vec::new();
     let mut field_names = Vec::new();
+    let mut idl_accounts: Vec<(String, bool, bool)> = Vec::new();
 
     let account_count = fields.iter().filter(|f| !is_nested_type(&f.ty)).count();
 
@@ -47,26 +47,23 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
         field_names.push(field_name.clone());
 
+        let is_signer = field_ty_str(field_ty) == "Signer";
+        idl_accounts.push((name_str.clone(), attrs.is_mut, is_signer || attrs.is_init));
+
         if is_nested_type(field_ty) {
-            load_stmts.push(quote! {
-                compile_error!("Nested<T> codegen not yet implemented");
-            });
+            load_stmts.push(quote! { compile_error!("Nested<T> codegen not yet implemented"); });
             continue;
         }
 
-        // --- Seeds / PDA ---
         if let Some(ref seeds) = attrs.seeds {
             let seed_exprs = seeds;
             if attrs.is_init {
-                // init + seeds: find PDA, then create with invoke_signed
                 let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
                 let space = attrs.space.as_ref().expect("#[account(init)] requires space");
-
                 load_stmts.push(quote! {
                     let mut #field_name = {
                         let (__pda, __bump) = anchor_lang::v2::find_program_address(
-                            &[#(#seed_exprs),*],
-                            __program_id,
+                            &[#(#seed_exprs),*], __program_id,
                         );
                         let __target = __accounts[__account_idx];
                         if *__target.address() != __pda {
@@ -76,36 +73,24 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                         }
                         let __payer = #payer.account();
                         anchor_lang::v2::create_account_signed(
-                            __payer,
-                            &__target,
-                            #space,
-                            __program_id,
+                            __payer, &__target, #space, __program_id,
                             &[#(#seed_exprs),* , &[__bump]],
                         )?;
                         <#field_ty as anchor_lang::v2::AnchorAccountInit>::init(
                             __target, __program_id,
-                        ).map_err(|e| {
-                            anchor_lang::error::Error::from(e).with_account_name(#name_str)
-                        })?
+                        ).map_err(|e| anchor_lang::error::Error::from(e).with_account_name(#name_str))?
                     };
                     __account_idx += 1;
                 });
             } else {
-                // seeds without init: validate PDA address
                 let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
                 let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
-
                 load_stmts.push(quote! {
                     #binding #field_name = <#field_ty as anchor_lang::v2::AnchorAccount>::#load_fn(
                         __accounts[__account_idx], __program_id,
-                    ).map_err(|e| {
-                        anchor_lang::error::Error::from(e).with_account_name(#name_str)
-                    })?;
+                    ).map_err(|e| anchor_lang::error::Error::from(e).with_account_name(#name_str))?;
                     __account_idx += 1;
                 });
-
-                // TODO: when bump value is provided, use create_program_address instead
-                // of find_program_address to save ~1000 CUs
                 constraint_stmts.push(quote! {
                     let (__pda, _) = anchor_lang::v2::find_program_address(
                         &[#(#seed_exprs),*], __program_id,
@@ -118,41 +103,30 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 });
             }
         } else if attrs.is_init {
-            // init without seeds
             let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
             let space = attrs.space.as_ref().expect("#[account(init)] requires space");
-
             load_stmts.push(quote! {
                 let mut #field_name = {
                     let __target = __accounts[__account_idx];
                     let __payer = #payer.account();
-                    anchor_lang::v2::create_account(
-                        __payer, &__target, #space, __program_id,
-                    )?;
+                    anchor_lang::v2::create_account(__payer, &__target, #space, __program_id)?;
                     <#field_ty as anchor_lang::v2::AnchorAccountInit>::init(
                         __target, __program_id,
-                    ).map_err(|e| {
-                        anchor_lang::error::Error::from(e).with_account_name(#name_str)
-                    })?
+                    ).map_err(|e| anchor_lang::error::Error::from(e).with_account_name(#name_str))?
                 };
                 __account_idx += 1;
             });
         } else {
-            // Normal load
             let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
             let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
-
             load_stmts.push(quote! {
                 #binding #field_name = <#field_ty as anchor_lang::v2::AnchorAccount>::#load_fn(
                     __accounts[__account_idx], __program_id,
-                ).map_err(|e| {
-                    anchor_lang::error::Error::from(e).with_account_name(#name_str)
-                })?;
+                ).map_err(|e| anchor_lang::error::Error::from(e).with_account_name(#name_str))?;
                 __account_idx += 1;
             });
         }
 
-        // --- has_one ---
         for ho in &attrs.has_one {
             constraint_stmts.push(quote! {
                 if AsRef::<[u8]>::as_ref(&#field_name.#ho) != AsRef::<[u8]>::as_ref(#ho.account().address()) {
@@ -163,7 +137,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             });
         }
 
-        // --- address ---
         if let Some(ref addr) = attrs.address {
             constraint_stmts.push(quote! {
                 if *#field_name.account().address() != #addr {
@@ -174,13 +147,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             });
         }
 
-        // --- close ---
         if let Some(ref close_target) = attrs.close {
             exit_stmts.push(quote! {
-                anchor_lang::v2::AnchorAccount::close(
-                    &mut self.#field_name,
-                    *self.#close_target.account(),
-                )?;
+                anchor_lang::v2::AnchorAccount::close(&mut self.#field_name, *self.#close_target.account())?;
             });
         } else if attrs.is_mut {
             exit_stmts.push(quote! {
@@ -189,8 +158,13 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
     }
 
+    let idl_json = idl::build_accounts_json(&idl_accounts);
+
     quote! {
         impl #name {
+            #[cfg(feature = "idl-build")]
+            pub const __IDL_ACCOUNTS: &'static str = #idl_json;
+
             pub fn try_accounts(
                 __program_id: &anchor_lang::v2::Address,
                 __accounts: &[anchor_lang::v2::AccountView],
@@ -215,102 +189,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 }
 
 // ---------------------------------------------------------------------------
-// Attribute parsing
-// ---------------------------------------------------------------------------
-
-struct AccountAttrs {
-    is_mut: bool,
-    is_init: bool,
-    has_bump: bool,
-    payer: Option<Ident>,
-    space: Option<Expr>,
-    seeds: Option<Vec<Expr>>,
-    has_one: Vec<Ident>,
-    address: Option<Expr>,
-    close: Option<Ident>,
-}
-
-fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
-    let mut result = AccountAttrs {
-        is_mut: false,
-        is_init: false,
-        has_bump: false,
-        payer: None,
-        space: None,
-        seeds: None,
-        has_one: Vec::new(),
-        address: None,
-        close: None,
-    };
-
-    for attr in attrs {
-        if !attr.path().is_ident("account") {
-            continue;
-        }
-        // Parse as comma-separated items
-        let _ = attr.parse_args_with(|input: ParseStream| {
-            while !input.is_empty() {
-                let ident = Ident::parse_any(input)?;
-                match ident.to_string().as_str() {
-                    "mut" => result.is_mut = true,
-                    "init" => {
-                        result.is_init = true;
-                        result.is_mut = true;
-                    }
-                    "bump" => result.has_bump = true,
-                    "signer" => {} // validated by Signer type itself
-                    "payer" => {
-                        input.parse::<Token![=]>()?;
-                        result.payer = Some(input.parse()?);
-                    }
-                    "space" => {
-                        input.parse::<Token![=]>()?;
-                        result.space = Some(input.parse()?);
-                    }
-                    "seeds" => {
-                        input.parse::<Token![=]>()?;
-                        let content;
-                        syn::bracketed!(content in input);
-                        let seeds = content
-                            .parse_terminated(Expr::parse, Token![,])?
-                            .into_iter()
-                            .collect();
-                        result.seeds = Some(seeds);
-                    }
-                    "has_one" => {
-                        input.parse::<Token![=]>()?;
-                        result.has_one.push(input.parse()?);
-                    }
-                    "address" => {
-                        input.parse::<Token![=]>()?;
-                        result.address = Some(input.parse()?);
-                    }
-                    "close" => {
-                        input.parse::<Token![=]>()?;
-                        result.close = Some(input.parse()?);
-                    }
-                    _ => {} // ignore unknown attrs for forward compat
-                }
-                if !input.is_empty() {
-                    input.parse::<Token![,]>()?;
-                }
-            }
-            Ok(())
-        });
-    }
-    result
-}
-
-fn is_nested_type(ty: &Type) -> bool {
-    if let Type::Path(tp) = ty {
-        if let Some(seg) = tp.path.segments.last() {
-            return seg.ident == "Nested";
-        }
-    }
-    false
-}
-
-// ---------------------------------------------------------------------------
 // #[derive(AnchorData)]
 // ---------------------------------------------------------------------------
 
@@ -318,11 +196,22 @@ fn is_nested_type(ty: &Type) -> bool {
 pub fn derive_anchor_data(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+    let name_str = name.to_string();
 
     use sha2::Digest;
-    let hash = sha2::Sha256::digest(format!("account:{}", name).as_bytes());
+    let hash = sha2::Sha256::digest(format!("account:{name_str}").as_bytes());
     let disc_bytes = &hash[..8];
     let disc_literals: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
+
+    let idl_type_json = if let Data::Struct(data) = &input.data {
+        if let Fields::Named(fields) = &data.fields {
+            idl::build_type_json(&name_str, disc_bytes, &fields.named)
+        } else {
+            idl::build_type_json(&name_str, disc_bytes, &syn::punctuated::Punctuated::new())
+        }
+    } else {
+        idl::build_type_json(&name_str, disc_bytes, &syn::punctuated::Punctuated::new())
+    };
 
     TokenStream::from(quote! {
         impl anchor_lang::v2::Owner for #name {
@@ -330,6 +219,10 @@ pub fn derive_anchor_data(input: TokenStream) -> TokenStream {
         }
         impl anchor_lang::v2::Discriminator for #name {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
+        }
+        #[cfg(feature = "idl-build")]
+        impl #name {
+            pub const __IDL_TYPE: &'static str = #idl_type_json;
         }
     })
 }
@@ -366,16 +259,20 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
     let mut dispatch_arms = Vec::new();
     let mut handler_wrappers = Vec::new();
+    let mut idl_ix_names: Vec<String> = Vec::new();
+    let mut idl_ix_discs: Vec<String> = Vec::new();
+    let mut idl_ix_args: Vec<String> = Vec::new();
+    let mut idl_accounts_types: Vec<TokenStream2> = Vec::new();
 
     for handler in &handlers {
         let fn_name = &handler.sig.ident;
         let fn_name_str = fn_name.to_string();
 
         use sha2::Digest;
-        let hash = sha2::Sha256::digest(format!("global:{}", fn_name_str).as_bytes());
+        let hash = sha2::Sha256::digest(format!("global:{fn_name_str}").as_bytes());
         let disc_bytes = &hash[..8];
         let disc_u64 = u64::from_le_bytes(disc_bytes.try_into().unwrap());
-        let fn_name_log = format!("Instruction: {}", fn_name_str);
+        let fn_name_log = format!("Instruction: {fn_name_str}");
 
         let mut args_iter = handler.sig.inputs.iter();
         let first_arg = args_iter.next().expect("handler must have a Context parameter");
@@ -407,6 +304,11 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 #(let #extra_arg_names = __args.#extra_arg_names;)*
             }
         };
+
+        idl_ix_names.push(fn_name_str.clone());
+        idl_ix_discs.push(idl::disc_json(disc_bytes));
+        idl_ix_args.push(idl::build_args_json(&extra_args));
+        idl_accounts_types.push(accounts_type.clone());
 
         dispatch_arms.push(quote! {
             #disc_u64 => __handlers::#fn_name(__program_id, __accounts, &__data[8..]),
@@ -472,6 +374,21 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             use super::*;
             use anchor_lang::v2::AnchorAccount as _;
             #(#handler_wrappers)*
+        }
+
+        #[cfg(feature = "idl-build")]
+        pub fn __build_idl_instructions() -> Vec<String> {
+            vec![
+                #(
+                    format!(
+                        "{{\"name\":\"{}\",\"discriminator\":{},\"accounts\":{},\"args\":{}}}",
+                        #idl_ix_names,
+                        #idl_ix_discs,
+                        #idl_accounts_types::__IDL_ACCOUNTS,
+                        #idl_ix_args,
+                    )
+                ),*
+            ]
         }
     }
 }
