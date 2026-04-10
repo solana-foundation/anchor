@@ -67,6 +67,13 @@ enum BorrowState<T> {
 }
 
 impl<T: Pod + Zeroable + AccountValidate> Account<T> {
+    /// Release the data borrow guard so the underlying `AccountView` can be
+    /// passed to CPI calls that check `is_borrowed()`. After calling this,
+    /// `Deref` / `DerefMut` will panic — only use right before a CPI.
+    pub fn release_borrow(&mut self) {
+        self.borrow = BorrowState::Released;
+    }
+
     fn from_ref(view: AccountView) -> Result<Self, ProgramError> {
         let data_ref = view.try_borrow()?;
         T::validate(&view, &data_ref)?;

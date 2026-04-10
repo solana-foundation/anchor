@@ -1,5 +1,15 @@
 use syn::{ext::IdentExt, parse::{Parse, ParseStream}, Attribute, Expr, Ident, Token, Type};
 
+/// A namespaced constraint like `token::mint = expr`.
+pub struct NamespacedConstraint {
+    /// e.g. "token"
+    pub namespace: String,
+    /// e.g. "mint" → "Mint" (capitalized for struct lookup)
+    pub key: String,
+    /// The RHS field/expression
+    pub value: Ident,
+}
+
 pub struct AccountAttrs {
     pub is_mut: bool,
     pub is_signer: bool,
@@ -21,6 +31,8 @@ pub struct AccountAttrs {
     pub realloc: Option<Expr>,
     pub realloc_payer: Option<Ident>,
     pub realloc_zero: bool,
+    /// Namespaced constraints: token::mint, mint::authority, etc.
+    pub namespaced: Vec<NamespacedConstraint>,
 }
 
 pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
@@ -44,6 +56,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         realloc: None,
         realloc_payer: None,
         realloc_zero: false,
+        namespaced: Vec::new(),
     };
 
     for attr in attrs {
@@ -144,7 +157,30 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             result.constraint_error = Some(input.parse()?);
                         }
                     }
-                    _ => {}
+                    _ => {
+                        // Check for namespaced constraint: namespace::key = value
+                        if input.peek(Token![::]) {
+                            input.parse::<Token![::]>()?;
+                            let key_ident = Ident::parse_any(input)?;
+                            input.parse::<Token![=]>()?;
+                            let value: Ident = input.parse()?;
+                            // Capitalize key: "mint" → "Mint"
+                            let key = {
+                                let s = key_ident.to_string();
+                                let mut c = s.chars();
+                                match c.next() {
+                                    Some(first) => first.to_uppercase().to_string() + c.as_str(),
+                                    None => String::new(),
+                                }
+                            };
+                            result.namespaced.push(NamespacedConstraint {
+                                namespace: ident.to_string(),
+                                key,
+                                value,
+                            });
+                        }
+                        // else: unknown attribute, silently skip
+                    }
                 }
                 if !input.is_empty() {
                     input.parse::<Token![,]>()?;
@@ -166,6 +202,9 @@ pub fn field_ty_str(ty: &Type) -> String {
 }
 
 /// Extract the inner `T` from `BorshAccount<T>` or `Account<T>`.
+///
+/// Skips well-known external types (TokenAccount, Mint) that don't have
+/// `__IDL_TYPE` since they aren't defined via `#[account]`.
 pub fn extract_inner_data_type(ty: &Type) -> Option<proc_macro2::TokenStream> {
     use quote::quote;
     if let Type::Path(tp) = ty {
@@ -174,6 +213,15 @@ pub fn extract_inner_data_type(ty: &Type) -> Option<proc_macro2::TokenStream> {
             if name == "BorshAccount" || name == "Account" {
                 if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
                     if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
+                        // Skip external types that don't have #[account]-generated __IDL_TYPE
+                        if let Type::Path(inner_tp) = inner {
+                            if let Some(inner_seg) = inner_tp.path.segments.last() {
+                                let inner_name = inner_seg.ident.to_string();
+                                if matches!(inner_name.as_str(), "TokenAccount" | "Mint") {
+                                    return None;
+                                }
+                            }
+                        }
                         return Some(quote! { #inner });
                     }
                 }

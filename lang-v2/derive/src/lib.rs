@@ -278,6 +278,21 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             });
         }
 
+        // --- namespaced constraints (token::mint, mint::authority, etc.) ---
+        for nc in &attrs.namespaced {
+            let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
+            let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
+            let value = &nc.value;
+            constraint_stmts.push(quote! {
+                anchor_lang_v2::constraints::Constrain::<
+                    anchor_lang_v2::constraints::#ns::#key
+                >::constrain(
+                    &#field_name,
+                    AsRef::<anchor_lang_v2::Address>::as_ref(&#value),
+                )?;
+            });
+        }
+
         // --- realloc ---
         if let Some(ref new_space) = attrs.realloc {
             let realloc_payer = attrs.realloc_payer.as_ref().expect("realloc requires realloc_payer");
