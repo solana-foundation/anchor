@@ -39,6 +39,12 @@ pub use crate::{
     msg,
     // ID
     declare_id,
+    // Pod types
+    pod::{
+        PodU16, PodU32, PodU64, PodU128,
+        PodI16, PodI32, PodI64, PodI128,
+        PodBool, PodVec,
+    },
     // Require macros (re-exported via #[macro_export])
     require, require_eq, require_neq,
     require_keys_eq, require_keys_neq,
@@ -49,6 +55,7 @@ pub use pinocchio::account::AccountView;
 pub use pinocchio::address::Address;
 pub use pinocchio::ProgramResult;
 
-// Re-export pinocchio sysvar types for use with Sysvar<T>
+// Re-export pinocchio sysvar types and trait for use with Sysvar<T>
+pub use pinocchio::sysvars::Sysvar as PinocchioSysvar;
 pub use pinocchio::sysvars::clock::Clock;
 pub use pinocchio::sysvars::rent::Rent;
