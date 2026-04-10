@@ -32,8 +32,19 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     }
 }
 
+/// Declares which program owns accounts of this data type.
+///
+/// For your own program's types, `#[account]` generates this automatically
+/// returning `*program_id` (no `declare_id!` needed).
+///
+/// External crates implement this with their program's address:
+/// ```ignore
+/// impl Owner for TokenAccountData {
+///     fn owner(_program_id: &Address) -> Address { Token::id() }
+/// }
+/// ```
 pub trait Owner {
-    fn owner() -> Address;
+    fn owner(program_id: &Address) -> Address;
 }
 
 pub trait Id {

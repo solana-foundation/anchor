@@ -51,7 +51,7 @@ unsafe impl Pod for TokenAccount {}
 unsafe impl Zeroable for TokenAccount {}
 
 impl AccountValidate for TokenAccount {
-    fn validate(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
+    fn validate(view: &AccountView, data: &[u8], _program_id: &Address) -> Result<(), ProgramError> {
         // Token accounts can be owned by Token or Token2022.
         if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
             return Err(ProgramError::IllegalOwner);
@@ -179,7 +179,7 @@ unsafe impl Pod for Mint {}
 unsafe impl Zeroable for Mint {}
 
 impl AccountValidate for Mint {
-    fn validate(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
+    fn validate(view: &AccountView, data: &[u8], _program_id: &Address) -> Result<(), ProgramError> {
         if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
             return Err(ProgramError::IllegalOwner);
         }
