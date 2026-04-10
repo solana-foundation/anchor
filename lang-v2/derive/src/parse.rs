@@ -238,6 +238,27 @@ pub fn extract_inner_data_type(ty: &Type) -> Option<proc_macro2::TokenStream> {
     None
 }
 
+/// Extract the inner `T` from `BorshAccount<T>` or `Account<T>` for init codegen.
+///
+/// Unlike `extract_inner_data_type`, this does NOT skip external types like
+/// TokenAccount and Mint, since init needs the type for `AccountInitialize` calls.
+pub fn extract_inner_type_for_init(ty: &Type) -> Option<proc_macro2::TokenStream> {
+    use quote::quote;
+    if let Type::Path(tp) = ty {
+        if let Some(seg) = tp.path.segments.last() {
+            let name = seg.ident.to_string();
+            if name == "BorshAccount" || name == "Account" {
+                if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
+                    if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
+                        return Some(quote! { #inner });
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub fn is_nested_type(ty: &Type) -> bool {
     if let Type::Path(tp) = ty {
         if let Some(seg) = tp.path.segments.last() {

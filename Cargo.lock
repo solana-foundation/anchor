@@ -380,6 +380,7 @@ dependencies = [
  "bytemuck",
  "pinocchio",
  "pinocchio-system",
+ "pinocchio-token",
  "solana-address 2.4.0",
  "solana-define-syscall 4.0.1",
  "solana-msg",
@@ -3185,6 +3186,18 @@ checksum = "b47216785b5877051afa074920e88b5990c4ce74f0da94c7cb5a139684c48ffe"
 dependencies = [
  "pinocchio",
  "solana-address 2.4.0",
+]
+
+[[package]]
+name = "pinocchio-token"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "825f59c8348e5c2d3fd56432ef927f5819542b3b05fae4f5b6869801113e775e"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.4.0",
+ "solana-instruction-view",
+ "solana-program-error",
 ]
 
 [[package]]

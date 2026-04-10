@@ -8,7 +8,7 @@ use {
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
     syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, ItemMod, Pat, Type},
-    parse::{parse_account_attrs, field_ty_str, is_nested_type, extract_inner_data_type},
+    parse::{parse_account_attrs, field_ty_str, is_nested_type, extract_inner_data_type, extract_inner_type_for_init},
 };
 
 // ---------------------------------------------------------------------------
@@ -83,7 +83,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 .expect("#[account(init)] requires space");
             {
             // Unified init: AccountInitialize::create_and_initialize handles all types.
-            let inner_ty = extract_inner_data_type(field_ty)
+            let inner_ty = extract_inner_type_for_init(field_ty)
                 .expect("#[account(init)] requires Account<T> or BorshAccount<T>");
 
             // Build init param assignments from namespaced constraints.
@@ -141,7 +141,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             let payer = attrs.payer.as_ref().expect("#[account(init_if_needed)] requires payer");
             let space = attrs.space.as_ref()
                 .expect("#[account(init_if_needed)] requires space");
-            let inner_ty = extract_inner_data_type(field_ty)
+            let inner_ty = extract_inner_type_for_init(field_ty)
                 .expect("#[account(init_if_needed)] requires Account<T> or BorshAccount<T>");
 
             let seeds_arg = if let Some(ref seeds) = attrs.seeds {
@@ -317,18 +317,24 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
 
         // --- namespaced constraints (token::mint, mint::authority, etc.) ---
-        for nc in &attrs.namespaced {
-            let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
-            let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
-            let value = &nc.value;
-            constraint_stmts.push(quote! {
-                anchor_lang_v2::constraints::Constrain::<
-                    anchor_lang_v2::constraints::#ns::#key
-                >::constrain(
-                    &#field_name,
-                    AsRef::<anchor_lang_v2::Address>::as_ref(&#value),
-                )?;
-            });
+        // Skip for init/init_if_needed accounts: namespaced constraints on init
+        // accounts are only used as init parameters (e.g. mint::decimals = 6),
+        // not runtime validation. Literal values like `6` can't be converted to
+        // &Address, and the account may not be fully initialized when constraints run.
+        if !attrs.is_init && !attrs.is_init_if_needed {
+            for nc in &attrs.namespaced {
+                let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
+                let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
+                let value = &nc.value;
+                constraint_stmts.push(quote! {
+                    anchor_lang_v2::constraints::Constrain::<
+                        anchor_lang_v2::constraints::#ns::#key
+                    >::constrain(
+                        &#field_name,
+                        AsRef::<anchor_lang_v2::Address>::as_ref(&#value),
+                    )?;
+                });
+            }
         }
 
         // --- realloc ---
