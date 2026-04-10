@@ -4,7 +4,8 @@ pub struct AccountAttrs {
     pub is_mut: bool,
     pub is_init: bool,
     pub is_init_if_needed: bool,
-    pub has_bump: bool,
+    /// None = no bump attr, Some(None) = `bump` without value, Some(Some(expr)) = `bump = expr`
+    pub bump: Option<Option<Expr>>,
     pub payer: Option<Ident>,
     pub space: Option<Expr>,
     pub seeds: Option<Vec<Expr>>,
@@ -23,7 +24,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         is_mut: false,
         is_init: false,
         is_init_if_needed: false,
-        has_bump: false,
+        bump: None,
         payer: None,
         space: None,
         seeds: None,
@@ -54,7 +55,14 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                         result.is_init_if_needed = true;
                         result.is_mut = true;
                     }
-                    "bump" => result.has_bump = true,
+                    "bump" => {
+                        if input.peek(Token![=]) {
+                            input.parse::<Token![=]>()?;
+                            result.bump = Some(Some(input.parse()?));
+                        } else {
+                            result.bump = Some(None);
+                        }
+                    }
                     "signer" => {}
                     "payer" => {
                         input.parse::<Token![=]>()?;

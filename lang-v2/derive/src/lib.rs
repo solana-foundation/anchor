@@ -174,15 +174,33 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         if !attrs.is_init && !attrs.is_init_if_needed {
             if let Some(ref seeds) = attrs.seeds {
                 let seed_exprs = seeds;
-                constraint_stmts.push(quote! {
-                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], __program_id,
-                    );
-                    if *#field_name.account().address() != __pda {
-                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                    }
-                    __bumps.#field_name = __bump;
-                });
+                // When bump = <expr> is provided, use verify_program_address
+                // (sha256 only, ~200 CU) instead of find_program_address
+                // (sha256 + curve per bump, ~544 CU). Skips the curve check
+                // since the bump was already validated during account creation.
+                if let Some(Some(ref bump_expr)) = attrs.bump {
+                    constraint_stmts.push(quote! {
+                        {
+                            let __bump_val: u8 = #bump_expr;
+                            anchor_lang_v2::verify_program_address(
+                                &[#(#seed_exprs),* , &[__bump_val]],
+                                __program_id,
+                                #field_name.account().address(),
+                            )?;
+                            __bumps.#field_name = __bump_val;
+                        }
+                    });
+                } else {
+                    constraint_stmts.push(quote! {
+                        let (__pda, __bump) = anchor_lang_v2::find_program_address(
+                            &[#(#seed_exprs),*], __program_id,
+                        );
+                        if *#field_name.account().address() != __pda {
+                            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+                        }
+                        __bumps.#field_name = __bump;
+                    });
+                }
             }
         }
 
@@ -255,7 +273,41 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
     let idl_json = idl::build_accounts_json(&idl_accounts);
 
+    // --- Client-side struct for off-chain usage (tests, CPI, SDK) ---
+    let client_mod_name = syn::Ident::new(
+        &format!("__client_accounts_{}", name.to_string().to_lowercase()),
+        name.span(),
+    );
+    let client_fields: Vec<_> = field_names.iter().map(|f| {
+        quote! { pub #f: anchor_lang_v2::Address }
+    }).collect();
+    let client_meta_entries: Vec<_> = idl_accounts.iter().map(|(fname, writable, signer, _)| {
+        let field_ident = syn::Ident::new(fname, proc_macro2::Span::call_site());
+        quote! {
+            anchor_lang_v2::AccountMeta {
+                address: self.#field_ident,
+                is_writable: #writable,
+                is_signer: #signer,
+            }
+        }
+    }).collect();
+
     quote! {
+        /// Client-side accounts struct with `Address` fields for off-chain use.
+        #[cfg(feature = "cpi")]
+        pub mod #client_mod_name {
+            extern crate alloc;
+            use super::*;
+            pub struct #name {
+                #(#client_fields,)*
+            }
+            impl anchor_lang_v2::ToAccountMetas for #name {
+                fn to_account_metas(&self, _is_signer: Option<bool>) -> alloc::vec::Vec<anchor_lang_v2::AccountMeta> {
+                    alloc::vec![#(#client_meta_entries),*]
+                }
+            }
+        }
+
         /// Auto-generated bumps struct for PDA fields.
         #[derive(Debug, Default, Clone)]
         pub struct #bumps_name {
@@ -409,6 +461,8 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     let mut idl_ix_discs: Vec<String> = Vec::new();
     let mut idl_ix_args: Vec<String> = Vec::new();
     let mut idl_accounts_types: Vec<TokenStream2> = Vec::new();
+    let mut instruction_structs: Vec<TokenStream2> = Vec::new();
+    let mut accounts_reexports: Vec<TokenStream2> = Vec::new();
 
     for handler in &handlers {
         let fn_name = &handler.sig.ident;
@@ -455,6 +509,32 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         idl_ix_discs.push(idl::disc_json(disc_bytes));
         idl_ix_args.push(idl::build_args_json(&extra_args));
         idl_accounts_types.push(accounts_type.clone());
+
+        // --- Client-side instruction struct ---
+        let ix_struct_name = syn::Ident::new(
+            &to_camel_case(&fn_name_str),
+            fn_name.span(),
+        );
+        let disc_literal_bytes: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
+        instruction_structs.push(quote! {
+            #[derive(anchor_lang_v2::AnchorSerialize, anchor_lang_v2::AnchorDeserialize)]
+            pub struct #ix_struct_name {
+                #(pub #extra_arg_names: #extra_arg_types,)*
+            }
+            impl anchor_lang_v2::Discriminator for #ix_struct_name {
+                const DISCRIMINATOR: &'static [u8] = &[#(#disc_literal_bytes),*];
+            }
+            impl anchor_lang_v2::InstructionData for #ix_struct_name {}
+        });
+
+        // --- Client accounts re-export ---
+        let client_mod = syn::Ident::new(
+            &format!("__client_accounts_{}", accounts_type.to_string().to_lowercase()),
+            fn_name.span(),
+        );
+        accounts_reexports.push(quote! {
+            pub use super::#client_mod::#accounts_type;
+        });
 
         dispatch_arms.push(quote! {
             #disc_u64 => __handlers::#fn_name(__program_id, __accounts, &__data[8..]),
@@ -519,6 +599,19 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             use super::*;
             use anchor_lang_v2::AnchorAccount as _;
             #(#handler_wrappers)*
+        }
+
+        /// Client-side instruction structs for off-chain use.
+        #[cfg(feature = "cpi")]
+        pub mod instruction {
+            extern crate alloc;
+            #(#instruction_structs)*
+        }
+
+        /// Client-side accounts structs (re-exports) for off-chain use.
+        #[cfg(feature = "cpi")]
+        pub mod accounts {
+            #(#accounts_reexports)*
         }
 
         // IDL generation: prints structured output consumed by `anchor idl build`.
@@ -684,4 +777,17 @@ fn extract_generic_arg(ty: &Type) -> TokenStream2 {
         }
     }
     panic!("could not extract generic type from Context<T>");
+}
+
+/// Converts `snake_case` to `CamelCase` (e.g. `execute_transfer` → `ExecuteTransfer`).
+fn to_camel_case(s: &str) -> String {
+    s.split('_')
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(c) => c.to_uppercase().to_string() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect()
 }
