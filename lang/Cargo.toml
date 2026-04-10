@@ -53,7 +53,7 @@ anchor-attribute-program = { path = "./attribute/program", version = "1.0.0" }
 anchor-derive-accounts = { path = "./derive/accounts", version = "1.0.0" }
 anchor-derive-serde = { path = "./derive/serde", version = "1.0.0" }
 anchor-derive-space = { path = "./derive/space", version = "1.0.0" }
-anchor-derive-accounts-v2 = { path = "./derive/accounts-v2", version = "0.1.0" }
+anchor-derive-accounts-v2 = { path = "../lang-v2/derive", version = "0.1.0" }
 
 # `anchor-lang-idl` should only be included with `idl-build` feature
 anchor-lang-idl = { path = "../idl", version = "0.1.2", optional = true }

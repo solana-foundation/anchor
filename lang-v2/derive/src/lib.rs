@@ -62,23 +62,23 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 let space = attrs.space.as_ref().expect("#[account(init)] requires space");
                 load_stmts.push(quote! {
                     let mut #field_name = {
-                        let (__pda, __bump) = anchor_lang::v2::find_program_address(
+                        let (__pda, __bump) = anchor_lang_v2::find_program_address(
                             &[#(#seed_exprs),*], __program_id,
                         );
                         let __target = __accounts[__account_idx];
                         if *__target.address() != __pda {
-                            return Err(anchor_lang::error::Error::from(
-                                anchor_lang::error::ErrorCode::ConstraintSeeds
-                            ).with_account_name(#name_str));
+                            return Err(anchor_lang_v2::Error::from(
+                                anchor_lang_v2::ErrorCode::ConstraintSeeds
+                            ));
                         }
                         let __payer = #payer.account();
-                        anchor_lang::v2::create_account_signed(
+                        anchor_lang_v2::create_account_signed(
                             __payer, &__target, #space, __program_id,
                             &[#(#seed_exprs),* , &[__bump]],
                         )?;
-                        <#field_ty as anchor_lang::v2::AnchorAccountInit>::init(
+                        <#field_ty as anchor_lang_v2::AnchorAccountInit>::init(
                             __target, __program_id,
-                        ).map_err(|e| anchor_lang::error::Error::from(e).with_account_name(#name_str))?
+                        ).map_err(|e| anchor_lang_v2::Error::from(e))?
                     };
                     __account_idx += 1;
                 });
@@ -86,19 +86,19 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
                 let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
                 load_stmts.push(quote! {
-                    #binding #field_name = <#field_ty as anchor_lang::v2::AnchorAccount>::#load_fn(
+                    #binding #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::#load_fn(
                         __accounts[__account_idx], __program_id,
-                    ).map_err(|e| anchor_lang::error::Error::from(e).with_account_name(#name_str))?;
+                    ).map_err(|e| anchor_lang_v2::Error::from(e))?;
                     __account_idx += 1;
                 });
                 constraint_stmts.push(quote! {
-                    let (__pda, _) = anchor_lang::v2::find_program_address(
+                    let (__pda, _) = anchor_lang_v2::find_program_address(
                         &[#(#seed_exprs),*], __program_id,
                     );
                     if *#field_name.account().address() != __pda {
-                        return Err(anchor_lang::error::Error::from(
-                            anchor_lang::error::ErrorCode::ConstraintSeeds
-                        ).with_account_name(#name_str));
+                        return Err(anchor_lang_v2::Error::from(
+                            anchor_lang_v2::ErrorCode::ConstraintSeeds
+                        ));
                     }
                 });
             }
@@ -109,10 +109,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 let mut #field_name = {
                     let __target = __accounts[__account_idx];
                     let __payer = #payer.account();
-                    anchor_lang::v2::create_account(__payer, &__target, #space, __program_id)?;
-                    <#field_ty as anchor_lang::v2::AnchorAccountInit>::init(
+                    anchor_lang_v2::create_account(__payer, &__target, #space, __program_id)?;
+                    <#field_ty as anchor_lang_v2::AnchorAccountInit>::init(
                         __target, __program_id,
-                    ).map_err(|e| anchor_lang::error::Error::from(e).with_account_name(#name_str))?
+                    ).map_err(|e| anchor_lang_v2::Error::from(e))?
                 };
                 __account_idx += 1;
             });
@@ -120,9 +120,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             let load_fn = if attrs.is_mut { quote!(load_mut) } else { quote!(load) };
             let binding = if attrs.is_mut { quote!(let mut) } else { quote!(let) };
             load_stmts.push(quote! {
-                #binding #field_name = <#field_ty as anchor_lang::v2::AnchorAccount>::#load_fn(
+                #binding #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::#load_fn(
                     __accounts[__account_idx], __program_id,
-                ).map_err(|e| anchor_lang::error::Error::from(e).with_account_name(#name_str))?;
+                ).map_err(|e| anchor_lang_v2::Error::from(e))?;
                 __account_idx += 1;
             });
         }
@@ -130,9 +130,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         for ho in &attrs.has_one {
             constraint_stmts.push(quote! {
                 if AsRef::<[u8]>::as_ref(&#field_name.#ho) != AsRef::<[u8]>::as_ref(#ho.account().address()) {
-                    return Err(anchor_lang::error::Error::from(
-                        anchor_lang::error::ErrorCode::ConstraintHasOne
-                    ).with_account_name(#name_str));
+                    return Err(anchor_lang_v2::Error::from(
+                        anchor_lang_v2::ErrorCode::ConstraintHasOne
+                    ));
                 }
             });
         }
@@ -140,20 +140,20 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         if let Some(ref addr) = attrs.address {
             constraint_stmts.push(quote! {
                 if *#field_name.account().address() != #addr {
-                    return Err(anchor_lang::error::Error::from(
-                        anchor_lang::error::ErrorCode::ConstraintAddress
-                    ).with_account_name(#name_str));
+                    return Err(anchor_lang_v2::Error::from(
+                        anchor_lang_v2::ErrorCode::ConstraintAddress
+                    ));
                 }
             });
         }
 
         if let Some(ref close_target) = attrs.close {
             exit_stmts.push(quote! {
-                anchor_lang::v2::AnchorAccount::close(&mut self.#field_name, *self.#close_target.account())?;
+                anchor_lang_v2::AnchorAccount::close(&mut self.#field_name, *self.#close_target.account())?;
             });
         } else if attrs.is_mut {
             exit_stmts.push(quote! {
-                anchor_lang::v2::AnchorAccount::exit(&mut self.#field_name)?;
+                anchor_lang_v2::AnchorAccount::exit(&mut self.#field_name)?;
             });
         }
     }
@@ -166,12 +166,12 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             pub const __IDL_ACCOUNTS: &'static str = #idl_json;
 
             pub fn try_accounts(
-                __program_id: &anchor_lang::v2::Address,
-                __accounts: &[anchor_lang::v2::AccountView],
-            ) -> anchor_lang::Result<(Self, usize)> {
-                use anchor_lang::v2::AnchorAccount as _;
+                __program_id: &anchor_lang_v2::Address,
+                __accounts: &[anchor_lang_v2::AccountView],
+            ) -> anchor_lang_v2::Result<(Self, usize)> {
+                use anchor_lang_v2::AnchorAccount as _;
                 if __accounts.len() < #account_count {
-                    return Err(anchor_lang::error::ErrorCode::AccountNotEnoughKeys.into());
+                    return Err(anchor_lang_v2::ErrorCode::AccountNotEnoughKeys.into());
                 }
                 let mut __account_idx: usize = 0;
                 #(#load_stmts)*
@@ -179,8 +179,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 Ok((Self { #(#field_names),* }, __account_idx))
             }
 
-            pub fn exit_accounts(&mut self) -> anchor_lang::Result<()> {
-                use anchor_lang::v2::AnchorAccount as _;
+            pub fn exit_accounts(&mut self) -> anchor_lang_v2::Result<()> {
+                use anchor_lang_v2::AnchorAccount as _;
                 #(#exit_stmts)*
                 Ok(())
             }
@@ -236,26 +236,57 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
         idl::build_type_json(&name_str, disc_bytes, &syn::punctuated::Punctuated::new())
     };
 
-    let derives_and_repr = if is_borsh {
-        quote! {
-            #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)]
-        }
+    let (struct_attrs, pod_impls) = if is_borsh {
+        (
+            quote! {
+                #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)]
+            },
+            quote! {},
+        )
     } else {
-        quote! {
-            #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-            #[repr(C)]
-        }
+        (
+            quote! {
+                #[derive(Clone, Copy)]
+                #[repr(C)]
+            },
+            {
+                // Generate compile-time assertions that each field is Pod
+                let field_checks: Vec<_> = if let Fields::Named(named) = fields {
+                    named.named.iter().map(|f| {
+                        let fty = &f.ty;
+                        quote! {
+                            const _: fn() = || {
+                                fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
+                                assert_pod::<#fty>();
+                            };
+                        }
+                    }).collect()
+                } else {
+                    vec![]
+                };
+                quote! {
+                    // Compile-time verification that all fields are Pod
+                    #(#field_checks)*
+                    // SAFETY: all fields verified Pod above, struct is #[repr(C)].
+                    // Account::load() validates alignment at runtime before casting.
+                    unsafe impl anchor_lang_v2::bytemuck::Pod for #name {}
+                    unsafe impl anchor_lang_v2::bytemuck::Zeroable for #name {}
+                }
+            },
+        )
     };
 
     TokenStream::from(quote! {
         #(#attrs)*
-        #derives_and_repr
+        #struct_attrs
         #vis struct #name #fields
 
-        impl anchor_lang::v2::Owner for #name {
-            fn owner() -> anchor_lang::v2::Address { crate::ID }
+        #pod_impls
+
+        impl anchor_lang_v2::Owner for #name {
+            fn owner() -> anchor_lang_v2::Address { crate::ID }
         }
-        impl anchor_lang::v2::Discriminator for #name {
+        impl anchor_lang_v2::Discriminator for #name {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
         }
         #[cfg(feature = "idl-build")]
@@ -291,10 +322,10 @@ pub fn derive_anchor_data(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(quote! {
-        impl anchor_lang::v2::Owner for #name {
-            fn owner() -> anchor_lang::v2::Address { crate::ID }
+        impl anchor_lang_v2::Owner for #name {
+            fn owner() -> anchor_lang_v2::Address { crate::ID }
         }
-        impl anchor_lang::v2::Discriminator for #name {
+        impl anchor_lang_v2::Discriminator for #name {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
         }
         #[cfg(feature = "idl-build")]
@@ -373,11 +404,11 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             quote! {}
         } else {
             quote! {
-                #[derive(anchor_lang::AnchorDeserialize)]
+                #[derive(anchor_lang_v2::AnchorDeserialize)]
                 struct __Args { #(#extra_arg_names: #extra_arg_types,)* }
-                let __args = <__Args as anchor_lang::AnchorDeserialize>::deserialize(
+                let __args = <__Args as anchor_lang_v2::AnchorDeserialize>::deserialize(
                     &mut &__ix_data[..]
-                ).map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+                ).map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
                 #(let #extra_arg_names = __args.#extra_arg_names;)*
             }
         };
@@ -394,16 +425,16 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         handler_wrappers.push(quote! {
             #[inline(never)]
             pub fn #fn_name(
-                __program_id: &anchor_lang::v2::Address,
-                __accounts: &[anchor_lang::v2::AccountView],
+                __program_id: &anchor_lang_v2::Address,
+                __accounts: &[anchor_lang_v2::AccountView],
                 __ix_data: &[u8],
-            ) -> anchor_lang::Result<()> {
+            ) -> anchor_lang_v2::Result<()> {
                 #[cfg(not(feature = "no-log-ix-name"))]
-                anchor_lang::v2::msg!(#fn_name_log);
+                anchor_lang_v2::msg!(#fn_name_log);
                 #deser_args
                 let (__ctx_accounts, __consumed) = #accounts_type::try_accounts(__program_id, __accounts)?;
                 let __remaining = &__accounts[__consumed..];
-                let mut __ctx = anchor_lang::v2::Context::new(*__program_id, __ctx_accounts, __remaining);
+                let mut __ctx = anchor_lang_v2::Context::new(*__program_id, __ctx_accounts, __remaining);
                 #mod_name::#fn_name(&mut __ctx, #(#extra_arg_names),*)?;
                 __ctx.accounts.exit_accounts()?;
                 Ok(())
@@ -422,34 +453,34 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         pinocchio::entrypoint!(entry);
 
         pub fn entry(
-            __program_id: &anchor_lang::v2::Address,
-            __accounts: &mut [anchor_lang::v2::AccountView],
+            __program_id: &anchor_lang_v2::Address,
+            __accounts: &mut [anchor_lang_v2::AccountView],
             __data: &[u8],
         ) -> pinocchio::ProgramResult {
             __try_entry(__program_id, __accounts, __data).map_err(|e| e.into())
         }
 
         fn __try_entry(
-            __program_id: &anchor_lang::v2::Address,
-            __accounts: &[anchor_lang::v2::AccountView],
+            __program_id: &anchor_lang_v2::Address,
+            __accounts: &[anchor_lang_v2::AccountView],
             __data: &[u8],
-        ) -> anchor_lang::Result<()> {
+        ) -> anchor_lang_v2::Result<()> {
             if *__program_id != crate::ID {
-                return Err(anchor_lang::error::ErrorCode::DeclaredProgramIdMismatch.into());
+                return Err(anchor_lang_v2::ErrorCode::DeclaredProgramIdMismatch.into());
             }
             if __data.len() < 8 {
-                return Err(anchor_lang::error::ErrorCode::InstructionFallbackNotFound.into());
+                return Err(anchor_lang_v2::ErrorCode::InstructionFallbackNotFound.into());
             }
             let __disc = u64::from_le_bytes(__data[..8].try_into().unwrap());
             match __disc {
                 #(#dispatch_arms)*
-                _ => Err(anchor_lang::error::ErrorCode::InstructionFallbackNotFound.into()),
+                _ => Err(anchor_lang_v2::ErrorCode::InstructionFallbackNotFound.into()),
             }
         }
 
         mod __handlers {
             use super::*;
-            use anchor_lang::v2::AnchorAccount as _;
+            use anchor_lang_v2::AnchorAccount as _;
             #(#handler_wrappers)*
         }
 

@@ -9,7 +9,8 @@ members = [
     "lang/derive/*",
     "lang/syn",
     "spl",
-    "lang/derive/accounts-v2",
+    "lang-v2",
+    "lang-v2/derive",
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
