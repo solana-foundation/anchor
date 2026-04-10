@@ -9,7 +9,7 @@ use {
     solana_address::Address,
     solana_program_error::ProgramError,
     super::{account::{AccountValidate, AccountInitialize}, Account},
-    crate::constraints::{self, Constrain},
+    crate::constraints::Constrain,
     crate::programs::{Token, Token2022},
     crate::Id,
 };
@@ -263,10 +263,29 @@ impl Mint {
 }
 
 // ---------------------------------------------------------------------------
+// Constraint marker types — these will move to spl-v2 crate.
+// Users import them via `use anchor_lang_v2::accounts::token;`
+// then write `#[account(token::Mint = mint_account)]`.
+// ---------------------------------------------------------------------------
+
+/// Constraint markers for SPL Token accounts.
+pub mod token {
+    pub struct Mint;
+    pub struct Authority;
+    pub struct TokenProgram;
+}
+
+/// Constraint markers for SPL Mint accounts.
+pub mod mint {
+    pub struct Authority;
+    pub struct FreezeAuthority;
+}
+
+// ---------------------------------------------------------------------------
 // Constrain impls — Account<TokenAccount>
 // ---------------------------------------------------------------------------
 
-impl Constrain<constraints::token::Mint> for Account<TokenAccount> {
+impl Constrain<token::Mint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if self.mint != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -276,7 +295,7 @@ impl Constrain<constraints::token::Mint> for Account<TokenAccount> {
     }
 }
 
-impl Constrain<constraints::token::Authority> for Account<TokenAccount> {
+impl Constrain<token::Authority> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if self.authority != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -290,7 +309,7 @@ impl Constrain<constraints::token::Authority> for Account<TokenAccount> {
 // Constrain impls — Account<Mint>
 // ---------------------------------------------------------------------------
 
-impl Constrain<constraints::mint::Authority> for Account<Mint> {
+impl Constrain<mint::Authority> for Account<Mint> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !self.has_mint_authority() || self.mint_authority != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -300,7 +319,7 @@ impl Constrain<constraints::mint::Authority> for Account<Mint> {
     }
 }
 
-impl Constrain<constraints::mint::FreezeAuthority> for Account<Mint> {
+impl Constrain<mint::FreezeAuthority> for Account<Mint> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !self.has_freeze_authority() || self.freeze_authority != *expected {
             Err(ProgramError::InvalidAccountData)

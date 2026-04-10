@@ -526,9 +526,12 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
             let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
             let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
             let value = &nc.value;
+            // Resolve namespace::Key via normal use imports (BYOC).
+            // The trait path is fully qualified; the marker path resolves
+            // through whatever the user imported (e.g. use anchor_spl::token;).
             constraints.push(quote! {
                 anchor_lang_v2::constraints::Constrain::<
-                    anchor_lang_v2::constraints::#ns::#key
+                    #ns::#key
                 >::constrain(
                     &#field_name,
                     AsRef::<anchor_lang_v2::Address>::as_ref(&#value),
