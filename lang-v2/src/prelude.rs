@@ -15,6 +15,8 @@ pub use crate::{
     programs::{System, Token, Token2022},
     // Context
     Context, Bumps,
+    // Loader
+    AccountLoader,
     // CPI
     create_account, create_account_signed, find_program_address, create_program_address,
     // Derive macros
