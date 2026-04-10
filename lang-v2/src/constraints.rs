@@ -2,12 +2,13 @@
 //!
 //! The `Constrain<C>` trait lets account types declare what constraint keys
 //! they support. The `#[derive(Accounts)]` macro generates trait calls for
-//! `namespace::key = expr` constraints without hardcoded knowledge of what
-//! constraints exist. Unknown keys produce compile errors.
+//! `namespace::key = expr` constraints. The marker type path resolves through
+//! normal `use` imports — external crates provide their own markers.
 //!
 //! Adding a new constraint requires only:
-//! 1. A marker struct in the appropriate namespace module below
+//! 1. A marker struct in a module (e.g. `anchor_spl::token::Mint`)
 //! 2. An `impl Constrain<marker>` on the relevant account type
+//! 3. `use anchor_spl::token;` in the user's program
 
 use {
     solana_address::Address,
@@ -20,22 +21,4 @@ use {
 /// Unknown keys → compile error ("Constrain<X> is not implemented for Y").
 pub trait Constrain<C> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError>;
-}
-
-/// Constraint markers for SPL Token accounts.
-pub mod token {
-    /// Validates `token::mint = <account>` — the token account's mint matches.
-    pub struct Mint;
-    /// Validates `token::authority = <account>` — the token account's owner matches.
-    pub struct Authority;
-    /// Validates `token::token_program = <account>` — placeholder for token program check.
-    pub struct TokenProgram;
-}
-
-/// Constraint markers for SPL Mint accounts.
-pub mod mint {
-    /// Validates `mint::authority = <account>` — the mint's mint_authority matches.
-    pub struct Authority;
-    /// Validates `mint::freeze_authority = <account>` — the mint's freeze_authority matches.
-    pub struct FreezeAuthority;
 }
