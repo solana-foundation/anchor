@@ -8,7 +8,7 @@ pub use crate::{
     // Account types
     accounts::{
         Account, BorshAccount, Optional, Program, Signer,
-        SystemAccount, UncheckedAccount,
+        SystemAccount, UncheckedAccount, Sysvar, SysvarId,
     },
     // Programs
     programs::System,
@@ -30,8 +30,14 @@ pub use crate::{
     Nested,
     // Msg
     msg,
+    // ID
+    declare_id,
 };
 
 pub use pinocchio::account::AccountView;
 pub use pinocchio::address::Address;
 pub use pinocchio::ProgramResult;
+
+// Re-export pinocchio sysvar types for use with Sysvar<T>
+pub use pinocchio::sysvars::clock::Clock;
+pub use pinocchio::sysvars::rent::Rent;

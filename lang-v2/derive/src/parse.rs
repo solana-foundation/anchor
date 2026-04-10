@@ -3,6 +3,7 @@ use syn::{ext::IdentExt, parse::{Parse, ParseStream}, Attribute, Expr, Ident, To
 pub struct AccountAttrs {
     pub is_mut: bool,
     pub is_init: bool,
+    pub is_init_if_needed: bool,
     pub has_bump: bool,
     pub payer: Option<Ident>,
     pub space: Option<Expr>,
@@ -10,12 +11,14 @@ pub struct AccountAttrs {
     pub has_one: Vec<Ident>,
     pub address: Option<Expr>,
     pub close: Option<Ident>,
+    pub constraint: Option<Expr>,
 }
 
 pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
     let mut result = AccountAttrs {
         is_mut: false,
         is_init: false,
+        is_init_if_needed: false,
         has_bump: false,
         payer: None,
         space: None,
@@ -23,6 +26,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         has_one: Vec::new(),
         address: None,
         close: None,
+        constraint: None,
     };
 
     for attr in attrs {
@@ -36,6 +40,10 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     "mut" => result.is_mut = true,
                     "init" => {
                         result.is_init = true;
+                        result.is_mut = true;
+                    }
+                    "init_if_needed" => {
+                        result.is_init_if_needed = true;
                         result.is_mut = true;
                     }
                     "bump" => result.has_bump = true,
@@ -69,6 +77,10 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     "close" => {
                         input.parse::<Token![=]>()?;
                         result.close = Some(input.parse()?);
+                    }
+                    "constraint" => {
+                        input.parse::<Token![=]>()?;
+                        result.constraint = Some(input.parse()?);
                     }
                     _ => {}
                 }

@@ -465,7 +465,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 }
 
                 let idl = format!(
-                    "{{\"metadata\":{{\"name\":\"{}\",\"version\":\"0.1.0\",\"spec\":\"0.1.0\"}},\"instructions\":[{}],\"accounts\":[{}],\"types\":[{}]}}",
+                    "{{\"address\":\"\",\"metadata\":{{\"name\":\"{}\",\"version\":\"0.1.0\",\"spec\":\"0.1.0\"}},\"instructions\":[{}],\"accounts\":[{}],\"types\":[{}]}}",
                     stringify!(#mod_name),
                     instructions.join(","),
                     accounts_entries.join(","),

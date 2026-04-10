@@ -24,6 +24,9 @@ pub use event::{Event, sol_log_data};
 /// Re-export msg for generated code.
 pub use solana_msg::msg;
 
+/// Re-export declare_id from solana-address.
+pub use solana_address::declare_id;
+
 // Re-export derive macros
 pub use anchor_derive_accounts_v2::Accounts;
 pub use anchor_derive_accounts_v2::account;
@@ -48,6 +51,7 @@ pub enum ErrorCode {
     ConstraintSeeds,
     ConstraintHasOne,
     ConstraintAddress,
+    ConstraintRaw,
     InstructionDidNotDeserialize,
     DeclaredProgramIdMismatch,
     InstructionFallbackNotFound,
@@ -60,6 +64,7 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             ErrorCode::ConstraintSeeds => solana_program_error::ProgramError::InvalidSeeds,
             ErrorCode::ConstraintHasOne => solana_program_error::ProgramError::InvalidAccountData,
             ErrorCode::ConstraintAddress => solana_program_error::ProgramError::InvalidAccountData,
+            ErrorCode::ConstraintRaw => solana_program_error::ProgramError::Custom(2000),
             ErrorCode::InstructionDidNotDeserialize => solana_program_error::ProgramError::InvalidInstructionData,
             ErrorCode::DeclaredProgramIdMismatch => solana_program_error::ProgramError::IncorrectProgramId,
             ErrorCode::InstructionFallbackNotFound => solana_program_error::ProgramError::InvalidInstructionData,
