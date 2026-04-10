@@ -1411,11 +1411,14 @@ fn init(
 
     // Remove the default program if `--force` is passed
     if force {
-        fs::remove_dir_all(
-            std::env::current_dir()?
-                .join("programs")
-                .join(&project_name),
-        )?;
+        let default_program_path = std::env::current_dir()?
+            .join("programs")
+            .join(&project_name);
+        if let Err(err) = fs::remove_dir_all(&default_program_path) {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                return Err(err.into());
+            }
+        }
     }
 
     // Build the program.
@@ -1485,14 +1488,16 @@ fn install_solana_skill() {
     const SKILL_REPO: &str = "https://github.com/solana-foundation/solana-dev-skill";
     const SKILL_NAME: &str = "solana-dev";
 
-    // Skip if globally installed (active across all projects already)
-    let global_path = home_dir()
-        .unwrap_or_default()
-        .join(".agents")
-        .join("skills")
-        .join(SKILL_NAME);
-    if global_path.exists() {
-        return;
+    // Skip if globally installed (active across all projects already).
+    // If the home directory is unavailable, we can only check the project-scoped install.
+    if let Some(global_path) = home_dir().map(|home| {
+        home.join(".agents")
+            .join("skills")
+            .join(SKILL_NAME)
+    }) {
+        if global_path.exists() {
+            return;
+        }
     }
 
     // Skip if already project-scoped (could be anchor init --force on existing folder)
