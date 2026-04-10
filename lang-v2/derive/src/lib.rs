@@ -7,9 +7,43 @@ use {
     proc_macro::TokenStream,
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
-    syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, ItemMod, Pat, Type},
-    parse::{parse_account_attrs, field_ty_str, is_nested_type, extract_inner_data_type, extract_inner_type_for_init},
+    syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, Ident, ItemMod, Pat, Type},
+    parse::{parse_account_attrs, field_ty_str, is_nested_type, extract_inner_data_type, extract_inner_type_for_init, NamespacedConstraint},
 };
+
+/// Generate PDA seeds derivation + validation + optional signer seeds.
+/// Used by init, init_if_needed, and non-init seeds constraints.
+fn gen_init_seeds(
+    seeds: &[syn::Expr],
+    field_name: &Ident,
+) -> TokenStream2 {
+    quote! {
+        let (__pda, __bump) = anchor_lang_v2::find_program_address(
+            &[#(#seeds),*], __program_id,
+        );
+        if *__target.address() != __pda {
+            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+        }
+        __bumps.#field_name = __bump;
+        let __seeds: Option<&[&[u8]]> = Some(&[#(#seeds),* , &[__bump]]);
+    }
+}
+
+/// Build init param assignments from namespaced constraints.
+fn gen_init_params(namespaced: &[NamespacedConstraint]) -> Vec<TokenStream2> {
+    namespaced.iter().map(|nc| {
+        let key = Ident::new(
+            &nc.key.to_lowercase(),
+            proc_macro2::Span::call_site(),
+        );
+        let value = &nc.value;
+        if nc.is_field_ref {
+            quote! { __p.#key = Some(#value.account()); }
+        } else {
+            quote! { __p.#key = Some(#value); }
+        }
+    }).collect()
+}
 
 // ---------------------------------------------------------------------------
 // #[derive(Accounts)]
@@ -82,36 +116,11 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             let space = attrs.space.as_ref()
                 .expect("#[account(init)] requires space");
             {
-            // Unified init: AccountInitialize::create_and_initialize handles all types.
             let inner_ty = extract_inner_type_for_init(field_ty)
                 .expect("#[account(init)] requires Account<T> or BorshAccount<T>");
-
-            // Build init param assignments from namespaced constraints.
-            let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-                let key = syn::Ident::new(
-                    &nc.key.to_lowercase(),
-                    proc_macro2::Span::call_site(),
-                );
-                let value = &nc.value;
-                if nc.is_field_ref {
-                    quote! { __p.#key = Some(#value.account()); }
-                } else {
-                    quote! { __p.#key = Some(#value); }
-                }
-            }).collect();
-
+            let param_assignments = gen_init_params(&attrs.namespaced);
             let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-                let seed_exprs = seeds;
-                quote! {
-                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], __program_id,
-                    );
-                    if *__target.address() != __pda {
-                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                    }
-                    __bumps.#field_name = __bump;
-                    let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
-                }
+                gen_init_seeds(seeds, field_name)
             } else {
                 quote! { let __seeds: Option<&[&[u8]]> = None; }
             };
@@ -143,35 +152,12 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 .expect("#[account(init_if_needed)] requires space");
             let inner_ty = extract_inner_type_for_init(field_ty)
                 .expect("#[account(init_if_needed)] requires Account<T> or BorshAccount<T>");
-
+            let param_assignments = gen_init_params(&attrs.namespaced);
             let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-                let seed_exprs = seeds;
-                quote! {
-                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], __program_id,
-                    );
-                    if *__target.address() != __pda {
-                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                    }
-                    __bumps.#field_name = __bump;
-                    let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
-                }
+                gen_init_seeds(seeds, field_name)
             } else {
                 quote! { let __seeds: Option<&[&[u8]]> = None; }
             };
-
-            let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-                let key = syn::Ident::new(
-                    &nc.key.to_lowercase(),
-                    proc_macro2::Span::call_site(),
-                );
-                let value = &nc.value;
-                if nc.is_field_ref {
-                    quote! { __p.#key = Some(#value.account()); }
-                } else {
-                    quote! { __p.#key = Some(#value); }
-                }
-            }).collect();
 
             load_stmts.push(quote! {
                 let mut #field_name = {

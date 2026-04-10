@@ -162,9 +162,9 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
         T::validate(&view, &data_ref)?;
         let offset = T::data_offset();
         // SAFETY: AccountView's raw pointer is valid for the entire instruction
-        // lifetime (Solana runtime guarantee). The Ref guard prevents mutable
-        // aliasing. We extend its lifetime to 'static because the underlying
-        // data outlives any local scope within the instruction.
+        // lifetime. The Ref/RefMut guard prevents aliasing. We extend its
+        // lifetime to 'static because the underlying data outlives any local
+        // scope within the instruction.
         let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
         let ptr = guard[offset..].as_ptr() as *const T;
         Ok(Self { view, borrow: BorrowState::Immutable { _guard: guard, ptr } })
@@ -175,7 +175,6 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
         let data_ref = view_mut.try_borrow_mut()?;
         T::validate(&view, &data_ref)?;
         let offset = T::data_offset();
-        // SAFETY: Same as from_ref. RefMut provides exclusive access.
         let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
         let ptr = guard[offset..].as_mut_ptr() as *mut T;
         Ok(Self { view, borrow: BorrowState::Mutable { _guard: guard, ptr } })

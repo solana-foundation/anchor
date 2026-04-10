@@ -14,6 +14,31 @@ use {
     crate::Id,
 };
 
+/// Shared validation for SPL Token-owned accounts (Token or Token2022).
+fn validate_token_account<T>(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
+    if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
+        return Err(ProgramError::IllegalOwner);
+    }
+    if data.len() != core::mem::size_of::<T>() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    Ok(())
+}
+
+/// Create a Token-program-owned account, handling PDA signing if needed.
+fn create_token_account(
+    payer: &AccountView,
+    account: &AccountView,
+    space: usize,
+    signer_seeds: Option<&[&[u8]]>,
+) -> Result<(), ProgramError> {
+    let token_program_id = Token::id();
+    match signer_seeds {
+        Some(seeds) => crate::create_account_signed(payer, account, space, &token_program_id, seeds),
+        None => crate::create_account(payer, account, space, &token_program_id),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // TokenAccount (165 bytes)
 // ---------------------------------------------------------------------------
@@ -52,17 +77,8 @@ unsafe impl Zeroable for TokenAccount {}
 
 impl AccountValidate for TokenAccount {
     fn validate(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
-        // Token accounts can be owned by Token or Token2022.
-        if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
-            return Err(ProgramError::IllegalOwner);
-        }
-        // Exact size distinguishes TokenAccount (165) from Mint (82).
-        if data.len() != core::mem::size_of::<Self>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(())
+        validate_token_account::<Self>(view, data)
     }
-
     fn data_offset() -> usize { 0 }
 }
 
@@ -87,18 +103,8 @@ impl AccountInitialize for TokenAccount {
         let mint = params.mint.ok_or(ProgramError::InvalidArgument)?;
         let authority = params.authority.ok_or(ProgramError::InvalidArgument)?;
 
-        // Create the account owned by the token program.
-        let token_program_id = Token::id();
-        match signer_seeds {
-            Some(seeds) => crate::create_account_signed(
-                payer, account, core::mem::size_of::<Self>(), &token_program_id, seeds,
-            )?,
-            None => crate::create_account(
-                payer, account, core::mem::size_of::<Self>(), &token_program_id,
-            )?,
-        }
+        create_token_account(payer, account, core::mem::size_of::<Self>(), signer_seeds)?;
 
-        // Initialize the token account.
         pinocchio_token::instructions::InitializeAccount3 {
             account,
             mint,
@@ -180,15 +186,8 @@ unsafe impl Zeroable for Mint {}
 
 impl AccountValidate for Mint {
     fn validate(view: &AccountView, data: &[u8]) -> Result<(), ProgramError> {
-        if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
-            return Err(ProgramError::IllegalOwner);
-        }
-        if data.len() != core::mem::size_of::<Self>() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(())
+        validate_token_account::<Self>(view, data)
     }
-
     fn data_offset() -> usize { 0 }
 }
 
@@ -214,18 +213,8 @@ impl AccountInitialize for Mint {
         let decimals = params.decimals.ok_or(ProgramError::InvalidArgument)?;
         let authority = params.authority.ok_or(ProgramError::InvalidArgument)?;
 
-        // Create the account owned by the token program.
-        let token_program_id = Token::id();
-        match signer_seeds {
-            Some(seeds) => crate::create_account_signed(
-                payer, account, core::mem::size_of::<Self>(), &token_program_id, seeds,
-            )?,
-            None => crate::create_account(
-                payer, account, core::mem::size_of::<Self>(), &token_program_id,
-            )?,
-        }
+        create_token_account(payer, account, core::mem::size_of::<Self>(), signer_seeds)?;
 
-        // Initialize the mint.
         pinocchio_token::instructions::InitializeMint2 {
             mint: account,
             decimals,

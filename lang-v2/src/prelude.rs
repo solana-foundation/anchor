@@ -25,6 +25,8 @@ pub use crate::{
     AnchorSerialize, AnchorDeserialize,
     // Error
     Result, Error, ErrorCode,
+    // Re-export ProgramError for custom error impls
+    Error as ProgramError,
     // Constants
     DISC_LEN,
     // Constraints
