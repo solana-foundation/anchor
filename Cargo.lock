@@ -380,6 +380,7 @@ dependencies = [
  "bytemuck",
  "pinocchio",
  "pinocchio-system",
+ "sha2",
  "solana-address 2.4.0",
  "solana-define-syscall 4.0.1",
  "solana-msg",

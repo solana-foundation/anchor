@@ -4,7 +4,7 @@ use {
     pinocchio::address::Address,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program_error::ProgramError,
-    crate::{AnchorAccount, Discriminator, Id, Owner},
+    crate::{AnchorAccount, Discriminator, Owner},
 };
 
 /// Discriminator length in bytes. All `#[account]` types use an 8-byte

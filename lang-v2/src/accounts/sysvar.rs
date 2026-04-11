@@ -49,11 +49,6 @@ impl<T: PinocchioSysvar + SysvarId + Copy> AnchorAccount for Sysvar<T> {
         Ok(Self { view, data, _phantom: PhantomData })
     }
 
-    fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
-        // Sysvars are read-only; load_mut behaves the same as load.
-        Self::load(view, program_id)
-    }
-
     fn account(&self) -> &AccountView { &self.view }
 }
 

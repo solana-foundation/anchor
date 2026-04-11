@@ -22,8 +22,6 @@ impl<T: Id> AnchorAccount for Program<T> {
         Ok(Self { view, _phantom: PhantomData })
     }
     #[inline(always)]
-    fn load_mut(view: AccountView, p: &Address) -> Result<Self, ProgramError> { Self::load(view, p) }
-    #[inline(always)]
     fn account(&self) -> &AccountView { &self.view }
 }
 

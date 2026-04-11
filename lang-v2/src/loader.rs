@@ -11,12 +11,6 @@ use {
 ///
 /// Wraps the accounts slice and an advancing index so that the macro only
 /// needs to emit one `loader.next*()` call per field.
-///
-/// TODO: reassess whether this indirection still pays for itself. The macro
-/// could generate `<#field_ty>::load(accounts[N], program_id)?` directly with
-/// compile-time indices and a single bounds check per struct. The loader was
-/// useful when there were more variants (next_init_pda, init_if_needed, etc.)
-/// but after removing those helpers it's a thin shim around slice indexing.
 pub struct AccountLoader<'a> {
     program_id: &'a Address,
     accounts: &'a [AccountView],
