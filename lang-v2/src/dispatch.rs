@@ -50,7 +50,7 @@ pub fn run_handler<T: TryAccounts>(
     let remaining = accounts
         .get(consumed..)
         .ok_or::<ProgramError>(crate::ErrorCode::AccountNotEnoughKeys.into())?;
-    let mut ctx = Context::new(*program_id, ctx_accounts, remaining, bumps);
+    let mut ctx = Context::new(program_id, ctx_accounts, remaining, bumps);
     handler(&mut ctx)?;
     ctx.accounts.exit_accounts()?;
     Ok(())

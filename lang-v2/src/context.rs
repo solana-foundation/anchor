@@ -1,7 +1,10 @@
 use pinocchio::{account::AccountView, address::Address};
 
 pub struct Context<'a, T: Bumps> {
-    pub program_id: Address,
+    /// Program id as a reference to avoid the 32-byte copy into every
+    /// `Context` instance. The referenced `Address` lives for the whole
+    /// instruction since it comes from the entrypoint's input buffer.
+    pub program_id: &'a Address,
     pub accounts: T,
     pub remaining_accounts: &'a [AccountView],
     /// Bump seeds found during constraint validation. This is provided as a
@@ -14,7 +17,7 @@ pub struct Context<'a, T: Bumps> {
 impl<'a, T: Bumps> Context<'a, T> {
     #[inline(always)]
     pub fn new(
-        program_id: Address,
+        program_id: &'a Address,
         accounts: T,
         remaining_accounts: &'a [AccountView],
         bumps: T::Bumps,
