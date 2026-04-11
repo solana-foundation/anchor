@@ -281,6 +281,8 @@ dependencies = [
 name = "anchor-derive-accounts-v2"
 version = "0.1.0"
 dependencies = [
+ "bs58",
+ "curve25519-dalek",
  "proc-macro2",
  "quote",
  "sha2",

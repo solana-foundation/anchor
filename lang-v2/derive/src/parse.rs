@@ -343,6 +343,111 @@ fn rewrite_seed_expr(expr: &Expr, field_names: &[String]) -> proc_macro2::TokenS
     quote! { #expr }
 }
 
+/// Build the seed-check codegen for a `#[account(seeds = [..], bump)]`
+/// field. Tries to precompute the canonical PDA bump at macro-expansion
+/// time when all seeds are byte literals and the crate's program id can
+/// be discovered from `src/lib.rs`, emitting `verify_program_address`
+/// (~85 CU) in place of the runtime `find_program_address` loop
+/// (up to ~700 CU).
+///
+/// Falls back to the dynamic path whenever:
+///   - any seed is non-literal (field reference, method call, expr),
+///   - `seeds::program = expr` overrides the derivation program id, or
+///   - program-id discovery fails for any reason (missing lib.rs,
+///     parse error, no `declare_id!` macro, malformed argument).
+///
+/// `target_addr_ref` must be a TokenStream producing `&Address` for the
+/// account whose address we're verifying: `__target.address()` inside
+/// the `init` arm, `<field>.account().address()` for non-init
+/// constraints.
+///
+/// `for_init = true` additionally emits the `let __seeds: Option<&[&[u8]]> = Some(...)`
+/// binding in the enclosing scope, as required by the init arm's
+/// subsequent `create_and_initialize` call.
+///
+/// `using_our_program_id = false` (i.e. `seeds::program = ...` is set)
+/// unconditionally falls back to the dynamic path, since we only know
+/// how to discover our own crate's `declare_id!`.
+fn emit_seeds_check(
+    seeds: &[Expr],
+    seed_exprs: &[TokenStream2],
+    pda_program: &TokenStream2,
+    target_addr_ref: &TokenStream2,
+    field_name: &Ident,
+    for_init: bool,
+    using_our_program_id: bool,
+) -> TokenStream2 {
+    // Fast path: try to precompute the bump AND the full PDA at expansion
+    // time. The runtime then does a direct `Address` bytes compare
+    // (~10 CU) instead of re-hashing via `verify_program_address`
+    // (~85 CU). The bump is still emitted as a const because the init
+    // arm's `create_and_initialize` CPI needs it for signer seeds.
+    if using_our_program_id {
+        if let Some(literal_seeds) = crate::pda::seeds_as_byte_literals(seeds) {
+            if let Some(program_id) = crate::pda::discover_program_id() {
+                let seed_slices: Vec<&[u8]> =
+                    literal_seeds.iter().map(|s| s.as_slice()).collect();
+                if let Some((bump, pda_bytes)) =
+                    crate::pda::precompute_pda(&seed_slices, &program_id)
+                {
+                    // Field-scoped const names keep multiple fields'
+                    // bumps + PDAs from colliding, even when two
+                    // constraints share an outer scope.
+                    let upper = field_name.to_string().to_uppercase();
+                    let bump_const =
+                        Ident::new(&format!("__{}_BUMP", upper), field_name.span());
+                    let pda_const =
+                        Ident::new(&format!("__{}_PDA", upper), field_name.span());
+                    // Emit the 32-byte PDA as an `Address` const via
+                    // the const fn constructor. LLVM places this in
+                    // `.rodata` and compiles the runtime `!=` check
+                    // down to a straight 32-byte compare.
+                    let pda_bytes_tokens = pda_bytes.iter().map(|b| quote! { #b });
+                    let check = quote! {
+                        const #bump_const: u8 = #bump;
+                        const #pda_const: anchor_lang_v2::Address =
+                            anchor_lang_v2::Address::new_from_array([#(#pda_bytes_tokens),*]);
+                        if *#target_addr_ref != #pda_const {
+                            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+                        }
+                        __bumps.#field_name = #bump_const;
+                    };
+                    return if for_init {
+                        quote! {
+                            #check
+                            let __seeds: Option<&[&[u8]]> =
+                                Some(&[#(#seed_exprs),* , &[#bump_const]]);
+                        }
+                    } else {
+                        // Wrap non-init in a block so the consts are
+                        // scoped and can't collide with other fields.
+                        quote! { { #check } }
+                    };
+                }
+            }
+        }
+    }
+
+    // Fallback: runtime find_program_address loop.
+    let find = quote! {
+        let (__pda, __bump) = anchor_lang_v2::find_program_address(
+            &[#(#seed_exprs),*], #pda_program,
+        );
+        if *#target_addr_ref != __pda {
+            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+        }
+        __bumps.#field_name = __bump;
+    };
+    if for_init {
+        quote! {
+            #find
+            let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
+        }
+    } else {
+        find
+    }
+}
+
 pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
@@ -378,16 +483,17 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
 
         let seeds_arg = if let Some(ref seeds) = attrs.seeds {
             let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
-            quote! {
-                let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                    &[#(#seed_exprs),*], __program_id,
-                );
-                if *__target.address() != __pda {
-                    return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                }
-                __bumps.#field_name = __bump;
-                let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
-            }
+            let pda_program = quote! { __program_id };
+            let target_addr_ref = quote! { __target.address() };
+            emit_seeds_check(
+                seeds,
+                &seed_exprs,
+                &pda_program,
+                &target_addr_ref,
+                field_name,
+                /* for_init */ true,
+                /* using_our_program_id */ true,
+            )
         } else {
             quote! { let __seeds: Option<&[&[u8]]> = None; }
         };
@@ -417,16 +523,17 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
 
         let seeds_arg = if let Some(ref seeds) = attrs.seeds {
             let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
-            quote! {
-                let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                    &[#(#seed_exprs),*], __program_id,
-                );
-                if *__target.address() != __pda {
-                    return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                }
-                __bumps.#field_name = __bump;
-                let __seeds: Option<&[&[u8]]> = Some(&[#(#seed_exprs),* , &[__bump]]);
-            }
+            let pda_program = quote! { __program_id };
+            let target_addr_ref = quote! { __target.address() };
+            emit_seeds_check(
+                seeds,
+                &seed_exprs,
+                &pda_program,
+                &target_addr_ref,
+                field_name,
+                /* for_init */ true,
+                /* using_our_program_id */ true,
+            )
         } else {
             quote! { let __seeds: Option<&[&[u8]]> = None; }
         };
@@ -542,11 +649,14 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
         if let Some(ref seeds) = attrs.seeds {
             let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
             // seeds::program = expr overrides which program_id to derive PDA from
+            let using_our_program_id = attrs.seeds_program.is_none();
             let pda_program = match &attrs.seeds_program {
                 Some(prog) => quote! { &#prog },
                 None => quote! { __program_id },
             };
             if let Some(Some(ref bump_expr)) = attrs.bump {
+                // User-supplied bump (e.g. stored in account data). Always
+                // uses the cheap verify path — no need to precompute.
                 constraints.push(quote! {
                     {
                         let __bump_val: u8 = #bump_expr;
@@ -559,15 +669,16 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
                     }
                 });
             } else {
-                constraints.push(quote! {
-                    let (__pda, __bump) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], #pda_program,
-                    );
-                    if *#field_name.account().address() != __pda {
-                        return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-                    }
-                    __bumps.#field_name = __bump;
-                });
+                let target_addr_ref = quote! { #field_name.account().address() };
+                constraints.push(emit_seeds_check(
+                    seeds,
+                    &seed_exprs,
+                    &pda_program,
+                    &target_addr_ref,
+                    field_name,
+                    /* for_init */ false,
+                    using_our_program_id,
+                ));
             }
         }
     }

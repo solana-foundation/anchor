@@ -2,6 +2,7 @@ extern crate proc_macro;
 
 mod idl;
 mod parse;
+mod pda;
 
 use {
     proc_macro::TokenStream,
