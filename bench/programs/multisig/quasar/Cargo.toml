@@ -1,0 +1,23 @@
+[package]
+name = "quasar-multisig"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "multisig_quasar"
+
+[features]
+alloc = []
+client = []
+debug = []
+
+[dependencies]
+quasar-lang = { path = "/Users/robert/git/quasar/lang" }
+solana-address = { version = "2.2.0" }
+solana-instruction = { version = "3.2.0" }
+
+[lints.rust.unexpected_cfgs]
+level = "allow"
+
+[workspace]
