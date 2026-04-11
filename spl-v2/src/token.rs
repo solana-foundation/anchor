@@ -30,31 +30,25 @@ pub(crate) fn create_token_account(
 }
 
 /// SPL Token account data, zerocopy-mapped (165 bytes).
+///
+/// All fields are private — use the accessor methods to read data. Token
+/// account state is modified only by the SPL Token program via CPI (Transfer,
+/// MintTo, etc.); user programs cannot mutate these fields directly anyway
+/// because the account is owned by the SPL Token program.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct TokenAccount {
-    /// The mint associated with this account.
-    pub mint: Address,
-    /// The owner of this account (matches SPL Token's native `owner` field).
-    pub owner: Address,
-    /// The amount of tokens this account holds.
+    mint: Address,
+    owner: Address,
     amount: [u8; 8],
-    /// COption tag for delegate.
     delegate_flag: [u8; 4],
-    /// Optional delegate.
-    pub delegate: Address,
-    /// Account state (0=Uninitialized, 1=Initialized, 2=Frozen).
-    pub state: u8,
-    /// COption tag for is_native.
+    delegate: Address,
+    state: u8,
     is_native_flag: [u8; 4],
-    /// Rent-exempt reserve for native tokens.
     native_amount: [u8; 8],
-    /// The amount delegated.
     delegated_amount: [u8; 8],
-    /// COption tag for close_authority.
     close_authority_flag: [u8; 4],
-    /// Optional authority to close the account.
-    pub close_authority: Address,
+    close_authority: Address,
 }
 
 // SAFETY: TokenAccount is repr(C) with all alignment-1 fields, no padding.
@@ -109,42 +103,68 @@ impl AccountInitialize for TokenAccount {
 }
 
 impl TokenAccount {
+    /// The mint associated with this token account.
+    pub fn mint(&self) -> &Address {
+        &self.mint
+    }
+
+    /// The owner of this token account.
+    pub fn owner(&self) -> &Address {
+        &self.owner
+    }
+
+    /// The token balance.
     pub fn amount(&self) -> u64 {
         u64::from_le_bytes(self.amount)
     }
 
+    /// The amount currently delegated.
     pub fn delegated_amount(&self) -> u64 {
         u64::from_le_bytes(self.delegated_amount)
     }
 
+    /// Whether a delegate is currently approved.
     pub fn has_delegate(&self) -> bool {
         self.delegate_flag[0] == 1
     }
 
+    /// The approved delegate, if any.
     pub fn delegate(&self) -> Option<&Address> {
         if self.has_delegate() { Some(&self.delegate) } else { None }
     }
 
+    /// Account state (0 = Uninitialized, 1 = Initialized, 2 = Frozen).
+    pub fn state(&self) -> u8 {
+        self.state
+    }
+
+    /// Whether this is a wrapped SOL account.
     pub fn is_native(&self) -> bool {
         self.is_native_flag[0] == 1
     }
 
+    /// The rent-exempt reserve for native SOL accounts, if this is a native
+    /// token account.
     pub fn native_amount(&self) -> Option<u64> {
         if self.is_native() { Some(u64::from_le_bytes(self.native_amount)) } else { None }
     }
 
+    /// Whether a close authority is set.
     pub fn has_close_authority(&self) -> bool {
         self.close_authority_flag[0] == 1
     }
 
+    /// The close authority, if any.
     pub fn close_authority(&self) -> Option<&Address> {
         if self.has_close_authority() { Some(&self.close_authority) } else { None }
     }
 
+    /// Whether the account has been initialized (state != 0).
     pub fn is_initialized(&self) -> bool {
         self.state != 0
     }
 
+    /// Whether the account is frozen (state == 2).
     pub fn is_frozen(&self) -> bool {
         self.state == 2
     }
@@ -160,7 +180,7 @@ pub struct TokenProgramConstraint;
 
 impl Constrain<MintConstraint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
-        if self.mint != *expected {
+        if *self.mint() != *expected {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())
@@ -170,7 +190,7 @@ impl Constrain<MintConstraint> for Account<TokenAccount> {
 
 impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
-        if self.owner != *expected {
+        if *self.owner() != *expected {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())

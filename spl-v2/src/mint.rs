@@ -17,23 +17,21 @@ use {
 };
 
 /// SPL Token mint data, zerocopy-mapped (82 bytes).
+///
+/// All fields are private — use the accessor methods to read data. Mint state
+/// is modified only by the SPL Token program via CPI (MintTo, Burn,
+/// SetAuthority, etc.); user programs cannot mutate these fields directly
+/// anyway because the account is owned by the SPL Token program.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Mint {
-    /// COption tag for mint_authority.
     mint_authority_flag: [u8; 4],
-    /// Optional authority used to mint new tokens.
-    pub mint_authority: Address,
-    /// Total supply of tokens.
+    mint_authority: Address,
     supply: [u8; 8],
-    /// Number of decimals.
-    pub decimals: u8,
-    /// Is initialized.
+    decimals: u8,
     is_initialized: u8,
-    /// COption tag for freeze_authority.
     freeze_authority_flag: [u8; 4],
-    /// Optional authority to freeze token accounts.
-    pub freeze_authority: Address,
+    freeze_authority: Address,
 }
 
 // SAFETY: Mint is repr(C) with all alignment-1 fields, no padding.
@@ -88,26 +86,37 @@ impl AccountInitialize for Mint {
 }
 
 impl Mint {
+    /// Total supply of tokens.
     pub fn supply(&self) -> u64 {
         u64::from_le_bytes(self.supply)
     }
 
+    /// Number of base-10 digits to the right of the decimal place.
+    pub fn decimals(&self) -> u8 {
+        self.decimals
+    }
+
+    /// Whether a mint authority is currently set.
     pub fn has_mint_authority(&self) -> bool {
         self.mint_authority_flag[0] == 1
     }
 
+    /// The mint authority, if any.
     pub fn mint_authority(&self) -> Option<&Address> {
         if self.has_mint_authority() { Some(&self.mint_authority) } else { None }
     }
 
+    /// Whether the mint has been initialized.
     pub fn is_initialized(&self) -> bool {
         self.is_initialized == 1
     }
 
+    /// Whether a freeze authority is currently set.
     pub fn has_freeze_authority(&self) -> bool {
         self.freeze_authority_flag[0] == 1
     }
 
+    /// The freeze authority, if any.
     pub fn freeze_authority(&self) -> Option<&Address> {
         if self.has_freeze_authority() { Some(&self.freeze_authority) } else { None }
     }
@@ -124,20 +133,18 @@ pub struct TokenProgramConstraint;
 
 impl Constrain<AuthorityConstraint> for Account<Mint> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
-        if !self.has_mint_authority() || self.mint_authority != *expected {
-            Err(ProgramError::InvalidAccountData)
-        } else {
-            Ok(())
+        match self.mint_authority() {
+            Some(addr) if addr == expected => Ok(()),
+            _ => Err(ProgramError::InvalidAccountData),
         }
     }
 }
 
 impl Constrain<FreezeAuthorityConstraint> for Account<Mint> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
-        if !self.has_freeze_authority() || self.freeze_authority != *expected {
-            Err(ProgramError::InvalidAccountData)
-        } else {
-            Ok(())
+        match self.freeze_authority() {
+            Some(addr) if addr == expected => Ok(()),
+            _ => Err(ProgramError::InvalidAccountData),
         }
     }
 }
@@ -145,7 +152,7 @@ impl Constrain<FreezeAuthorityConstraint> for Account<Mint> {
 /// `mint::Decimals = 6` — non-address constraint, compares u8.
 impl Constrain<DecimalsConstraint, u8> for Account<Mint> {
     fn constrain(&self, expected: &u8) -> Result<(), ProgramError> {
-        if self.decimals != *expected {
+        if self.decimals() != *expected {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())
