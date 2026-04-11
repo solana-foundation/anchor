@@ -1,0 +1,38 @@
+use anchor_lang_v2::prelude::*;
+
+use crate::{
+    errors::MultisigError,
+    state::{MultisigConfig, MAX_LABEL_LEN},
+};
+
+#[derive(Accounts)]
+pub struct SetLabel {
+    #[account(mut)]
+    pub creator: Signer,
+    #[account(
+        mut,
+        has_one = creator,
+        seeds = [b"multisig", creator.account().address().as_ref()],
+        bump = config.bump
+    )]
+    pub config: Account<MultisigConfig>,
+    pub system_program: Program<System>,
+}
+
+impl SetLabel {
+    #[inline(always)]
+    pub fn update_label(&mut self, label_len: u8, label: [u8; 32]) -> Result<()> {
+        let len = label_len as usize;
+        if len > MAX_LABEL_LEN {
+            return Err(MultisigError::LabelTooLong.into());
+        }
+        // Validate UTF-8 so the label matches a framework taking `&str`
+        // (e.g. quasar's `String<32>`). Without this check, v2 was
+        // previously ahead partly because it skipped the validation
+        // quasar does as part of argument deserialization.
+        core::str::from_utf8(&label[..len])
+            .map_err(|_| MultisigError::LabelTooLong)?;
+        self.config.label.set_from_slice(&label[..len]);
+        Ok(())
+    }
+}

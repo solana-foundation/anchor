@@ -1,0 +1,23 @@
+[package]
+name = "hello-world-quasar"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "hello_world_quasar"
+
+[features]
+client = []
+debug = []
+
+[dependencies]
+quasar-lang = { path = "/Users/robert/git/quasar/lang" }
+solana-program-log = "1.0.0"
+
+[lints.rust.unexpected_cfgs]
+level = "allow"
+
+[workspace]
+

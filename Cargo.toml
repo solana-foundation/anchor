@@ -9,6 +9,9 @@ members = [
     "lang/derive/*",
     "lang/syn",
     "spl",
+    "lang-v2",
+    "lang-v2/derive",
+    "spl-v2",
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
@@ -56,6 +59,8 @@ solana-system-interface = "2.0.0"
 solana-sysvar = "3.1.1"
 solana-sysvar-id = "3.1.0"
 solana-transaction = "3.0.1"
+
+pinocchio = { version = "0.11", default-features = false }
 
 [profile.release]
 lto = true

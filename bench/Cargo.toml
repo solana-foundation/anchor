@@ -1,0 +1,46 @@
+[package]
+name = "anchor-bench"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[features]
+default = ["bin"]
+bin = []
+
+[dependencies]
+anyhow = "1.0"
+anchor-lang = { path = "../lang" }
+anchor-lang-v2 = { path = "../lang-v2" }
+hello-world = { path = "programs/helloworld/anchor-v1", features = ["no-entrypoint"] }
+hello-world-v2 = { path = "programs/helloworld/anchor-v2", features = ["cpi"], package = "hello-world-v2" }
+litesvm = { version = "0.10.0", features = ["register-tracing"] }
+tempfile = "3"
+object = { version = "0.37.3", features = ["read_core", "elf"] }
+rustc-demangle = "0.1"
+solana-account = "3.0"
+solana-compute-budget = "3.1.12"
+solana-sbpf = "0.13.1"
+multisig-v1 = { path = "programs/multisig/anchor-v1", features = ["no-entrypoint"], package = "multisig-v1" }
+multisig-v2 = { path = "programs/multisig/anchor-v2", features = ["cpi"], package = "multisig-v2" }
+paste = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-pubkey = "3.0.0"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.1"
+plotters = "0.3.7"
+
+[workspace]
+exclude = [
+    "programs/multisig/quasar",
+    "programs/multisig/pinocchio",
+    "programs/multisig/steel",
+]
+
+[profile.release]
+overflow-checks = false
+lto = "fat"
+codegen-units = 1

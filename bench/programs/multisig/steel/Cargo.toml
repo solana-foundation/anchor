@@ -1,0 +1,23 @@
+[package]
+name = "multisig-steel"
+version = "0.1.0"
+description = "Steel port of the multisig benchmark program"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "multisig_steel"
+
+[features]
+no-entrypoint = []
+
+[dependencies]
+steel = "4.0.4"
+solana-program = "2.0"
+bytemuck = { version = "1", features = ["derive"] }
+
+[lints.rust.unexpected_cfgs]
+level = "allow"
+
+[workspace]
