@@ -29,11 +29,14 @@ pub trait AccountValidate {
 impl<T: Owner + Discriminator> AccountValidate for T {
     #[inline(always)]
     fn validate(view: &AccountView, data: &[u8], program_id: &Address) -> Result<(), ProgramError> {
-        if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
-            return Err(ProgramError::UninitializedAccount);
-        }
+        // Hot path: a single owner check. The "uninitialized placeholder"
+        // disambiguation lives in `cold_owner_error` — placeholder accounts
+        // (lamports=0, owner=system) always fail this owner check too,
+        // since `T::owner(program_id)` is the user's program, never system.
+        // The cold helper turns the failure into a more specific error
+        // code without paying the extra loads on the validation-passes path.
         if !view.owned_by(&T::owner(program_id)) {
-            return Err(ProgramError::IllegalOwner);
+            return Err(cold_owner_error(view));
         }
         let disc = T::DISCRIMINATOR;
         let min_len = disc.len() + core::mem::size_of::<T>();
@@ -50,6 +53,34 @@ impl<T: Owner + Discriminator> AccountValidate for T {
     fn data_offset() -> usize {
         T::DISCRIMINATOR.len()
     }
+}
+
+/// Cold-path disambiguation for failed owner checks. The hot path branches
+/// here when the owner doesn't match `T::owner(program_id)`; this helper
+/// distinguishes the two failure modes (uninitialized placeholder vs.
+/// genuine wrong owner) so the caller gets a precise error code without
+/// the disambiguation cost being paid on every successful load.
+///
+/// Marked `#[cold] #[inline(never)]` so LLVM moves it out of the calling
+/// function's hot section and shares one copy across every typed-account
+/// validation site.
+#[cold]
+#[inline(never)]
+pub(super) fn cold_owner_error(view: &AccountView) -> ProgramError {
+    if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
+        ProgramError::UninitializedAccount
+    } else {
+        ProgramError::IllegalOwner
+    }
+}
+
+/// Cold-path constructor for the read-only-write rejection in `load_mut`.
+/// Outlined for the same reason as `cold_owner_error`: a single shared copy
+/// instead of an inlined `Err(...)` per call site.
+#[cold]
+#[inline(never)]
+pub(super) fn cold_not_writable() -> ProgramError {
+    ProgramError::InvalidAccountData
 }
 
 /// Defines how to create and initialize an account type via CPI.
@@ -237,7 +268,7 @@ impl<T: Pod + Zeroable + AccountValidate> AnchorAccount for Account<T> {
     #[inline(always)]
     fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         if !view.is_writable() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(cold_not_writable());
         }
         Self::from_ref_mut(view, program_id)
     }

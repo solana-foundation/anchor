@@ -50,11 +50,11 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
     }
 
     fn validate_and_load(view: AccountView, data: &[u8], program_id: &Address) -> Result<T, ProgramError> {
-        if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
-            return Err(ProgramError::UninitializedAccount);
-        }
+        // Hot path: a single owner check. The "uninitialized placeholder"
+        // disambiguation lives in `cold_owner_error` (account.rs) — see
+        // the comment there for why this is safe.
         if !view.owned_by(&T::owner(program_id)) {
-            return Err(ProgramError::IllegalOwner);
+            return Err(crate::accounts::account::cold_owner_error(&view));
         }
         if data.len() < DISC_LEN {
             return Err(ProgramError::AccountDataTooSmall);
@@ -82,7 +82,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
 
     fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         if !view.is_writable() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(crate::accounts::account::cold_not_writable());
         }
         let mut view_mut = view;
         let data_ref = view_mut.try_borrow_mut()?;
