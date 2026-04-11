@@ -18,6 +18,8 @@ pub use crate::{
     AccountLoader, TryAccounts, run_handler, parse_instruction,
     // CPI
     create_account, create_account_signed, find_program_address, create_program_address,
+    // Hash
+    sha256,
     // Derive macros
     Accounts, account, program,
     // Event
