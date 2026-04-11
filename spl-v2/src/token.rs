@@ -35,8 +35,8 @@ pub(crate) fn create_token_account(
 pub struct TokenAccount {
     /// The mint associated with this account.
     pub mint: Address,
-    /// The owner of this account.
-    pub authority: Address,
+    /// The owner of this account (matches SPL Token's native `owner` field).
+    pub owner: Address,
     /// The amount of tokens this account holds.
     amount: [u8; 8],
     /// COption tag for delegate.
@@ -170,7 +170,7 @@ impl Constrain<MintConstraint> for Account<TokenAccount> {
 
 impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
-        if self.authority != *expected {
+        if self.owner != *expected {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())
