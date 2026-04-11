@@ -125,20 +125,22 @@ impl<T: Owner + Discriminator> AccountInitialize for T {
         _params: &(),
         signer_seeds: Option<&[&[u8]]>,
     ) -> Result<(), ProgramError> {
-        let disc = T::DISCRIMINATOR;
+        let disc: &[u8; 8] = T::DISCRIMINATOR
+            .try_into()
+            .map_err(|_| ProgramError::InvalidAccountData)?;
         match signer_seeds {
             Some(seeds) => crate::create_account_signed(payer, account, space, program_id, seeds)?,
             None => crate::create_account(payer, account, space, program_id)?,
         }
-        // Write discriminator after CPI. The account data pointer may have
-        // changed after create_account (the account went from 0 to N bytes),
-        // so we must use the current view, not a stale copy.
-        // Use borrow_unchecked_mut to avoid holding a RefMut that would
-        // conflict with the subsequent load_mut.
+        // Panic-free disc write: `first_chunk_mut::<8>` returns `Option`, so
+        // LLVM emits a single qword store on the happy path and a plain
+        // ProgramError return on failure — no `slice_end_index_len_fail` and
+        // no core::fmt panic machinery pulled into the binary.
         let mut account_view = *account;
-        unsafe {
-            let data = account_view.borrow_unchecked_mut();
-            data[..disc.len()].copy_from_slice(disc);
+        let data = unsafe { account_view.borrow_unchecked_mut() };
+        match data.first_chunk_mut::<8>() {
+            Some(dst) => *dst = *disc,
+            None => return Err(ProgramError::AccountDataTooSmall),
         }
         Ok(())
     }

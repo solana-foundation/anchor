@@ -44,7 +44,12 @@ pub fn run_handler<T: TryAccounts>(
     handler: impl FnOnce(&mut Context<T>) -> Result<(), ProgramError>,
 ) -> Result<(), ProgramError> {
     let (ctx_accounts, bumps, consumed) = T::try_accounts(program_id, accounts, ix_data)?;
-    let remaining = &accounts[consumed..];
+    // `get(consumed..)` returns `Option`, so LLVM doesn't emit
+    // `slice_start_index_len_fail` and doesn't drag in core::fmt panic
+    // formatters for the "out of range for slice of length" message.
+    let remaining = accounts
+        .get(consumed..)
+        .ok_or::<ProgramError>(crate::ErrorCode::AccountNotEnoughKeys.into())?;
     let mut ctx = Context::new(*program_id, ctx_accounts, remaining, bumps);
     handler(&mut ctx)?;
     ctx.accounts.exit_accounts()?;
