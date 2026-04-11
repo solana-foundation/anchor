@@ -1325,7 +1325,7 @@ pub fn get_default_ledger_path() -> PathBuf {
     Path::new(".anchor").join("test-ledger")
 }
 
-const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
+const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
 
 impl Merge for _Validator {
     fn merge(&mut self, other: Self) {
