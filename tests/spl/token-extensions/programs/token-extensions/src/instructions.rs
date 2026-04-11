@@ -3,9 +3,9 @@ use anchor_lang::{prelude::*, solana_program::entrypoint::ProgramResult};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token_2022::spl_token_2022::extension::{
-        group_member_pointer::GroupMemberPointer, group_pointer::GroupPointer,
-        metadata_pointer::MetadataPointer, mint_close_authority::MintCloseAuthority,
-        permanent_delegate::PermanentDelegate, transfer_hook::TransferHook,
+        group_member_pointer::GroupMemberPointer, metadata_pointer::MetadataPointer,
+        mint_close_authority::MintCloseAuthority, permanent_delegate::PermanentDelegate,
+        transfer_hook::TransferHook,
     },
     token_2022_extensions,
     token_interface::{
@@ -217,6 +217,6 @@ pub fn update_group_pointer_handler(
         mint: ctx.accounts.mint.to_account_info(),
         authority: ctx.accounts.authority.to_account_info(),
     };
-    let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+    let cpi_ctx = CpiContext::new(*ctx.accounts.token_program.key, cpi_accounts);
     token_2022_extensions::group_pointer::group_pointer_update(cpi_ctx, new_group_address)
 }
