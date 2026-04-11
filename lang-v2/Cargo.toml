@@ -6,9 +6,14 @@ description = "Anchor v2: trait-based account system for Solana (no_std)"
 license = "Apache-2.0"
 
 [features]
-default = ["alloc"]
+default = ["alloc", "guardrails"]
 alloc = ["pinocchio/alloc"]
 idl-build = []
+# Runtime safety nets that catch caller bugs the Rust borrow checker
+# can't see statically. Default-on. Disabling saves CU at the cost of
+# diagnostic panics for misuse — see lib.rs / Account<T> docs.
+# Disable via `default-features = false` plus re-adding the features you want.
+guardrails = []
 
 [dependencies]
 anchor-derive-accounts-v2 = { path = "./derive", version = "0.1.0" }

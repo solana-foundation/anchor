@@ -24,6 +24,7 @@ pub trait TryAccounts: Bumps + Sized {
 /// Parse the 8-byte discriminator from instruction data.
 ///
 /// Returns `(discriminator_u64, remaining_ix_data)`.
+#[inline(always)]
 pub fn parse_instruction(data: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
     if data.len() < 8 {
         return Err(crate::ErrorCode::InstructionFallbackNotFound.into());
@@ -35,6 +36,7 @@ pub fn parse_instruction(data: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
 /// Run a handler inside a fully-constructed [`Context`].
 ///
 /// Common scaffold: build context, call user function, flush dirty accounts.
+#[inline(always)]
 pub fn run_handler<T: TryAccounts>(
     program_id: &Address,
     accounts: &[AccountView],

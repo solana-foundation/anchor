@@ -15,8 +15,11 @@ impl UncheckedAccount {
 
 impl AnchorAccount for UncheckedAccount {
     type Data = AccountView;
+    #[inline(always)]
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> { Ok(Self { view }) }
+    #[inline(always)]
     fn load_mut(view: AccountView, p: &Address) -> Result<Self, ProgramError> { Self::load(view, p) }
+    #[inline(always)]
     fn account(&self) -> &AccountView { &self.view }
 }
 

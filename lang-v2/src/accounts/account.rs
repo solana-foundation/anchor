@@ -27,6 +27,7 @@ pub trait AccountValidate {
 /// Blanket impl: every `#[account]` type (Owner + Discriminator) gets standard
 /// Anchor validation — owner check via Owner::owner(program_id).
 impl<T: Owner + Discriminator> AccountValidate for T {
+    #[inline(always)]
     fn validate(view: &AccountView, data: &[u8], program_id: &Address) -> Result<(), ProgramError> {
         if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
             return Err(ProgramError::UninitializedAccount);
@@ -45,6 +46,7 @@ impl<T: Owner + Discriminator> AccountValidate for T {
         Ok(())
     }
 
+    #[inline(always)]
     fn data_offset() -> usize {
         T::DISCRIMINATOR.len()
     }
@@ -82,6 +84,7 @@ pub trait AccountInitialize {
 impl<T: Owner + Discriminator> AccountInitialize for T {
     type Params<'a> = ();
 
+    #[inline(always)]
     fn create_and_initialize<'a>(
         payer: &AccountView,
         account: &AccountView,
@@ -115,26 +118,61 @@ impl<T: Owner + Discriminator> AccountInitialize for T {
 /// Uses pinocchio's borrow tracking to prevent aliasing:
 /// - `load()` → immutable borrow, `Deref` only
 /// - `load_mut()` → mutable borrow, `Deref` + `DerefMut`
+///
+/// # Internals
+///
+/// Holds a cached typed pointer plus the pinocchio borrow guard. The
+/// guard's existence is what prevents aliasing — pinocchio's refcount
+/// rejects further `try_borrow*` calls while it's alive. Field access
+/// goes through the cached pointer with no per-access dispatch in the
+/// common case.
+///
+/// The optional `guardrails` feature (default-on) adds a runtime check
+/// on `Deref`/`DerefMut` that catches:
+/// - Use-after-`release_borrow()` (caller forgot to `reacquire_borrow_mut`)
+/// - Use-after-`close()`
+/// - `DerefMut` on a read-only-loaded account (missing `#[account(mut)]`)
+///
+/// These checks are panics with descriptive messages. Disabling
+/// `guardrails` saves ~20 CU per access, but unchecked misuse is
+/// silent (UB at the program level — usually wrong reads or
+/// runtime-rejected writes).
 pub struct Account<T: Pod + Zeroable + AccountValidate> {
     view: AccountView,
-    borrow: BorrowState<T>,
+    /// Cached typed pointer into the account data. Valid while `guard`
+    /// is `Some`. After `release_borrow()` or `close()`, the pointer
+    /// is stale and must not be dereferenced (panics with `guardrails`).
+    ptr: *mut T,
+    /// The active borrow guard. `Some` while the account is borrowed,
+    /// `None` after `release_borrow()` or `close()`. The variant
+    /// (Immutable vs Mutable) determines whether `DerefMut` is allowed.
+    guard: Option<BorrowGuard>,
 }
 
-enum BorrowState<T> {
-    Immutable { _guard: Ref<'static, [u8]>, ptr: *const T },
-    Mutable { _guard: RefMut<'static, [u8]>, ptr: *mut T },
-    Released,
+/// Holds the live pinocchio borrow guard for an `Account<T>`. The
+/// guards are kept around for their Drop side effect (releasing the
+/// underlying borrow refcount), not their data — `Account<T>` reads
+/// and writes through its cached `ptr` field instead. The variant
+/// distinguishes whether `DerefMut` is allowed.
+#[allow(dead_code)]
+enum BorrowGuard {
+    Immutable(Ref<'static, [u8]>),
+    Mutable(RefMut<'static, [u8]>),
 }
 
 impl<T: Pod + Zeroable + AccountValidate> Account<T> {
-    /// Returns the account's address.
+    /// Returns the account's address. Always safe regardless of borrow state.
+    #[inline(always)]
     pub fn address(&self) -> &Address { self.view.address() }
 
     /// Release the data borrow guard so the underlying `AccountView` can be
     /// passed to CPI calls that check `is_borrowed()`. After calling this,
-    /// `Deref` / `DerefMut` will panic until `reacquire_borrow()` is called.
+    /// `Deref`/`DerefMut` will panic (with `guardrails`) until
+    /// `reacquire_borrow_mut()` is called.
+    #[inline]
     pub fn release_borrow(&mut self) {
-        self.borrow = BorrowState::Released;
+        self.guard = None;
+        // ptr is now stale; further deref is caller error.
     }
 
     /// Re-acquire an immutable borrow after a `release_borrow()` + CPI.
@@ -143,9 +181,10 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
     pub fn reacquire_borrow(&mut self) -> core::result::Result<(), ProgramError> {
         let data_ref = self.view.try_borrow()?;
         let offset = T::data_offset();
+        // SAFETY: see from_ref.
         let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let ptr = guard[offset..].as_ptr() as *const T;
-        self.borrow = BorrowState::Immutable { _guard: guard, ptr };
+        self.ptr = guard[offset..].as_ptr() as *mut T;
+        self.guard = Some(BorrowGuard::Immutable(guard));
         Ok(())
     }
 
@@ -156,11 +195,12 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
         let data_ref = view_mut.try_borrow_mut()?;
         let offset = T::data_offset();
         let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let ptr = guard[offset..].as_mut_ptr() as *mut T;
-        self.borrow = BorrowState::Mutable { _guard: guard, ptr };
+        self.ptr = guard[offset..].as_mut_ptr() as *mut T;
+        self.guard = Some(BorrowGuard::Mutable(guard));
         Ok(())
     }
 
+    #[inline(always)]
     fn from_ref(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         let data_ref = view.try_borrow()?;
         T::validate(&view, &data_ref, program_id)?;
@@ -170,10 +210,11 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
         // lifetime to 'static because the underlying data outlives any local
         // scope within the instruction.
         let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let ptr = guard[offset..].as_ptr() as *const T;
-        Ok(Self { view, borrow: BorrowState::Immutable { _guard: guard, ptr } })
+        let ptr = guard[offset..].as_ptr() as *mut T;
+        Ok(Self { view, ptr, guard: Some(BorrowGuard::Immutable(guard)) })
     }
 
+    #[inline(always)]
     fn from_ref_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         let mut view_mut = view;
         let data_ref = view_mut.try_borrow_mut()?;
@@ -181,17 +222,19 @@ impl<T: Pod + Zeroable + AccountValidate> Account<T> {
         let offset = T::data_offset();
         let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
         let ptr = guard[offset..].as_mut_ptr() as *mut T;
-        Ok(Self { view, borrow: BorrowState::Mutable { _guard: guard, ptr } })
+        Ok(Self { view, ptr, guard: Some(BorrowGuard::Mutable(guard)) })
     }
 }
 
 impl<T: Pod + Zeroable + AccountValidate> AnchorAccount for Account<T> {
     type Data = T;
 
+    #[inline(always)]
     fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         Self::from_ref(view, program_id)
     }
 
+    #[inline(always)]
     fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         if !view.is_writable() {
             return Err(ProgramError::InvalidAccountData);
@@ -199,10 +242,13 @@ impl<T: Pod + Zeroable + AccountValidate> AnchorAccount for Account<T> {
         Self::from_ref_mut(view, program_id)
     }
 
+    #[inline(always)]
     fn account(&self) -> &AccountView { &self.view }
 
     fn close(&mut self, mut destination: AccountView) -> pinocchio::ProgramResult {
-        self.borrow = BorrowState::Released;
+        // Drop the borrow guard before mutating the underlying account
+        // state, so any nested helpers can re-borrow it cleanly.
+        self.guard = None;
         let mut self_view = self.view;
         let dest_lamports = destination
             .lamports()
@@ -217,22 +263,46 @@ impl<T: Pod + Zeroable + AccountValidate> AnchorAccount for Account<T> {
 
 impl<T: Pod + Zeroable + AccountValidate> Deref for Account<T> {
     type Target = T;
+    #[inline(always)]
     fn deref(&self) -> &T {
-        match &self.borrow {
-            BorrowState::Immutable { ptr, .. } => unsafe { &**ptr },
-            BorrowState::Mutable { ptr, .. } => unsafe { &*(*ptr as *const T) },
-            BorrowState::Released => panic!("account borrow released (closed)"),
+        // Reading is allowed under either guard variant; only catch
+        // use-after-release/close.
+        #[cfg(feature = "guardrails")]
+        if self.guard.is_none() {
+            panic!(
+                "Account<T> dereferenced after release_borrow() or close(). \
+                 Call reacquire_borrow_mut() before accessing fields again."
+            );
         }
+        // SAFETY: while `guard` is `Some`, pinocchio's refcount holds the
+        // borrow open and prevents aliasing. With `guardrails` disabled,
+        // the caller is responsible for not dereferencing after release.
+        unsafe { &*self.ptr }
     }
 }
 
 impl<T: Pod + Zeroable + AccountValidate> DerefMut for Account<T> {
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {
-        match &mut self.borrow {
-            BorrowState::Mutable { ptr, .. } => unsafe { &mut **ptr },
-            BorrowState::Immutable { .. } => panic!("use #[account(mut)] for mutable access"),
-            BorrowState::Released => panic!("account borrow released (closed)"),
+        // Writing requires a mutable guard. The Solana runtime would
+        // reject the tx if we wrote through an immutably-borrowed
+        // account, so this catches the misuse early with a clearer
+        // error than the runtime's generic "ReadonlyDataModified".
+        #[cfg(feature = "guardrails")]
+        match &self.guard {
+            None => panic!(
+                "Account<T> mutably dereferenced after release_borrow() or close(). \
+                 Call reacquire_borrow_mut() before accessing fields again."
+            ),
+            Some(BorrowGuard::Immutable(_)) => panic!(
+                "Account<T> mutably dereferenced but loaded read-only. \
+                 Add #[account(mut)] to your accounts struct."
+            ),
+            Some(BorrowGuard::Mutable(_)) => {}
         }
+        // SAFETY: under a Mutable guard, no other live borrow exists.
+        // The Rust borrow checker (we hold &mut self) ensures uniqueness.
+        unsafe { &mut *self.ptr }
     }
 }
 
