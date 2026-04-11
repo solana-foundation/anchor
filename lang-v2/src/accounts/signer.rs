@@ -7,6 +7,12 @@ use {
 
 pub struct Signer { view: AccountView }
 
+impl Signer {
+    /// Returns the account's address.
+    #[inline(always)]
+    pub fn address(&self) -> &Address { self.view.address() }
+}
+
 impl AnchorAccount for Signer {
     type Data = AccountView;
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {

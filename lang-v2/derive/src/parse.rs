@@ -315,7 +315,31 @@ pub struct AccountField {
     pub idl_data_type: Option<TokenStream2>,
 }
 
-pub fn parse_field(field: &syn::Field) -> AccountField {
+/// Rewrite a single seed expression so that a bare field-name identifier
+/// (like `wallet` in `seeds = [b"vault", wallet]`) is replaced with the
+/// explicit byte-slice derivation chain `wallet.address().as_ref()`.
+///
+/// Strict: only rewrites simple single-segment `Expr::Path` expressions
+/// whose identifier matches a known field name. Everything else
+/// (literals, method calls, array refs, complex expressions) passes
+/// through unchanged so users can still write explicit seed expressions.
+fn rewrite_seed_expr(expr: &Expr, field_names: &[String]) -> proc_macro2::TokenStream {
+    use quote::quote;
+    if let Expr::Path(ep) = expr {
+        if ep.qself.is_none() && ep.path.segments.len() == 1 && ep.path.leading_colon.is_none() {
+            let seg = &ep.path.segments[0];
+            if seg.arguments.is_empty() {
+                let ident = &seg.ident;
+                if field_names.contains(&ident.to_string()) {
+                    return quote! { #ident.address().as_ref() };
+                }
+            }
+        }
+    }
+    quote! { #expr }
+}
+
+pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
     let attrs = parse_account_attrs(&field.attrs);
@@ -349,7 +373,7 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
         }).collect();
 
         let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs = seeds;
+            let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
             quote! {
                 let (__pda, __bump) = anchor_lang_v2::find_program_address(
                     &[#(#seed_exprs),*], __program_id,
@@ -388,7 +412,7 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
             .expect("#[account(init_if_needed)] requires Account<T> or BorshAccount<T>");
 
         let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs = seeds;
+            let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
             quote! {
                 let (__pda, __bump) = anchor_lang_v2::find_program_address(
                     &[#(#seed_exprs),*], __program_id,
@@ -512,7 +536,7 @@ pub fn parse_field(field: &syn::Field) -> AccountField {
     // Seeds constraint (non-init, non-init_if_needed)
     if !attrs.is_init && !attrs.is_init_if_needed {
         if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs = seeds;
+            let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
             // seeds::program = expr overrides which program_id to derive PDA from
             let pda_program = match &attrs.seeds_program {
                 Some(prog) => quote! { &#prog },

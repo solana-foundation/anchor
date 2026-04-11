@@ -7,6 +7,12 @@ use {
 
 pub struct Program<T: Id> { view: AccountView, _phantom: PhantomData<T> }
 
+impl<T: Id> Program<T> {
+    /// Returns the account's address.
+    #[inline(always)]
+    pub fn address(&self) -> &Address { self.view.address() }
+}
+
 impl<T: Id> AnchorAccount for Program<T> {
     type Data = AccountView;
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {

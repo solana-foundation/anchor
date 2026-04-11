@@ -68,9 +68,26 @@ fn parse_instruction_attrs(attrs: &[syn::Attribute]) -> Vec<(Ident, Type)> {
 fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let name = &input.ident;
     let bumps_name = syn::Ident::new(&format!("{name}Bumps"), name.span());
+    // Collect field names first so we can rewrite bare-ident seed expressions.
+    let raw_field_names: Vec<String> = match &input.data {
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(named) => named
+                .named
+                .iter()
+                .filter_map(|f| f.ident.as_ref().map(|i| i.to_string()))
+                .collect(),
+            _ => panic!("Accounts derive only supports named fields"),
+        },
+        _ => panic!("Accounts derive only supports structs"),
+    };
+
     let fields: Vec<parse::AccountField> = match &input.data {
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().map(parse::parse_field).collect(),
+            Fields::Named(named) => named
+                .named
+                .iter()
+                .map(|f| parse::parse_field(f, &raw_field_names))
+                .collect(),
             _ => panic!("Accounts derive only supports named fields"),
         },
         _ => panic!("Accounts derive only supports structs"),
