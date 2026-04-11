@@ -303,6 +303,13 @@ pub fn create_account_signed(
     Ok(())
 }
 
+/// Rare-path fallback for when the target account already holds lamports
+/// at creation time (e.g. airdropped PDAs or `init_if_needed` after partial
+/// funding). Marked `#[cold]` + `#[inline(never)]` so LTO keeps it out of
+/// the hot dispatch path and the ~1.4 KB of Transfer/Allocate/Assign CPI
+/// glue doesn't bloat the `entrypoint` or per-instruction wrappers.
+#[cold]
+#[inline(never)]
 fn create_prefunded(
     payer: &AccountView,
     target: &AccountView,
