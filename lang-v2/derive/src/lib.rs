@@ -246,6 +246,12 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
 
         impl anchor_lang_v2::TryAccounts for #name {
+            // `#[inline(always)]`: single-instruction dispatch collapses the
+            // __handlers wrapper → run_handler → try_accounts chain into one
+            // frame. For multi-instruction programs LLVM still refuses once
+            // the expanded body crosses its inline-cost threshold, so this
+            // is effectively "inline when cheap enough".
+            #[inline(always)]
             fn try_accounts(
                 __program_id: &anchor_lang_v2::Address,
                 __accounts: &[anchor_lang_v2::AccountView],
@@ -260,6 +266,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 Ok((Self { #(#field_names),* }, __bumps, __loader.consumed()))
             }
 
+            #[inline(always)]
             fn exit_accounts(&mut self) -> anchor_lang_v2::Result<()> {
                 use anchor_lang_v2::AnchorAccount as _;
                 #(#exits)*
@@ -495,7 +502,13 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         });
 
         handler_wrappers.push(quote! {
-            #[inline(never)]
+            // `#[inline]`: under `no-log-ix-name` (the default) this wrapper
+            // is essentially a pass-through to `run_handler`, and forcing it
+            // out-of-line costs an unconditional CALL/EXIT pair in the
+            // `entry()` dispatch table. LLVM will still decline to inline
+            // when the expanded body is large enough to bloat `entry()`
+            // across many instructions.
+            #[inline]
             pub fn #fn_name(
                 __program_id: &anchor_lang_v2::Address,
                 __accounts: &[anchor_lang_v2::AccountView],
