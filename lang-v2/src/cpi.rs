@@ -358,7 +358,15 @@ pub fn realloc_account(
         let excess = current_lamports.saturating_sub(required);
         if excess > 0 {
             let mut payer_mut = *payer;
-            payer_mut.set_lamports(payer_mut.lamports() + excess);
+            // `checked_add` rather than `+`: overflow-checks is disabled in
+            // release builds, and this arithmetic is on user-supplied account
+            // lamports. The total SOL supply is bounded so overflow is
+            // unreachable in practice, but silent wrap would be a downgrade.
+            let new_payer_lamports = payer_mut
+                .lamports()
+                .checked_add(excess)
+                .ok_or(ProgramError::ArithmeticOverflow)?;
+            payer_mut.set_lamports(new_payer_lamports);
             account.set_lamports(required);
         }
     }
