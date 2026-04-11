@@ -247,12 +247,15 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
 
         impl anchor_lang_v2::TryAccounts for #name {
-            // `#[inline(always)]`: single-instruction dispatch collapses the
-            // __handlers wrapper → run_handler → try_accounts chain into one
-            // frame. For multi-instruction programs LLVM still refuses once
-            // the expanded body crosses its inline-cost threshold, so this
-            // is effectively "inline when cheap enough".
-            #[inline(always)]
+            // No inline annotation: let LLVM's cost-based inliner decide.
+            // Forcing `#[inline(always)]` here regressed hello_world_v2/init
+            // by ~58 CU — inlining try_accounts's body (seed array build +
+            // find_program_address loop + CPI marshalling) into the caller
+            // made LLVM balance too many concurrent live values against
+            // eBPF's 10 GPRs and caused ~23 spill/reload pairs on the happy
+            // path. LLVM's default heuristic leaves non-trivial function
+            // bodies out of line when the body is large, which is the right
+            // call for any `#[account(init, seeds, bump)]`-heavy struct.
             fn try_accounts(
                 __program_id: &anchor_lang_v2::Address,
                 __accounts: &[anchor_lang_v2::AccountView],
@@ -267,6 +270,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 Ok((Self { #(#field_names),* }, __bumps, __loader.consumed()))
             }
 
+            // `exit_accounts` stays inlined: the body is just a chain of
+            // `AnchorAccount::exit(&mut self.field)?` calls where each
+            // `exit` is a no-op for POD `Account<T>`, so the whole function
+            // collapses to `Ok(())` with no register pressure.
             #[inline(always)]
             fn exit_accounts(&mut self) -> anchor_lang_v2::Result<()> {
                 use anchor_lang_v2::AnchorAccount as _;
