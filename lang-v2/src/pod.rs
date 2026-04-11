@@ -323,6 +323,16 @@ pub struct PodVec<T: bytemuck::Pod, const MAX: usize> {
 unsafe impl<T: bytemuck::Pod, const MAX: usize> bytemuck::Zeroable for PodVec<T, MAX> {}
 unsafe impl<T: bytemuck::Pod, const MAX: usize> bytemuck::Pod for PodVec<T, MAX> {}
 
+/// Error returned when pushing to a full `PodVec`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CapacityError;
+
+impl core::fmt::Display for CapacityError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "PodVec capacity exceeded")
+    }
+}
+
 impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     // Compile-time check: no padding between len and data.
     // If T has alignment > 1, repr(C) would insert padding after the 2-byte
@@ -332,20 +342,7 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
         "PodVec<T, MAX>: T must have alignment 1 (no padding allowed)"
     );
 
-    /// Returns the populated elements as a slice.
-    #[inline(always)]
-    pub fn as_slice(&self) -> &[T] {
-        let _ = Self::_NO_PADDING;
-        let len = self.len.get() as usize;
-        &self.data[..len]
-    }
-
-    /// Returns the populated elements as a mutable slice.
-    #[inline(always)]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        let len = self.len.get() as usize;
-        &mut self.data[..len]
-    }
+    // --- Length / capacity ---
 
     /// Returns the number of populated elements.
     #[inline(always)]
@@ -355,23 +352,182 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     #[inline(always)]
     pub fn is_empty(&self) -> bool { self.len.is_zero() }
 
-    /// Returns a reference to the element at `idx`, or `None` if out of bounds.
+    /// Returns `true` if the vector is at capacity.
     #[inline(always)]
-    pub fn get(&self, idx: usize) -> Option<&T> {
-        if idx < self.len() { Some(&self.data[idx]) } else { None }
-    }
-
-    /// Sets the contents from a slice. Panics if `src.len() > MAX`.
-    #[inline]
-    pub fn set_from_slice(&mut self, src: &[T]) {
-        assert!(src.len() <= MAX, "PodVec: slice length exceeds capacity");
-        self.len = PodU16::from(src.len() as u16);
-        self.data[..src.len()].copy_from_slice(src);
-    }
+    pub fn is_full(&self) -> bool { self.len() == MAX }
 
     /// Returns the maximum capacity.
     #[inline(always)]
     pub const fn capacity(&self) -> usize { MAX }
+
+    // --- Element access ---
+
+    /// Returns the populated elements as a slice.
+    #[inline(always)]
+    pub fn as_slice(&self) -> &[T] {
+        let _ = Self::_NO_PADDING;
+        &self.data[..self.len()]
+    }
+
+    /// Returns the populated elements as a mutable slice.
+    #[inline(always)]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        let len = self.len();
+        &mut self.data[..len]
+    }
+
+    /// Returns a reference to the element at `idx`, or `None` if out of bounds.
+    #[inline(always)]
+    pub fn get(&self, idx: usize) -> Option<&T> {
+        self.as_slice().get(idx)
+    }
+
+    /// Returns a mutable reference to the element at `idx`, or `None` if out of bounds.
+    #[inline(always)]
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
+        self.as_mut_slice().get_mut(idx)
+    }
+
+    /// Returns a reference to the first element, or `None` if empty.
+    #[inline(always)]
+    pub fn first(&self) -> Option<&T> { self.as_slice().first() }
+
+    /// Returns a reference to the last element, or `None` if empty.
+    #[inline(always)]
+    pub fn last(&self) -> Option<&T> { self.as_slice().last() }
+
+    // --- Iteration ---
+
+    /// Returns an iterator over the populated elements.
+    #[inline(always)]
+    pub fn iter(&self) -> core::slice::Iter<'_, T> {
+        self.as_slice().iter()
+    }
+
+    /// Returns a mutable iterator over the populated elements.
+    #[inline(always)]
+    pub fn iter_mut(&mut self) -> core::slice::IterMut<'_, T> {
+        self.as_mut_slice().iter_mut()
+    }
+
+    // --- Mutation ---
+
+    /// Appends an element. Returns `Err(CapacityError)` if the vector is full.
+    #[inline]
+    pub fn try_push(&mut self, value: T) -> Result<(), CapacityError> {
+        let len = self.len();
+        if len >= MAX {
+            return Err(CapacityError);
+        }
+        self.data[len] = value;
+        self.len = PodU16::from((len + 1) as u16);
+        Ok(())
+    }
+
+    /// Appends an element. Panics if the vector is full.
+    #[inline]
+    pub fn push(&mut self, value: T) {
+        self.try_push(value).expect("PodVec: push on full vector");
+    }
+
+    /// Removes and returns the last element, or `None` if empty.
+    #[inline]
+    pub fn pop(&mut self) -> Option<T> {
+        let len = self.len();
+        if len == 0 {
+            return None;
+        }
+        let val = self.data[len - 1];
+        self.len = PodU16::from((len - 1) as u16);
+        Some(val)
+    }
+
+    /// Removes all elements, setting length to 0.
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        self.len = PodU16::ZERO;
+    }
+
+    /// Shortens the vector to `new_len`. No-op if `new_len >= len()`.
+    #[inline]
+    pub fn truncate(&mut self, new_len: usize) {
+        if new_len < self.len() {
+            self.len = PodU16::from(new_len as u16);
+        }
+    }
+
+    /// Appends every element from `src`. Returns `Err(CapacityError)` if it
+    /// would exceed capacity; the vector is not modified on failure.
+    #[inline]
+    pub fn try_extend_from_slice(&mut self, src: &[T]) -> Result<(), CapacityError> {
+        let len = self.len();
+        if len + src.len() > MAX {
+            return Err(CapacityError);
+        }
+        self.data[len..len + src.len()].copy_from_slice(src);
+        self.len = PodU16::from((len + src.len()) as u16);
+        Ok(())
+    }
+
+    /// Appends every element from `src`. Panics if it would exceed capacity.
+    #[inline]
+    pub fn extend_from_slice(&mut self, src: &[T]) {
+        self.try_extend_from_slice(src).expect("PodVec: extend exceeds capacity");
+    }
+
+    /// Replaces the contents with `src`. Panics if `src.len() > MAX`.
+    #[inline]
+    pub fn set_from_slice(&mut self, src: &[T]) {
+        assert!(src.len() <= MAX, "PodVec: slice length exceeds capacity");
+        self.data[..src.len()].copy_from_slice(src);
+        self.len = PodU16::from(src.len() as u16);
+    }
+}
+
+// --- Indexing ---
+
+impl<T: bytemuck::Pod, const MAX: usize> core::ops::Index<usize> for PodVec<T, MAX> {
+    type Output = T;
+    #[inline(always)]
+    fn index(&self, idx: usize) -> &T {
+        &self.as_slice()[idx]
+    }
+}
+
+impl<T: bytemuck::Pod, const MAX: usize> core::ops::IndexMut<usize> for PodVec<T, MAX> {
+    #[inline(always)]
+    fn index_mut(&mut self, idx: usize) -> &mut T {
+        &mut self.as_mut_slice()[idx]
+    }
+}
+
+// --- Deref to slice (so all slice methods work transparently) ---
+
+impl<T: bytemuck::Pod, const MAX: usize> core::ops::Deref for PodVec<T, MAX> {
+    type Target = [T];
+    #[inline(always)]
+    fn deref(&self) -> &[T] { self.as_slice() }
+}
+
+impl<T: bytemuck::Pod, const MAX: usize> core::ops::DerefMut for PodVec<T, MAX> {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
+}
+
+// --- IntoIterator for &PodVec and &mut PodVec ---
+
+impl<'a, T: bytemuck::Pod, const MAX: usize> IntoIterator for &'a PodVec<T, MAX> {
+    type Item = &'a T;
+    type IntoIter = core::slice::Iter<'a, T>;
+    #[inline(always)]
+    fn into_iter(self) -> Self::IntoIter { self.iter() }
+}
+
+impl<'a, T: bytemuck::Pod, const MAX: usize> IntoIterator for &'a mut PodVec<T, MAX> {
+    type Item = &'a mut T;
+    type IntoIter = core::slice::IterMut<'a, T>;
+    #[inline(always)]
+    fn into_iter(self) -> Self::IntoIter { self.iter_mut() }
 }
 
 impl<T: bytemuck::Pod, const MAX: usize> Default for PodVec<T, MAX> {
