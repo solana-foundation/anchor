@@ -29,4 +29,17 @@ pub mod token_extensions {
     ) -> Result<()> {
         Ok(())
     }
+
+    pub fn create_group_pointer_mint(
+        _ctx: Context<CreateGroupPointerMint>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn update_group_pointer(
+        ctx: Context<UpdateGroupPointer>,
+        new_group_address: Option<Pubkey>,
+    ) -> Result<()> {
+        instructions::update_group_pointer_handler(ctx, new_group_address)
+    }
 }

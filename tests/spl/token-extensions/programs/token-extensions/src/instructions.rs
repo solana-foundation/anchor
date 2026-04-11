@@ -7,6 +7,7 @@ use anchor_spl::{
         mint_close_authority::MintCloseAuthority, permanent_delegate::PermanentDelegate,
         transfer_hook::TransferHook,
     },
+    token_2022_extensions,
     token_interface::{
         get_mint_extension_data, spl_token_metadata_interface::state::TokenMetadata,
         token_metadata_initialize, Mint, Token2022, TokenAccount, TokenMetadataInitialize,
@@ -177,4 +178,45 @@ pub struct CheckMintExtensionConstraints<'info> {
         extensions::permanent_delegate::delegate = authority,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
+pub struct CreateGroupPointerMint<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub authority: Signer<'info>,
+    #[account(
+        init,
+        signer,
+        payer = payer,
+        mint::token_program = token_program,
+        mint::decimals = 0,
+        mint::authority = authority,
+        extensions::group_pointer::authority = authority,
+        extensions::group_pointer::group_address = mint,
+    )]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token2022>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateGroupPointer<'info> {
+    pub authority: Signer<'info>,
+    #[account(mut)]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_program: Program<'info, Token2022>,
+}
+
+pub fn update_group_pointer_handler(
+    ctx: Context<UpdateGroupPointer>,
+    new_group_address: Option<Pubkey>,
+) -> Result<()> {
+    let cpi_accounts = token_2022_extensions::group_pointer::GroupPointerUpdate {
+        token_program_id: ctx.accounts.token_program.to_account_info(),
+        mint: ctx.accounts.mint.to_account_info(),
+        authority: ctx.accounts.authority.to_account_info(),
+    };
+    let cpi_ctx = CpiContext::new(*ctx.accounts.token_program.key, cpi_accounts);
+    token_2022_extensions::group_pointer::group_pointer_update(cpi_ctx, new_group_address)
 }
