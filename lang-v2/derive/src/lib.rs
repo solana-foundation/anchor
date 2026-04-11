@@ -20,24 +20,76 @@ pub fn derive_accounts(input: TokenStream) -> TokenStream {
     TokenStream::from(impl_accounts(&input))
 }
 
-/// Returns true if `ty` is a top-level reference type (e.g. `&[u8]`, `&T`).
-fn is_ref_type(ty: &Type) -> bool {
-    matches!(ty, Type::Reference(_))
+/// Returns true if `ty` needs the `'ix` lifetime injected when used as an
+/// instruction arg. This is the case for top-level references (`&[u8]`, `&T`)
+/// and for path types carrying lifetime generic args (`CreateArgs<'_>`,
+/// `Option<&[u8]>`, etc.).
+fn needs_ix_lifetime(ty: &Type) -> bool {
+    match ty {
+        Type::Reference(_) => true,
+        Type::Path(tp) => tp.path.segments.iter().any(|seg| {
+            if let syn::PathArguments::AngleBracketed(ab) = &seg.arguments {
+                ab.args.iter().any(|arg| match arg {
+                    syn::GenericArgument::Lifetime(_) => true,
+                    syn::GenericArgument::Type(inner) => needs_ix_lifetime(inner),
+                    _ => false,
+                })
+            } else {
+                false
+            }
+        }),
+        _ => false,
+    }
 }
 
-/// If `ty` is a top-level reference with an elided lifetime, give it `lifetime`.
-/// Otherwise return the type unchanged. Used so that generated `SchemaRead`
-/// structs like `struct __Args<'ix> { data: &'ix [u8] }` can be named in the
-/// struct field position (which requires explicit lifetimes).
-fn with_ref_lifetime(ty: &Type, lifetime: &syn::Lifetime) -> Type {
-    if let Type::Reference(tr) = ty {
-        let mut new_tr = tr.clone();
-        if new_tr.lifetime.is_none() {
-            new_tr.lifetime = Some(lifetime.clone());
+/// Recursively rewrites any elided or named lifetimes in `ty` to `ix`.
+///
+/// - `&[T]` / `&T` with elided lifetime → `&'ix [T]` / `&'ix T`
+///   (explicit lifetimes on references are preserved — a handler asking for
+///   `&'static [u8]` still gets `'static`)
+/// - `Foo<'_>`, `Foo<'a, ...>` → `Foo<'ix, ...>` (every lifetime arg in the
+///   path gets rewritten; users can't introduce named lifetimes at the
+///   handler scope anyway)
+/// - Nested types are walked (`Option<&[u8]>`, `Result<Args<'_>, E>`, ...)
+///
+/// This lets a handler fn take a borrowed struct arg like
+/// `args: MyArgs<'_>` and have the generated `__Args` struct bind the
+/// lifetime correctly.
+fn with_ix_lifetime(ty: &Type, ix: &syn::Lifetime) -> Type {
+    match ty {
+        Type::Reference(tr) => {
+            let mut new_tr = tr.clone();
+            let is_elided = new_tr
+                .lifetime
+                .as_ref()
+                .map(|l| l.ident == "_")
+                .unwrap_or(true);
+            if is_elided {
+                new_tr.lifetime = Some(ix.clone());
+            }
+            new_tr.elem = Box::new(with_ix_lifetime(&new_tr.elem, ix));
+            Type::Reference(new_tr)
         }
-        Type::Reference(new_tr)
-    } else {
-        ty.clone()
+        Type::Path(tp) => {
+            let mut new_tp = tp.clone();
+            for seg in new_tp.path.segments.iter_mut() {
+                if let syn::PathArguments::AngleBracketed(ab) = &mut seg.arguments {
+                    for arg in ab.args.iter_mut() {
+                        match arg {
+                            syn::GenericArgument::Lifetime(lt) => {
+                                *lt = ix.clone();
+                            }
+                            syn::GenericArgument::Type(inner) => {
+                                *inner = with_ix_lifetime(inner, ix);
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            Type::Path(new_tp)
+        }
+        _ => ty.clone(),
     }
 }
 
@@ -119,9 +171,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
         let ix_arg_types: Vec<_> = ix_args
             .iter()
-            .map(|(_, t)| with_ref_lifetime(t, &ix_lifetime))
+            .map(|(_, t)| with_ix_lifetime(t, &ix_lifetime))
             .collect();
-        let has_refs = ix_args.iter().any(|(_, t)| is_ref_type(t));
+        let has_refs = ix_args.iter().any(|(_, t)| needs_ix_lifetime(t));
         let (lt_decl, lt_use) = if has_refs {
             (quote! { <'ix> }, quote! { <'_> })
         } else {
@@ -366,9 +418,9 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
         let extra_arg_types: Vec<Type> = extra_args
             .iter()
-            .map(|(_, t)| with_ref_lifetime(t, &ix_lifetime))
+            .map(|(_, t)| with_ix_lifetime(t, &ix_lifetime))
             .collect();
-        let has_refs = extra_args.iter().any(|(_, t)| is_ref_type(t));
+        let has_refs = extra_args.iter().any(|(_, t)| needs_ix_lifetime(t));
         let (args_lt_decl, args_lt_use) = if has_refs {
             (quote! { <'ix> }, quote! { <'_> })
         } else {
