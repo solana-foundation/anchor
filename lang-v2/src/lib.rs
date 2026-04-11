@@ -140,6 +140,30 @@ pub fn is_rent_exempt(view: &pinocchio::account::AccountView) -> bool {
     view.lamports() >= required
 }
 
+/// Guardrail: verify that the runtime-supplied `program_id` matches this
+/// program's `declare_id!()`. Called from the `#[program]` macro's
+/// generated `entry()` function as a single line. Gated behind the
+/// `guardrails` feature — when disabled the body compiles to `Ok(())`
+/// and LLVM inlines it away, so programs opting out of guardrails pay
+/// zero CU and zero bytes for this check.
+///
+/// The Solana runtime always loads a program at its declared address,
+/// so under normal operation this check never fires — it's a safety
+/// net for a misconfigured loader or a program copied to a new address
+/// by an untrusted tool. Costs ~10 CU + a few bytes of entry glue when
+/// enabled.
+#[inline(always)]
+pub fn check_program_id(
+    _program_id: &Address,
+    _declared: &Address,
+) -> core::result::Result<(), solana_program_error::ProgramError> {
+    #[cfg(feature = "guardrails")]
+    if _program_id != _declared {
+        return Err(ErrorCode::DeclaredProgramIdMismatch.into());
+    }
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // require! macros — no_std compatible
 // ---------------------------------------------------------------------------

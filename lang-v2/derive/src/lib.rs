@@ -538,9 +538,11 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             __accounts: &mut [anchor_lang_v2::AccountView],
             __data: &[u8],
         ) -> pinocchio::ProgramResult {
-            if *__program_id != crate::ID {
-                return Err(anchor_lang_v2::ErrorCode::DeclaredProgramIdMismatch.into());
-            }
+            // Guardrail: gated internally on anchor-lang-v2's `guardrails`
+            // feature. Compiles to `Ok(())` when guardrails is disabled,
+            // so programs built with `default-features = false,
+            // features = ["alloc"]` pay zero CU + zero bytes.
+            anchor_lang_v2::check_program_id(__program_id, &crate::ID)?;
             let (__disc, __ix_data) = anchor_lang_v2::parse_instruction(__data)?;
             (match __disc {
                 #(#dispatch_arms)*
