@@ -538,8 +538,72 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             #(#handlers)*
         }
 
+        // Lazy entrypoint: parses accounts on demand from the raw input buffer
+        // instead of pinocchio's eager `program_entrypoint!` which inlines a
+        // ~3KB account-parsing loop with a 255-slot unrolled-by-5 buffer. We
+        // walk the context ourselves into a tight fixed-size stack buffer.
         #[cfg(not(feature = "no-entrypoint"))]
-        pinocchio::entrypoint!(entry);
+        pinocchio::lazy_program_entrypoint!(__anchor_lazy_entry);
+        #[cfg(not(feature = "no-entrypoint"))]
+        pinocchio::default_allocator!();
+        #[cfg(not(feature = "no-entrypoint"))]
+        pinocchio::default_panic_handler!();
+
+        /// Matches Solana's transaction-wide account cap (u8 index space).
+        /// The stack buffer is `[MaybeUninit<AccountView>; 256]` = ~2 KiB of
+        /// frame; the runtime SVM only ever passes `num_accounts <= 256`, so
+        /// this is the safe upper bound.
+        #[cfg(not(feature = "no-entrypoint"))]
+        const __ANCHOR_MAX_ACCOUNTS: usize = 256;
+
+        #[cfg(not(feature = "no-entrypoint"))]
+        fn __anchor_lazy_entry(
+            mut __ctx: pinocchio::entrypoint::InstructionContext,
+        ) -> pinocchio::ProgramResult {
+            use ::core::mem::MaybeUninit;
+            use pinocchio::entrypoint::MaybeAccount;
+
+            let __num = __ctx.remaining() as usize;
+            if __num > __ANCHOR_MAX_ACCOUNTS {
+                return Err(anchor_lang_v2::ErrorCode::AccountNotEnoughKeys.into());
+            }
+
+            let mut __buf: [MaybeUninit<anchor_lang_v2::AccountView>; __ANCHOR_MAX_ACCOUNTS] =
+                [const { MaybeUninit::uninit() }; __ANCHOR_MAX_ACCOUNTS];
+
+            let mut __i = 0usize;
+            while __i < __num {
+                // SAFETY: `__i < __num == ctx.remaining()` at entry to each
+                // iteration, so next_account_unchecked has an account to yield.
+                let __view = match unsafe { __ctx.next_account_unchecked() } {
+                    MaybeAccount::Account(__v) => __v,
+                    // SAFETY: `idx < __i` by SVM serialization invariant
+                    // (duplicates reference earlier slots only), and those
+                    // earlier slots are already initialized by this loop.
+                    MaybeAccount::Duplicated(__idx) => unsafe {
+                        __buf.get_unchecked(__idx as usize).assume_init()
+                    },
+                };
+                // SAFETY: `__i < __num <= __ANCHOR_MAX_ACCOUNTS`.
+                unsafe { __buf.get_unchecked_mut(__i).write(__view); }
+                __i += 1;
+            }
+
+            // SAFETY: first `__num` elements are initialized by the loop.
+            let __accounts: &mut [anchor_lang_v2::AccountView] = unsafe {
+                ::core::slice::from_raw_parts_mut(
+                    __buf.as_mut_ptr() as *mut anchor_lang_v2::AccountView,
+                    __num,
+                )
+            };
+
+            // SAFETY: all accounts consumed above, so these unchecked helpers
+            // are safe to call per pinocchio's lazy API contract.
+            let __data = unsafe { __ctx.instruction_data_unchecked() };
+            let __program_id = unsafe { __ctx.program_id_unchecked() };
+
+            entry(__program_id, __accounts, __data)
+        }
 
         pub fn entry(
             __program_id: &anchor_lang_v2::Address,
