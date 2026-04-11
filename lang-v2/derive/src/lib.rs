@@ -20,6 +20,27 @@ pub fn derive_accounts(input: TokenStream) -> TokenStream {
     TokenStream::from(impl_accounts(&input))
 }
 
+/// Returns true if `ty` is a top-level reference type (e.g. `&[u8]`, `&T`).
+fn is_ref_type(ty: &Type) -> bool {
+    matches!(ty, Type::Reference(_))
+}
+
+/// If `ty` is a top-level reference with an elided lifetime, give it `lifetime`.
+/// Otherwise return the type unchanged. Used so that generated `SchemaRead`
+/// structs like `struct __Args<'ix> { data: &'ix [u8] }` can be named in the
+/// struct field position (which requires explicit lifetimes).
+fn with_ref_lifetime(ty: &Type, lifetime: &syn::Lifetime) -> Type {
+    if let Type::Reference(tr) = ty {
+        let mut new_tr = tr.clone();
+        if new_tr.lifetime.is_none() {
+            new_tr.lifetime = Some(lifetime.clone());
+        }
+        Type::Reference(new_tr)
+    } else {
+        ty.clone()
+    }
+}
+
 /// Parse `#[instruction(name: Type, ...)]` from struct-level attributes.
 /// Returns a list of (name, type) pairs.
 fn parse_instruction_attrs(attrs: &[syn::Attribute]) -> Vec<(Ident, Type)> {
@@ -71,16 +92,28 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let idl_json = idl::build_accounts_json(&idl_accounts);
     let idl_data_types: Vec<_> = fields.iter().filter_map(|f| f.idl_data_type.as_ref()).collect();
 
-    // Generate instruction arg deserialization if #[instruction(...)] is present
+    // Generate instruction arg deserialization if #[instruction(...)] is present.
+    // If any arg is a reference (e.g. `&[u8]`), we bind it to lifetime `'ix`
+    // which borrows from `__ix_data` for zero-copy access.
     let ix_deser = if ix_args.is_empty() {
         quote! {}
     } else {
         let ix_arg_names: Vec<_> = ix_args.iter().map(|(n, _)| n).collect();
-        let ix_arg_types: Vec<_> = ix_args.iter().map(|(_, t)| t).collect();
+        let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
+        let ix_arg_types: Vec<_> = ix_args
+            .iter()
+            .map(|(_, t)| with_ref_lifetime(t, &ix_lifetime))
+            .collect();
+        let has_refs = ix_args.iter().any(|(_, t)| is_ref_type(t));
+        let (lt_decl, lt_use) = if has_refs {
+            (quote! { <'ix> }, quote! { <'_> })
+        } else {
+            (quote! {}, quote! {})
+        };
         quote! {
             #[derive(anchor_lang_v2::wincode::SchemaRead)]
-            struct __IxArgs { #(#ix_arg_names: #ix_arg_types,)* }
-            let __ix_args: __IxArgs = anchor_lang_v2::wincode::deserialize(__ix_data)
+            struct __IxArgs #lt_decl { #(#ix_arg_names: #ix_arg_types,)* }
+            let __ix_args: __IxArgs #lt_use = anchor_lang_v2::wincode::deserialize(__ix_data)
                 .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
             #(let #ix_arg_names = __ix_args.#ix_arg_names;)*
         }
@@ -310,15 +343,28 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             .collect();
 
         let extra_arg_names: Vec<_> = extra_args.iter().map(|(n, _)| *n).collect();
-        let extra_arg_types: Vec<_> = extra_args.iter().map(|(_, t)| *t).collect();
+        // Rewrite any elided `&T` into `&'ix T` so the generated SchemaRead
+        // struct has legal field types (elided lifetimes aren't allowed in
+        // struct fields) and borrows zero-copy from `__ix_data`.
+        let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
+        let extra_arg_types: Vec<Type> = extra_args
+            .iter()
+            .map(|(_, t)| with_ref_lifetime(t, &ix_lifetime))
+            .collect();
+        let has_refs = extra_args.iter().any(|(_, t)| is_ref_type(t));
+        let (args_lt_decl, args_lt_use) = if has_refs {
+            (quote! { <'ix> }, quote! { <'_> })
+        } else {
+            (quote! {}, quote! {})
+        };
 
         let deser_args = if extra_args.is_empty() {
             quote! {}
         } else {
             quote! {
                 #[derive(anchor_lang_v2::wincode::SchemaRead)]
-                struct __Args { #(#extra_arg_names: #extra_arg_types,)* }
-                let __args: __Args = anchor_lang_v2::wincode::deserialize(__ix_data)
+                struct __Args #args_lt_decl { #(#extra_arg_names: #extra_arg_types,)* }
+                let __args: __Args #args_lt_use = anchor_lang_v2::wincode::deserialize(__ix_data)
                     .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
                 #(let #extra_arg_names = __args.#extra_arg_names;)*
             }
@@ -335,16 +381,27 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             fn_name.span(),
         );
         let disc_literal_bytes: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
+        // If any handler arg is a reference, the client struct also needs a
+        // lifetime parameter and the trait impls must be generic over it.
+        let (ix_struct_generics, ix_struct_usage, ix_impl_generics) = if has_refs {
+            (
+                quote! { <'ix> },
+                quote! { <'ix> },
+                quote! { <'ix> },
+            )
+        } else {
+            (quote! {}, quote! {}, quote! {})
+        };
         instruction_structs.push(quote! {
             /// Instruction data struct. `.data()` returns discriminator + wincode-encoded args.
             #[derive(anchor_lang_v2::wincode::SchemaWrite)]
-            pub struct #ix_struct_name {
+            pub struct #ix_struct_name #ix_struct_generics {
                 #(pub #extra_arg_names: #extra_arg_types,)*
             }
-            impl anchor_lang_v2::Discriminator for #ix_struct_name {
+            impl #ix_impl_generics anchor_lang_v2::Discriminator for #ix_struct_name #ix_struct_usage {
                 const DISCRIMINATOR: &'static [u8] = &[#(#disc_literal_bytes),*];
             }
-            impl anchor_lang_v2::InstructionData for #ix_struct_name {
+            impl #ix_impl_generics anchor_lang_v2::InstructionData for #ix_struct_name #ix_struct_usage {
                 fn data(&self) -> alloc::vec::Vec<u8> {
                     let mut data = alloc::vec::Vec::with_capacity(256);
                     data.extend_from_slice(Self::DISCRIMINATOR);
