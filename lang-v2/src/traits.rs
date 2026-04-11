@@ -7,9 +7,6 @@ use {
     solana_program_error::{ProgramError, ProgramResult},
 };
 
-/// Discriminator length in bytes.
-pub const DISC_LEN: usize = 8;
-
 pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     type Data;
 

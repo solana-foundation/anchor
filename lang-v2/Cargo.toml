@@ -14,7 +14,6 @@ idl-build = []
 anchor-derive-accounts-v2 = { path = "./derive", version = "0.1.0" }
 pinocchio = { workspace = true, features = ["copy", "account-resize"] }
 pinocchio-system = "0.6"
-pinocchio-token = "0.6"
 solana-address = { version = "2.0", features = ["bytemuck", "borsh", "syscalls", "curve25519"] }
 solana-program-error = { version = "3.0", features = ["borsh"] }
 solana-msg = { workspace = true }

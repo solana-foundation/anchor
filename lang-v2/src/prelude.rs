@@ -9,7 +9,6 @@ pub use crate::{
     accounts::{
         Account, AccountValidate, BorshAccount, Optional, Program, Signer,
         SystemAccount, UncheckedAccount, Sysvar, SysvarId,
-        token::{self as token, TokenAccount, Mint, mint},
     },
     // Programs
     programs::{System, Token, Token2022},
@@ -29,8 +28,6 @@ pub use crate::{
     Result, Error, ErrorCode,
     // Re-export ProgramError for custom error impls
     Error as ProgramError,
-    // Constants
-    DISC_LEN,
     // Constraints
     Constrain,
     // Nested
