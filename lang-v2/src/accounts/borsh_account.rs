@@ -31,6 +31,24 @@ enum BorshBorrow {
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<T> {
+    /// Release the data borrow guard so the underlying `AccountView` can be
+    /// resized or passed to CPIs that call `check_borrow_mut()`. After this,
+    /// `exit()` becomes a no-op until `reacquire_borrow_mut()` is called.
+    pub fn release_borrow(&mut self) {
+        self.borrow = BorshBorrow::Released;
+    }
+
+    /// Re-acquire a mutable borrow after a `release_borrow()` + resize/CPI.
+    /// The underlying buffer may have changed size — any subsequent exit()
+    /// will serialize through the fresh RefMut.
+    pub fn reacquire_borrow_mut(&mut self) -> Result<(), ProgramError> {
+        let mut view_mut = self.view;
+        let data_ref = view_mut.try_borrow_mut()?;
+        let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        self.borrow = BorshBorrow::Mutable { guard };
+        Ok(())
+    }
+
     fn validate_and_load(view: AccountView, data: &[u8], program_id: &Address) -> Result<T, ProgramError> {
         if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
             return Err(ProgramError::UninitializedAccount);

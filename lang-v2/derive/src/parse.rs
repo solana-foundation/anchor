@@ -120,7 +120,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                         input.parse::<Token![=]>()?;
                         result.space = Some(input.parse()?);
                     }
-                    "seeds" => {
+                    "seeds" if input.peek(Token![=]) => {
                         input.parse::<Token![=]>()?;
                         let content;
                         syn::bracketed!(content in input);
@@ -130,6 +130,10 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             .collect();
                         result.seeds = Some(seeds);
                     }
+                    // `seeds::program = expr` falls through to the
+                    // namespaced-path handler below. Adding an explicit
+                    // `seeds` arm without a peek check would eat the `seeds`
+                    // ident and then fail to parse the following `::`.
                     "has_one" => {
                         input.parse::<Token![=]>()?;
                         let target: Ident = input.parse()?;
@@ -518,7 +522,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
     // executable check
     if attrs.is_executable {
         constraints.push(quote! {
-            if !#field_name.account().is_executable() {
+            if !#field_name.account().executable() {
                 return Err(anchor_lang_v2::ErrorCode::ConstraintExecutable.into());
             }
         });
@@ -653,16 +657,24 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
         constraints.push(quote! {
             {
                 let __new_space = #new_space;
-                let __info = #field_name.account();
-                let __current_len = __info.data_len();
-                if __new_space != __current_len {
-                    let mut __view = *__info;
+                // Copy the view out before mutating #field_name so we don't
+                // hold an immutable borrow across the release_borrow() call.
+                // AccountView is Copy.
+                let mut __view = *#field_name.account();
+                let __payer_view = *#realloc_payer.account();
+                if __new_space != __view.data_len() {
+                    // load_mut holds a RefMut on the data buffer; pinocchio's
+                    // resize() calls check_borrow_mut() which would see our
+                    // outstanding borrow and fail. Drop it, resize, then
+                    // reacquire a fresh RefMut against the new buffer.
+                    #field_name.release_borrow();
                     anchor_lang_v2::realloc_account(
                         &mut __view,
                         __new_space,
-                        #realloc_payer.account(),
+                        &__payer_view,
                         #zero_fill,
                     )?;
+                    #field_name.reacquire_borrow_mut()?;
                 }
             }
         });
