@@ -335,6 +335,15 @@ fn create_prefunded(
 }
 
 /// Realloc an account to a new size, adjusting rent as needed.
+///
+/// Requires the `account-resize` feature (default-on). Disabling that
+/// feature also drops the pinocchio `account-resize` entrypoint hook that
+/// writes `data_len` into `RuntimeAccount.padding` for every non-duplicate
+/// account, so calling this without the hook would corrupt the stored
+/// `original_data_len` that `AccountView::resize()` reads back. The two
+/// have to move together, hence the compile-time gate rather than a
+/// runtime error.
+#[cfg(feature = "account-resize")]
 pub fn realloc_account(
     account: &mut AccountView,
     new_space: usize,

@@ -24,7 +24,9 @@ pub use accounts::AccountInitialize;
 pub use context::{Context, Bumps};
 pub use dispatch::{TryAccounts, run_handler, parse_instruction};
 pub use loader::AccountLoader;
-pub use cpi::{create_account, create_account_signed, find_program_address, create_program_address, verify_program_address, realloc_account};
+pub use cpi::{create_account, create_account_signed, find_program_address, create_program_address, verify_program_address};
+#[cfg(feature = "account-resize")]
+pub use cpi::realloc_account;
 pub use hash::sha256;
 pub use traits::*;
 pub use event::{Event, sol_log_data};
