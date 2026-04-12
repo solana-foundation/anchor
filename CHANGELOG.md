@@ -14,6 +14,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - ts: Add `decodeIdlAccountRaw` ([#4375](https://github.com/solana-foundation/anchor/pull/4375)).
 - cli: Write `anchor expand` output to stdout instead of a file ([#4269](https://github.com/solana-foundation/anchor/pull/4269)).
+- client: Add versioned tx support ([#4207](https://github.com/solana-foundation/anchor/pull/4207)).
 
 ### Fixes
 
