@@ -4,6 +4,7 @@ pub mod account;
 pub mod account_info;
 pub mod account_loader;
 pub mod boxed;
+pub mod custom_account;
 pub mod interface;
 pub mod interface_account;
 pub mod migration;

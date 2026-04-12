@@ -365,6 +365,18 @@ pub trait AccountDeserialize: Sized {
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self>;
 }
 
+pub trait CustomCodec: Discriminator + Sized {
+	/// An name for the custom codec.
+	///
+	/// Corresponds to the `Custom(String)` variant in
+	/// [`IdlSerialization`](anchor_lang_idl_spec::IdlSerialization).
+	const CODEC_ID: &'static str;
+
+	fn encode(&self, buf: &mut [u8]) -> Result<()>;
+
+	fn decode(data: &[u8]) -> Result<Self>;
+}
+
 /// An account data structure capable of zero copy deserialization.
 pub trait ZeroCopy: Discriminator + Copy + Clone + Zeroable + Pod {}
 
@@ -506,9 +518,9 @@ pub mod prelude {
         super::{
             access_control, account,
             accounts::{
-                account::Account, account_loader::AccountLoader, interface::Interface,
-                interface_account::InterfaceAccount, migration::Migration, program::Program,
-                signer::Signer, system_account::SystemAccount, sysvar::Sysvar,
+                account::Account, account_loader::AccountLoader, custom_account::CustomAccount,
+                interface::Interface, interface_account::InterfaceAccount, migration::Migration,
+                program::Program, signer::Signer, system_account::SystemAccount, sysvar::Sysvar,
                 unchecked_account::UncheckedAccount,
             },
             constant,
@@ -520,9 +532,9 @@ pub mod prelude {
             source,
             system_program::System,
             zero_copy, AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
-            AnchorDeserialize, AnchorSerialize, Discriminator, DuplicateMutableAccountKeys, Id,
-            InitSpace, Key, Lamports, Owner, Owners, ProgramData, Result, Space, ToAccountInfo,
-            ToAccountInfos, ToAccountMetas,
+            AnchorDeserialize, AnchorSerialize, CustomCodec, Discriminator,
+            DuplicateMutableAccountKeys, Id, InitSpace, Key, Lamports, Owner, Owners,
+            ProgramData, Result, Space, ToAccountInfo, ToAccountInfos, ToAccountMetas,
         },
         crate::solana_program::{
             account_info::{next_account_info, AccountInfo},

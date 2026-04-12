@@ -362,6 +362,7 @@ fn is_field_primitive(f: &syn::Field) -> ParseResult<bool> {
             | "Signer"
             | "SystemAccount"
             | "ProgramData"
+            | "CustomAccount"
     );
     Ok(r)
 }
@@ -382,6 +383,7 @@ fn parse_ty(f: &syn::Field) -> ParseResult<(Ty, bool)> {
         "Signer" => Ty::Signer,
         "SystemAccount" => Ty::SystemAccount,
         "ProgramData" => Ty::ProgramData,
+        "CustomAccount" => Ty::CustomAccount(parse_custom_account_ty(&path)?),
         _ => return Err(ParseError::new(f.ty.span(), "invalid account type given")),
     };
 
@@ -588,7 +590,9 @@ fn parse_program_account(path: &syn::Path) -> ParseResult<syn::TypePath> {
 // TODO: this whole method is a hack. Do something more idiomatic.
 fn parse_account(mut path: &syn::Path) -> ParseResult<syn::TypePath> {
     let path_str = parser::tts_to_string(path).replace(' ', "");
-    if path_str.starts_with("Box<Account<") || path_str.starts_with("Box<InterfaceAccount<") {
+    if path_str.starts_with("Box<Account<")
+    || path_str.starts_with("Box<InterfaceAccount<")
+    || path_str.starts_with("Box<CustomAccount<") {
         let segments = &path.segments[0];
         match &segments.arguments {
             syn::PathArguments::AngleBracketed(args) => {
@@ -702,4 +706,15 @@ fn parse_sysvar(path: &syn::Path) -> ParseResult<SysvarTy> {
         }
     };
     Ok(ty)
+}
+
+fn parse_custom_account_ty(path: &syn::Path) -> ParseResult<CustomAccountTy> {
+    let account_type_path = parse_account(path)?;
+    let boxed = parser::tts_to_string(path)
+        .replace(' ', "")
+        .starts_with("Box<CustomAccount<");
+    Ok(CustomAccountTy {
+        account_type_path,
+        boxed,
+    })
 }
