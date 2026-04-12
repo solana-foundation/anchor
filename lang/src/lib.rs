@@ -366,6 +366,12 @@ pub trait AccountDeserialize: Sized {
 }
 
 pub trait CustomCodec: Discriminator + Sized {
+	/// An name for the custom codec.
+	///
+	/// Corresponds to the `Custom(String)` variant in
+	/// [`IdlSerialization`](anchor_lang_idl_spec::IdlSerialization).
+	const CODEC_ID: &'static str;
+
 	fn encode(&self, buf: &mut [u8]) -> Result<()>;
 
 	fn decode(data: &[u8]) -> Result<Self>;

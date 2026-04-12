@@ -257,6 +257,7 @@ impl AccountField {
             AccountField::Field(field) => match &field.ty {
                 Ty::Account(account) => Some(parser::tts_to_string(&account.account_type_path)),
                 Ty::LazyAccount(account) => Some(parser::tts_to_string(&account.account_type_path)),
+                Ty::CustomAccount(account) => Some(parser::tts_to_string(&account.account_type_path)),
                 _ => None,
             },
             AccountField::CompositeField(field) => Some(field.symbol.clone()),
@@ -309,7 +310,8 @@ impl Field {
                 SystemAccount
             },
             Ty::Account(AccountTy { boxed, .. })
-            | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. }) => {
+            | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. })
+            | Ty::CustomAccount(CustomAccountTy { boxed, .. }) => {
                 if *boxed {
                     quote! {
                         Box<#container_ty<#account_ty>>
@@ -398,7 +400,8 @@ impl Field {
                 quote! { UncheckedAccount::try_from(&#field) }
             }
             Ty::Account(AccountTy { boxed, .. })
-            | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. }) => {
+            | Ty::InterfaceAccount(InterfaceAccountTy { boxed, .. })
+            | Ty::CustomAccount(CustomAccountTy { boxed, .. })=> {
                 let stream = if checked {
                     quote! {
                         match #container_ty::try_from(&#field) {
@@ -501,6 +504,9 @@ impl Field {
             Ty::Signer => quote! {},
             Ty::SystemAccount => quote! {},
             Ty::ProgramData => quote! {},
+            Ty::CustomAccount(_) => quote! {
+            	anchor_lang::accounts::custom_account::CustomAccount
+            }
         }
     }
 
@@ -545,6 +551,12 @@ impl Field {
                 quote! {
                     #ident
                 }
+            },
+            Ty::CustomAccount(ty) => {
+            	let ident = &ty.account_type_path;
+             	quote! {
+              		#ident
+              	}
             }
             Ty::Migration(ty) => {
                 // Return just the From type for IDL and other uses
@@ -613,6 +625,7 @@ pub enum Ty {
     Signer,
     SystemAccount,
     ProgramData,
+    CustomAccount(CustomAccountTy)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -674,6 +687,14 @@ pub struct ProgramTy {
 pub struct InterfaceTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct CustomAccountTy {
+ 	// The struct type of the account.
+    pub account_type_path: TypePath,
+    // True if the account has been boxed via `Box<T>`.
+    pub boxed: bool,
 }
 
 #[derive(Debug)]

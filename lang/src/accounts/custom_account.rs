@@ -1,10 +1,8 @@
 use {
     crate::{
-        error::{Error, ErrorCode},
-        solana_program::{
+        Accounts, AccountsClose, AccountsExit, CustomCodec, Owner, Result, ToAccountInfos, ToAccountMetas, error::{Error, ErrorCode}, solana_program::{
             account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey, system_program,
-        },
-        Accounts, AccountsExit, CustomCodec, Owner, Result, ToAccountInfos, ToAccountMetas,
+        }
     },
     std::{
         collections::BTreeSet,
@@ -100,6 +98,20 @@ where
     }
 }
 
+impl<'info, T: CustomCodec + Clone> AsRef<AccountInfo<'info>>
+	for CustomAccount<'info, T>
+{
+	fn as_ref(&self) -> &AccountInfo<'info> {
+		self.info
+	}
+}
+
+impl<T: CustomCodec + Clone> AsRef<T> for CustomAccount<'_, T> {
+    fn as_ref(&self) -> &T {
+        &self.account
+    }
+}
+
 impl<T: CustomCodec + Clone> Deref for CustomAccount<'_, T> {
     type Target = T;
 
@@ -119,16 +131,20 @@ impl<T: CustomCodec + Clone> DerefMut for CustomAccount<'_, T> {
     }
 }
 
-impl<'info, T: CustomCodec + Owner + Clone> AccountsExit<'info> for CustomAccount<'info, T> {
+impl<'info, T: CustomCodec + Owner + Clone> AccountsExit<'info>
+	for CustomAccount<'info, T>
+{
     fn exit(&self, program_id: &Pubkey) -> Result<()> {
         self.exit_with_expected_owner(&T::owner(), program_id)
     }
 }
 
-impl<'info, T: CustomCodec + Clone> ToAccountInfos<'info> for CustomAccount<'info, T> {
-    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
-        vec![self.info.clone()]
-    }
+impl<'info, T: CustomCodec + Clone> AccountsClose<'info>
+	for CustomAccount<'info, T>
+{
+	fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
+		crate::common::close(self.as_ref(), sol_destination.as_ref())
+	}
 }
 
 impl<T: CustomCodec + Clone> ToAccountMetas for CustomAccount<'_, T> {
@@ -139,5 +155,11 @@ impl<T: CustomCodec + Clone> ToAccountMetas for CustomAccount<'_, T> {
             true => AccountMeta::new(*self.info.key, is_signer),
         };
         vec![meta]
+    }
+}
+
+impl<'info, T: CustomCodec + Clone> ToAccountInfos<'info> for CustomAccount<'info, T> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![self.info.clone()]
     }
 }
