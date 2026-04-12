@@ -1,12 +1,13 @@
-use heck::SnakeCase;
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-
-use super::{
-    common::{gen_print_section, get_idl_module_path, get_no_docs},
-    defined::gen_idl_type,
+use {
+    super::{
+        common::{gen_print_section, get_idl_module_path, get_no_docs},
+        defined::gen_idl_type,
+    },
+    crate::parser::docs,
+    heck::SnakeCase,
+    proc_macro2::TokenStream,
+    quote::{format_ident, quote},
 };
-use crate::parser::docs;
 
 pub fn gen_idl_print_fn_constant(item: &syn::ItemConst) -> TokenStream {
     let idl = get_idl_module_path();

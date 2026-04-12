@@ -1,5 +1,7 @@
-use proc_macro2::{Literal, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use {
+    proc_macro2::{Literal, TokenStream},
+    quote::{format_ident, quote, ToTokens},
+};
 
 pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
     let ident = &strct.ident;

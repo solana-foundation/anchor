@@ -54,8 +54,9 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo build
-      - run: cargo fmt -- --check
+      - run: rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt && cargo +nightly fmt -- --check
       - run: cargo clippy --all-targets -- -D warnings
+      - run: ./.github/scripts/check-solana-program-version.sh
       # FIXME: Enable `idl-build`
       - run: cargo test --workspace --exclude avm --features allow-missing-optionals,anchor-debug,derive,event-cpi,init-if-needed,lazy-account
       # using singlethreaded testing for avm so that tests that change files do not conflict with each other
@@ -345,6 +346,8 @@ jobs:
     needs: setup-anchor-cli
     name: Test Anchor Init
     runs-on: ubuntu-latest
+    # Release PRs bump the version, but the version is obviously not available yet making this test always fail in those scenarios
+    if: "!startsWith(github.head_ref, 'release/')"
     timeout-minutes: 30
     strategy:
       matrix:

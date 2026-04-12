@@ -1,9 +1,10 @@
-use proc_macro2::TokenStream;
-use quote::quote;
-use syn::{spanned::Spanned, Result};
-
-use super::common::{get_idl_module_path, get_no_docs};
-use crate::parser::docs;
+use {
+    super::common::{get_idl_module_path, get_no_docs},
+    crate::parser::docs,
+    proc_macro2::TokenStream,
+    quote::quote,
+    syn::{spanned::Spanned, Result},
+};
 
 /// Generate `IdlBuild` impl for a struct.
 pub fn impl_idl_build_struct(item: &syn::ItemStruct) -> TokenStream {
@@ -491,9 +492,11 @@ pub fn gen_idl_type(
 
             // Handle type aliases and external types
             {
-                use super::{common::find_path, external::get_external_type};
-                use crate::parser::context::CrateContext;
-                use quote::ToTokens;
+                use {
+                    super::{common::find_path, external::get_external_type},
+                    crate::parser::context::CrateContext,
+                    quote::ToTokens,
+                };
 
                 // If no path was found, just return an empty path and let the find_path function handle it
                 let source_path = proc_macro2::Span::call_site()

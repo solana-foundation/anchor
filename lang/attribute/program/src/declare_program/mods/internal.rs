@@ -1,15 +1,16 @@
-use anchor_lang_idl::types::{Idl, IdlInstructionAccountItem};
-use anchor_syn::{
-    codegen::accounts::{__client_accounts, __cpi_client_accounts},
-    parser::accounts,
-    AccountsStruct,
-};
-use heck::CamelCase;
-use quote::{format_ident, quote};
-
-use super::common::{
-    convert_idl_type_to_syn_type, gen_discriminator, get_all_instruction_accounts,
-    get_canonical_program_id,
+use {
+    super::common::{
+        convert_idl_type_to_syn_type, gen_discriminator, get_all_instruction_accounts,
+        get_canonical_program_id,
+    },
+    anchor_lang_idl::types::{Idl, IdlInstructionAccountItem},
+    anchor_syn::{
+        codegen::accounts::{__client_accounts, __cpi_client_accounts},
+        parser::accounts,
+        AccountsStruct,
+    },
+    heck::CamelCase,
+    quote::{format_ident, quote},
 };
 
 pub fn gen_internal_mod(idl: &Idl) -> proc_macro2::TokenStream {

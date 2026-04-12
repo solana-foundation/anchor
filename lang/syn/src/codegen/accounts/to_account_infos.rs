@@ -1,6 +1,10 @@
-use crate::codegen::accounts::{generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct};
-use quote::quote;
+use {
+    crate::{
+        codegen::accounts::{generics, ParsedGenerics},
+        AccountField, AccountsStruct,
+    },
+    quote::quote,
+};
 
 // Generates the `ToAccountInfos` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {

@@ -1,8 +1,14 @@
-use anyhow::{anyhow, Result};
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::{Ident, ImplItem, ImplItemConst, Type, TypePath};
+use {
+    anyhow::{anyhow, Result},
+    std::{
+        collections::BTreeMap,
+        path::{Path, PathBuf},
+    },
+    syn::{
+        parse::{Error as ParseError, Result as ParseResult},
+        Ident, ImplItem, ImplItemConst, Type, TypePath,
+    },
+};
 
 /// Crate parse context
 ///

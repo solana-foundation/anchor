@@ -1,10 +1,11 @@
-use crate::{
-    codegen::accounts::{generics, ParsedGenerics},
-    *,
+use {
+    super::constraints,
+    crate::{
+        codegen::accounts::{generics, ParsedGenerics},
+        *,
+    },
+    std::fmt::Display,
 };
-use std::fmt::Display;
-
-use super::constraints;
 
 pub fn generate_bumps_name<T: Display>(anchor_ident: &T) -> Ident {
     Ident::new(&format!("{anchor_ident}Bumps"), Span::call_site())

@@ -1,19 +1,21 @@
-use crate::{
-    config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
-    VERSION,
-};
-use anyhow::Result;
-use clap::{Parser, ValueEnum};
-use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use solana_keypair::{read_keypair_file, write_keypair_file, Keypair};
-use solana_pubkey::Pubkey;
-use solana_signer::Signer;
-use std::{
-    fmt::Write as _,
-    fs::{self, File},
-    io::Write as _,
-    path::Path,
-    process::Stdio,
+use {
+    crate::{
+        config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
+        VERSION,
+    },
+    anyhow::Result,
+    clap::{Parser, ValueEnum},
+    heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase},
+    solana_keypair::{read_keypair_file, write_keypair_file, Keypair},
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    std::{
+        fmt::Write as _,
+        fs::{self, File},
+        io::Write as _,
+        path::Path,
+        process::Stdio,
+    },
 };
 
 const ANCHOR_MSRV: &str = "1.89.0";
@@ -47,7 +49,10 @@ pub fn create_program(
 
     let template_files = match template {
         ProgramTemplate::Single => {
-            println!("Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default).");
+            println!(
+                "Note: Using single-file template. For better code organization and \
+                 maintainability, consider using --template multiple (default)."
+            );
             create_program_template_single(name, &program_path)
         }
         ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),

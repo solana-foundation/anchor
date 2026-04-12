@@ -17,6 +17,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Force fetch upstream tags
+        run: git fetch --tags --force
 
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
@@ -31,20 +36,13 @@ jobs:
       - name: Enable corepack (yarn)
         run: corepack enable
 
-      # This is not great, but as this does not happen in the actual release actions,
-      # the worst that could happen is that this sneaks something in the PR diff.
-      - name: Install Solana CLI
-        run: |
-          set -xeou pipefail
-          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - uses: ./.github/actions/setup-solana/
+        env:
+          SOLANA_VERSION: "3.1.10"
 
-      # This is not great, but as this does not happen in the actual release actions,
-      # the worst that could happen is that this sneaks something in the PR diff.
-      - name: Install Surfpool
-        run: |
-          curl -sL https://run.surfpool.run/ | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - uses: ./.github/actions/setup-surfpool/
+        env:
+          SURFPOOL_CLI_VERSION: "1.1.1"
 
       - name: Install cargo-release
         run: cargo install cargo-release --version 1.1.1 --locked
@@ -55,10 +53,7 @@ jobs:
         run: |
           set -xeou pipefail
 
-          # required for tests
-          solana-keygen new --no-bip39-passphrase
           ./setup-tests.sh
-
           ./bump-version.sh "$VERSION"
 
       # I would love to automatically create a PR here, but GitHub does not allow triggering CI jobs

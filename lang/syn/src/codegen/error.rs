@@ -1,5 +1,4 @@
-use crate::Error;
-use quote::quote;
+use {crate::Error, quote::quote};
 
 pub fn generate(error: Error) -> proc_macro2::TokenStream {
     let error_enum = &error.raw_enum;

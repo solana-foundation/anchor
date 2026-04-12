@@ -1,6 +1,8 @@
-use proc_macro2::Literal;
-use quote::{format_ident, quote, ToTokens};
-use syn::{parse_quote, spanned::Spanned, Fields, Item};
+use {
+    proc_macro2::Literal,
+    quote::{format_ident, quote, ToTokens},
+    syn::{parse_quote, spanned::Spanned, Fields, Item},
+};
 
 pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let item = syn::parse::<Item>(input)?;

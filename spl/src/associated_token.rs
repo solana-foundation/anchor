@@ -1,14 +1,14 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::solana_program::account_info::AccountInfo;
-use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
-use anchor_lang::{context::CpiContext, Accounts};
-
-pub use ::spl_associated_token_account_interface as spl_associated_token_account;
 pub use ::spl_associated_token_account_interface::{
+    self as spl_associated_token_account,
     address::{get_associated_token_address, get_associated_token_address_with_program_id},
     program::ID,
+};
+use anchor_lang::{
+    context::CpiContext,
+    solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+    Accounts, Result,
 };
 
 pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Result<()> {

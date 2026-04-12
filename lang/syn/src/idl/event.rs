@@ -1,10 +1,11 @@
-use heck::SnakeCase;
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-
-use super::{
-    common::{gen_print_section, get_idl_module_path, get_serde_json_module_path},
-    defined::gen_idl_type_def_struct,
+use {
+    super::{
+        common::{gen_print_section, get_idl_module_path, get_serde_json_module_path},
+        defined::gen_idl_type_def_struct,
+    },
+    heck::SnakeCase,
+    proc_macro2::TokenStream,
+    quote::{format_ident, quote},
 };
 
 pub fn gen_idl_print_fn_event(event_struct: &syn::ItemStruct) -> TokenStream {

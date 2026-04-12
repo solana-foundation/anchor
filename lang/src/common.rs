@@ -1,7 +1,8 @@
-use crate::prelude::{Id, System};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::system_program;
-use crate::Result;
+use crate::{
+    prelude::{Id, System},
+    solana_program::{account_info::AccountInfo, system_program},
+    Result,
+};
 
 pub(crate) fn close<'info>(
     info: &AccountInfo<'info>,

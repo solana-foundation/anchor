@@ -11,25 +11,21 @@ pub mod hash;
 #[cfg(not(feature = "hash"))]
 pub(crate) mod hash;
 
-use codegen::accounts as accounts_codegen;
-use codegen::program as program_codegen;
-use parser::accounts as accounts_parser;
-use parser::program as program_parser;
-use proc_macro2::{Span, TokenStream};
-use quote::quote;
-use quote::ToTokens;
-use std::collections::HashMap;
-use std::ops::Deref;
-use syn::ext::IdentExt;
-use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::token::Comma;
-use syn::Attribute;
-use syn::Lit;
-use syn::{
-    Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
-    TypePath,
+use {
+    codegen::{accounts as accounts_codegen, program as program_codegen},
+    parser::{accounts as accounts_parser, program as program_parser},
+    proc_macro2::{Span, TokenStream},
+    quote::{quote, ToTokens},
+    std::{collections::HashMap, ops::Deref},
+    syn::{
+        ext::IdentExt,
+        parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult},
+        punctuated::Punctuated,
+        spanned::Spanned,
+        token::Comma,
+        Attribute, Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, LitInt,
+        PatType, Token, Type, TypePath,
+    },
 };
 
 #[derive(Debug)]

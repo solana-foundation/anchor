@@ -1,18 +1,18 @@
 mod common;
 mod mods;
 
-use std::{env, fs, path::PathBuf};
-
-use anchor_lang_idl::{convert::convert_idl, types::Idl};
-use anyhow::anyhow;
-use quote::{quote, ToTokens};
-use syn::parse::{Parse, ParseStream};
-
-use common::gen_docs;
-use mods::{
-    accounts::gen_accounts_mod, client::gen_client_mod, constants::gen_constants_mod,
-    cpi::gen_cpi_mod, error::gen_error_mod, events::gen_events_mod, internal::gen_internal_mod,
-    parsers::gen_parsers_mod, program::gen_program_mod, types::gen_types_mod,
+use {
+    anchor_lang_idl::{convert::convert_idl, types::Idl},
+    anyhow::anyhow,
+    common::gen_docs,
+    mods::{
+        accounts::gen_accounts_mod, client::gen_client_mod, constants::gen_constants_mod,
+        cpi::gen_cpi_mod, error::gen_error_mod, events::gen_events_mod, internal::gen_internal_mod,
+        parsers::gen_parsers_mod, program::gen_program_mod, types::gen_types_mod,
+    },
+    quote::{quote, ToTokens},
+    std::{env, fs, path::PathBuf},
+    syn::parse::{Parse, ParseStream},
 };
 
 pub struct DeclareProgram {

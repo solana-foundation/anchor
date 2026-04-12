@@ -285,9 +285,19 @@ export const FORMAT_JSON = 1;
 const SEED_SIZE = 16;
 const DATA_LENGTH_SIZE = 4;
 const DATA_LENGTH_PADDING = 5;
+const PUBKEY_SIZE = 32;
 const ZEROABLE_OPTION_PUBKEY_SIZE = 32;
 const METADATA_HEADER_SIZE =
-  1 + 32 + ZEROABLE_OPTION_PUBKEY_SIZE + 1 + 1 + SEED_SIZE + 1 + 1 + 1 + 1;
+  1 +
+  PUBKEY_SIZE +
+  ZEROABLE_OPTION_PUBKEY_SIZE +
+  1 +
+  1 +
+  SEED_SIZE +
+  1 +
+  1 +
+  1 +
+  1;
 
 export enum MetadataCompression {
   None = 0,
@@ -300,6 +310,13 @@ export enum MetadataEncoding {
   Utf8 = 1,
   Base58 = 2,
   Base64 = 3,
+}
+
+export enum Format {
+  None = 0,
+  Json = 1,
+  Yaml = 2,
+  Toml = 3,
 }
 
 export type MetadataAccount = {
@@ -337,7 +354,36 @@ export function seed(): string {
   return "idl";
 }
 
+/**
+ * Get the parsed IDL from the given account data.
+ *
+ * **Note:** Only JSON IDLs are supported.
+ *
+ * @see {@link decodeIdlAccountRaw} to get the raw IDL account.
+ *
+ * @param data IDL account data
+ * @returns the parsed IDL
+ */
 export function decodeIdlAccount<IDL extends Idl = Idl>(data: Buffer): IDL {
+  const { data: rawData, compression, encoding } = decodeIdlAccountRaw(data);
+  const decoded = decodeMetadataData(
+    uncompressMetadataData(rawData, compression),
+    encoding
+  );
+  return JSON.parse(decoded);
+}
+
+/**
+ * Decode an IDL account.
+ *
+ * **Note:** Only JSON IDLs are supported.
+ *
+ * @see {@link decodeIdlAccount} to get the parsed IDL.
+ *
+ * @param data IDL account data
+ * @returns the decoded account fields
+ */
+export function decodeIdlAccountRaw(data: Buffer) {
   const minimumSize =
     METADATA_HEADER_SIZE + DATA_LENGTH_SIZE + DATA_LENGTH_PADDING;
   if (data.length < minimumSize) {
@@ -346,18 +392,33 @@ export function decodeIdlAccount<IDL extends Idl = Idl>(data: Buffer): IDL {
 
   let offset = 0;
   const discriminator = data.readUInt8(offset);
-  offset += 1;
   if (discriminator !== ACCOUNT_DISCRIMINATOR_METADATA) {
     throw new Error(
       `Invalid metadata account discriminator: ${discriminator.toString()}`
     );
   }
+  offset += 1;
 
-  offset += 32; // program
-  offset += ZEROABLE_OPTION_PUBKEY_SIZE; // authority
-  offset += 1; // mutable
-  offset += 1; // canonical
-  offset += SEED_SIZE; // seed
+  const program = new PublicKey(data.subarray(offset, offset + PUBKEY_SIZE));
+  offset += PUBKEY_SIZE;
+
+  const authorityBytes = data.subarray(
+    offset,
+    offset + ZEROABLE_OPTION_PUBKEY_SIZE
+  );
+  const authority = authorityBytes.every((b) => b === 0)
+    ? null
+    : new PublicKey(authorityBytes);
+  offset += ZEROABLE_OPTION_PUBKEY_SIZE;
+
+  const mutable = Boolean(data.readUInt8(offset));
+  offset += 1;
+
+  const canonical = Boolean(data.readUInt8(offset));
+  offset += 1;
+
+  const seed = utf8.decode(data.subarray(offset, offset + SEED_SIZE));
+  offset += SEED_SIZE;
 
   const encoding = data.readUInt8(offset) as MetadataEncoding;
   offset += 1;
@@ -365,10 +426,10 @@ export function decodeIdlAccount<IDL extends Idl = Idl>(data: Buffer): IDL {
   const compression = data.readUInt8(offset) as MetadataCompression;
   offset += 1;
 
-  const format = data.readUInt8(offset);
-  if (format !== FORMAT_JSON) {
+  const format = data.readUInt8(offset) as Format;
+  if (format !== Format.Json) {
     throw new Error(
-      `IDL has data format '${format}', only JSON IDLs (${FORMAT_JSON}) are supported`
+      `IDL has data format '${format}', only JSON IDLs (${Format.Json}) are supported`
     );
   }
   offset += 1;
@@ -383,17 +444,24 @@ export function decodeIdlAccount<IDL extends Idl = Idl>(data: Buffer): IDL {
 
   const dataLength = data.readUInt32LE(offset);
   offset += DATA_LENGTH_SIZE + DATA_LENGTH_PADDING;
-
   if (data.length < offset + dataLength) {
     throw new Error("Metadata account data is truncated");
   }
 
-  const blob = data.subarray(offset, offset + dataLength);
-  const decoded = decodeMetadataData(
-    uncompressMetadataData(blob, compression),
-    encoding
-  );
-  return JSON.parse(decoded);
+  return {
+    discriminator,
+    program,
+    authority,
+    mutable,
+    canonical,
+    seed,
+    encoding,
+    compression,
+    format,
+    dataSource,
+    dataLength,
+    data: data.subarray(offset, offset + dataLength),
+  };
 }
 
 export function uncompressMetadataData(

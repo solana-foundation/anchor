@@ -1,7 +1,8 @@
-use anchor_lang_idl::types::{Idl, IdlSerialization};
-use quote::{format_ident, quote};
-
-use super::common::{convert_idl_type_def_to_ts, gen_discriminator, get_canonical_program_id};
+use {
+    super::common::{convert_idl_type_def_to_ts, gen_discriminator, get_canonical_program_id},
+    anchor_lang_idl::types::{Idl, IdlSerialization},
+    quote::{format_ident, quote},
+};
 
 pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let accounts = idl.accounts.iter().map(|acc| {

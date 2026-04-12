@@ -1,9 +1,14 @@
-use crate::parser::docs;
-use crate::parser::program::ctx_accounts_ident;
-use crate::{FallbackFn, Ix, IxArg, IxReturn, Overrides};
-use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::spanned::Spanned;
-use syn::Attribute;
+use {
+    crate::{
+        parser::{docs, program::ctx_accounts_ident},
+        FallbackFn, Ix, IxArg, IxReturn, Overrides,
+    },
+    syn::{
+        parse::{Error as ParseError, Result as ParseResult},
+        spanned::Spanned,
+        Attribute,
+    },
+};
 
 // Parse all non-state ix handlers from the program mod definition.
 pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<FallbackFn>)> {

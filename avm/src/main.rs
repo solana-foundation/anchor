@@ -1,8 +1,10 @@
-use anyhow::{anyhow, Error, Result};
-use avm::InstallTarget;
-use clap::{CommandFactory, Parser, Subcommand};
-use semver::Version;
-use std::ffi::OsStr;
+use {
+    anyhow::{anyhow, Error, Result},
+    avm::InstallTarget,
+    clap::{CommandFactory, Parser, Subcommand},
+    semver::Version,
+    std::ffi::OsStr,
+};
 
 #[derive(Parser)]
 #[clap(name = "avm", about = "Anchor version manager", version)]
@@ -216,8 +218,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use avm::InstallTarget;
+    use {super::*, avm::InstallTarget};
 
     // --- is_pre_release ---
 

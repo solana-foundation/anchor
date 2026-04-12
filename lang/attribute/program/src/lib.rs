@@ -2,9 +2,7 @@ extern crate proc_macro;
 
 mod declare_program;
 
-use declare_program::DeclareProgram;
-use quote::ToTokens;
-use syn::parse_macro_input;
+use {declare_program::DeclareProgram, quote::ToTokens, syn::parse_macro_input};
 
 /// The `#[program]` attribute defines the module containing all instruction
 /// handlers defining all entries into a Solana program.
@@ -71,7 +69,7 @@ pub fn program(
 ///
 /// A full on-chain CPI usage example can be found [here].
 ///
-/// [here]: https://github.com/solana-foundation/anchor/tree/v1.0.0-rc.5/tests/declare-program
+/// [here]: https://github.com/solana-foundation/anchor/tree/v1.0.0/tests/declare-program
 #[proc_macro]
 pub fn declare_program(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     parse_macro_input!(input as DeclareProgram)

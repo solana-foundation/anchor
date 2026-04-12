@@ -1,12 +1,14 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
-use anchor_lang::solana_program::account_info::AccountInfo;
-use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
-use anchor_lang::{context::CpiContext, Accounts};
-
-use spl_pod::optional_keys::OptionalNonZeroPubkey;
-use spl_token_metadata_interface::state::Field;
+use {
+    anchor_lang::{
+        context::CpiContext,
+        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        Accounts, Result,
+    },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
+    spl_token_metadata_interface::state::Field,
+};
 
 pub fn token_metadata_initialize<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, TokenMetadataInitialize<'info>>,

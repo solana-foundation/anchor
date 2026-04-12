@@ -1,8 +1,9 @@
-use anchor_lang_idl::types::Idl;
-use heck::CamelCase;
-use quote::{format_ident, quote};
-
-use super::common::{convert_idl_type_to_syn_type, gen_accounts_common};
+use {
+    super::common::{convert_idl_type_to_syn_type, gen_accounts_common},
+    anchor_lang_idl::types::Idl,
+    heck::CamelCase,
+    quote::{format_ident, quote},
+};
 
 pub fn gen_cpi_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let cpi_instructions = gen_cpi_instructions(idl);

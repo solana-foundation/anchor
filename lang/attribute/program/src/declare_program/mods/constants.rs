@@ -1,7 +1,8 @@
-use anchor_lang_idl::types::{Idl, IdlType};
-use quote::{format_ident, quote, ToTokens};
-
-use super::common::{convert_idl_type_to_str, gen_docs};
+use {
+    super::common::{convert_idl_type_to_str, gen_docs},
+    anchor_lang_idl::types::{Idl, IdlType},
+    quote::{format_ident, quote, ToTokens},
+};
 
 pub fn gen_constants_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let constants = idl.constants.iter().map(|c| {
