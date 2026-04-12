@@ -183,6 +183,32 @@ pub enum ErrorCode {
     /// 2042 - Account must be migrated before exiting
     #[msg("Account must be migrated before exiting")]
     AccountNotMigrated,
+    /// Extension constraints - cont.
+    ///
+    /// 2043 - A non-transferable extension constraint was violated
+    #[msg("A non-transferable extension constraint was violated")]
+    ConstraintMintNonTransferableExtension,
+    /// 2044 - A transfer fee extension constraint was violated
+    #[msg("A transfer fee extension constraint was violated")]
+    ConstraintMintTransferFeeExtension,
+    /// 2045 - A transfer fee extension config authority constraint was violated
+    #[msg("A transfer fee extension config authority constraint was violated")]
+    ConstraintMintTransferFeeConfigAuthority,
+    /// 2046 - A transfer fee extension withheld authority constraint was violated
+    #[msg("A transfer fee extension withheld authority constraint was violated")]
+    ConstraintMintTransferFeeWithheldAuthority,
+    /// 2047 - An interest bearing extension constraint was violated
+    #[msg("An interest bearing extension constraint was violated")]
+    ConstraintMintInterestBearingExtension,
+    /// 2048 - An interest bearing extension rate authority constraint was violated
+    #[msg("An interest bearing extension rate authority constraint was violated")]
+    ConstraintMintInterestBearingRateAuthority,
+    /// 2049 - A default account state extension constraint was violated
+    #[msg("A default account state extension constraint was violated")]
+    ConstraintMintDefaultAccountStateExtension,
+    /// 2050 - A default account state extension state constraint was violated
+    #[msg("A default account state extension state constraint was violated")]
+    ConstraintMintDefaultAccountState,
 
     // Require
     /// 2500 - A require expression was violated

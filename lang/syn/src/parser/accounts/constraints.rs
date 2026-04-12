@@ -262,6 +262,105 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                         _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
                     }
                 }
+                "non_transferable" => ConstraintToken::ExtensionNonTransferable(Context::new(
+                    ident.span(),
+                    ConstraintExtensionNonTransferable {},
+                )),
+                "transfer_fee" => {
+                    stream.parse::<Token![:]>()?;
+                    stream.parse::<Token![:]>()?;
+                    let kw = stream.call(Ident::parse_any)?.to_string();
+                    stream.parse::<Token![=]>()?;
+
+                    let span = ident
+                        .span()
+                        .join(stream.span())
+                        .unwrap_or_else(|| ident.span());
+
+                    match kw.as_str() {
+                        "config_authority" => {
+                            ConstraintToken::ExtensionTransferFeeConfigAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "withheld_authority" => {
+                            ConstraintToken::ExtensionTransferFeeWithheldAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "basis_points" => {
+                            ConstraintToken::ExtensionTransferFeeBasisPoints(Context::new(
+                                span,
+                                ConstraintExtensionTransferFeeBasisPoints {
+                                    basis_points: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "max_fee" => ConstraintToken::ExtensionTransferFeeMaxFee(Context::new(
+                            span,
+                            ConstraintExtensionTransferFeeMaxFee {
+                                max_fee: stream.parse()?,
+                            },
+                        )),
+                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+                    }
+                }
+                "interest_bearing" => {
+                    stream.parse::<Token![:]>()?;
+                    stream.parse::<Token![:]>()?;
+                    let kw = stream.call(Ident::parse_any)?.to_string();
+                    stream.parse::<Token![=]>()?;
+
+                    let span = ident
+                        .span()
+                        .join(stream.span())
+                        .unwrap_or_else(|| ident.span());
+
+                    match kw.as_str() {
+                        "authority" => {
+                            ConstraintToken::ExtensionInterestBearingRateAuthority(Context::new(
+                                span,
+                                ConstraintExtensionAuthority {
+                                    authority: stream.parse()?,
+                                },
+                            ))
+                        }
+                        "rate" => ConstraintToken::ExtensionInterestBearingRate(Context::new(
+                            span,
+                            ConstraintExtensionInterestBearingRate {
+                                rate: stream.parse()?,
+                            },
+                        )),
+                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+                    }
+                }
+                "default_account_state" => {
+                    stream.parse::<Token![:]>()?;
+                    stream.parse::<Token![:]>()?;
+                    let kw = stream.call(Ident::parse_any)?.to_string();
+                    stream.parse::<Token![=]>()?;
+
+                    let span = ident
+                        .span()
+                        .join(stream.span())
+                        .unwrap_or_else(|| ident.span());
+
+                    match kw.as_str() {
+                        "state" => ConstraintToken::ExtensionDefaultAccountState(Context::new(
+                            span,
+                            ConstraintExtensionDefaultAccountState {
+                                state: stream.parse()?,
+                            },
+                        )),
+                        _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
+                    }
+                }
                 _ => return Err(ParseError::new(ident.span(), "Invalid attribute")),
             }
         }
@@ -544,6 +643,15 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_transfer_hook_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub extension_transfer_hook_program_id: Option<Context<ConstraintExtensionTokenHookProgramId>>,
     pub extension_permanent_delegate: Option<Context<ConstraintExtensionPermanentDelegate>>,
+    pub extension_non_transferable: Option<Context<ConstraintExtensionNonTransferable>>,
+    pub extension_transfer_fee_config_authority: Option<Context<ConstraintExtensionAuthority>>,
+    pub extension_transfer_fee_withheld_authority: Option<Context<ConstraintExtensionAuthority>>,
+    pub extension_transfer_fee_basis_points:
+        Option<Context<ConstraintExtensionTransferFeeBasisPoints>>,
+    pub extension_transfer_fee_max_fee: Option<Context<ConstraintExtensionTransferFeeMaxFee>>,
+    pub extension_interest_bearing_authority: Option<Context<ConstraintExtensionAuthority>>,
+    pub extension_interest_bearing_rate: Option<Context<ConstraintExtensionInterestBearingRate>>,
+    pub extension_default_account_state: Option<Context<ConstraintExtensionDefaultAccountState>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
     pub realloc: Option<Context<ConstraintRealloc>>,
@@ -590,6 +698,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_authority: None,
             extension_transfer_hook_program_id: None,
             extension_permanent_delegate: None,
+            extension_non_transferable: None,
+            extension_transfer_fee_config_authority: None,
+            extension_transfer_fee_withheld_authority: None,
+            extension_transfer_fee_basis_points: None,
+            extension_transfer_fee_max_fee: None,
+            extension_interest_bearing_authority: None,
+            extension_interest_bearing_rate: None,
+            extension_default_account_state: None,
             bump: None,
             program_seed: None,
             realloc: None,
@@ -803,6 +919,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_transfer_hook_authority,
             extension_transfer_hook_program_id,
             extension_permanent_delegate,
+            extension_non_transferable,
+            extension_transfer_fee_config_authority,
+            extension_transfer_fee_withheld_authority,
+            extension_transfer_fee_basis_points,
+            extension_transfer_fee_max_fee,
+            extension_interest_bearing_authority,
+            extension_interest_bearing_rate,
+            extension_default_account_state,
             bump,
             program_seed,
             realloc,
@@ -907,8 +1031,24 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_hook_authority,
             &extension_transfer_hook_program_id,
             &extension_permanent_delegate,
+            &extension_non_transferable,
+            &extension_transfer_fee_config_authority,
+            &extension_transfer_fee_withheld_authority,
+            &extension_transfer_fee_basis_points,
+            &extension_transfer_fee_max_fee,
+            &extension_interest_bearing_authority,
+            &extension_interest_bearing_rate,
+            &extension_default_account_state,
         ) {
             (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
                 None,
                 None,
                 None,
@@ -968,6 +1108,28 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 transfer_hook_program_id: extension_transfer_hook_program_id
                     .as_ref()
                     .map(|a| a.clone().into_inner().program_id),
+                non_transferable: extension_non_transferable.as_ref().map(|_| ()),
+                transfer_fee_config_authority: extension_transfer_fee_config_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().authority),
+                transfer_fee_withheld_authority: extension_transfer_fee_withheld_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().authority),
+                transfer_fee_basis_points: extension_transfer_fee_basis_points
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().basis_points),
+                transfer_fee_max_fee: extension_transfer_fee_max_fee
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().max_fee),
+                interest_bearing_authority: extension_interest_bearing_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().authority),
+                interest_bearing_rate: extension_interest_bearing_rate
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().rate),
+                default_account_state: extension_default_account_state
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().state),
             }),
         };
 
@@ -1004,6 +1166,11 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                                     .map(|tp| tp.into_inner().token_program),
                             }
                         } else if let Some(d) = &mint_decimals {
+                            let init_transfer_fee = extension_transfer_fee_config_authority
+                                .is_some()
+                                || extension_transfer_fee_withheld_authority.is_some()
+                                || extension_transfer_fee_basis_points.is_some()
+                                || extension_transfer_fee_max_fee.is_some();
                             InitKind::Mint {
                                 decimals: d.clone().into_inner().decimals,
                                 owner: match &mint_authority {
@@ -1044,6 +1211,60 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                                     .map(|tha| tha.into_inner().authority),
                                 transfer_hook_program_id: extension_transfer_hook_program_id
                                     .map(|thpid| thpid.into_inner().program_id),
+                                non_transferable: extension_non_transferable.map(|_| ()),
+                                transfer_fee_config_authority:
+                                    extension_transfer_fee_config_authority
+                                        .map(|tfca| tfca.into_inner().authority),
+                                transfer_fee_withheld_authority:
+                                    extension_transfer_fee_withheld_authority
+                                        .map(|tfwa| tfwa.into_inner().authority),
+                                transfer_fee_basis_points: match (
+                                    &extension_transfer_fee_basis_points,
+                                    init_transfer_fee,
+                                ) {
+                                    (Some(tfbp), _) => Some(tfbp.clone().into_inner().basis_points),
+                                    (None, true) => {
+                                        return Err(ParseError::new(
+                                            d.span(),
+                                            "fee basis points must be provided to initialize a \
+                                             mint with transfer fee extension",
+                                        ))
+                                    }
+                                    _ => None,
+                                },
+                                transfer_fee_max_fee: match (
+                                    &extension_transfer_fee_max_fee,
+                                    init_transfer_fee,
+                                ) {
+                                    (Some(tfmf), _) => Some(tfmf.clone().into_inner().max_fee),
+                                    (None, true) => {
+                                        return Err(ParseError::new(
+                                            d.span(),
+                                            "maximum fee must be provided to initialize a mint \
+                                             with transfer fee extension",
+                                        ))
+                                    }
+                                    _ => None,
+                                },
+                                interest_bearing_authority: extension_interest_bearing_authority
+                                    .as_ref()
+                                    .map(|iba| iba.clone().into_inner().authority),
+                                interest_bearing_rate: match (
+                                    &extension_interest_bearing_rate,
+                                    &extension_interest_bearing_authority,
+                                ) {
+                                    (Some(ibr), _) => Some(ibr.clone().into_inner().rate),
+                                    (None, Some(_)) => {
+                                        return Err(ParseError::new(
+                                            d.span(),
+                                            "rate must be provided to initialize a mint with \
+                                             interest bearing extension",
+                                        ))
+                                    }
+                                    _ => None,
+                                },
+                                default_account_state: extension_default_account_state
+                                    .map(|das| das.into_inner().state),
                             }
                         } else {
                             InitKind::Program {
@@ -1136,6 +1357,28 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 self.add_extension_permanent_delegate(c)
             }
             ConstraintToken::Dup(c) => self.add_dup(c),
+            ConstraintToken::ExtensionNonTransferable(c) => self.add_extension_non_transferable(c),
+            ConstraintToken::ExtensionTransferFeeConfigAuthority(c) => {
+                self.add_extension_transfer_fee_config_authority(c)
+            }
+            ConstraintToken::ExtensionTransferFeeWithheldAuthority(c) => {
+                self.add_extension_transfer_fee_withheld_authority(c)
+            }
+            ConstraintToken::ExtensionTransferFeeBasisPoints(c) => {
+                self.add_extension_transfer_fee_basis_points(c)
+            }
+            ConstraintToken::ExtensionTransferFeeMaxFee(c) => {
+                self.add_extension_transfer_fee_max_fee(c)
+            }
+            ConstraintToken::ExtensionInterestBearingRateAuthority(c) => {
+                self.add_extension_interest_bearing_authority(c)
+            }
+            ConstraintToken::ExtensionInterestBearingRate(c) => {
+                self.add_extension_interest_bearing_rate(c)
+            }
+            ConstraintToken::ExtensionDefaultAccountState(c) => {
+                self.add_extension_default_account_state(c)
+            }
         }
     }
 
@@ -1725,6 +1968,118 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             return Err(ParseError::new(c.span(), "dup already provided"));
         }
         self.dup.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_non_transferable(
+        &mut self,
+        c: Context<ConstraintExtensionNonTransferable>,
+    ) -> ParseResult<()> {
+        if self.extension_non_transferable.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension non-transferable already provided",
+            ));
+        }
+        self.extension_non_transferable.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_transfer_fee_config_authority(
+        &mut self,
+        c: Context<ConstraintExtensionAuthority>,
+    ) -> ParseResult<()> {
+        if self.extension_transfer_fee_config_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension transfer fee config authority already provided",
+            ));
+        }
+        self.extension_transfer_fee_config_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_transfer_fee_withheld_authority(
+        &mut self,
+        c: Context<ConstraintExtensionAuthority>,
+    ) -> ParseResult<()> {
+        if self.extension_transfer_fee_withheld_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension transfer fee withheld authority already provided",
+            ));
+        }
+        self.extension_transfer_fee_withheld_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_transfer_fee_basis_points(
+        &mut self,
+        c: Context<ConstraintExtensionTransferFeeBasisPoints>,
+    ) -> ParseResult<()> {
+        if self.extension_transfer_fee_basis_points.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension transfer fee basis points already provided",
+            ));
+        }
+        self.extension_transfer_fee_basis_points.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_transfer_fee_max_fee(
+        &mut self,
+        c: Context<ConstraintExtensionTransferFeeMaxFee>,
+    ) -> ParseResult<()> {
+        if self.extension_transfer_fee_max_fee.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension transfer fee maximum fee already provided",
+            ));
+        }
+        self.extension_transfer_fee_max_fee.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_interest_bearing_authority(
+        &mut self,
+        c: Context<ConstraintExtensionAuthority>,
+    ) -> ParseResult<()> {
+        if self.extension_interest_bearing_authority.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension interest bearing authority already provided",
+            ));
+        }
+        self.extension_interest_bearing_authority.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_interest_bearing_rate(
+        &mut self,
+        c: Context<ConstraintExtensionInterestBearingRate>,
+    ) -> ParseResult<()> {
+        if self.extension_interest_bearing_rate.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension interest bearing rate already provided",
+            ));
+        }
+        self.extension_interest_bearing_rate.replace(c);
+        Ok(())
+    }
+
+    fn add_extension_default_account_state(
+        &mut self,
+        c: Context<ConstraintExtensionDefaultAccountState>,
+    ) -> ParseResult<()> {
+        if self.extension_default_account_state.is_some() {
+            return Err(ParseError::new(
+                c.span(),
+                "extension default account state already provided",
+            ));
+        }
+        self.extension_default_account_state.replace(c);
         Ok(())
     }
 }
