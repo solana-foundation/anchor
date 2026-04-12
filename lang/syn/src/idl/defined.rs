@@ -492,12 +492,14 @@ pub fn gen_idl_type(
 
             // Handle type aliases and external types
             {
-                use super::{common::find_path, external::get_external_type};
-                use crate::parser::context::CrateContext;
-                use quote::ToTokens;
-                use std::{
-                    collections::{HashMap, HashSet},
-                    sync::OnceLock,
+                use {
+                    super::{common::find_path, external::get_external_type},
+                    crate::parser::context::CrateContext,
+                    quote::ToTokens,
+                    std::{
+                        collections::{HashMap, HashSet},
+                        sync::OnceLock,
+                    },
                 };
 
                 struct CachedCrateData {

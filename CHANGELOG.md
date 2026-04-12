@@ -17,6 +17,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- lang: Make idl build time way faster by caching `CrateContext` ([#4325](https://github.com/solana-foundation/anchor/pull/4325)).
+
 ### Breaking
 
 ## [1.0.0] - 2026-04-02
@@ -51,7 +53,6 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
-- lang: Make idl build time way faster by caching `CrateContext` ([#4325](https://github.com/solana-foundation/anchor/pull/4325)).
 - lang: Add missing `Lazy` bound on generics ([#4240](https://github.com/solana-foundation/anchor/pull/4240)).
 - lang: Fix wrong generated error code in declare_program! ([#4129](https://github.com/solana-foundation/anchor/pull/4129)).
 - idl: Fix defined types with unsupported fields not producing an error ([#4088](https://github.com/solana-foundation/anchor/pull/4088)).
