@@ -1,7 +1,4 @@
-use anchor_lang_idl::types::Idl;
-use quote::quote;
-
-use super::common::convert_idl_type_def_to_ts;
+use {super::common::convert_idl_type_def_to_ts, anchor_lang_idl::types::Idl, quote::quote};
 
 pub fn gen_types_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let types = idl

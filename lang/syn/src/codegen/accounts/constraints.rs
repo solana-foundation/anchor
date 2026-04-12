@@ -1,7 +1,8 @@
-use quote::{format_ident, quote};
-use std::collections::HashSet;
-
-use crate::*;
+use {
+    crate::*,
+    quote::{format_ident, quote},
+    std::collections::HashSet,
+};
 
 pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let constraints = linearize(&f.constraints);

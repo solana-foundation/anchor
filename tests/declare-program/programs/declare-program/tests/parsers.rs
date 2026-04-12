@@ -305,8 +305,8 @@ pub fn test_instruction_parser() {
 #[test]
 #[cfg(not(feature = "idl-build"))]
 pub fn test_errors() {
-    use external::errors::ProgramError;
+    use external::error::ExternalError;
 
-    assert_eq!(ProgramError::MyNormalError as u32, 6000);
-    assert_eq!(ProgramError::MyErrorWithSpecialOffset as u32, 6500);
+    assert_eq!(ExternalError::MyNormalError as u32, 6000);
+    assert_eq!(ExternalError::MyErrorWithSpecialOffset as u32, 6500);
 }

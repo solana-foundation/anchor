@@ -1,7 +1,8 @@
-use std::str::FromStr;
-
-use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
+use {
+    anyhow::anyhow,
+    serde::{Deserialize, Serialize},
+    std::str::FromStr,
+};
 
 /// IDL specification Semantic Version
 pub const IDL_SPEC: &str = env!("CARGO_PKG_VERSION");

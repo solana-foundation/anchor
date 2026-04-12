@@ -54,8 +54,9 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo build
-      - run: cargo fmt -- --check
+      - run: rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt && cargo +nightly fmt -- --check
       - run: cargo clippy --all-targets -- -D warnings
+      - run: ./.github/scripts/check-solana-program-version.sh
       # FIXME: Enable `idl-build`
       - run: cargo test --workspace --exclude avm --features allow-missing-optionals,anchor-debug,derive,event-cpi,init-if-needed,lazy-account
       # using singlethreaded testing for avm so that tests that change files do not conflict with each other
@@ -345,6 +346,8 @@ jobs:
     needs: setup-anchor-cli
     name: Test Anchor Init
     runs-on: ubuntu-latest
+    # Release PRs bump the version, but the version is obviously not available yet making this test always fail in those scenarios
+    if: "!startsWith(github.head_ref, 'release/')"
     timeout-minutes: 30
     strategy:
       matrix:
@@ -373,6 +376,11 @@ jobs:
       - name: Init project
         working-directory: /tmp
         run: anchor init --test-template ${{ matrix.template }} hello-anchor-${{ matrix.template }}
+
+      - name: Remove anchor-client dependency first to avoid conflicts
+        if: ${{ matrix.template == 'rust' }}
+        working-directory: /tmp/hello-anchor-${{ matrix.template }}
+        run: cargo remove anchor-client --manifest-path tests/Cargo.toml
 
       - name: Point anchor-lang to workspace
         working-directory: /tmp/hello-anchor-${{ matrix.template }}
@@ -457,6 +465,8 @@ jobs:
             path: tests/auction-house
           - cmd: cd tests/floats && anchor test --skip-lint && npx tsc --noEmit
             path: tests/floats
+          - cmd: cd tests/solana-program-deps && ./test.sh
+            path: tests/solana-program-deps
           - cmd: cd tests/safety-checks && anchor run test
             path: tests/safety-checks
           - cmd: cd tests/custom-coder && anchor test --skip-lint && npx tsc --noEmit

@@ -1,8 +1,9 @@
-use anchor_lang_idl::types::{Idl, IdlInstructionAccountItem, IdlInstructionAccounts};
-use heck::CamelCase;
-use quote::{format_ident, quote};
-
-use super::common::{get_all_instruction_accounts, get_canonical_program_id};
+use {
+    super::common::{get_all_instruction_accounts, get_canonical_program_id},
+    anchor_lang_idl::types::{Idl, IdlInstructionAccountItem, IdlInstructionAccounts},
+    heck::CamelCase,
+    quote::{format_ident, quote},
+};
 
 pub fn gen_parsers_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let account = gen_account(idl);

@@ -1,6 +1,4 @@
-use crate::Program;
-use heck::CamelCase;
-use quote::quote;
+use {crate::Program, heck::CamelCase, quote::quote};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Dispatch all global instructions.

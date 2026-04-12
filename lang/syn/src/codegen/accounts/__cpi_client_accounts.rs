@@ -1,8 +1,9 @@
-use std::str::FromStr;
-
-use crate::{AccountField, AccountsStruct, Ty};
-use heck::SnakeCase;
-use quote::quote;
+use {
+    crate::{AccountField, AccountsStruct, Ty},
+    heck::SnakeCase,
+    quote::quote,
+    std::str::FromStr,
+};
 
 // Generates the private `__cpi_client_accounts` mod implementation, containing
 // a generated struct mapping 1-1 to the `Accounts` struct, except with

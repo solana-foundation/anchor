@@ -3,7 +3,7 @@ name = "anchor-lang"
 version.workspace = true
 publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
+repository = "https://github.com/solana-foundation/anchor"
 edition = "2021"
 license = "Apache-2.0"
 description = "Solana Sealevel eDSL"
@@ -44,15 +44,15 @@ lazy-account = [
 ]
 
 [dependencies]
-anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.32.1" }
-anchor-attribute-account = { path = "./attribute/account", version = "0.32.1" }
-anchor-attribute-constant = { path = "./attribute/constant", version = "0.32.1" }
-anchor-attribute-error = { path = "./attribute/error", version = "0.32.1" }
-anchor-attribute-event = { path = "./attribute/event", version = "0.32.1" }
-anchor-attribute-program = { path = "./attribute/program", version = "0.32.1" }
-anchor-derive-accounts = { path = "./derive/accounts", version = "0.32.1" }
-anchor-derive-serde = { path = "./derive/serde", version = "0.32.1" }
-anchor-derive-space = { path = "./derive/space", version = "0.32.1" }
+anchor-attribute-access-control = { path = "./attribute/access-control", version = "1.0.0" }
+anchor-attribute-account = { path = "./attribute/account", version = "1.0.0" }
+anchor-attribute-constant = { path = "./attribute/constant", version = "1.0.0" }
+anchor-attribute-error = { path = "./attribute/error", version = "1.0.0" }
+anchor-attribute-event = { path = "./attribute/event", version = "1.0.0" }
+anchor-attribute-program = { path = "./attribute/program", version = "1.0.0" }
+anchor-derive-accounts = { path = "./derive/accounts", version = "1.0.0" }
+anchor-derive-serde = { path = "./derive/serde", version = "1.0.0" }
+anchor-derive-space = { path = "./derive/space", version = "1.0.0" }
 
 # `anchor-lang-idl` should only be included with `idl-build` feature
 anchor-lang-idl = { path = "../idl", version = "0.1.2", optional = true }

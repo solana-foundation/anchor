@@ -1,10 +1,12 @@
-use anchor_lang_idl::types::{
-    Idl, IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlInstructionAccountItem,
-    IdlInstructionAccounts, IdlRepr, IdlSerialization, IdlType, IdlTypeDef, IdlTypeDefGeneric,
-    IdlTypeDefTy,
+use {
+    anchor_lang_idl::types::{
+        Idl, IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlInstructionAccountItem,
+        IdlInstructionAccounts, IdlRepr, IdlSerialization, IdlType, IdlTypeDef, IdlTypeDefGeneric,
+        IdlTypeDefTy,
+    },
+    proc_macro2::Literal,
+    quote::{format_ident, quote},
 };
-use proc_macro2::Literal;
-use quote::{format_ident, quote};
 
 /// This function should ideally return the absolute path to the declared program's id but because
 /// `proc_macro2::Span::call_site().source_file().path()` is behind an unstable feature flag, we
@@ -377,7 +379,7 @@ fn handle_defined_fields<R>(
 /// Combine regular instruction accounts with non-instruction composite accounts.
 pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
     // It's possible to declare an accounts struct and not use it as an instruction, see
-    // https://github.com/coral-xyz/anchor/issues/3274
+    // https://github.com/solana-foundation/anchor/issues/3274
     //
     // NOTE: Returned accounts will not be unique if non-instruction composite accounts have been
     // used multiple times https://github.com/solana-foundation/anchor/issues/3349

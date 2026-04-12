@@ -1,7 +1,11 @@
-use crate::accounts_codegen::constraints::OptionalCheckScope;
-use crate::codegen::accounts::{generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct, Ty};
-use quote::quote;
+use {
+    crate::{
+        accounts_codegen::constraints::OptionalCheckScope,
+        codegen::accounts::{generics, ParsedGenerics},
+        AccountField, AccountsStruct, Ty,
+    },
+    quote::quote,
+};
 
 // Generates the `Exit` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {

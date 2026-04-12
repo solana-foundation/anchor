@@ -1,8 +1,8 @@
-use crate::codegen::program::common::*;
-use crate::parser;
-use crate::Program;
-use heck::CamelCase;
-use quote::{quote, quote_spanned};
+use {
+    crate::{codegen::program::common::*, parser, Program},
+    heck::CamelCase,
+    quote::{quote, quote_spanned},
+};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let variants: Vec<proc_macro2::TokenStream> = program

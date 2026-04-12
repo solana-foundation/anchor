@@ -1,32 +1,37 @@
-use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
-use anchor_client::Cluster;
-use anchor_lang_idl::types::Idl;
-use anyhow::{anyhow, bail, Context, Error, Result};
-use clap::{Parser, ValueEnum};
-use dirs::home_dir;
-use heck::ToSnakeCase;
-use reqwest::Url;
-use serde::de::{self, MapAccess, Visitor};
-use serde::ser::SerializeMap;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
-use solana_clock::Slot;
-use solana_commitment_config::CommitmentLevel;
-use solana_keypair::Keypair;
-use solana_pubkey::Pubkey;
-use solana_signer::Signer;
-use std::collections::{BTreeMap, HashMap};
-use std::convert::TryFrom;
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::marker::PhantomData;
-use std::ops::Deref;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Command;
-use std::str::FromStr;
-use std::{fmt, io};
-use walkdir::WalkDir;
+use {
+    crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT},
+    anchor_client::Cluster,
+    anchor_lang_idl::types::Idl,
+    anyhow::{anyhow, bail, Context, Error, Result},
+    clap::{Parser, ValueEnum},
+    dirs::home_dir,
+    heck::ToSnakeCase,
+    reqwest::Url,
+    serde::{
+        de::{self, MapAccess, Visitor},
+        ser::SerializeMap,
+        Deserialize, Deserializer, Serialize, Serializer,
+    },
+    solana_cli_config::{Config as SolanaConfig, CONFIG_FILE},
+    solana_clock::Slot,
+    solana_commitment_config::CommitmentLevel,
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    std::{
+        collections::{BTreeMap, HashMap},
+        convert::TryFrom,
+        fmt,
+        fs::{self, File},
+        io::{self, prelude::*},
+        marker::PhantomData,
+        ops::Deref,
+        path::{Path, PathBuf},
+        process::Command,
+        str::FromStr,
+    },
+    walkdir::WalkDir,
+};
 
 pub const SURFPOOL_HOST: &str = "127.0.0.1";
 /// Wrapper around CommitmentLevel to support case-insensitive parsing
@@ -1034,7 +1039,8 @@ fn canonicalize_filepath_from_origin(
     let result = fs::canonicalize(&file_path)
         .with_context(|| {
             format!(
-                "Error reading (possibly relative) path: {}. If relative, this is the path that was used as the current path: {}",
+                "Error reading (possibly relative) path: {}. If relative, this is the path that \
+                 was used as the current path: {}",
                 &file_path.as_ref().display(),
                 &origin.as_ref().display()
             )

@@ -1,13 +1,15 @@
 extern crate proc_macro;
 
-use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
-use quote::{quote, ToTokens};
-use syn::{
-    parenthesized,
-    parse::{Parse, ParseStream},
-    parse_macro_input,
-    token::{Comma, Paren},
-    Ident, LitStr,
+use {
+    anchor_syn::{codegen::program::common::gen_discriminator, Overrides},
+    quote::{quote, ToTokens},
+    syn::{
+        parenthesized,
+        parse::{Parse, ParseStream},
+        parse_macro_input,
+        token::{Comma, Paren},
+        Ident, LitStr,
+    },
 };
 
 mod id;

@@ -1,11 +1,13 @@
-use std::collections::VecDeque;
-
-use proc_macro::TokenStream;
-use proc_macro2::{Ident, TokenStream as TokenStream2, TokenTree};
-use quote::{quote, quote_spanned, ToTokens};
-use syn::{
-    parse::ParseStream, parse2, parse_macro_input, punctuated::Punctuated, token::Comma, Attribute,
-    DeriveInput, Field, Fields, GenericArgument, LitInt, PathArguments, Type, TypeArray,
+use {
+    proc_macro::TokenStream,
+    proc_macro2::{Ident, TokenStream as TokenStream2, TokenTree},
+    quote::{quote, quote_spanned, ToTokens},
+    std::collections::VecDeque,
+    syn::{
+        parse::ParseStream, parse2, parse_macro_input, punctuated::Punctuated, token::Comma,
+        Attribute, DeriveInput, Field, Fields, GenericArgument, LitInt, PathArguments, Type,
+        TypeArray,
+    },
 };
 
 /// Implements a [`Space`](./trait.Space.html) trait on the given

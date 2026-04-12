@@ -1,7 +1,11 @@
-use crate::codegen::accounts::{bumps, constraints, generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct, Ty};
-use quote::{quote, quote_spanned};
-use syn::Expr;
+use {
+    crate::{
+        codegen::accounts::{bumps, constraints, generics, ParsedGenerics},
+        AccountField, AccountsStruct, Ty,
+    },
+    quote::{quote, quote_spanned},
+    syn::Expr,
+};
 
 // Generates the `Accounts` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {

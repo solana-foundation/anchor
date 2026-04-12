@@ -1,9 +1,10 @@
-use anyhow::{anyhow, Result};
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-
-use super::common::{get_idl_module_path, get_no_docs};
-use crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, Ty};
+use {
+    super::common::{get_idl_module_path, get_no_docs},
+    crate::{AccountField, AccountsStruct, ConstraintSeedsGroup, Field, InitKind, Ty},
+    anyhow::{anyhow, Result},
+    proc_macro2::TokenStream,
+    quote::{quote, ToTokens},
+};
 
 /// Generate the IDL build impl for the Accounts struct.
 pub fn gen_idl_build_impl_accounts_struct(accounts: &AccountsStruct) -> TokenStream {

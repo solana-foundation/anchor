@@ -1,11 +1,12 @@
 //! Like [`Account`](crate::Account), but deserializes on-demand.
 
-use std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc};
-
-use crate::{
-    error::{Error, ErrorCode},
-    AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key, Owner,
-    Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        error::{Error, ErrorCode},
+        AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key,
+        Owner, Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    },
+    std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc},
 };
 
 /// Deserialize account data lazily (on-demand).

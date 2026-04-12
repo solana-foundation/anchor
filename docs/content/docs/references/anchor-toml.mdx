@@ -218,8 +218,8 @@ Override toolchain data in the workspace similar to
 
 ```toml
 [toolchain]
-anchor_version = "0.32.1"    # `anchor-cli` version to use(requires `avm`)
-solana_version = "2.3.0"     # Solana version to use(applies to all Solana tools)
+anchor_version = "1.0.0"    # `anchor-cli` version to use(requires `avm`)
+solana_version = "3.1.10"     # Solana version to use(applies to all Solana tools)
 package_manager = "yarn"     # JS package manager to use
 ```
 
@@ -257,4 +257,14 @@ post-test = "exit 1"
 # Unused hooks may be omitted
 # pre-deploy = []
 # post-deploy = []
+```
+
+## registry (removed)
+
+The `[registry]` section is no longer supported and has been removed in
+`1.0.0`. If your `Anchor.toml` contains this section, remove it:
+
+```diff
+- [registry]
+- url = "https://anchor.projectserum.com"
 ```

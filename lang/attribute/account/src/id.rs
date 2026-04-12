@@ -8,10 +8,12 @@
 
 extern crate proc_macro;
 
-use quote::{quote, ToTokens};
-use syn::{
-    parse::{Parse, ParseStream, Result},
-    Expr, LitStr,
+use {
+    quote::{quote, ToTokens},
+    syn::{
+        parse::{Parse, ParseStream, Result},
+        Expr, LitStr,
+    },
 };
 
 fn parse_id(

@@ -2,10 +2,13 @@ pub mod constraints;
 #[cfg(feature = "event-cpi")]
 pub mod event_cpi;
 
-use crate::parser::docs;
-use crate::*;
-use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::Path;
+use {
+    crate::{parser::docs, *},
+    syn::{
+        parse::{Error as ParseError, Result as ParseResult},
+        Path,
+    },
+};
 
 pub fn parse(accounts_struct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
     let instruction_api: Option<Punctuated<Expr, Comma>> = accounts_struct
@@ -97,11 +100,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         if matches!(field.ty, Ty::SystemAccount) {
             return Err(ParseError::new(
                 field.ident.span(),
-                "Cannot use `init` on a `SystemAccount`. \
-                    The `SystemAccount` type represents an already-existing account \
-                    owned by the system program and cannot be initialized. \
-                    If you need to create a new account, use a more specific account type \
-                    or `UncheckedAccount` and perform manual initialization instead.",
+                "Cannot use `init` on a `SystemAccount`. The `SystemAccount` type represents an \
+                 already-existing account owned by the system program and cannot be initialized. \
+                 If you need to create a new account, use a more specific account type or \
+                 `UncheckedAccount` and perform manual initialization instead.",
             ));
         }
     }
@@ -206,7 +208,8 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     }) {
                         return Err(ParseError::new(
                             field.ident.span(),
-                            "the mint constraint has to be an account field for token initializations (not a public key)",
+                            "the mint constraint has to be an account field for token \
+                             initializations (not a public key)",
                         ));
                     }
                 }
@@ -224,7 +227,8 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     }) {
                         return Err(ParseError::new(
                             field.ident.span(),
-                            "because of the init constraint, the mint has to be declared before the corresponding token account",
+                            "because of the init constraint, the mint has to be declared before \
+                             the corresponding token account",
                         ));
                     }
                 }
@@ -281,12 +285,14 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     if !associated_payer_field.constraints.is_mutable() {
                         return Err(ParseError::new(
                             field.ident.span(),
-                            "the realloc::payer specified for an realloc constraint must be mutable.",
+                            "the realloc::payer specified for an realloc constraint must be \
+                             mutable.",
                         ));
                     } else if associated_payer_field.is_optional && required_realloc {
                         return Err(ParseError::new(
                             field.ident.span(),
-                            "the realloc::payer specified for a required realloc constraint must be required.",
+                            "the realloc::payer specified for a required realloc constraint must \
+                             be required.",
                         ));
                     }
                 }
@@ -540,9 +546,12 @@ fn parse_program_account(path: &syn::Path) -> ParseResult<syn::TypePath> {
                 // Program<'info> - only lifetime, no type parameter
                 1 => {
                     // Create a special marker for unit type that gets handled later
-                    use syn::{Path, PathSegment, PathArguments};
+                    use syn::{Path, PathArguments, PathSegment};
                     let path_segment = PathSegment {
-                        ident: syn::Ident::new("__SolanaProgramUnitType", proc_macro2::Span::call_site()),
+                        ident: syn::Ident::new(
+                            "__SolanaProgramUnitType",
+                            proc_macro2::Span::call_site(),
+                        ),
                         arguments: PathArguments::None,
                     };
 
@@ -555,18 +564,17 @@ fn parse_program_account(path: &syn::Path) -> ParseResult<syn::TypePath> {
                     })
                 }
                 // Program<'info, T> - lifetime and type
-                2 => {
-                    match &args.args[1] {
-                        syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.clone()),
-                        _ => Err(ParseError::new(
-                            args.args[1].span(),
-                            "second bracket argument must be a type",
-                        )),
-                    }
-                }
+                2 => match &args.args[1] {
+                    syn::GenericArgument::Type(syn::Type::Path(ty_path)) => Ok(ty_path.clone()),
+                    _ => Err(ParseError::new(
+                        args.args[1].span(),
+                        "second bracket argument must be a type",
+                    )),
+                },
                 _ => Err(ParseError::new(
                     args.args.span(),
-                    "Program must have either just a lifetime (Program<'info>) or a lifetime and type (Program<'info, T>)",
+                    "Program must have either just a lifetime (Program<'info>) or a lifetime and \
+                     type (Program<'info, T>)",
                 )),
             }
         }

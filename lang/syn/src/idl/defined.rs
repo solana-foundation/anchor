@@ -1,9 +1,10 @@
-use proc_macro2::TokenStream;
-use quote::quote;
-use syn::{spanned::Spanned, Result};
-
-use super::common::{get_idl_module_path, get_no_docs};
-use crate::parser::docs;
+use {
+    super::common::{get_idl_module_path, get_no_docs},
+    crate::parser::docs,
+    proc_macro2::TokenStream,
+    quote::quote,
+    syn::{spanned::Spanned, Result},
+};
 
 /// Generate `IdlBuild` impl for a struct.
 pub fn impl_idl_build_struct(item: &syn::ItemStruct) -> TokenStream {
@@ -638,7 +639,7 @@ pub fn gen_idl_type(
                             //
                             // As a workaround, we're manually checking to see if it *looks* like a
                             // constant identifier to fix the issue mentioned in
-                            // https://github.com/coral-xyz/anchor/issues/3520
+                            // https://github.com/solana-foundation/anchor/issues/3520
                             syn::GenericArgument::Type(syn::Type::Path(p))
                                 if p.path
                                     .segments

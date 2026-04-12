@@ -66,7 +66,7 @@ pub mod token_example {
             to: ctx.accounts.recipient_token_account.to_account_info(),
             authority: ctx.accounts.signer.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_program = ctx.accounts.token_program.key();
         let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
         // [!code highlight]
         token_interface::transfer_checked(cpi_context, amount, decimals)?;
@@ -129,7 +129,7 @@ pub fn transfer_tokens(ctx: Context<TransferTokens>, amount: u64) -> Result<()> 
     };
 
     // The program being invoked in the CPI
-    let cpi_program = ctx.accounts.token_program.to_account_info();
+    let cpi_program = ctx.accounts.token_program.key();
 
      // Combine the accounts and program into a "CpiContext"
     let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
@@ -172,7 +172,7 @@ pub mod token_example {
             to: ctx.accounts.token_account.to_account_info(),
             authority: ctx.accounts.mint.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_program = ctx.accounts.token_program.key();
         let cpi_context = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
         token_interface::mint_to(cpi_context, amount)?;
         Ok(())
@@ -190,7 +190,7 @@ pub mod token_example {
             to: ctx.accounts.recipient_token_account.to_account_info(),
             authority: ctx.accounts.sender_token_account.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_program = ctx.accounts.token_program.key();
         let cpi_context = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
         token_interface::transfer_checked(cpi_context, amount, decimals)?;
         Ok(())

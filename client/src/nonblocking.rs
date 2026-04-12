@@ -1,16 +1,18 @@
-use crate::{
-    AsSigner, ClientError, Config, EventContext, EventUnsubscriber, Program,
-    ProgramAccountsIterator, RequestBuilder,
+use {
+    crate::{
+        AsSigner, ClientError, Config, EventContext, EventUnsubscriber, Program,
+        ProgramAccountsIterator, RequestBuilder,
+    },
+    anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator},
+    solana_commitment_config::CommitmentConfig,
+    solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
+    solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType},
+    solana_signature::Signature,
+    solana_signer::Signer,
+    solana_transaction::Transaction,
+    std::{marker::PhantomData, ops::Deref, sync::Arc},
+    tokio::sync::OnceCell,
 };
-use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
-use solana_commitment_config::CommitmentConfig;
-use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
-use solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType};
-use solana_signature::Signature;
-use solana_signer::Signer;
-use solana_transaction::Transaction;
-use std::{marker::PhantomData, ops::Deref, sync::Arc};
-use tokio::sync::RwLock;
 
 impl<'a> EventUnsubscriber<'a> {
     /// Unsubscribe gracefully.
@@ -51,7 +53,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         Ok(Self {
             program_id,
             cfg,
-            sub_client: Arc::new(RwLock::new(None)),
+            sub_client: OnceCell::new(),
             internal_rpc_client: rpc_client,
         })
     }

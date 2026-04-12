@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - master
+      - anchor-next
     paths-ignore:
       - "docs/**"
 
@@ -18,8 +19,8 @@ jobs:
     uses: ./.github/workflows/reusable-tests.yaml
     with:
       cache: true
-      solana_version: 3.0.0
+      solana_version: 3.1.10
       node_version: 20.18.0
       cargo_profile: debug
       anchor_binary_name: anchor-binary
-      surfpool_cli_version: 1.0.0
+      surfpool_cli_version: 1.1.1

@@ -1,0 +1,75 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to bump to without the v[...] prefix (e.g. 1.0.0-rc.5)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Force fetch upstream tags
+        run: git fetch --tags --force
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Enable corepack (yarn)
+        run: corepack enable
+
+      - uses: ./.github/actions/setup-solana/
+        env:
+          SOLANA_VERSION: "3.1.10"
+
+      - uses: ./.github/actions/setup-surfpool/
+        env:
+          SURFPOOL_CLI_VERSION: "1.1.1"
+
+      - name: Install cargo-release
+        run: cargo install cargo-release --version 1.1.1 --locked
+
+      - name: Bump version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -xeou pipefail
+
+          ./setup-tests.sh
+          ./bump-version.sh "$VERSION"
+
+      # I would love to automatically create a PR here, but GitHub does not allow triggering CI jobs
+      # on automatically created PRs to prevent recursion
+      - name: Create release branch
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -xeou pipefail
+
+          BRANCH="release/v$VERSION"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "v$VERSION"
+          git push --set-upstream origin "$BRANCH"

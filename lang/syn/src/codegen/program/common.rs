@@ -1,7 +1,4 @@
-use crate::IxArg;
-use anyhow::Result;
-use heck::CamelCase;
-use quote::quote;
+use {crate::IxArg, anyhow::Result, heck::CamelCase, quote::quote};
 
 // Namespace for calculating instruction sighash signatures for any instruction
 // not affecting program state.
