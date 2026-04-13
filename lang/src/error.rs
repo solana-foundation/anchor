@@ -1,9 +1,13 @@
 use {
     crate::solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    alloc::{
+        boxed::Box,
+        string::{String, ToString},
+    },
     anchor_lang::error_code,
     borsh::io::Error as BorshIoError,
-    std::{
-        fmt::{Debug, Display},
+    core::{
+        fmt::{Debug, Display, Formatter, Result as FmtResult},
         num::TryFromIntError,
     },
 };
@@ -286,10 +290,10 @@ pub enum Error {
     ProgramError(Box<ProgramErrorWithOrigin>),
 }
 
-impl std::error::Error for Error {}
+impl core::error::Error for Error {}
 
 impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Error::AnchorError(ae) => Display::fmt(&ae, f),
             Error::ProgramError(pe) => Display::fmt(&pe, f),
@@ -326,6 +330,18 @@ impl From<TryFromIntError> for Error {
             error_name: ErrorCode::InvalidNumericConversion.name(),
             error_code_number: ErrorCode::InvalidNumericConversion.into(),
             error_msg: format!("{e}"),
+            error_origin: None,
+            compared_values: None,
+        }))
+    }
+}
+
+impl From<crate::WriteError> for Error {
+    fn from(e: crate::WriteError) -> Self {
+        Self::AnchorError(Box::new(AnchorError {
+            error_name: ErrorCode::AccountDidNotSerialize.name(),
+            error_code_number: ErrorCode::AccountDidNotSerialize.into(),
+            error_msg: alloc::format!("{e:?}"),
             error_origin: None,
             compared_values: None,
         }))
@@ -408,7 +424,7 @@ impl PartialEq for ProgramErrorWithOrigin {
 impl Eq for ProgramErrorWithOrigin {}
 
 impl Display for ProgramErrorWithOrigin {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Display::fmt(&self.program_error, f)
     }
 }
@@ -559,7 +575,7 @@ impl AnchorError {
 }
 
 impl Display for AnchorError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Debug::fmt(&self, f)
     }
 }
@@ -573,7 +589,7 @@ impl PartialEq for AnchorError {
 
 impl Eq for AnchorError {}
 
-impl std::convert::From<Error> for anchor_lang::solana_program::program_error::ProgramError {
+impl core::convert::From<Error> for anchor_lang::solana_program::program_error::ProgramError {
     fn from(e: Error) -> anchor_lang::solana_program::program_error::ProgramError {
         match e {
             Error::AnchorError(error) => {

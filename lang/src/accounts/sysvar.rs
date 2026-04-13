@@ -6,12 +6,12 @@ use {
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas,
     },
-    solana_sysvar::{Sysvar as SolanaSysvar, SysvarSerialize as SolanaSysvarSerialize},
-    std::{
-        collections::BTreeSet,
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::{
         fmt,
         ops::{Deref, DerefMut},
     },
+    solana_sysvar::{Sysvar as SolanaSysvar, SysvarSerialize as SolanaSysvarSerialize},
 };
 
 /// Type validating that the account is a sysvar and deserializing it.

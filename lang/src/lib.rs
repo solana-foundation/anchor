@@ -1,4 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -23,6 +24,9 @@
 //!
 //! Presented here are the Rust primitives for building on Solana.
 
+#[macro_use]
+extern crate alloc;
+
 extern crate self as anchor_lang;
 
 use {
@@ -30,9 +34,113 @@ use {
         account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
         pubkey::Pubkey,
     },
+    alloc::{collections::BTreeSet, vec::Vec},
     bytemuck::{Pod, Zeroable},
-    std::{collections::BTreeSet, fmt::Debug, io::Write},
+    core::fmt::Debug,
 };
+
+/// A trait for writing bytes, similar to `std::io::Write` but `no_std` compatible.
+///
+/// On-chain serialization should use a **bounded** writer (typically
+/// [`crate::__private::BpfWriter`] over account data). Without the `std` feature, unbounded sinks
+/// such as [`alloc::vec::Vec`] are intentionally not implemented as [`Write`] so on-chain code does
+/// not grow the heap implicitly. With `std` enabled, every [`std::io::Write`] type (including
+/// [`alloc::vec::Vec`] as a buffer) implements this trait.
+///
+pub trait Write {
+    /// Write a buffer into this writer, returning how many bytes were written.
+    fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, WriteError>;
+
+    /// Write an entire buffer into this writer.
+    fn write_all(&mut self, buf: &[u8]) -> core::result::Result<(), WriteError> {
+        let mut written = 0;
+        while written < buf.len() {
+            match self.write(&buf[written..]) {
+                Ok(0) => return Err(WriteError::WriteZero),
+                Ok(n) => written += n,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
+
+    /// Flush this output stream, ensuring that all intermediately buffered contents reach their destination.
+    fn flush(&mut self) -> core::result::Result<(), WriteError> {
+        Ok(())
+    }
+}
+
+/// Error type for write operations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WriteError {
+    /// The write operation returned zero bytes written.
+    WriteZero,
+    /// An unspecified I/O error occurred.
+    Other,
+}
+
+// Blanket impl: &mut W implements Write when W implements Write
+impl<W: Write + ?Sized> Write for &mut W {
+    fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, WriteError> {
+        (**self).write(buf)
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> core::result::Result<(), WriteError> {
+        (**self).write_all(buf)
+    }
+
+    fn flush(&mut self) -> core::result::Result<(), WriteError> {
+        (**self).flush()
+    }
+}
+
+/// When `std` is enabled, any `std::io::Write` target can be used as [`Write`].
+#[cfg(feature = "std")]
+impl<T: std::io::Write + ?Sized> Write for T {
+    fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, WriteError> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+        match std::io::Write::write(self, buf) {
+            Ok(0) => Err(WriteError::WriteZero),
+            Ok(n) => Ok(n),
+            Err(e) if e.kind() == std::io::ErrorKind::WriteZero => Err(WriteError::WriteZero),
+            Err(_) => Err(WriteError::Other),
+        }
+    }
+
+    fn flush(&mut self) -> core::result::Result<(), WriteError> {
+        std::io::Write::flush(self).map_err(|_| WriteError::Other)
+    }
+}
+
+// Adapter to use our Write trait as borsh::io::Write
+pub struct WriteAdapter<'a, W: Write + ?Sized> {
+    inner: &'a mut W,
+}
+
+impl<'a, W: Write + ?Sized> WriteAdapter<'a, W> {
+    pub fn new(inner: &'a mut W) -> Self {
+        Self { inner }
+    }
+}
+
+impl<W: Write + ?Sized> borsh::io::Write for WriteAdapter<'_, W> {
+    fn write(&mut self, buf: &[u8]) -> borsh::io::Result<usize> {
+        self.inner.write(buf).map_err(|e| match e {
+            WriteError::WriteZero => {
+                borsh::io::Error::new(borsh::io::ErrorKind::WriteZero, "Write zero")
+            }
+            WriteError::Other => borsh::io::Error::other("Write error"),
+        })
+    }
+
+    fn flush(&mut self) -> borsh::io::Result<()> {
+        self.inner
+            .flush()
+            .map_err(|_| borsh::io::Error::other("Flush error"))
+    }
+}
 
 mod account_meta;
 pub mod accounts;
@@ -154,7 +262,7 @@ pub use anchor_attribute_event::{emit_cpi, event_cpi};
 #[cfg(feature = "idl-build")]
 pub use idl::IdlBuild;
 
-pub type Result<T> = std::result::Result<T, error::Error>;
+pub type Result<T> = core::result::Result<T, error::Error>;
 
 // Deprecated message for AccountInfo usage in Accounts struct
 #[deprecated(
@@ -549,8 +657,14 @@ pub mod prelude {
 #[doc(hidden)]
 pub mod __private {
     use crate::solana_program::pubkey::Pubkey;
+    /// Used by derive/attribute expansions so dependents need not add `extern crate alloc`.
+    pub use alloc::collections::{BTreeMap, BTreeSet};
     pub use {
         crate::{bpf_writer::BpfWriter, common::is_closed},
+        alloc::{
+            string::{String, ToString},
+            vec::Vec,
+        },
         anchor_attribute_account::ZeroCopyAccessor,
         base64, bytemuck,
     };

@@ -18,7 +18,8 @@ use {
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
     },
-    std::{collections::BTreeSet, ops::Deref},
+    alloc::{boxed::Box, collections::BTreeSet, vec::Vec},
+    core::ops::Deref,
 };
 
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Box<T> {

@@ -1,7 +1,10 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
 pub use crate::solana_program::system_program::ID;
-use crate::{prelude::*, solana_program::pubkey::Pubkey};
+use {
+    crate::{prelude::*, solana_program::pubkey::Pubkey},
+    alloc::string::String,
+};
 
 #[derive(Debug, Clone)]
 pub struct System;

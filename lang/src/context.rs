@@ -5,7 +5,8 @@ use {
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, Bumps, ToAccountInfos, ToAccountMetas,
     },
-    std::fmt,
+    alloc::vec::Vec,
+    core::fmt,
 };
 
 /// Provides non-argument inputs to the program.

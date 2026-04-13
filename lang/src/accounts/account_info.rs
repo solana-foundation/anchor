@@ -8,7 +8,7 @@ use {
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas,
     },
-    std::collections::BTreeSet,
+    alloc::{collections::BTreeSet, vec::Vec},
 };
 
 impl<'info, B> Accounts<'info, B> for AccountInfo<'info> {

@@ -189,8 +189,8 @@ pub fn generate(
 
             #[automatically_derived]
             impl #generics anchor_lang::ToAccountMetas for #name #generics {
-                fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::solana_program::instruction::AccountMeta> {
-                    let mut account_metas = vec![];
+                fn to_account_metas(&self, is_signer: Option<bool>) -> ::anchor_lang::__private::Vec<anchor_lang::solana_program::instruction::AccountMeta> {
+                    let mut account_metas = ::anchor_lang::__private::Vec::new();
                     #(#account_struct_metas)*
                     account_metas
                 }
@@ -198,8 +198,8 @@ pub fn generate(
 
             #[automatically_derived]
             impl<'info> anchor_lang::ToAccountInfos<'info> for #name #generics {
-                fn to_account_infos(&self) -> Vec<anchor_lang::solana_program::account_info::AccountInfo<'info>> {
-                    let mut account_infos = vec![];
+                fn to_account_infos(&self) -> ::anchor_lang::__private::Vec<anchor_lang::solana_program::account_info::AccountInfo<'info>> {
+                    let mut account_infos = ::anchor_lang::__private::Vec::new();
                     #(#account_struct_infos)*
                     account_infos
                 }

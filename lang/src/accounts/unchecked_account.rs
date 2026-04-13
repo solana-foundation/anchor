@@ -7,7 +7,8 @@ use {
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas,
     },
-    std::{collections::BTreeSet, ops::Deref},
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::ops::Deref,
 };
 
 /// Explicit wrapper for AccountInfo types to emphasize

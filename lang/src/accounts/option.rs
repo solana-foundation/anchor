@@ -14,7 +14,7 @@ use {
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, AccountsClose, AccountsExit, Result, ToAccountInfos, ToAccountMetas,
     },
-    std::collections::BTreeSet,
+    alloc::{collections::BTreeSet, vec::Vec},
 };
 
 impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {

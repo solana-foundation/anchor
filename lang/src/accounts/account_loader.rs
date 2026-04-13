@@ -6,13 +6,12 @@ use {
         error::{Error, ErrorCode},
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
         Accounts, AccountsClose, AccountsExit, Key, Owner, Result, ToAccountInfos, ToAccountMetas,
-        ZeroCopy,
+        Write, ZeroCopy,
     },
-    std::{
+    alloc::{collections::BTreeSet, vec::Vec},
+    core::{
         cell::{Ref, RefMut},
-        collections::BTreeSet,
         fmt,
-        io::Write,
         marker::PhantomData,
         mem,
         ops::DerefMut,

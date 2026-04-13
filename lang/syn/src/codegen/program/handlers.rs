@@ -40,7 +40,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             let maybe_set_return_data = match ret_type.to_string().as_str() {
                 "()" => quote! {},
                 _ => quote! {
-                    let mut return_data = Vec::with_capacity(256);
+                    let mut return_data = ::anchor_lang::__private::Vec::with_capacity(256);
                     result.serialize(&mut return_data).unwrap();
                     anchor_lang::solana_program::program::set_return_data(&return_data);
                 },
@@ -115,7 +115,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     // Bump collector.
                     let mut __bumps = <#accounts_struct_name as anchor_lang::Bumps>::Bumps::default();
 
-                    let mut __reallocs = std::collections::BTreeSet::new();
+                    let mut __reallocs = ::anchor_lang::__private::BTreeSet::new();
 
                     // Deserialize accounts.
                     let mut __remaining_accounts = __accounts;

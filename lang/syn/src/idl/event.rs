@@ -24,7 +24,7 @@ pub fn gen_idl_print_fn_event(event_struct: &syn::ItemStruct) -> TokenStream {
         quote! {
             #serde_json::json!({
                 "event": event,
-                "types": types.into_values().collect::<Vec<_>>()
+                "types": types.into_values().collect::<::anchor_lang::__private::Vec<_>>()
             })
         },
     );
@@ -34,8 +34,8 @@ pub fn gen_idl_print_fn_event(event_struct: &syn::ItemStruct) -> TokenStream {
 
         #[test]
         pub fn #fn_name() {
-            let mut types: std::collections::BTreeMap<String, #idl::IdlTypeDef> =
-                std::collections::BTreeMap::new();
+            let mut types: ::anchor_lang::__private::BTreeMap<::anchor_lang::__private::String, #idl::IdlTypeDef> =
+                ::anchor_lang::__private::BTreeMap::new();
             if let Some(event) = #ident::__anchor_private_gen_idl_event(&mut types) {
                 #print_ts
             }
@@ -73,7 +73,7 @@ fn impl_idl_build_event(event_struct: &syn::ItemStruct) -> TokenStream {
     quote! {
         impl #impl_generics #ident #ty_generics #where_clause {
             pub fn __anchor_private_gen_idl_event(
-                types: &mut std::collections::BTreeMap<String, #idl::IdlTypeDef>,
+                types: &mut ::anchor_lang::__private::BTreeMap<::anchor_lang::__private::String, #idl::IdlTypeDef>,
             ) -> Option<#idl::IdlEvent> {
                 #fn_body
             }

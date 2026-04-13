@@ -55,7 +55,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
                 let ty = convert_idl_type_to_syn_type(ty);
                 (
                     quote! { anchor_lang::Result<Return::<#ty>> },
-                    quote! { Ok(Return::<#ty> { phantom: std::marker::PhantomData }) },
+                    quote! { Ok(Return::<#ty> { phantom: core::marker::PhantomData }) },
                 )
             },
             None => (
@@ -71,7 +71,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
             ) -> #ret_type {
                 let ix = {
                     let ix = internal::args::#arg_value;
-                    let mut data = Vec::with_capacity(256);
+                    let mut data = ::anchor_lang::__private::Vec::with_capacity(256);
                     data.extend_from_slice(internal::args::#accounts_ident::DISCRIMINATOR);
                     AnchorSerialize::serialize(&ix, &mut data)
                         .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
@@ -105,7 +105,7 @@ fn gen_cpi_instructions(idl: &Idl) -> proc_macro2::TokenStream {
 fn gen_cpi_return_type() -> proc_macro2::TokenStream {
     quote! {
         pub struct Return<T> {
-            phantom: std::marker::PhantomData<T>
+            phantom: core::marker::PhantomData<T>
         }
 
         impl<T: AnchorDeserialize> Return<T> {

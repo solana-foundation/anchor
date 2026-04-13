@@ -59,13 +59,17 @@ fn impl_idl_build(
             }
 
             fn insert_types(
-                types: &mut std::collections::BTreeMap<String, #idl::IdlTypeDef>
+                types: &mut ::anchor_lang::__private::BTreeMap<::anchor_lang::__private::String, #idl::IdlTypeDef>
             ) {
                 #insert_defined
             }
 
-            fn get_full_path() -> String {
-                format!("{}::{}", module_path!(), stringify!(#ident))
+            fn get_full_path() -> ::anchor_lang::__private::String {
+                let mut __anchor_full_path = ::anchor_lang::__private::String::new();
+                __anchor_full_path.push_str(module_path!());
+                __anchor_full_path.push_str("::");
+                __anchor_full_path.push_str(stringify!(#ident));
+                __anchor_full_path
             }
         }
     }

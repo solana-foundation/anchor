@@ -51,7 +51,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     ) -> #method_ret {
                         let ix = {
                             let ix = instruction::#ix_variant;
-                            let mut data = Vec::with_capacity(256);
+                            let mut data = ::anchor_lang::__private::Vec::with_capacity(256);
                             data.extend_from_slice(#discriminator);
                             AnchorSerialize::serialize(&ix, &mut data)
                                 .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
@@ -86,11 +86,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         #[cfg(feature = "cpi")]
         pub mod cpi {
             use super::*;
-            use std::marker::PhantomData;
+            use core::marker::PhantomData;
 
 
             pub struct Return<T> {
-                phantom: std::marker::PhantomData<T>
+                phantom: core::marker::PhantomData<T>
             }
 
             impl<T: AnchorDeserialize> Return<T> {
