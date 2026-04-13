@@ -199,6 +199,7 @@ dependencies = [
  "base64 0.21.7",
  "bincode",
  "cargo_toml",
+ "chrono",
  "clap 4.6.0",
  "clap_complete",
  "console 0.15.11",
