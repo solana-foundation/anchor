@@ -42,7 +42,7 @@ use {
         fs::{self, File},
         io::prelude::*,
         path::{Path, PathBuf},
-        process::{Child, Stdio},
+        process::{Child, ExitStatus, Stdio},
         string::ToString,
         sync::LazyLock,
     },
@@ -1723,38 +1723,28 @@ fn expand_program(
         .ok_or_else(|| anyhow!("Cargo config is missing a package"))?
         .name;
 
-    let target_dir_arg = {
-        let mut target_dir_arg = OsString::from("--target-dir=");
-        target_dir_arg.push(expansions_path.join("expand-target"));
-        target_dir_arg
+    let mut cmd = std::process::Command::new("cargo");
+    cmd.arg("expand")
+        .arg("--target-dir")
+        .arg(expansions_path.join("expand-target"))
+        .arg("--package")
+        .arg(package_name)
+        .args(cargo_args);
+
+    let handle_err = |err| anyhow!("Failed to run `cargo expand`: {err}");
+    let exit_on_err = |exit_status: ExitStatus| {
+        if !exit_status.success() {
+            eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
+            std::process::exit(exit_status.code().unwrap_or(1));
+        }
     };
 
     if stdout {
-        let status = std::process::Command::new("cargo")
-            .arg("expand")
-            .arg(target_dir_arg)
-            .arg(format!("--package={package_name}"))
-            .args(cargo_args)
-            .stdout(Stdio::inherit())
-            .status()
-            .map_err(|e| anyhow!("Failed to run `cargo expand`: {e}"))?;
-        if !status.success() {
-            eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
-            std::process::exit(status.code().unwrap_or(1));
-        }
+        let status = cmd.status().map_err(handle_err)?;
+        exit_on_err(status);
     } else {
-        let exit = std::process::Command::new("cargo")
-            .arg("expand")
-            .arg(target_dir_arg)
-            .arg(format!("--package={package_name}"))
-            .args(cargo_args)
-            .stderr(Stdio::inherit())
-            .output()
-            .map_err(|e| anyhow!("Failed to run `cargo expand`: {e}"))?;
-        if !exit.status.success() {
-            eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
-            std::process::exit(exit.status.code().unwrap_or(1));
-        }
+        let output = cmd.stderr(Stdio::inherit()).output().map_err(handle_err)?;
+        exit_on_err(output.status);
 
         let program_expansions_path = expansions_path.join(package_name);
         fs::create_dir_all(&program_expansions_path)?;
@@ -1762,7 +1752,7 @@ fn expand_program(
         let version = cargo.version();
         let time = chrono::Utc::now().to_string().replace(' ', "_");
         let file_path = program_expansions_path.join(format!("{package_name}-{version}-{time}.rs"));
-        fs::write(&file_path, &exit.stdout)?;
+        fs::write(&file_path, &output.stdout)?;
 
         println!(
             "Expanded {} into file {}\n",
