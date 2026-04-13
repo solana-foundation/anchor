@@ -7,9 +7,45 @@ use {
     solana_program_error::ProgramError,
 };
 
-fn rent_exempt_lamports(space: usize) -> u64 {
-    // TODO: investigate why `Rent::get()` returns zeros on surfpool/LiteSVM.
-    (ACCOUNT_STORAGE_OVERHEAD + space as u64) * DEFAULT_LAMPORTS_PER_BYTE
+/// Largest `space` for which `rent_exempt_lamports` is guaranteed not to
+/// overflow `u64`. Computed from pinocchio's rate constants — when those
+/// change, this bound updates automatically.
+///
+/// `(MAX_SAFE_SPACE + ACCOUNT_STORAGE_OVERHEAD) * DEFAULT_LAMPORTS_PER_BYTE`
+/// is the largest expression that fits in `u64`. Anything beyond this
+/// would wrap; in practice the Solana runtime caps account data at 10 MiB
+/// (~262× smaller than this bound) so the precondition is essentially
+/// unreachable from honest callers.
+const MAX_SAFE_SPACE: u64 =
+    (u64::MAX / DEFAULT_LAMPORTS_PER_BYTE) - ACCOUNT_STORAGE_OVERHEAD;
+
+/// Compute the rent-exempt minimum balance for an account of `space` bytes.
+///
+/// `const fn` so that callers passing a constant `space` (the common case —
+/// `<MyAccount>::SPACE`, etc.) get the entire expression folded at compile
+/// time. Runtime callers get a single forward-predicted compare against
+/// `MAX_SAFE_SPACE` plus a 64-bit `mul`; the overflow-panic branch is
+/// `#[cold]` so the optimizer pushes it out of the hot path.
+///
+/// # Panics
+///
+/// If `space > MAX_SAFE_SPACE`. The Solana runtime's 10 MiB account data
+/// cap is well below this bound, so this is unreachable from honest
+/// callers. The check is real (not a debug assert) so a misuse fails
+/// loudly rather than silently producing wrapped lamports.
+#[inline(always)]
+pub const fn rent_exempt_lamports(space: usize) -> u64 {
+    if space as u64 > MAX_SAFE_SPACE {
+        rent_exempt_overflow();
+    }
+    // Bounded by MAX_SAFE_SPACE → no overflow → cheap 64-bit `mul`.
+    (ACCOUNT_STORAGE_OVERHEAD + space as u64).wrapping_mul(DEFAULT_LAMPORTS_PER_BYTE)
+}
+
+#[cold]
+#[inline(never)]
+const fn rent_exempt_overflow() -> ! {
+    panic!("rent_exempt_lamports: space exceeds u64 lamport capacity")
 }
 
 /// Find a program-derived address (PDA) and its bump seed.
@@ -215,6 +251,7 @@ fn hash_pda_seeds(seeds: &[&[u8]], program_id: &Address) -> Result<Address, Prog
 }
 
 /// Create a new account via system program CPI (no PDA signing).
+#[inline(always)]
 pub fn create_account(
     payer: &AccountView,
     target: &AccountView,
@@ -237,6 +274,7 @@ pub fn create_account(
 /// Create a new PDA account via system program CPI with signer seeds.
 ///
 /// `seeds` should include the bump byte, e.g. `&[b"market", id.as_ref(), &[bump]]`.
+#[inline(always)]
 pub fn create_account_signed(
     payer: &AccountView,
     target: &AccountView,
@@ -265,6 +303,13 @@ pub fn create_account_signed(
     Ok(())
 }
 
+/// Rare-path fallback for when the target account already holds lamports
+/// at creation time (e.g. airdropped PDAs or `init_if_needed` after partial
+/// funding). Marked `#[cold]` + `#[inline(never)]` so LTO keeps it out of
+/// the hot dispatch path and the ~1.4 KB of Transfer/Allocate/Assign CPI
+/// glue doesn't bloat the `entrypoint` or per-instruction wrappers.
+#[cold]
+#[inline(never)]
 fn create_prefunded(
     payer: &AccountView,
     target: &AccountView,
@@ -290,6 +335,15 @@ fn create_prefunded(
 }
 
 /// Realloc an account to a new size, adjusting rent as needed.
+///
+/// Requires the `account-resize` feature (default-on). Disabling that
+/// feature also drops the pinocchio `account-resize` entrypoint hook that
+/// writes `data_len` into `RuntimeAccount.padding` for every non-duplicate
+/// account, so calling this without the hook would corrupt the stored
+/// `original_data_len` that `AccountView::resize()` reads back. The two
+/// have to move together, hence the compile-time gate rather than a
+/// runtime error.
+#[cfg(feature = "account-resize")]
 pub fn realloc_account(
     account: &mut AccountView,
     new_space: usize,
@@ -313,7 +367,15 @@ pub fn realloc_account(
         let excess = current_lamports.saturating_sub(required);
         if excess > 0 {
             let mut payer_mut = *payer;
-            payer_mut.set_lamports(payer_mut.lamports() + excess);
+            // `checked_add` rather than `+`: overflow-checks is disabled in
+            // release builds, and this arithmetic is on user-supplied account
+            // lamports. The total SOL supply is bounded so overflow is
+            // unreachable in practice, but silent wrap would be a downgrade.
+            let new_payer_lamports = payer_mut
+                .lamports()
+                .checked_add(excess)
+                .ok_or(ProgramError::ArithmeticOverflow)?;
+            payer_mut.set_lamports(new_payer_lamports);
             account.set_lamports(required);
         }
     }

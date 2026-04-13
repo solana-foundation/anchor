@@ -6,13 +6,28 @@ description = "Anchor v2: trait-based account system for Solana (no_std)"
 license = "Apache-2.0"
 
 [features]
-default = ["alloc"]
+default = ["alloc", "guardrails", "account-resize"]
 alloc = ["pinocchio/alloc"]
 idl-build = []
+# Runtime safety nets that catch caller bugs the Rust borrow checker
+# can't see statically. Default-on. Disabling saves CU at the cost of
+# diagnostic panics for misuse — see lib.rs / Account<T> docs.
+# Disable via `default-features = false` plus re-adding the features you want.
+guardrails = []
+# Enables `realloc_account` + the pinocchio `account-resize` entrypoint hook
+# that writes `data_len` into `RuntimeAccount.padding` on every non-duplicate
+# account so `AccountView::resize()` can enforce `MAX_PERMITTED_DATA_INCREASE`.
+# Default-on so existing programs don't silently lose realloc support, but
+# programs that never call `realloc_account` can drop it via
+# `default-features = false` for ~300 bytes of entrypoint hook binary saved.
+# Compile-time gated (rather than a runtime error) because disabling the
+# pinocchio hook without also removing `realloc_account` would silently
+# corrupt the stored `original_data_len`.
+account-resize = ["pinocchio/account-resize"]
 
 [dependencies]
 anchor-derive-accounts-v2 = { path = "./derive", version = "0.1.0" }
-pinocchio = { workspace = true, features = ["copy", "account-resize"] }
+pinocchio = { workspace = true, features = ["copy"] }
 pinocchio-system = "0.6"
 solana-address = { version = "2.0", features = ["bytemuck", "borsh", "syscalls", "curve25519"] }
 solana-program-error = { version = "3.0", features = ["borsh"] }
@@ -23,6 +38,9 @@ wincode = { version = "0.4", features = ["derive"] }
 
 [target.'cfg(target_os = "solana")'.dependencies]
 solana-define-syscall = "4.0"
+
+[target.'cfg(not(target_os = "solana"))'.dependencies]
+sha2 = "0.10"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"

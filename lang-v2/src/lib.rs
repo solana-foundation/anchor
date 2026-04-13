@@ -10,6 +10,7 @@ pub mod accounts;
 mod context;
 mod cpi;
 mod dispatch;
+pub mod hash;
 pub mod loader;
 pub mod event;
 pub mod pod;
@@ -23,7 +24,10 @@ pub use accounts::AccountInitialize;
 pub use context::{Context, Bumps};
 pub use dispatch::{TryAccounts, run_handler, parse_instruction};
 pub use loader::AccountLoader;
-pub use cpi::{create_account, create_account_signed, find_program_address, create_program_address, verify_program_address, realloc_account};
+pub use cpi::{create_account, create_account_signed, find_program_address, create_program_address, verify_program_address};
+#[cfg(feature = "account-resize")]
+pub use cpi::realloc_account;
+pub use hash::sha256;
 pub use traits::*;
 pub use event::{Event, sol_log_data};
 
@@ -134,6 +138,30 @@ pub fn is_rent_exempt(view: &pinocchio::account::AccountView) -> bool {
     use pinocchio::sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BYTE};
     let required = (ACCOUNT_STORAGE_OVERHEAD + view.data_len() as u64) * DEFAULT_LAMPORTS_PER_BYTE;
     view.lamports() >= required
+}
+
+/// Guardrail: verify that the runtime-supplied `program_id` matches this
+/// program's `declare_id!()`. Called from the `#[program]` macro's
+/// generated `entry()` function as a single line. Gated behind the
+/// `guardrails` feature — when disabled the body compiles to `Ok(())`
+/// and LLVM inlines it away, so programs opting out of guardrails pay
+/// zero CU and zero bytes for this check.
+///
+/// The Solana runtime always loads a program at its declared address,
+/// so under normal operation this check never fires — it's a safety
+/// net for a misconfigured loader or a program copied to a new address
+/// by an untrusted tool. Costs ~10 CU + a few bytes of entry glue when
+/// enabled.
+#[inline(always)]
+pub fn check_program_id(
+    _program_id: &Address,
+    _declared: &Address,
+) -> core::result::Result<(), solana_program_error::ProgramError> {
+    #[cfg(feature = "guardrails")]
+    if _program_id != _declared {
+        return Err(ErrorCode::DeclaredProgramIdMismatch.into());
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

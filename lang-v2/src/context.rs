@@ -12,6 +12,7 @@ pub struct Context<'a, T: Bumps> {
 }
 
 impl<'a, T: Bumps> Context<'a, T> {
+    #[inline(always)]
     pub fn new(
         program_id: Address,
         accounts: T,

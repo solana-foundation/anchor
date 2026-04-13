@@ -11,7 +11,17 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     type Data;
 
     fn load(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError>;
-    fn load_mut(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError>;
+
+    /// Defaults to `load()`. Data-carrying wrappers (`Account<T>`, `BorshAccount<T>`)
+    /// override this to acquire a mutable borrow via pinocchio's borrow tracking;
+    /// zero-data view wrappers (`Signer`, `SystemAccount`, `Program<T>`, etc.)
+    /// leave the default — there is no "mutable borrow" to acquire, and the
+    /// Solana runtime rejects writes to non-writable accounts anyway.
+    #[inline(always)]
+    fn load_mut(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError> {
+        Self::load(view, program_id)
+    }
+
     fn account(&self) -> &AccountView;
 
     fn exit(&mut self) -> ProgramResult { Ok(()) }
