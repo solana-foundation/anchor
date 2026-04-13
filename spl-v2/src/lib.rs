@@ -10,6 +10,8 @@ pub mod associated_token;
 pub mod mint;
 pub mod token;
 
-pub use associated_token::get_associated_token_address;
-pub use token::{TokenAccount, TokenAccountInitParams};
-pub use mint::{Mint, MintInitParams};
+pub use {
+    associated_token::get_associated_token_address,
+    mint::{Mint, MintInitParams},
+    token::{TokenAccount, TokenAccountInitParams},
+};

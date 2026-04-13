@@ -9,11 +9,7 @@ pub fn sha256(data: &[u8]) -> [u8; 32] {
         let slices: [&[u8]; 1] = [data];
         let mut out = core::mem::MaybeUninit::<[u8; 32]>::uninit();
         unsafe {
-            sol_sha256(
-                slices.as_ptr() as *const u8,
-                1,
-                out.as_mut_ptr() as *mut u8,
-            );
+            sol_sha256(slices.as_ptr() as *const u8, 1, out.as_mut_ptr() as *mut u8);
             out.assume_init()
         }
     }

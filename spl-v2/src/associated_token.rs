@@ -23,11 +23,7 @@ pub fn get_associated_token_address(
     token_program_id: &Address,
 ) -> Address {
     let ata_program_id = Address::from_str_const("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
-    let seeds: &[&[u8]] = &[
-        wallet.as_ref(),
-        token_program_id.as_ref(),
-        mint.as_ref(),
-    ];
+    let seeds: &[&[u8]] = &[wallet.as_ref(), token_program_id.as_ref(), mint.as_ref()];
     let (addr, _bump) = Address::find_program_address(seeds, &ata_program_id);
     addr
 }

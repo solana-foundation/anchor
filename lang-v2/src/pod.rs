@@ -29,9 +29,17 @@ macro_rules! define_pod_signed {
             #[inline(always)]
             fn neg(self) -> Self {
                 #[cfg(debug_assertions)]
-                { Self::from(self.get().checked_neg().expect("attempt to negate with overflow")) }
+                {
+                    Self::from(
+                        self.get()
+                            .checked_neg()
+                            .expect("attempt to negate with overflow"),
+                    )
+                }
                 #[cfg(not(debug_assertions))]
-                { Self::from(self.get().wrapping_neg()) }
+                {
+                    Self::from(self.get().wrapping_neg())
+                }
             }
         }
     };
@@ -49,10 +57,14 @@ macro_rules! define_pod_common {
             pub const MIN: Self = Self(<$native>::MIN.to_le_bytes());
 
             #[inline(always)]
-            pub fn get(&self) -> $native { <$native>::from_le_bytes(self.0) }
+            pub fn get(&self) -> $native {
+                <$native>::from_le_bytes(self.0)
+            }
 
             #[inline(always)]
-            pub fn is_zero(&self) -> bool { self.0 == [0u8; $size] }
+            pub fn is_zero(&self) -> bool {
+                self.0 == [0u8; $size]
+            }
 
             #[inline(always)]
             pub fn checked_add(self, rhs: impl Into<$name>) -> Option<Self> {
@@ -86,42 +98,60 @@ macro_rules! define_pod_common {
 
         impl From<$native> for $name {
             #[inline(always)]
-            fn from(v: $native) -> Self { Self(v.to_le_bytes()) }
+            fn from(v: $native) -> Self {
+                Self(v.to_le_bytes())
+            }
         }
         impl From<$name> for $native {
             #[inline(always)]
-            fn from(v: $name) -> Self { v.get() }
+            fn from(v: $name) -> Self {
+                v.get()
+            }
         }
 
         impl PartialEq for $name {
             #[inline(always)]
-            fn eq(&self, other: &Self) -> bool { self.0 == other.0 }
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
         }
         impl Eq for $name {}
 
         impl PartialEq<$native> for $name {
             #[inline(always)]
-            fn eq(&self, other: &$native) -> bool { self.get() == *other }
+            fn eq(&self, other: &$native) -> bool {
+                self.get() == *other
+            }
         }
 
         impl PartialOrd for $name {
             #[inline(always)]
-            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> { Some(self.cmp(other)) }
+            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
         }
         impl Ord for $name {
             #[inline(always)]
-            fn cmp(&self, other: &Self) -> core::cmp::Ordering { self.get().cmp(&other.get()) }
+            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+                self.get().cmp(&other.get())
+            }
         }
         impl PartialOrd<$native> for $name {
             #[inline(always)]
-            fn partial_cmp(&self, other: &$native) -> Option<core::cmp::Ordering> { self.get().partial_cmp(other) }
+            fn partial_cmp(&self, other: &$native) -> Option<core::cmp::Ordering> {
+                self.get().partial_cmp(other)
+            }
         }
 
         impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.get().fmt(f) }
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.get().fmt(f)
+            }
         }
         impl fmt::Debug for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}({})", stringify!($name), self.get()) }
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}({})", stringify!($name), self.get())
+            }
         }
     };
 }
@@ -133,9 +163,17 @@ macro_rules! define_pod_arithmetic {
             #[inline(always)]
             fn add(self, rhs: $native) -> Self {
                 #[cfg(debug_assertions)]
-                { Self::from(self.get().checked_add(rhs).expect("attempt to add with overflow")) }
+                {
+                    Self::from(
+                        self.get()
+                            .checked_add(rhs)
+                            .expect("attempt to add with overflow"),
+                    )
+                }
                 #[cfg(not(debug_assertions))]
-                { Self::from(self.get().wrapping_add(rhs)) }
+                {
+                    Self::from(self.get().wrapping_add(rhs))
+                }
             }
         }
         impl core::ops::Sub<$native> for $name {
@@ -143,9 +181,17 @@ macro_rules! define_pod_arithmetic {
             #[inline(always)]
             fn sub(self, rhs: $native) -> Self {
                 #[cfg(debug_assertions)]
-                { Self::from(self.get().checked_sub(rhs).expect("attempt to subtract with overflow")) }
+                {
+                    Self::from(
+                        self.get()
+                            .checked_sub(rhs)
+                            .expect("attempt to subtract with overflow"),
+                    )
+                }
                 #[cfg(not(debug_assertions))]
-                { Self::from(self.get().wrapping_sub(rhs)) }
+                {
+                    Self::from(self.get().wrapping_sub(rhs))
+                }
             }
         }
         impl core::ops::Mul<$native> for $name {
@@ -153,73 +199,239 @@ macro_rules! define_pod_arithmetic {
             #[inline(always)]
             fn mul(self, rhs: $native) -> Self {
                 #[cfg(debug_assertions)]
-                { Self::from(self.get().checked_mul(rhs).expect("attempt to multiply with overflow")) }
+                {
+                    Self::from(
+                        self.get()
+                            .checked_mul(rhs)
+                            .expect("attempt to multiply with overflow"),
+                    )
+                }
                 #[cfg(not(debug_assertions))]
-                { Self::from(self.get().wrapping_mul(rhs)) }
+                {
+                    Self::from(self.get().wrapping_mul(rhs))
+                }
             }
         }
         impl core::ops::Div<$native> for $name {
             type Output = Self;
             #[inline(always)]
-            fn div(self, rhs: $native) -> Self { Self::from(self.get() / rhs) }
+            fn div(self, rhs: $native) -> Self {
+                Self::from(self.get() / rhs)
+            }
         }
         impl core::ops::Rem<$native> for $name {
             type Output = Self;
             #[inline(always)]
-            fn rem(self, rhs: $native) -> Self { Self::from(self.get() % rhs) }
+            fn rem(self, rhs: $native) -> Self {
+                Self::from(self.get() % rhs)
+            }
         }
         impl core::ops::Add for $name {
             type Output = Self;
             #[inline(always)]
-            fn add(self, rhs: Self) -> Self { self + rhs.get() }
+            fn add(self, rhs: Self) -> Self {
+                self + rhs.get()
+            }
         }
         impl core::ops::Sub for $name {
             type Output = Self;
             #[inline(always)]
-            fn sub(self, rhs: Self) -> Self { self - rhs.get() }
+            fn sub(self, rhs: Self) -> Self {
+                self - rhs.get()
+            }
         }
         impl core::ops::Mul for $name {
             type Output = Self;
             #[inline(always)]
-            fn mul(self, rhs: Self) -> Self { self * rhs.get() }
+            fn mul(self, rhs: Self) -> Self {
+                self * rhs.get()
+            }
         }
         impl core::ops::Div for $name {
             type Output = Self;
             #[inline(always)]
-            fn div(self, rhs: Self) -> Self { self / rhs.get() }
+            fn div(self, rhs: Self) -> Self {
+                self / rhs.get()
+            }
         }
         impl core::ops::Rem for $name {
             type Output = Self;
             #[inline(always)]
-            fn rem(self, rhs: Self) -> Self { self % rhs.get() }
+            fn rem(self, rhs: Self) -> Self {
+                self % rhs.get()
+            }
         }
-        impl core::ops::AddAssign<$native> for $name { #[inline(always)] fn add_assign(&mut self, rhs: $native) { *self = *self + rhs; } }
-        impl core::ops::SubAssign<$native> for $name { #[inline(always)] fn sub_assign(&mut self, rhs: $native) { *self = *self - rhs; } }
-        impl core::ops::MulAssign<$native> for $name { #[inline(always)] fn mul_assign(&mut self, rhs: $native) { *self = *self * rhs; } }
-        impl core::ops::DivAssign<$native> for $name { #[inline(always)] fn div_assign(&mut self, rhs: $native) { *self = *self / rhs; } }
-        impl core::ops::RemAssign<$native> for $name { #[inline(always)] fn rem_assign(&mut self, rhs: $native) { *self = *self % rhs; } }
-        impl core::ops::AddAssign for $name { #[inline(always)] fn add_assign(&mut self, rhs: Self) { *self = *self + rhs; } }
-        impl core::ops::SubAssign for $name { #[inline(always)] fn sub_assign(&mut self, rhs: Self) { *self = *self - rhs; } }
-        impl core::ops::MulAssign for $name { #[inline(always)] fn mul_assign(&mut self, rhs: Self) { *self = *self * rhs; } }
-        impl core::ops::DivAssign for $name { #[inline(always)] fn div_assign(&mut self, rhs: Self) { *self = *self / rhs; } }
-        impl core::ops::RemAssign for $name { #[inline(always)] fn rem_assign(&mut self, rhs: Self) { *self = *self % rhs; } }
-        impl core::ops::BitAnd<$native> for $name { type Output = Self; #[inline(always)] fn bitand(self, rhs: $native) -> Self { Self::from(self.get() & rhs) } }
-        impl core::ops::BitOr<$native> for $name { type Output = Self; #[inline(always)] fn bitor(self, rhs: $native) -> Self { Self::from(self.get() | rhs) } }
-        impl core::ops::BitXor<$native> for $name { type Output = Self; #[inline(always)] fn bitxor(self, rhs: $native) -> Self { Self::from(self.get() ^ rhs) } }
-        impl core::ops::BitAnd for $name { type Output = Self; #[inline(always)] fn bitand(self, rhs: Self) -> Self { self & rhs.get() } }
-        impl core::ops::BitOr for $name { type Output = Self; #[inline(always)] fn bitor(self, rhs: Self) -> Self { self | rhs.get() } }
-        impl core::ops::BitXor for $name { type Output = Self; #[inline(always)] fn bitxor(self, rhs: Self) -> Self { self ^ rhs.get() } }
-        impl core::ops::BitAndAssign<$native> for $name { #[inline(always)] fn bitand_assign(&mut self, rhs: $native) { *self = *self & rhs; } }
-        impl core::ops::BitOrAssign<$native> for $name { #[inline(always)] fn bitor_assign(&mut self, rhs: $native) { *self = *self | rhs; } }
-        impl core::ops::BitXorAssign<$native> for $name { #[inline(always)] fn bitxor_assign(&mut self, rhs: $native) { *self = *self ^ rhs; } }
-        impl core::ops::BitAndAssign for $name { #[inline(always)] fn bitand_assign(&mut self, rhs: Self) { *self = *self & rhs; } }
-        impl core::ops::BitOrAssign for $name { #[inline(always)] fn bitor_assign(&mut self, rhs: Self) { *self = *self | rhs; } }
-        impl core::ops::BitXorAssign for $name { #[inline(always)] fn bitxor_assign(&mut self, rhs: Self) { *self = *self ^ rhs; } }
-        impl core::ops::Shl<u32> for $name { type Output = Self; #[inline(always)] fn shl(self, rhs: u32) -> Self { Self::from(self.get() << rhs) } }
-        impl core::ops::Shr<u32> for $name { type Output = Self; #[inline(always)] fn shr(self, rhs: u32) -> Self { Self::from(self.get() >> rhs) } }
-        impl core::ops::ShlAssign<u32> for $name { #[inline(always)] fn shl_assign(&mut self, rhs: u32) { *self = *self << rhs; } }
-        impl core::ops::ShrAssign<u32> for $name { #[inline(always)] fn shr_assign(&mut self, rhs: u32) { *self = *self >> rhs; } }
-        impl core::ops::Not for $name { type Output = Self; #[inline(always)] fn not(self) -> Self { Self::from(!self.get()) } }
+        impl core::ops::AddAssign<$native> for $name {
+            #[inline(always)]
+            fn add_assign(&mut self, rhs: $native) {
+                *self = *self + rhs;
+            }
+        }
+        impl core::ops::SubAssign<$native> for $name {
+            #[inline(always)]
+            fn sub_assign(&mut self, rhs: $native) {
+                *self = *self - rhs;
+            }
+        }
+        impl core::ops::MulAssign<$native> for $name {
+            #[inline(always)]
+            fn mul_assign(&mut self, rhs: $native) {
+                *self = *self * rhs;
+            }
+        }
+        impl core::ops::DivAssign<$native> for $name {
+            #[inline(always)]
+            fn div_assign(&mut self, rhs: $native) {
+                *self = *self / rhs;
+            }
+        }
+        impl core::ops::RemAssign<$native> for $name {
+            #[inline(always)]
+            fn rem_assign(&mut self, rhs: $native) {
+                *self = *self % rhs;
+            }
+        }
+        impl core::ops::AddAssign for $name {
+            #[inline(always)]
+            fn add_assign(&mut self, rhs: Self) {
+                *self = *self + rhs;
+            }
+        }
+        impl core::ops::SubAssign for $name {
+            #[inline(always)]
+            fn sub_assign(&mut self, rhs: Self) {
+                *self = *self - rhs;
+            }
+        }
+        impl core::ops::MulAssign for $name {
+            #[inline(always)]
+            fn mul_assign(&mut self, rhs: Self) {
+                *self = *self * rhs;
+            }
+        }
+        impl core::ops::DivAssign for $name {
+            #[inline(always)]
+            fn div_assign(&mut self, rhs: Self) {
+                *self = *self / rhs;
+            }
+        }
+        impl core::ops::RemAssign for $name {
+            #[inline(always)]
+            fn rem_assign(&mut self, rhs: Self) {
+                *self = *self % rhs;
+            }
+        }
+        impl core::ops::BitAnd<$native> for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn bitand(self, rhs: $native) -> Self {
+                Self::from(self.get() & rhs)
+            }
+        }
+        impl core::ops::BitOr<$native> for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn bitor(self, rhs: $native) -> Self {
+                Self::from(self.get() | rhs)
+            }
+        }
+        impl core::ops::BitXor<$native> for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn bitxor(self, rhs: $native) -> Self {
+                Self::from(self.get() ^ rhs)
+            }
+        }
+        impl core::ops::BitAnd for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn bitand(self, rhs: Self) -> Self {
+                self & rhs.get()
+            }
+        }
+        impl core::ops::BitOr for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn bitor(self, rhs: Self) -> Self {
+                self | rhs.get()
+            }
+        }
+        impl core::ops::BitXor for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn bitxor(self, rhs: Self) -> Self {
+                self ^ rhs.get()
+            }
+        }
+        impl core::ops::BitAndAssign<$native> for $name {
+            #[inline(always)]
+            fn bitand_assign(&mut self, rhs: $native) {
+                *self = *self & rhs;
+            }
+        }
+        impl core::ops::BitOrAssign<$native> for $name {
+            #[inline(always)]
+            fn bitor_assign(&mut self, rhs: $native) {
+                *self = *self | rhs;
+            }
+        }
+        impl core::ops::BitXorAssign<$native> for $name {
+            #[inline(always)]
+            fn bitxor_assign(&mut self, rhs: $native) {
+                *self = *self ^ rhs;
+            }
+        }
+        impl core::ops::BitAndAssign for $name {
+            #[inline(always)]
+            fn bitand_assign(&mut self, rhs: Self) {
+                *self = *self & rhs;
+            }
+        }
+        impl core::ops::BitOrAssign for $name {
+            #[inline(always)]
+            fn bitor_assign(&mut self, rhs: Self) {
+                *self = *self | rhs;
+            }
+        }
+        impl core::ops::BitXorAssign for $name {
+            #[inline(always)]
+            fn bitxor_assign(&mut self, rhs: Self) {
+                *self = *self ^ rhs;
+            }
+        }
+        impl core::ops::Shl<u32> for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn shl(self, rhs: u32) -> Self {
+                Self::from(self.get() << rhs)
+            }
+        }
+        impl core::ops::Shr<u32> for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn shr(self, rhs: u32) -> Self {
+                Self::from(self.get() >> rhs)
+            }
+        }
+        impl core::ops::ShlAssign<u32> for $name {
+            #[inline(always)]
+            fn shl_assign(&mut self, rhs: u32) {
+                *self = *self << rhs;
+            }
+        }
+        impl core::ops::ShrAssign<u32> for $name {
+            #[inline(always)]
+            fn shr_assign(&mut self, rhs: u32) {
+                *self = *self >> rhs;
+            }
+        }
+        impl core::ops::Not for $name {
+            type Output = Self;
+            #[inline(always)]
+            fn not(self) -> Self {
+                Self::from(!self.get())
+            }
+        }
     };
 }
 
@@ -260,36 +472,52 @@ pub struct PodBool([u8; 1]);
 
 impl PodBool {
     #[inline(always)]
-    pub fn get(&self) -> bool { self.0[0] != 0 }
+    pub fn get(&self) -> bool {
+        self.0[0] != 0
+    }
 }
 
 impl From<bool> for PodBool {
     #[inline(always)]
-    fn from(v: bool) -> Self { Self([v as u8]) }
+    fn from(v: bool) -> Self {
+        Self([v as u8])
+    }
 }
 impl From<PodBool> for bool {
     #[inline(always)]
-    fn from(v: PodBool) -> Self { v.get() }
+    fn from(v: PodBool) -> Self {
+        v.get()
+    }
 }
 impl PartialEq for PodBool {
     #[inline(always)]
-    fn eq(&self, other: &Self) -> bool { self.get() == other.get() }
+    fn eq(&self, other: &Self) -> bool {
+        self.get() == other.get()
+    }
 }
 impl Eq for PodBool {}
 impl PartialEq<bool> for PodBool {
     #[inline(always)]
-    fn eq(&self, other: &bool) -> bool { self.get() == *other }
+    fn eq(&self, other: &bool) -> bool {
+        self.get() == *other
+    }
 }
 impl core::ops::Not for PodBool {
     type Output = Self;
     #[inline(always)]
-    fn not(self) -> Self { Self::from(!self.get()) }
+    fn not(self) -> Self {
+        Self::from(!self.get())
+    }
 }
 impl fmt::Display for PodBool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.get().fmt(f) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.get().fmt(f)
+    }
 }
 impl fmt::Debug for PodBool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "PodBool({})", self.get()) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PodBool({})", self.get())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -346,19 +574,27 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
 
     /// Returns the number of populated elements.
     #[inline(always)]
-    pub fn len(&self) -> usize { self.len.get() as usize }
+    pub fn len(&self) -> usize {
+        self.len.get() as usize
+    }
 
     /// Returns `true` if no elements are populated.
     #[inline(always)]
-    pub fn is_empty(&self) -> bool { self.len.is_zero() }
+    pub fn is_empty(&self) -> bool {
+        self.len.is_zero()
+    }
 
     /// Returns `true` if the vector is at capacity.
     #[inline(always)]
-    pub fn is_full(&self) -> bool { self.len() == MAX }
+    pub fn is_full(&self) -> bool {
+        self.len() == MAX
+    }
 
     /// Returns the maximum capacity.
     #[inline(always)]
-    pub const fn capacity(&self) -> usize { MAX }
+    pub const fn capacity(&self) -> usize {
+        MAX
+    }
 
     // --- Element access ---
 
@@ -390,11 +626,15 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
 
     /// Returns a reference to the first element, or `None` if empty.
     #[inline(always)]
-    pub fn first(&self) -> Option<&T> { self.as_slice().first() }
+    pub fn first(&self) -> Option<&T> {
+        self.as_slice().first()
+    }
 
     /// Returns a reference to the last element, or `None` if empty.
     #[inline(always)]
-    pub fn last(&self) -> Option<&T> { self.as_slice().last() }
+    pub fn last(&self) -> Option<&T> {
+        self.as_slice().last()
+    }
 
     // --- Iteration ---
 
@@ -472,7 +712,8 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     /// Appends every element from `src`. Panics if it would exceed capacity.
     #[inline]
     pub fn extend_from_slice(&mut self, src: &[T]) {
-        self.try_extend_from_slice(src).expect("PodVec: extend exceeds capacity");
+        self.try_extend_from_slice(src)
+            .expect("PodVec: extend exceeds capacity");
     }
 
     /// Replaces the contents with `src`. Panics if `src.len() > MAX`.
@@ -506,12 +747,16 @@ impl<T: bytemuck::Pod, const MAX: usize> core::ops::IndexMut<usize> for PodVec<T
 impl<T: bytemuck::Pod, const MAX: usize> core::ops::Deref for PodVec<T, MAX> {
     type Target = [T];
     #[inline(always)]
-    fn deref(&self) -> &[T] { self.as_slice() }
+    fn deref(&self) -> &[T] {
+        self.as_slice()
+    }
 }
 
 impl<T: bytemuck::Pod, const MAX: usize> core::ops::DerefMut for PodVec<T, MAX> {
     #[inline(always)]
-    fn deref_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
+    fn deref_mut(&mut self) -> &mut [T] {
+        self.as_mut_slice()
+    }
 }
 
 // --- IntoIterator for &PodVec and &mut PodVec ---
@@ -520,14 +765,18 @@ impl<'a, T: bytemuck::Pod, const MAX: usize> IntoIterator for &'a PodVec<T, MAX>
     type Item = &'a T;
     type IntoIter = core::slice::Iter<'a, T>;
     #[inline(always)]
-    fn into_iter(self) -> Self::IntoIter { self.iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
 }
 
 impl<'a, T: bytemuck::Pod, const MAX: usize> IntoIterator for &'a mut PodVec<T, MAX> {
     type Item = &'a mut T;
     type IntoIter = core::slice::IterMut<'a, T>;
     #[inline(always)]
-    fn into_iter(self) -> Self::IntoIter { self.iter_mut() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
 }
 
 impl<T: bytemuck::Pod, const MAX: usize> Default for PodVec<T, MAX> {

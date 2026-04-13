@@ -1,11 +1,8 @@
 use {
-    core::ops::Deref,
-    pinocchio::{
-        account::AccountView,
-        address::Address,
-    },
-    solana_program_error::ProgramError,
     crate::AnchorAccount,
+    core::ops::Deref,
+    pinocchio::{account::AccountView, address::Address},
+    solana_program_error::ProgramError,
 };
 
 /// Wrapper for optional accounts.

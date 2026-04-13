@@ -1,21 +1,23 @@
-mod unchecked_account;
-mod signer;
-mod system_account;
-mod program;
+mod borsh_account;
 mod boxed;
 mod option;
-mod borsh_account;
+mod program;
+mod signer;
 mod slab;
+mod system_account;
 mod sysvar;
+mod unchecked_account;
 
-pub use unchecked_account::UncheckedAccount;
-pub use signer::Signer;
-pub use system_account::SystemAccount;
-pub use program::Program;
-pub use option::Optional;
-pub use borsh_account::BorshAccount;
-pub use slab::{Slab, HeaderOnly, AccountValidate, AccountInitialize};
-pub use sysvar::{Sysvar, SysvarId};
+pub use {
+    borsh_account::BorshAccount,
+    option::Optional,
+    program::Program,
+    signer::Signer,
+    slab::{AccountInitialize, AccountValidate, HeaderOnly, Slab},
+    system_account::SystemAccount,
+    sysvar::{Sysvar, SysvarId},
+    unchecked_account::UncheckedAccount,
+};
 
 /// Anchor account with a typed header and no trailing items.
 ///
@@ -55,15 +57,21 @@ macro_rules! view_wrapper_traits {
         impl core::ops::Deref for $Type {
             type Target = pinocchio::account::AccountView;
             #[inline(always)]
-            fn deref(&self) -> &pinocchio::account::AccountView { &self.view }
+            fn deref(&self) -> &pinocchio::account::AccountView {
+                &self.view
+            }
         }
         impl AsRef<pinocchio::account::AccountView> for $Type {
             #[inline(always)]
-            fn as_ref(&self) -> &pinocchio::account::AccountView { &self.view }
+            fn as_ref(&self) -> &pinocchio::account::AccountView {
+                &self.view
+            }
         }
         impl AsRef<pinocchio::address::Address> for $Type {
             #[inline(always)]
-            fn as_ref(&self) -> &pinocchio::address::Address { self.view.address() }
+            fn as_ref(&self) -> &pinocchio::address::Address {
+                self.view.address()
+            }
         }
     };
 }

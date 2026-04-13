@@ -13,7 +13,7 @@
 //! up the earlier `AccountView` from `lookup[idx]` and returns it without
 //! re-parsing.
 
-use pinocchio::account::{AccountView, MAX_PERMITTED_DATA_INCREASE, RuntimeAccount};
+use pinocchio::account::{AccountView, RuntimeAccount, MAX_PERMITTED_DATA_INCREASE};
 
 /// Sentinel value in the serialized `borrow_state` byte indicating a
 /// non-duplicated account. Any other value (0..=254) indicates a
@@ -150,8 +150,8 @@ impl AccountCursor {
             self.ptr = self.ptr.add(STATIC_ACCOUNT_DATA);
             self.ptr = self.ptr.add(data_len);
             // Align to the next 8-byte boundary.
-            self.ptr = (((self.ptr as usize) + (BPF_ALIGN_OF_U128 - 1))
-                & !(BPF_ALIGN_OF_U128 - 1)) as *mut u8;
+            self.ptr = (((self.ptr as usize) + (BPF_ALIGN_OF_U128 - 1)) & !(BPF_ALIGN_OF_U128 - 1))
+                as *mut u8;
             AccountView::new_unchecked(account)
         } else {
             // Duplicate: look up the earlier slot. Safe because the

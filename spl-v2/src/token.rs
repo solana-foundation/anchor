@@ -24,7 +24,9 @@ pub(crate) fn create_token_account(
 ) -> Result<(), ProgramError> {
     let token_program_id = Token::id();
     match signer_seeds {
-        Some(seeds) => anchor_lang_v2::create_account_signed(payer, account, space, &token_program_id, seeds),
+        Some(seeds) => {
+            anchor_lang_v2::create_account_signed(payer, account, space, &token_program_id, seeds)
+        }
         None => anchor_lang_v2::create_account(payer, account, space, &token_program_id),
     }
 }
@@ -60,7 +62,11 @@ impl AccountValidate for TokenAccount {
     const DATA_OFFSET: usize = 0;
 
     #[inline(always)]
-    fn validate(view: &AccountView, data: &[u8], _program_id: &Address) -> Result<(), ProgramError> {
+    fn validate(
+        view: &AccountView,
+        data: &[u8],
+        _program_id: &Address,
+    ) -> Result<(), ProgramError> {
         // TODO: Token2022 support — add a TokenAccount2022 type or a feature
         // gate that adds `|| view.owned_by(&Token2022::id())` here.
         if !view.owned_by(&Token::id()) {
@@ -135,7 +141,11 @@ impl TokenAccount {
 
     /// The approved delegate, if any.
     pub fn delegate(&self) -> Option<&Address> {
-        if self.has_delegate() { Some(&self.delegate) } else { None }
+        if self.has_delegate() {
+            Some(&self.delegate)
+        } else {
+            None
+        }
     }
 
     /// Account state (0 = Uninitialized, 1 = Initialized, 2 = Frozen).
@@ -151,7 +161,11 @@ impl TokenAccount {
     /// The rent-exempt reserve for native SOL accounts, if this is a native
     /// token account.
     pub fn native_amount(&self) -> Option<u64> {
-        if self.is_native() { Some(u64::from_le_bytes(self.native_amount)) } else { None }
+        if self.is_native() {
+            Some(u64::from_le_bytes(self.native_amount))
+        } else {
+            None
+        }
     }
 
     /// Whether a close authority is set.
@@ -161,7 +175,11 @@ impl TokenAccount {
 
     /// The close authority, if any.
     pub fn close_authority(&self) -> Option<&Address> {
-        if self.has_close_authority() { Some(&self.close_authority) } else { None }
+        if self.has_close_authority() {
+            Some(&self.close_authority)
+        } else {
+            None
+        }
     }
 
     /// Whether the account has been initialized (state != 0).

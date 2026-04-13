@@ -1,5 +1,8 @@
 use {
-    crate::{context::{Bumps, Context}, cursor::AccountCursor},
+    crate::{
+        context::{Bumps, Context},
+        cursor::AccountCursor,
+    },
     pinocchio::address::Address,
     solana_program_error::ProgramError,
 };

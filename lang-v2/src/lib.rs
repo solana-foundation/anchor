@@ -11,49 +11,47 @@ mod context;
 mod cpi;
 pub mod cursor;
 mod dispatch;
+pub mod event;
 pub mod hash;
 pub mod loader;
-pub mod event;
 pub mod pod;
 pub mod prelude;
 pub mod programs;
 mod traits;
 
-pub use pinocchio::account::AccountView;
-pub use pinocchio::address::Address;
+// Re-export derive macros
+pub use anchor_derive_accounts_v2::Accounts;
+// Re-export borsh and bytemuck for generated code
+pub use borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
+#[cfg(feature = "account-resize")]
+pub use cpi::realloc_account;
 /// Chunked 4×u64 equality compare for `Address`. Preferred over `==`
 /// on `&Address`. See <https://github.com/anza-xyz/solana-sdk/issues/345>.
 pub use pinocchio::address::address_eq;
-pub use accounts::AccountInitialize;
-pub use context::{Context, Bumps};
-pub use cursor::AccountCursor;
-pub use dispatch::{TryAccounts, run_handler, parse_instruction};
-pub use loader::AccountLoader;
-pub use cpi::{create_account, create_account_signed, find_program_address, find_and_verify_program_address, find_and_verify_program_address_skip_curve, create_program_address, verify_program_address};
-#[cfg(feature = "account-resize")]
-pub use cpi::realloc_account;
-pub use hash::sha256;
-pub use traits::*;
-pub use event::{Event, sol_log_data};
-
-/// Re-export log macro for generated code.
-pub use solana_program_log::log as msg;
-
 /// Re-export declare_id from solana-address.
 pub use solana_address::declare_id;
-
-// Re-export derive macros
-pub use anchor_derive_accounts_v2::Accounts;
-pub use anchor_derive_accounts_v2::account;
-pub use anchor_derive_accounts_v2::program;
-pub use anchor_derive_accounts_v2::event;
-pub use anchor_derive_accounts_v2::emit;
-
-// Re-export borsh and bytemuck for generated code
-pub use borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
-pub use bytemuck;
+/// Re-export log macro for generated code.
+pub use solana_program_log::log as msg;
 // Re-export wincode for instruction data serialization
 pub use wincode;
+pub use {
+    accounts::AccountInitialize,
+    anchor_derive_accounts_v2::{account, emit, event, program},
+    bytemuck,
+    context::{Bumps, Context},
+    cpi::{
+        create_account, create_account_signed, create_program_address,
+        find_and_verify_program_address, find_and_verify_program_address_skip_curve,
+        find_program_address, verify_program_address,
+    },
+    cursor::AccountCursor,
+    dispatch::{parse_instruction, run_handler, TryAccounts},
+    event::{sol_log_data, Event},
+    hash::sha256,
+    loader::AccountLoader,
+    pinocchio::{account::AccountView, address::Address},
+    traits::*,
+};
 
 // ---------------------------------------------------------------------------
 // Client-side types — for building instructions off-chain (tests, CPI, SDK)
@@ -114,9 +112,13 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
     #[inline(never)]
     fn from(e: ErrorCode) -> Self {
         match e {
-            ErrorCode::AccountNotEnoughKeys => solana_program_error::ProgramError::NotEnoughAccountKeys,
+            ErrorCode::AccountNotEnoughKeys => {
+                solana_program_error::ProgramError::NotEnoughAccountKeys
+            }
             ErrorCode::ConstraintMut => solana_program_error::ProgramError::Custom(2000),
-            ErrorCode::ConstraintSigner => solana_program_error::ProgramError::MissingRequiredSignature,
+            ErrorCode::ConstraintSigner => {
+                solana_program_error::ProgramError::MissingRequiredSignature
+            }
             ErrorCode::ConstraintSeeds => solana_program_error::ProgramError::InvalidSeeds,
             ErrorCode::ConstraintHasOne => solana_program_error::ProgramError::InvalidAccountData,
             ErrorCode::ConstraintAddress => solana_program_error::ProgramError::InvalidAccountData,
@@ -126,9 +128,15 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             ErrorCode::ConstraintExecutable => solana_program_error::ProgramError::Custom(2002),
             ErrorCode::ConstraintRentExempt => solana_program_error::ProgramError::Custom(2003),
             ErrorCode::ConstraintZero => solana_program_error::ProgramError::Custom(2004),
-            ErrorCode::InstructionDidNotDeserialize => solana_program_error::ProgramError::InvalidInstructionData,
-            ErrorCode::DeclaredProgramIdMismatch => solana_program_error::ProgramError::IncorrectProgramId,
-            ErrorCode::InstructionFallbackNotFound => solana_program_error::ProgramError::InvalidInstructionData,
+            ErrorCode::InstructionDidNotDeserialize => {
+                solana_program_error::ProgramError::InvalidInstructionData
+            }
+            ErrorCode::DeclaredProgramIdMismatch => {
+                solana_program_error::ProgramError::IncorrectProgramId
+            }
+            ErrorCode::InstructionFallbackNotFound => {
+                solana_program_error::ProgramError::InvalidInstructionData
+            }
             ErrorCode::RequireViolated => solana_program_error::ProgramError::Custom(2500),
             ErrorCode::RequireEqViolated => solana_program_error::ProgramError::Custom(2501),
             ErrorCode::RequireNeqViolated => solana_program_error::ProgramError::Custom(2502),
