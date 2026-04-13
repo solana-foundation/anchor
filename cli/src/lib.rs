@@ -42,7 +42,7 @@ use {
         fs::{self, File},
         io::prelude::*,
         path::{Path, PathBuf},
-        process::{Child, Stdio},
+        process::{Child, ExitStatus, Stdio},
         string::ToString,
         sync::LazyLock,
     },
@@ -170,6 +170,9 @@ pub enum Command {
         /// Expand only this program
         #[clap(short, long)]
         program_name: Option<String>,
+        /// Write to stdout
+        #[clap(long)]
+        stdout: bool,
         /// Arguments to pass to the underlying `cargo expand` command
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
@@ -1231,8 +1234,9 @@ fn process_command(opts: Opts) -> Result<()> {
         }
         Command::Expand {
             program_name,
+            stdout,
             cargo_args,
-        } => expand(&opts.cfg_override, program_name, &cargo_args),
+        } => expand(&opts.cfg_override, program_name, stdout, &cargo_args),
         #[allow(deprecated)]
         Command::Upgrade {
             program_id,
@@ -1657,6 +1661,7 @@ pub fn override_or_create_files(files: &Files) -> Result<()> {
 pub fn expand(
     cfg_override: &ConfigOverride,
     program_name: Option<String>,
+    stdout: bool,
     cargo_args: &[String],
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
@@ -1674,16 +1679,17 @@ pub fn expand(
 
     match cargo {
         // No Cargo.toml found, expand entire workspace
-        None => expand_all(&workspace_cfg, expansions_path, cargo_args),
+        None => expand_all(&workspace_cfg, expansions_path, stdout, cargo_args),
         // Cargo.toml is at root of workspace, expand entire workspace
         Some(cargo) if cargo.path().parent() == workspace_cfg.path().parent() => {
-            expand_all(&workspace_cfg, expansions_path, cargo_args)
+            expand_all(&workspace_cfg, expansions_path, stdout, cargo_args)
         }
         // Reaching this arm means Cargo.toml belongs to a single package. Expand it.
         Some(cargo) => expand_program(
             // If we found Cargo.toml, it must be in a directory so unwrap is safe
             cargo.path().parent().unwrap().to_path_buf(),
             expansions_path,
+            stdout,
             cargo_args,
         ),
     }
@@ -1692,11 +1698,12 @@ pub fn expand(
 fn expand_all(
     workspace_cfg: &WithPath<Config>,
     expansions_path: PathBuf,
+    stdout: bool,
     cargo_args: &[String],
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     for p in workspace_cfg.get_rust_program_list()? {
-        expand_program(p, expansions_path.clone(), cargo_args)?;
+        expand_program(p, expansions_path.clone(), stdout, cargo_args)?;
     }
     std::env::set_current_dir(cur_dir)?;
     Ok(())
@@ -1705,33 +1712,53 @@ fn expand_all(
 fn expand_program(
     program_path: PathBuf,
     expansions_path: PathBuf,
+    stdout: bool,
     cargo_args: &[String],
 ) -> Result<()> {
     let cargo = Manifest::from_path(program_path.join("Cargo.toml"))
         .map_err(|_| anyhow!("Could not find Cargo.toml for program"))?;
-
-    let target_dir_arg = {
-        let mut target_dir_arg = OsString::from("--target-dir=");
-        target_dir_arg.push(expansions_path.join("expand-target"));
-        target_dir_arg
-    };
-
     let package_name = &cargo
         .package
         .as_ref()
         .ok_or_else(|| anyhow!("Cargo config is missing a package"))?
         .name;
-    let status = std::process::Command::new("cargo")
-        .arg("expand")
-        .arg(target_dir_arg)
-        .arg(format!("--package={package_name}"))
-        .args(cargo_args)
-        .stdout(Stdio::inherit())
-        .status()
-        .map_err(|e| anyhow::format_err!("{}", e))?;
-    if !status.success() {
-        eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
-        std::process::exit(status.code().unwrap_or(1));
+
+    let mut cmd = std::process::Command::new("cargo");
+    cmd.arg("expand")
+        .arg("--target-dir")
+        .arg(expansions_path.join("expand-target"))
+        .arg("--package")
+        .arg(package_name)
+        .args(cargo_args);
+
+    let handle_err = |err| anyhow!("Failed to run `cargo expand`: {err}");
+    let exit_on_err = |exit_status: ExitStatus| {
+        if !exit_status.success() {
+            eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
+            std::process::exit(exit_status.code().unwrap_or(1));
+        }
+    };
+
+    if stdout {
+        let status = cmd.status().map_err(handle_err)?;
+        exit_on_err(status);
+    } else {
+        let output = cmd.stderr(Stdio::inherit()).output().map_err(handle_err)?;
+        exit_on_err(output.status);
+
+        let program_expansions_path = expansions_path.join(package_name);
+        fs::create_dir_all(&program_expansions_path)?;
+
+        let version = cargo.version();
+        let time = chrono::Utc::now().to_string().replace(' ', "_");
+        let file_path = program_expansions_path.join(format!("{package_name}-{version}-{time}.rs"));
+        fs::write(&file_path, &output.stdout)?;
+
+        println!(
+            "Expanded {} into file {}\n",
+            package_name,
+            file_path.to_string_lossy()
+        );
     }
 
     Ok(())
