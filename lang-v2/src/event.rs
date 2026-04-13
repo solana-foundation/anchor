@@ -2,12 +2,21 @@ use alloc::vec::Vec;
 use crate::Discriminator;
 
 /// Trait for event structs. Implemented by the `#[event]` attribute macro.
-pub trait Event: borsh::BorshSerialize + Discriminator {
-    /// Serialize the event: discriminator bytes followed by borsh-serialized data.
+pub trait Event: Discriminator {
+    /// Serialized size of the event data (excluding discriminator).
+    const DATA_SIZE: usize;
+
+    /// Write the event data into the buffer (wincode zero-copy for fixed-size structs).
+    fn write_data(&self, buf: &mut [u8]);
+
+    /// Serialize the event: discriminator bytes followed by event data.
     fn data(&self) -> Vec<u8> {
-        let mut data = Vec::with_capacity(256);
-        data.extend_from_slice(Self::DISCRIMINATOR);
-        borsh::BorshSerialize::serialize(self, &mut data).unwrap();
+        let disc = Self::DISCRIMINATOR;
+        let mut data = Vec::with_capacity(disc.len() + Self::DATA_SIZE);
+        data.extend_from_slice(disc);
+        let start = data.len();
+        data.resize(start + Self::DATA_SIZE, 0);
+        self.write_data(&mut data[start..]);
         data
     }
 }

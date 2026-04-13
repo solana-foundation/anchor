@@ -10,6 +10,18 @@ use {
 pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     type Data;
 
+    /// Minimum account data length for this type. Used at compile time to
+    /// decide whether PDA verification can skip the `sol_curve_validate_point`
+    /// syscall: any account with `data_len > 0` must have been signed for
+    /// (via CreateAccount/Allocate), and signing proves PDA validity because
+    /// `invoke_signed` → `create_program_address` includes the runtime's own
+    /// curve check.
+    ///
+    /// Slab-backed types override this to `8` (discriminator length).
+    /// UncheckedAccount and other zero-data wrappers keep the default `0`,
+    /// which forces the curve check on PDA verification.
+    const MIN_DATA_LEN: usize = 0;
+
     fn load(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError>;
 
     /// Default impl: validates `is_writable`, then delegates to `load()`.

@@ -12,6 +12,7 @@ use {
 
 impl<T: AnchorAccount> AnchorAccount for Box<T> {
     type Data = T;
+    const MIN_DATA_LEN: usize = T::MIN_DATA_LEN;
 
     fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         T::load(view, program_id).map(Box::new)
@@ -19,6 +20,10 @@ impl<T: AnchorAccount> AnchorAccount for Box<T> {
 
     fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         T::load_mut(view, program_id).map(Box::new)
+    }
+
+    fn load_mut_after_init(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+        T::load_mut_after_init(view, program_id).map(Box::new)
     }
 
     fn account(&self) -> &AccountView {

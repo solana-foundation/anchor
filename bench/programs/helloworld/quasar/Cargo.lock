@@ -182,6 +182,7 @@ dependencies = [
 [[package]]
 name = "quasar-derive"
 version = "0.0.0"
+source = "git+https://github.com/blueshift-gg/quasar?branch=feat%2Fdynamic-types-rework#a21d83e516fd2db903cbdffac4e6e186e2e547d4"
 dependencies = [
  "bs58",
  "const-crypto",
@@ -196,6 +197,7 @@ dependencies = [
 [[package]]
 name = "quasar-idl"
 version = "0.0.0"
+source = "git+https://github.com/blueshift-gg/quasar?branch=feat%2Fdynamic-types-rework#a21d83e516fd2db903cbdffac4e6e186e2e547d4"
 dependencies = [
  "proc-macro2",
  "serde",
@@ -207,6 +209,7 @@ dependencies = [
 [[package]]
 name = "quasar-lang"
 version = "0.0.0"
+source = "git+https://github.com/blueshift-gg/quasar?branch=feat%2Fdynamic-types-rework#a21d83e516fd2db903cbdffac4e6e186e2e547d4"
 dependencies = [
  "const-crypto",
  "quasar-derive",
@@ -224,6 +227,7 @@ dependencies = [
 [[package]]
 name = "quasar-pod"
 version = "0.0.0"
+source = "git+https://github.com/blueshift-gg/quasar?branch=feat%2Fdynamic-types-rework#a21d83e516fd2db903cbdffac4e6e186e2e547d4"
 dependencies = [
  "wincode 0.4.9",
 ]

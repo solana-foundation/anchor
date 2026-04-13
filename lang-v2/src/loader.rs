@@ -30,6 +30,17 @@ impl<'a> AccountLoader<'a> {
         self.cursor.consumed()
     }
 
+    /// Walk N accounts in bulk, returning a slice of raw `AccountView`s.
+    /// Cursor math runs in a tight loop before any validation happens.
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure N does not exceed the remaining accounts.
+    #[inline(always)]
+    pub fn walk_n(&mut self, n: usize) -> &[AccountView] {
+        unsafe { self.cursor.walk_n(n) }
+    }
+
     /// Walk one account from the cursor and return the raw `AccountView`.
     ///
     /// Used by the init / init_if_needed / zeroed codegen paths where

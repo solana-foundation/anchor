@@ -224,7 +224,14 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                                 is_field_ref,
                             });
                         }
-                        // else: unknown attribute, silently skip
+                        else {
+                            // No `::` follows — not a namespaced constraint.
+                            // Reject to catch typos like `singler` instead of `signer`.
+                            return Err(syn::Error::new(
+                                ident.span(),
+                                format!("unknown account constraint `{ident}`"),
+                            ));
+                        }
                     }
                 }
                 if !input.is_empty() {
@@ -396,6 +403,7 @@ fn emit_seeds_check(
     pda_program: &TokenStream2,
     target_addr_ref: &TokenStream2,
     field_name: &Ident,
+    field_ty: Option<&Type>,
     for_init: bool,
     using_our_program_id: bool,
 ) -> TokenStream2 {
@@ -443,11 +451,44 @@ fn emit_seeds_check(
         }
     }
 
-    // Fallback: runtime find-and-verify (returns just the bump).
+    // Fallback: runtime find loop fused with the equality check.
+    //
+    // Skip the per-iteration `sol_curve_validate_point` (~159 CU) when
+    // the account is provably signed-for:
+    //
+    //   - `for_init`: account is system-owned + zero-data (checked before
+    //     init runs). The subsequent CreateAccount/Allocate/Assign CPI
+    //     requires the account to be a signer. For PDAs, signing goes
+    //     through `invoke_signed` → `create_program_address` which
+    //     includes the curve check. So the system program will reject
+    //     any on-curve address.
+    //
+    //   - `MIN_DATA_LEN > 0`: account has data → was created via
+    //     CreateAccount/Allocate (which require signing) → same
+    //     reasoning: the account was signed for, so it's a valid PDA.
+    //
+    // Otherwise (`UncheckedAccount` with zero data, non-init): the curve
+    // check is the only proof the address is a real PDA.
+    //
+    // `MIN_DATA_LEN` is a trait const, so the branch is resolved at
+    // compile time — LLVM eliminates the dead path entirely.
+    let skip_curve = if for_init {
+        quote! { true }
+    } else if let Some(ty) = field_ty {
+        quote! { <#ty as anchor_lang_v2::AnchorAccount>::MIN_DATA_LEN > 0 }
+    } else {
+        quote! { false }
+    };
     let find = quote! {
-        let __bump = anchor_lang_v2::find_and_verify_program_address(
-            &[#(#seed_exprs),*], #pda_program, #target_addr_ref,
-        ).map_err(|_| anchor_lang_v2::ErrorCode::ConstraintSeeds)?;
+        let __bump = if #skip_curve {
+            anchor_lang_v2::find_and_verify_program_address_skip_curve(
+                &[#(#seed_exprs),*], #pda_program, #target_addr_ref,
+            ).map_err(|_| anchor_lang_v2::ErrorCode::ConstraintSeeds)?
+        } else {
+            anchor_lang_v2::find_and_verify_program_address(
+                &[#(#seed_exprs),*], #pda_program, #target_addr_ref,
+            ).map_err(|_| anchor_lang_v2::ErrorCode::ConstraintSeeds)?
+        };
         __bumps.#field_name = __bump;
     };
     if for_init {
@@ -487,11 +528,16 @@ fn emit_init_body(
     let seeds_arg = if let Some(ref seeds) = attrs.seeds {
         let seed_exprs: Vec<_> = seeds.iter()
             .map(|s| rewrite_seed_expr(s, field_names)).collect();
+        let using_our_program_id = attrs.seeds_program.is_none();
+        let pda_program = match &attrs.seeds_program {
+            Some(prog) => quote! { &#prog },
+            None => quote! { __program_id },
+        };
         emit_seeds_check(
             seeds, &seed_exprs,
-            &quote! { __program_id },
+            &pda_program,
             &quote! { __target.address() },
-            field_name, true, true,
+            field_name, None, true, using_our_program_id,
         )
     } else {
         quote! { let __seeds: Option<&[&[u8]]> = None; }
@@ -513,12 +559,13 @@ fn emit_init_body(
     }
 }
 
-pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
+pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usize) -> AccountField {
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
     let attrs = parse_account_attrs(&field.attrs);
 
     let is_signer = field_ty_str(field_ty) == "Signer";
+    let is_optional = field_ty_str(field_ty) == "Optional";
     let is_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
     let program_address = extract_program_address(field_ty);
     let idl_writable = attrs.is_mut;
@@ -534,7 +581,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
             let mut #field_name = {
-                let __target = __loader.next_view()?;
+                let __target = __views[#field_index];
                 #init_body
             };
         }
@@ -542,8 +589,8 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
             let mut #field_name = {
-                let __target = __loader.next_view()?;
-                if __target.owned_by(__program_id) && __target.data_len() > 0 {
+                let __target = __views[#field_index];
+                if __target.data_len() > 0 && !__target.owned_by(&anchor_lang_v2::programs::System::id()) {
                     <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
                 } else {
                     #init_body
@@ -557,7 +604,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
             .expect("#[account(zeroed)] requires Account<T> or BorshAccount<T>");
         quote! {
             let mut #field_name = {
-                let __target = __loader.next_view()?;
+                let __target = __views[#field_index];
                 {
                     let __data = __target.try_borrow()?;
                     let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
@@ -577,11 +624,11 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
         }
     } else if attrs.is_mut {
         quote! {
-            let mut #field_name = __loader.next_mut::<#field_ty>()?;
+            let mut #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__views[#field_index], __program_id)?;
         }
     } else {
         quote! {
-            let #field_name = __loader.next::<#field_ty>()?;
+            let #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::load(__views[#field_index], __program_id)?;
         }
     };
 
@@ -623,8 +670,13 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
         });
     }
 
-    // Seeds constraint (non-init, non-init_if_needed)
-    if !attrs.is_init && !attrs.is_init_if_needed {
+    // Seeds constraint. Runs for all non-init fields, INCLUDING
+    // init_if_needed: when the account already exists the init body
+    // (which contains its own seeds check) is skipped, so this is the
+    // only PDA verification on that path. For plain `init`, the seeds
+    // check inside emit_init_body is authoritative and this block is
+    // skipped to avoid a redundant find loop.
+    if !attrs.is_init {
         if let Some(ref seeds) = attrs.seeds {
             let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
             // seeds::program = expr overrides which program_id to derive PDA from
@@ -655,6 +707,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
                     &pda_program,
                     &target_addr_ref,
                     field_name,
+                    Some(field_ty),
                     /* for_init */ false,
                     using_our_program_id,
                 ));
@@ -793,6 +846,22 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
         })
     } else {
         None
+    };
+
+    // For Optional<T> fields, wrap all constraints and exit in is_some()
+    // guards. When the account is None (client passed the program ID
+    // sentinel), code that calls .account() would panic. Skipping is
+    // correct: a None optional has no account to validate or close.
+    let (constraints, exit) = if is_optional {
+        let constraints = constraints.into_iter().map(|c| {
+            quote! { if #field_name.is_some() { #c } }
+        }).collect();
+        let exit = exit.map(|e| {
+            quote! { if self.#field_name.is_some() { #e } }
+        });
+        (constraints, exit)
+    } else {
+        (constraints, exit)
     };
 
     AccountField {

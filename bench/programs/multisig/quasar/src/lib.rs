@@ -5,6 +5,8 @@ use quasar_lang::prelude::*;
 mod instructions;
 use instructions::*;
 mod state;
+#[cfg(test)]
+mod tests;
 
 declare_id!("44444444444444444444444444444444444444444444");
 

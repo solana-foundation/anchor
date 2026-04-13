@@ -13,7 +13,7 @@ client = []
 debug = []
 
 [dependencies]
-quasar-lang = { path = "../../../../quasar/lang" }
+quasar-lang = { git = "https://github.com/blueshift-gg/quasar", branch = "feat/dynamic-types-rework" }
 solana-program-log = "1.0.0"
 
 [lints.rust.unexpected_cfgs]

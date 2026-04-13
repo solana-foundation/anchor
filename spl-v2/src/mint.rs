@@ -42,8 +42,10 @@ impl AccountValidate for Mint {
     // External types start at offset 0 — no Anchor discriminator.
     const DATA_OFFSET: usize = 0;
 
+    #[inline(always)]
     fn validate(view: &AccountView, data: &[u8], _program_id: &Address) -> Result<(), ProgramError> {
-        if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
+        // TODO: Token2022 support — add a Mint2022 type or feature gate.
+        if !view.owned_by(&Token::id()) {
             return Err(ProgramError::IllegalOwner);
         }
         if data.len() != core::mem::size_of::<Self>() {
@@ -64,6 +66,7 @@ pub struct MintInitParams<'a> {
 impl AccountInitialize for Mint {
     type Params<'a> = MintInitParams<'a>;
 
+    #[cold]
     fn create_and_initialize<'a>(
         payer: &AccountView,
         account: &AccountView,
@@ -134,6 +137,7 @@ pub struct DecimalsConstraint;
 pub struct TokenProgramConstraint;
 
 impl Constrain<AuthorityConstraint> for Account<Mint> {
+    #[inline(always)]
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         match self.mint_authority() {
             Some(addr) if addr == expected => Ok(()),
@@ -143,6 +147,7 @@ impl Constrain<AuthorityConstraint> for Account<Mint> {
 }
 
 impl Constrain<FreezeAuthorityConstraint> for Account<Mint> {
+    #[inline(always)]
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         match self.freeze_authority() {
             Some(addr) if addr == expected => Ok(()),
@@ -153,6 +158,7 @@ impl Constrain<FreezeAuthorityConstraint> for Account<Mint> {
 
 /// `mint::Decimals = 6` — non-address constraint, compares u8.
 impl Constrain<DecimalsConstraint, u8> for Account<Mint> {
+    #[inline(always)]
     fn constrain(&self, expected: &u8) -> Result<(), ProgramError> {
         if self.decimals() != *expected {
             Err(ProgramError::InvalidAccountData)
@@ -164,6 +170,7 @@ impl Constrain<DecimalsConstraint, u8> for Account<Mint> {
 
 /// `mint::TokenProgram = token_program` — check mint is owned by given program.
 impl Constrain<TokenProgramConstraint> for Account<Mint> {
+    #[inline(always)]
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !AsRef::<AccountView>::as_ref(self).owned_by(expected) {
             Err(ProgramError::IllegalOwner)

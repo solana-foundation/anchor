@@ -22,6 +22,7 @@ pub struct Optional<T: AnchorAccount>(pub Option<T>);
 impl<T: AnchorAccount> AnchorAccount for Optional<T> {
     /// Derefs to `Option<T>`, giving access to `as_ref()`, `is_some()`, etc.
     type Data = Option<T>;
+    const MIN_DATA_LEN: usize = T::MIN_DATA_LEN;
 
     fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         // Sentinel: client passes the program's own address to mean `None`.
@@ -38,6 +39,14 @@ impl<T: AnchorAccount> AnchorAccount for Optional<T> {
             Ok(Self(None))
         } else {
             Ok(Self(Some(T::load_mut(view, program_id)?)))
+        }
+    }
+
+    fn load_mut_after_init(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+        if crate::address_eq(view.address(), program_id) {
+            Ok(Self(None))
+        } else {
+            Ok(Self(Some(T::load_mut_after_init(view, program_id)?)))
         }
     }
 

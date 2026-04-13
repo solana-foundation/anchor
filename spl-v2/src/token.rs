@@ -59,9 +59,11 @@ impl AccountValidate for TokenAccount {
     // External types start at offset 0 — no Anchor discriminator.
     const DATA_OFFSET: usize = 0;
 
+    #[inline(always)]
     fn validate(view: &AccountView, data: &[u8], _program_id: &Address) -> Result<(), ProgramError> {
-        // Token accounts can be owned by Token or Token2022.
-        if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
+        // TODO: Token2022 support — add a TokenAccount2022 type or a feature
+        // gate that adds `|| view.owned_by(&Token2022::id())` here.
+        if !view.owned_by(&Token::id()) {
             return Err(ProgramError::IllegalOwner);
         }
         // Exact size distinguishes TokenAccount (165) from Mint (82).
@@ -82,6 +84,7 @@ pub struct TokenAccountInitParams<'a> {
 impl AccountInitialize for TokenAccount {
     type Params<'a> = TokenAccountInitParams<'a>;
 
+    #[cold]
     fn create_and_initialize<'a>(
         payer: &AccountView,
         account: &AccountView,
@@ -181,6 +184,7 @@ pub struct AuthorityConstraint;
 pub struct TokenProgramConstraint;
 
 impl Constrain<MintConstraint> for Account<TokenAccount> {
+    #[inline(always)]
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         // `address_eq` is the chunked 4×u64 compare; faster than the
         // default `PartialEq` derive on `[u8; 32]`. See lang-v2/src/lib.rs.
@@ -193,6 +197,7 @@ impl Constrain<MintConstraint> for Account<TokenAccount> {
 }
 
 impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
+    #[inline(always)]
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !anchor_lang_v2::address_eq(self.owner(), expected) {
             Err(ProgramError::InvalidAccountData)
@@ -204,6 +209,7 @@ impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
 
 /// `token::TokenProgram = token_program` — check account is owned by given program.
 impl Constrain<TokenProgramConstraint> for Account<TokenAccount> {
+    #[inline(always)]
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
         if !AsRef::<AccountView>::as_ref(self).owned_by(expected) {
             Err(ProgramError::IllegalOwner)

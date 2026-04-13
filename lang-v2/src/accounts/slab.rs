@@ -312,9 +312,9 @@ where
     pub fn reacquire_borrow_mut(&mut self) -> core::result::Result<(), ProgramError> {
         let mut view_mut = self.view;
         let data_ref = view_mut.try_borrow_mut()?;
-        let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
         self.header_ptr = unsafe {
-            (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET)
+            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
         } as *mut H;
         self.guard = Some(BorrowGuard::Mutable(guard));
         Ok(())
@@ -380,9 +380,12 @@ where
         // SAFETY: same lifetime-transmute pattern as `from_ref`. The
         // underlying data buffer lives for the whole instruction and the
         // guard prevents aliasing.
-        let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        // Derive header_ptr through DerefMut (as_mut_ptr) to preserve write
+        // provenance. Using as_ptr() routes through Deref → *const, losing
+        // write provenance under Stacked Borrows / Tree Borrows.
         let header_ptr = unsafe {
-            (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET)
+            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
         } as *mut H;
         Ok(Self {
             view,
@@ -716,9 +719,9 @@ where
         // Re-acquire with the new length and re-derive header_ptr.
         let data_ref = view_mut.try_borrow_mut()?;
         // SAFETY: same lifetime-transmute pattern as `build_mutable`.
-        let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
         self.header_ptr = unsafe {
-            (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET)
+            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
         } as *mut H;
         self.guard = Some(BorrowGuard::Mutable(guard));
         // Clamp len down if we shrunk below the current item count.
@@ -739,6 +742,7 @@ where
     H: Pod + Zeroable + AccountValidate,
 {
     type Data = H;
+    const MIN_DATA_LEN: usize = 8;
 
     #[inline(always)]
     fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
@@ -839,7 +843,10 @@ where
 {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut H {
-        #[cfg(feature = "guardrails")]
+        // Always checked (not guardrails-gated): creating `&mut H` from a
+        // pointer derived from a `Ref` (shared borrow) is UB. The guard
+        // check is the only thing preventing it, so it must run even in
+        // release builds.
         match &self.guard {
             None => panic!(
                 "Slab<H, T> mutably dereferenced after release_borrow() or close(). \
@@ -851,8 +858,9 @@ where
             ),
             Some(BorrowGuard::Mutable(_)) => {}
         }
-        // SAFETY: under a Mutable guard, no other live borrow exists; we
-        // hold `&mut self`.
+        // SAFETY: under a Mutable guard, the pointer was derived from a
+        // RefMut (exclusive borrow) with write provenance. No other live
+        // borrow exists; we hold `&mut self`.
         unsafe { &mut *self.header_ptr }
     }
 }

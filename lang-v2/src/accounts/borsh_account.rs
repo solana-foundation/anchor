@@ -69,6 +69,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount for BorshAccount<T> {
     type Data = T;
+    const MIN_DATA_LEN: usize = 8;
 
     fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         let data_ref = view.try_borrow()?;

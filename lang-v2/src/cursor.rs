@@ -89,6 +89,22 @@ impl AccountCursor {
         self.consumed
     }
 
+    /// Walk N accounts in a tight loop, storing views in the lookup array.
+    /// Returns a slice of the walked views. This avoids interleaving cursor
+    /// math with validation logic, letting LLVM optimize the walk loop.
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure N does not exceed the remaining accounts.
+    #[inline(always)]
+    pub unsafe fn walk_n(&mut self, n: usize) -> &[AccountView] {
+        let start = self.consumed as usize;
+        for _ in 0..n {
+            self.next();
+        }
+        core::slice::from_raw_parts(self.lookup.add(start), n)
+    }
+
     /// Advance past one account record and return its `AccountView`.
     ///
     /// Handles both non-duplicated accounts (walks past the record

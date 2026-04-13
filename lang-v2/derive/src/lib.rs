@@ -201,7 +201,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             Fields::Named(named) => named
                 .named
                 .iter()
-                .map(|f| parse::parse_field(f, &raw_field_names))
+                .enumerate()
+                .map(|(i, f)| parse::parse_field(f, &raw_field_names, i))
                 .collect(),
             _ => panic!("Accounts derive only supports named fields"),
         },
@@ -320,6 +321,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 use anchor_lang_v2::AnchorAccount as _;
                 #ix_deser
                 let mut __loader = anchor_lang_v2::AccountLoader::new(__program_id, __cursor);
+                let __views = __loader.walk_n(Self::HEADER_SIZE);
                 #bumps_init
                 #(#loads)*
                 #(#constraints)*
@@ -389,6 +391,14 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
                     fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
                     #( assert_pod::<#field_types>(); )*
                 };
+                // Verify no padding: struct size must equal sum of field sizes.
+                // repr(C) inserts padding between fields with different alignments
+                // (e.g. u8 followed by u64 → 7 bytes of padding). Padding bytes
+                // are uninitialized, violating Pod's all-bytes-initialized requirement.
+                const _: () = assert!(
+                    core::mem::size_of::<#name>() == 0 #(+ core::mem::size_of::<#field_types>())*,
+                    "account struct has padding bytes — reorder fields to eliminate padding, or use #[account(borsh)]"
+                );
                 unsafe impl anchor_lang_v2::bytemuck::Pod for #name {}
                 unsafe impl anchor_lang_v2::bytemuck::Zeroable for #name {}
             },
@@ -493,7 +503,7 @@ fn process_handler(
 
     // Handler wrapper.
     let wrapper = quote! {
-        #[inline]
+        #[inline(always)]
         pub fn #fn_name<'a>(
             __program_id: &'a anchor_lang_v2::Address,
             __cursor: &'a mut anchor_lang_v2::AccountCursor,
@@ -894,16 +904,19 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 /// Attribute macro that marks a struct as an event.
 ///
 /// Generates:
-/// - `#[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]` on the struct
+/// - `#[repr(C)]` on the struct for deterministic layout
 /// - `impl Discriminator` with discriminator = `sha256("event:StructName")[..8]`
-/// - `impl Event` (provides `.data()` which serializes discriminator + borsh data)
+/// - `impl Event` with zero-copy `write_data` via `copy_nonoverlapping`
+///
+/// Event structs must contain only fixed-size fields (no `Vec`, `String`, etc.)
+/// for the zero-copy serialization to work correctly.
 ///
 /// # Example
 ///
 /// ```ignore
 /// #[event]
 /// pub struct DepositRecorded {
-///     pub ledger: Address,
+///     pub ledger: [u8; 32],
 ///     pub amount: u64,
 /// }
 /// ```
@@ -925,7 +938,7 @@ pub fn event(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let disc_literals: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
 
     TokenStream::from(quote! {
-        #[derive(borsh::BorshSerialize, borsh::BorshDeserialize)]
+        #[repr(C)]
         #(#attrs)*
         #vis struct #name #fields
 
@@ -933,7 +946,20 @@ pub fn event(_attr: TokenStream, item: TokenStream) -> TokenStream {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
         }
 
-        impl anchor_lang_v2::Event for #name {}
+        impl anchor_lang_v2::Event for #name {
+            const DATA_SIZE: usize = core::mem::size_of::<#name>();
+
+            #[inline(always)]
+            fn write_data(&self, buf: &mut [u8]) {
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        self as *const Self as *const u8,
+                        buf.as_mut_ptr(),
+                        core::mem::size_of::<#name>(),
+                    );
+                }
+            }
+        }
     })
 }
 

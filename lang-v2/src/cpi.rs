@@ -147,13 +147,19 @@ pub fn find_and_verify_program_address(
     }
 }
 
-/// Create a program address from seeds (including bump byte).
-/// Uses `sol_sha256` directly rather than `sol_create_program_address`.
+/// Create a program-derived address (PDA) from `seeds` and `program_id`.
+///
+/// Uses `sol_sha256` + `sol_curve_validate_point` directly (~350 CU)
+/// instead of `sol_create_program_address` (~1,500 CU). Returns an error
+/// if the derived point is on the Ed25519 curve (not a valid PDA).
+/// The seeds slice should already include the bump byte.
 #[inline(always)]
 pub fn create_program_address(seeds: &[&[u8]], program_id: &Address) -> Result<Address, ProgramError> {
     #[cfg(target_os = "solana")]
     {
-        Ok(hash_pda_seeds(seeds, program_id)?)
+        let computed = hash_pda_seeds(seeds, program_id)?;
+        check_off_curve(&computed)?;
+        Ok(computed)
     }
 
     #[cfg(not(target_os = "solana"))]
@@ -164,8 +170,13 @@ pub fn create_program_address(seeds: &[&[u8]], program_id: &Address) -> Result<A
 
 /// Verify that `expected` matches the PDA derived from `seeds` and `program_id`.
 ///
-/// Verify that `expected` matches the PDA derived from `seeds` and `program_id`.
-/// Skips the on-curve check (bump is assumed valid from account creation).
+/// Computes `sha256` and compares the hash to `expected` (~200 CU). Does NOT
+/// check if the point is off-curve — the bump is assumed to be canonical
+/// (e.g. read from account data that was set during init, or precomputed at
+/// compile time). Callers passing untrusted bump values should use
+/// `find_and_verify_program_address` instead, which includes the curve check.
+///
+/// The seeds slice should already include the bump byte.
 #[inline(always)]
 pub fn verify_program_address(
     seeds: &[&[u8]],
@@ -191,6 +202,98 @@ pub fn verify_program_address(
         } else {
             Err(ProgramError::InvalidSeeds)
         }
+    }
+}
+
+/// Like [`find_and_verify_program_address`] but skips `sol_curve_validate_point`,
+/// saving ~159 CU per iteration.
+///
+/// Safe when the caller can prove the account was signed for:
+/// - **`MIN_DATA_LEN > 0`**: account has data → was created via
+///   CreateAccount/Allocate (which require the account to be a signer).
+///   For PDAs, signing goes through `invoke_signed` →
+///   `create_program_address` which includes the runtime's curve check.
+/// - **`init`**: account is system-owned with `data_len == 0` → the
+///   subsequent CreateAccount/Allocate/Assign CPI requires signing →
+///   same reasoning.
+///
+/// Without the curve check the loop tries all 256 bumps via hash-and-compare.
+/// SHA-256 collision resistance ensures only the canonical bump matches
+/// the expected on-chain address.
+#[inline(always)]
+pub fn find_and_verify_program_address_skip_curve(
+    seeds: &[&[u8]],
+    program_id: &Address,
+    expected: &Address,
+) -> Result<u8, ProgramError> {
+    if seeds.len() > 16 {
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    #[cfg(target_os = "solana")]
+    {
+        use solana_define_syscall::definitions::sol_sha256;
+        const PDA_MARKER: &[u8; 21] = b"ProgramDerivedAddress";
+
+        let n = seeds.len();
+        let mut slices = core::mem::MaybeUninit::<[&[u8]; 19]>::uninit();
+        let sptr = slices.as_mut_ptr() as *mut &[u8];
+        let mut i = 0;
+        while i < n { unsafe { sptr.add(i).write(seeds[i]) }; i += 1; }
+        unsafe {
+            sptr.add(n + 1).write(program_id.as_ref());
+            sptr.add(n + 2).write(PDA_MARKER.as_slice());
+        }
+        let mut bump_arr = [u8::MAX];
+        let bump_ptr = bump_arr.as_mut_ptr();
+        unsafe { sptr.add(n).write(core::slice::from_raw_parts(bump_ptr, 1)) };
+        let input = unsafe { core::slice::from_raw_parts(sptr, n + 3) };
+        let mut hash = core::mem::MaybeUninit::<[u8; 32]>::uninit();
+        let mut bump: u64 = u8::MAX as u64;
+
+        loop {
+            unsafe { bump_ptr.write(bump as u8) };
+            unsafe { sol_sha256(input as *const _ as *const u8, input.len() as u64, hash.as_mut_ptr() as *mut u8) };
+            let h = unsafe { hash.assume_init() };
+            let derived = Address::new_from_array(h);
+            if pinocchio::address::address_eq(&derived, expected) {
+                return Ok(bump as u8);
+            }
+            if bump == 0 { break; }
+            bump -= 1;
+        }
+        Err(ProgramError::InvalidSeeds)
+    }
+
+    #[cfg(not(target_os = "solana"))]
+    {
+        let (pda, bump) = Address::find_program_address(seeds, program_id);
+        if pinocchio::address::address_eq(&pda, expected) {
+            Ok(bump)
+        } else {
+            Err(ProgramError::InvalidSeeds)
+        }
+    }
+}
+
+/// Verify that `addr` is off the Ed25519 curve (i.e. a valid PDA).
+/// Returns `InvalidSeeds` if the point is on-curve.
+#[cfg(target_os = "solana")]
+#[inline(always)]
+fn check_off_curve(addr: &Address) -> Result<(), ProgramError> {
+    use solana_define_syscall::definitions::sol_curve_validate_point;
+    const CURVE25519_EDWARDS: u64 = 0;
+    let on_curve = unsafe {
+        sol_curve_validate_point(
+            CURVE25519_EDWARDS,
+            addr as *const _ as *const u8,
+            core::ptr::null_mut(),
+        )
+    };
+    if on_curve == 0 {
+        Err(ProgramError::InvalidSeeds)
+    } else {
+        Ok(())
     }
 }
 

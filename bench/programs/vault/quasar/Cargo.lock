@@ -109,9 +109,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "hashbrown"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
 
 [[package]]
 name = "ident_case"
@@ -121,9 +121,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "indexmap"
-version = "2.13.1"
+version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45a8a2b9cb3e0b0c1803dbb0758ffac5de2f425b23c28f518faabd9d805342ff"
+checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
 dependencies = [
  "equivalent",
  "hashbrown",
@@ -174,6 +174,7 @@ dependencies = [
 [[package]]
 name = "quasar-derive"
 version = "0.0.0"
+source = "git+https://github.com/blueshift-gg/quasar?branch=feat%2Fdynamic-types-rework#a21d83e516fd2db903cbdffac4e6e186e2e547d4"
 dependencies = [
  "bs58",
  "const-crypto",
@@ -188,6 +189,7 @@ dependencies = [
 [[package]]
 name = "quasar-idl"
 version = "0.0.0"
+source = "git+https://github.com/blueshift-gg/quasar?branch=feat%2Fdynamic-types-rework#a21d83e516fd2db903cbdffac4e6e186e2e547d4"
 dependencies = [
  "proc-macro2",
  "serde",
@@ -199,6 +201,7 @@ dependencies = [
 [[package]]
 name = "quasar-lang"
 version = "0.0.0"
+source = "git+https://github.com/blueshift-gg/quasar?branch=feat%2Fdynamic-types-rework#a21d83e516fd2db903cbdffac4e6e186e2e547d4"
 dependencies = [
  "const-crypto",
  "quasar-derive",
@@ -210,14 +213,15 @@ dependencies = [
  "solana-instruction-view",
  "solana-program-error",
  "solana-program-log",
- "wincode",
+ "wincode 0.4.9",
 ]
 
 [[package]]
 name = "quasar-pod"
 version = "0.0.0"
+source = "git+https://github.com/blueshift-gg/quasar?branch=feat%2Fdynamic-types-rework#a21d83e516fd2db903cbdffac4e6e186e2e547d4"
 dependencies = [
- "wincode",
+ "wincode 0.4.9",
 ]
 
 [[package]]
@@ -328,16 +332,16 @@ dependencies = [
 
 [[package]]
 name = "solana-address"
-version = "2.2.0"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68c5d02824391b072dc5cd0aaa85fb0af9784a21d23286a767994d1e8a322131"
+checksum = "f1384b52c435a750cc9c538760fc7bb472fd78e65a9900a2d07312c5bb335b72"
 dependencies = [
  "five8",
  "five8_const",
  "solana-define-syscall 5.0.0",
  "solana-program-error",
  "solana-sanitize",
- "wincode",
+ "wincode 0.5.1",
 ]
 
 [[package]]
@@ -538,6 +542,19 @@ name = "wincode"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "657690780ce23e6f66576a782ffd88eb353512381817029cc1d7a99154bb6d1f"
+dependencies = [
+ "pastey",
+ "proc-macro2",
+ "quote",
+ "thiserror",
+ "wincode-derive",
+]
+
+[[package]]
+name = "wincode"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a61f8f0a55eb6cae5d7b7ad2eca536a944deb9722a948525181069064ecd1abc"
 dependencies = [
  "pastey",
  "proc-macro2",
