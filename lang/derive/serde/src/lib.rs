@@ -33,7 +33,9 @@ fn extract_borsh_attrs(input: &mut DeriveInput) -> Vec<NestedMeta> {
         .collect()
 }
 
-/// Locate any `#[borsh]` attributes on struct/enum fields, which are currently unsupported.
+/// Locate any `#[borsh]` attributes on struct/enum fields,
+/// which are currently unsupported with `lazy-account`.
+#[cfg(feature = "lazy-account")]
 fn find_field_borsh_attr(input: &DeriveInput) -> Option<&syn::Attribute> {
     match &input.data {
         syn::Data::Struct(data) => data
@@ -107,16 +109,16 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
 
 fn gen_borsh_deserialize(input: TokenStream) -> TokenStream {
     let mut item = parse_macro_input!(input as DeriveInput);
-    if cfg!(feature = "lazy-account") {
-        if let Some(attr) = find_field_borsh_attr(&item) {
-            return syn::Error::new(
-                attr.span(),
-                "`borsh` attributes are not currently supported with `lazy-account`",
-            )
-            .into_compile_error()
-            .into();
-        }
+    #[cfg(feature = "lazy-account")]
+    if let Some(attr) = find_field_borsh_attr(&item) {
+        return syn::Error::new(
+            attr.span(),
+            "`borsh` attributes are not currently supported with `lazy-account`",
+        )
+        .into_compile_error()
+        .into();
     }
+
     let borsh_attrs = extract_borsh_attrs(&mut item);
     if !borsh_attrs.is_empty() && cfg!(feature = "lazy-account") {
         return syn::Error::new(
