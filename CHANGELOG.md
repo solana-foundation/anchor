@@ -17,6 +17,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- spl: Add missing auth account to `group_pointer_update` ([#4324](https://github.com/solana-foundation/anchor/pull/4324)).
+
 ### Breaking
 
 ## [1.0.0] - 2026-04-02
