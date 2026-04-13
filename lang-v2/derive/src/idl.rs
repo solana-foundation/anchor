@@ -59,7 +59,7 @@ pub fn build_accounts_json(accounts: &[(String, bool, bool, Option<String>)]) ->
 }
 
 /// Build IDL instruction args JSON from handler parameters.
-pub fn build_args_json(args: &[(&syn::Ident, &Box<Type>)]) -> String {
+pub fn build_args_json(args: &[(&syn::Ident, &Type)]) -> String {
     let parts: Vec<String> = args.iter().map(|(name, ty)| {
         let ty_json = rust_type_to_idl(ty);
         format!("{{\"name\":\"{name}\",\"type\":{ty_json}}}")

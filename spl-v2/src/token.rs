@@ -56,6 +56,9 @@ unsafe impl Pod for TokenAccount {}
 unsafe impl Zeroable for TokenAccount {}
 
 impl AccountValidate for TokenAccount {
+    // External types start at offset 0 — no Anchor discriminator.
+    const DATA_OFFSET: usize = 0;
+
     fn validate(view: &AccountView, data: &[u8], _program_id: &Address) -> Result<(), ProgramError> {
         // Token accounts can be owned by Token or Token2022.
         if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
@@ -67,7 +70,6 @@ impl AccountValidate for TokenAccount {
         }
         Ok(())
     }
-    fn data_offset() -> usize { 0 }
 }
 
 /// Init params for `#[account(init, token::mint = ..., token::authority = ...)]`.
@@ -180,7 +182,9 @@ pub struct TokenProgramConstraint;
 
 impl Constrain<MintConstraint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
-        if *self.mint() != *expected {
+        // `address_eq` is the chunked 4×u64 compare; faster than the
+        // default `PartialEq` derive on `[u8; 32]`. See lang-v2/src/lib.rs.
+        if !anchor_lang_v2::address_eq(self.mint(), expected) {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())
@@ -190,7 +194,7 @@ impl Constrain<MintConstraint> for Account<TokenAccount> {
 
 impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
     fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
-        if *self.owner() != *expected {
+        if !anchor_lang_v2::address_eq(self.owner(), expected) {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())

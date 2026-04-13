@@ -24,7 +24,9 @@ impl<T: AnchorAccount> AnchorAccount for Optional<T> {
     type Data = Option<T>;
 
     fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
-        if view.address() == program_id {
+        // Sentinel: client passes the program's own address to mean `None`.
+        // Use `address_eq` for the chunked compare — see lib.rs rationale.
+        if crate::address_eq(view.address(), program_id) {
             Ok(Self(None))
         } else {
             Ok(Self(Some(T::load(view, program_id)?)))
@@ -32,7 +34,7 @@ impl<T: AnchorAccount> AnchorAccount for Optional<T> {
     }
 
     fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
-        if view.address() == program_id {
+        if crate::address_eq(view.address(), program_id) {
             Ok(Self(None))
         } else {
             Ok(Self(Some(T::load_mut(view, program_id)?)))

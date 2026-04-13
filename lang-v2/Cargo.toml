@@ -19,25 +19,35 @@ guardrails = []
 # account so `AccountView::resize()` can enforce `MAX_PERMITTED_DATA_INCREASE`.
 # Default-on so existing programs don't silently lose realloc support, but
 # programs that never call `realloc_account` can drop it via
-# `default-features = false` for ~300 bytes of entrypoint hook binary saved.
+# `default-features = false` for ~300 bytes and ~2 CU per account saved.
 # Compile-time gated (rather than a runtime error) because disabling the
 # pinocchio hook without also removing `realloc_account` would silently
 # corrupt the stored `original_data_len`.
 account-resize = ["pinocchio/account-resize"]
+# Fold `rent_exempt_lamports` to a compile-time constant using pinocchio's
+# baked-in `DEFAULT_LAMPORTS_PER_BYTE` + `ACCOUNT_STORAGE_OVERHEAD`. Default-off
+# because it burns the rent formula into the binary — if the runtime formula
+# changes (e.g. SIMD-0194), programs built with `const-rent` would compute stale
+# values until rebuilt. The default path calls `Rent::get()` at init time so
+# programs pick up formula changes transparently at the cost of ~90 CU per
+# `create_account` CPI. Enable via `--features const-rent` for fixed-`space`
+# programs where the ~90 CU matters more than formula drift safety.
+const-rent = []
 
 [dependencies]
 anchor-derive-accounts-v2 = { path = "./derive", version = "0.1.0" }
+# "copy" makes AccountView Copy — saves 2 CU per account (avoids memcpy on access).
 pinocchio = { workspace = true, features = ["copy"] }
 pinocchio-system = "0.6"
 solana-address = { version = "2.0", features = ["bytemuck", "borsh", "syscalls", "curve25519"] }
 solana-program-error = { version = "3.0", features = ["borsh"] }
-solana-msg = { workspace = true }
+solana-program-log = { version = "1.1", features = ["macro"] }
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 wincode = { version = "0.4", features = ["derive"] }
 
 [target.'cfg(target_os = "solana")'.dependencies]
-solana-define-syscall = "4.0"
+solana-define-syscall = "5.0"
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
 sha2 = "0.10"

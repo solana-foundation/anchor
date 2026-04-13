@@ -1,7 +1,7 @@
 //! Well-known program marker types for use with `Program<T>`.
 //!
 //! Program IDs are const-evaluated via `from_str_const` stored in `const` bindings
-//! so base58 decoding happens at compile time, not at runtime (~2,300 CU saved per call).
+//! so base58 decoding happens at compile time, not at runtime.
 
 use pinocchio::address::Address;
 use crate::Id;

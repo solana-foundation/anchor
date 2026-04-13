@@ -40,7 +40,9 @@ impl<T: PinocchioSysvar + SysvarId + Copy> AnchorAccount for Sysvar<T> {
     type Data = T;
 
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        if *view.address() != T::SYSVAR_ID {
+        // Same chunked-compare rationale as `Program<T>::load`. See lib.rs.
+        let id = T::SYSVAR_ID;
+        if !crate::address_eq(view.address(), &id) {
             return Err(ProgramError::InvalidArgument);
         }
         // Use pinocchio's Sysvar::get() which reads directly from the runtime

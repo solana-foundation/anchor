@@ -12,14 +12,50 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
 
     fn load(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError>;
 
-    /// Defaults to `load()`. Data-carrying wrappers (`Account<T>`, `BorshAccount<T>`)
-    /// override this to acquire a mutable borrow via pinocchio's borrow tracking;
-    /// zero-data view wrappers (`Signer`, `SystemAccount`, `Program<T>`, etc.)
-    /// leave the default — there is no "mutable borrow" to acquire, and the
-    /// Solana runtime rejects writes to non-writable accounts anyway.
+    /// Default impl: validates `is_writable`, then delegates to `load()`.
+    ///
+    /// Zero-data view wrappers (`UncheckedAccount`, `SystemAccount`,
+    /// `Program<T>`, `Sysvar<T>`) inherit this default, so every
+    /// `#[account(mut)] pub x: X` gets a writable check without the
+    /// derive having to emit a separate constraint block. This moves
+    /// the check from the derive's constraints list into the trait
+    /// itself — single place, single rule.
+    ///
+    /// Data-carrying wrappers (`Account<T>`, `BorshAccount<T>`,
+    /// `Slab<H, T>`) override this to acquire a mutable borrow via
+    /// pinocchio's borrow tracking AND perform the writable check
+    /// themselves (currently gated behind the `guardrails` feature
+    /// for efficiency).
+    ///
+    /// `Signer` overrides this with a fused 2-byte `is_signer` +
+    /// `is_writable` check — see `accounts/signer.rs`.
     #[inline(always)]
     fn load_mut(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError> {
+        if !view.is_writable() {
+            return Err(crate::ErrorCode::ConstraintMut.into());
+        }
         Self::load(view, program_id)
+    }
+
+    /// Like [`load_mut`], but called immediately after
+    /// `AccountInitialize::create_and_initialize`. Owner / discriminator /
+    /// minimum-length checks are tautologies on this path:
+    /// - the system program set the owner to our program in the CPI
+    /// - we just wrote the 8-byte discriminator ourselves
+    /// - `create_account` allocated exactly `space = disc + size_of::<T>()`
+    ///
+    /// Default forwards to [`load_mut`] so every type that doesn't care
+    /// (Sysvar, Signer, Program, …) keeps the same behavior. Data-carrying
+    /// wrappers override this to skip the redundant validation and save
+    /// the redundant validation.
+    ///
+    /// [`load_mut`]: Self::load_mut
+    #[inline(always)]
+    fn load_mut_after_init(
+        view: AccountView,
+        program_id: &Address,
+    ) -> core::result::Result<Self, ProgramError> {
+        Self::load_mut(view, program_id)
     }
 
     fn account(&self) -> &AccountView;

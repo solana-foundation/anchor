@@ -54,7 +54,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
         // disambiguation lives in `cold_owner_error` (account.rs) — see
         // the comment there for why this is safe.
         if !view.owned_by(&T::owner(program_id)) {
-            return Err(crate::accounts::account::cold_owner_error(&view));
+            return Err(super::slab::cold_owner_error(&view));
         }
         if data.len() < DISC_LEN {
             return Err(ProgramError::AccountDataTooSmall);
@@ -81,8 +81,13 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
     }
 
     fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+        // Guardrail: catches "forgot `#[account(mut)]`" early with a clear
+        // error. Under `default-features = false` the Solana runtime still
+        // rejects the tx when we try to write, just with a less specific
+        // message. Zero CU when compiled out.
+        #[cfg(feature = "guardrails")]
         if !view.is_writable() {
-            return Err(crate::accounts::account::cold_not_writable());
+            return Err(super::slab::cold_not_writable());
         }
         let mut view_mut = view;
         let data_ref = view_mut.try_borrow_mut()?;

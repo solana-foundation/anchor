@@ -18,17 +18,17 @@ mod hello_world_quasar {
 }
 
 #[derive(Accounts)]
-pub struct Init<'info> {
+pub struct Init {
     #[account(mut)]
-    pub payer: &'info mut Signer,
+    pub payer: Signer,
     #[account(
         init,
         payer = payer,
         seeds = Counter::seeds(),
         bump,
     )]
-    pub counter: &'info mut Account<Counter>,
-    pub system_program: &'info Program<System>,
+    pub counter: Account<Counter>,
+    pub system_program: Program<System>,
 }
 
 #[account(discriminator = 1)]

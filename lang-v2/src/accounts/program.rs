@@ -17,8 +17,12 @@ impl<T: Id> AnchorAccount for Program<T> {
     type Data = AccountView;
     #[inline(always)]
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
+        #[cfg(feature = "guardrails")]
         if !view.executable() { return Err(ProgramError::InvalidAccountData); }
-        if *view.address() != T::id() { return Err(ProgramError::IncorrectProgramId); }
+        let id = T::id();
+        if !crate::address_eq(view.address(), &id) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
         Ok(Self { view, _phantom: PhantomData })
     }
     #[inline(always)]

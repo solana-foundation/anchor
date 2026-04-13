@@ -9,6 +9,7 @@ extern crate alloc;
 pub mod accounts;
 mod context;
 mod cpi;
+pub mod cursor;
 mod dispatch;
 pub mod hash;
 pub mod loader;
@@ -20,19 +21,23 @@ mod traits;
 
 pub use pinocchio::account::AccountView;
 pub use pinocchio::address::Address;
+/// Chunked 4×u64 equality compare for `Address`. Preferred over `==`
+/// on `&Address`. See <https://github.com/anza-xyz/solana-sdk/issues/345>.
+pub use pinocchio::address::address_eq;
 pub use accounts::AccountInitialize;
 pub use context::{Context, Bumps};
+pub use cursor::AccountCursor;
 pub use dispatch::{TryAccounts, run_handler, parse_instruction};
 pub use loader::AccountLoader;
-pub use cpi::{create_account, create_account_signed, find_program_address, create_program_address, verify_program_address};
+pub use cpi::{create_account, create_account_signed, find_program_address, find_and_verify_program_address, create_program_address, verify_program_address};
 #[cfg(feature = "account-resize")]
 pub use cpi::realloc_account;
 pub use hash::sha256;
 pub use traits::*;
 pub use event::{Event, sol_log_data};
 
-/// Re-export msg for generated code.
-pub use solana_msg::msg;
+/// Re-export log macro for generated code.
+pub use solana_program_log::log as msg;
 
 /// Re-export declare_id from solana-address.
 pub use solana_address::declare_id;
@@ -105,6 +110,8 @@ pub enum ErrorCode {
 }
 
 impl From<ErrorCode> for solana_program_error::ProgramError {
+    #[cold]
+    #[inline(never)]
     fn from(e: ErrorCode) -> Self {
         match e {
             ErrorCode::AccountNotEnoughKeys => solana_program_error::ProgramError::NotEnoughAccountKeys,
@@ -141,17 +148,8 @@ pub fn is_rent_exempt(view: &pinocchio::account::AccountView) -> bool {
 }
 
 /// Guardrail: verify that the runtime-supplied `program_id` matches this
-/// program's `declare_id!()`. Called from the `#[program]` macro's
-/// generated `entry()` function as a single line. Gated behind the
-/// `guardrails` feature — when disabled the body compiles to `Ok(())`
-/// and LLVM inlines it away, so programs opting out of guardrails pay
-/// zero CU and zero bytes for this check.
-///
-/// The Solana runtime always loads a program at its declared address,
-/// so under normal operation this check never fires — it's a safety
-/// net for a misconfigured loader or a program copied to a new address
-/// by an untrusted tool. Costs ~10 CU + a few bytes of entry glue when
-/// enabled.
+/// program's `declare_id!()`. Gated behind the `guardrails` feature —
+/// when disabled, compiles away entirely.
 #[inline(always)]
 pub fn check_program_id(
     _program_id: &Address,

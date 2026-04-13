@@ -1,18 +1,19 @@
 use {
-    crate::state::MultisigConfig,
+    crate::state::{MultisigConfig, MultisigConfigInner},
     quasar_lang::{prelude::*, remaining::RemainingAccounts},
 };
 
 #[derive(Accounts)]
-pub struct Create<'info> {
-    pub creator: &'info mut Signer,
+pub struct Create {
+    #[account(mut)]
+    pub creator: Signer,
     #[account(init, payer = creator, seeds = MultisigConfig::seeds(creator), bump)]
-    pub config: Account<MultisigConfig<'info>>,
-    pub rent: &'info Sysvar<Rent>,
-    pub system_program: &'info Program<System>,
+    pub config: Account<MultisigConfig>,
+    pub rent: Sysvar<Rent>,
+    pub system_program: Program<System>,
 }
 
-impl<'info> Create<'info> {
+impl Create {
     #[inline(always)]
     pub fn create_multisig(
         &mut self,
@@ -45,13 +46,16 @@ impl<'info> Create<'info> {
         let signers = unsafe { core::slice::from_raw_parts(addrs_ptr, count) };
 
         self.config.set_inner(
-            *self.creator.address(),
-            threshold,
-            bumps.config,
-            "",
-            signers,
+            MultisigConfigInner {
+                creator: *self.creator.address(),
+                threshold,
+                bump: bumps.config,
+                label: "",
+                signers,
+            },
             self.creator.to_account_view(),
-            Some(&**self.rent),
+            self.rent.lamports_per_byte(),
+            self.rent.exemption_threshold_raw(),
         )
     }
 }

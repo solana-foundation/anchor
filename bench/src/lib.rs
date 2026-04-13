@@ -20,6 +20,7 @@ pub use bench::{
     BenchInstruction, CaseBuilder, InstructionSuite, ProgramSuite,
 };
 pub use flamegraph::generate_flamegraph_from_trace;
+pub use flamegraph::print_ix_trace_to;
 
 // ---------------------------------------------------------------------------
 // Program id helpers and suite table
@@ -35,6 +36,9 @@ use {
         multisig::{
             anchor_v1, anchor_v2, pinocchio as multisig_pinocchio, quasar,
             steel as multisig_steel,
+        },
+        vault::{
+            anchor_v2 as vault_anchor_v2, quasar as vault_quasar,
         },
     },
     solana_pubkey::Pubkey,
@@ -52,6 +56,12 @@ fn hello_world_id() -> Pubkey { HELLO_WORLD_ID_STR.parse().unwrap() }
 // comparison.
 fn multisig_shared_id() -> Pubkey {
     "44444444444444444444444444444444444444444444".parse().unwrap()
+}
+
+// vault: two variants (v2, quasar) sharing `3333...3333` — the same
+// declare_id as the quasar-vault example we're copying verbatim.
+fn vault_shared_id() -> Pubkey {
+    "33333333333333333333333333333333333333333333".parse().unwrap()
 }
 
 /// Single source of truth for every benchmarked program and instruction.
@@ -165,6 +175,32 @@ pub const SUITES: &[ProgramSuite] = &[
             InstructionSuite { name: "deposit",          program_id: multisig_shared_id, build: multisig_steel::build_deposit_case },
             InstructionSuite { name: "set_label",        program_id: multisig_shared_id, build: multisig_steel::build_set_label_case },
             InstructionSuite { name: "execute_transfer", program_id: multisig_shared_id, build: multisig_steel::build_execute_transfer_case },
+        ],
+    },
+    // 2-way quasar-vault benchmark: a minimal SOL vault with deposit
+    // (system::transfer CPI) and withdraw (direct lamport arithmetic).
+    // The quasar variant is copied verbatim from
+    // `~/git/quasar/examples/vault`; the v2 variant is a shape-matched
+    // port. Only these two variants for now — v1 / pinocchio / steel
+    // can be added later if useful for direct comparison.
+    ProgramSuite {
+        name: "vault_v2",
+        family: "vault",
+        variant: "anchor v2",
+        manifest_dir: "programs/vault/anchor-v2",
+        instructions: &[
+            InstructionSuite { name: "deposit",  program_id: vault_shared_id, build: vault_anchor_v2::build_deposit_case },
+            InstructionSuite { name: "withdraw", program_id: vault_shared_id, build: vault_anchor_v2::build_withdraw_case },
+        ],
+    },
+    ProgramSuite {
+        name: "vault_quasar",
+        family: "vault",
+        variant: "quasar",
+        manifest_dir: "programs/vault/quasar",
+        instructions: &[
+            InstructionSuite { name: "deposit",  program_id: vault_shared_id, build: vault_quasar::build_deposit_case },
+            InstructionSuite { name: "withdraw", program_id: vault_shared_id, build: vault_quasar::build_withdraw_case },
         ],
     },
 ];
@@ -287,6 +323,11 @@ mod run {
     /// measures binary sizes and compute units, and optionally generates
     /// flamegraphs. Returns the measured result for the caller to persist,
     /// compare, or assert against.
+    ///
+    /// Also honours `BENCH_IX_TRACE=<suite>/<instruction>` (e.g.
+    /// `hello_world_v2/init`) to dump a full per-instruction register
+    /// trace for one benchmark to `bench/ix_traces/<label>.trace`. Useful
+    /// for dynamic-CU analysis — see `flamegraph::print_ix_trace_to`.
     pub fn run(
         bench_dir: &Path,
         suites: &[ProgramSuite],
@@ -299,7 +340,86 @@ mod run {
         if options.flamegraphs {
             generate_flamegraphs(bench_dir, suites);
         }
+        if let Ok(target) = std::env::var("BENCH_IX_TRACE") {
+            generate_ix_trace(bench_dir, suites, &target);
+        }
         Ok(result)
+    }
+
+    /// Looks up a single `<suite>/<instruction>` target (as specified by
+    /// `BENCH_IX_TRACE`), runs that benchmark with register tracing enabled,
+    /// and dumps a per-instruction trace to
+    /// `bench/ix_traces/<suite>_<instruction>.trace`.
+    fn generate_ix_trace(bench_dir: &Path, suites: &[ProgramSuite], target: &str) {
+        let Some((suite_name, ix_name)) = target.split_once('/') else {
+            eprintln!(
+                "BENCH_IX_TRACE={target:?} is not in <suite>/<instruction> form; skipping"
+            );
+            return;
+        };
+        let Some(suite) = suites.iter().find(|s| s.name == suite_name) else {
+            eprintln!("BENCH_IX_TRACE: no suite named {suite_name:?}");
+            return;
+        };
+        let Some(instruction) = suite.instructions.iter().find(|i| i.name == ix_name) else {
+            eprintln!(
+                "BENCH_IX_TRACE: suite {suite_name:?} has no instruction {ix_name:?}"
+            );
+            return;
+        };
+
+        let so_path = bench_dir
+            .join("../target/deploy")
+            .join(format!("{}.so", suite.name));
+        if !so_path.exists() {
+            eprintln!(
+                "BENCH_IX_TRACE: deployed ELF missing at {}",
+                so_path.display()
+            );
+            return;
+        }
+
+        let label = format!("{}_{}", suite.name, instruction.name);
+        println!("Generating ix trace for {label}...");
+        let trace_dir = match execute_benchmark_with_tracing(
+            &so_path,
+            (instruction.program_id)(),
+            instruction.build,
+        ) {
+            Ok(dir) => dir,
+            Err(err) => {
+                eprintln!("Warning: tracing run for {label} failed: {err:#}");
+                return;
+            }
+        };
+
+        let out_dir = bench_dir.join("ix_traces");
+        if let Err(err) = std::fs::create_dir_all(&out_dir) {
+            eprintln!(
+                "Warning: could not create {}: {err:#}",
+                out_dir.display()
+            );
+            return;
+        }
+        let out_path = out_dir.join(format!("{label}.trace"));
+        let mut file = match std::fs::File::create(&out_path) {
+            Ok(f) => f,
+            Err(err) => {
+                eprintln!("Warning: could not open {}: {err:#}", out_path.display());
+                return;
+            }
+        };
+        let manifest_dir = bench_dir.join(suite.manifest_dir);
+        match super::flamegraph::print_ix_trace_to(
+            &mut file,
+            &label,
+            &so_path,
+            trace_dir.path(),
+            Some(&manifest_dir),
+        ) {
+            Ok(()) => println!("  Ix trace: {}", out_path.display()),
+            Err(err) => eprintln!("  Warning: ix trace for {label} failed: {err:#}"),
+        }
     }
 
     fn generate_flamegraphs(bench_dir: &Path, suites: &[ProgramSuite]) {

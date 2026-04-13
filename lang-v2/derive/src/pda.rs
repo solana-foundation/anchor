@@ -1,18 +1,9 @@
 //! Macro-time PDA bump precomputation.
 //!
-//! When `#[account(seeds = [..], bump)]` has seeds that are **all byte
-//! literals** (e.g. `seeds = [b"counter"]`), we can run
-//! `find_program_address` on the host inside the proc macro and emit the
-//! canonical bump as a u8 literal in the generated code. The runtime then
-//! only has to verify one `sha256` instead of iterating up to 256 times —
-//! ~85 CU vs up to ~700 CU, with the canonical bump landing at ~544 CU on
-//! average.
-//!
-//! This is a *soft* optimization: if any seed isn't a byte literal (e.g.
-//! `seeds = [b"vault", creator.address().as_ref()]`), or if we can't
-//! discover the program id for this crate, we fall through to the normal
-//! dynamic codegen. Nothing ever fails — the optimization just doesn't
-//! fire.
+//! When `#[account(seeds = [..], bump)]` has seeds that are all byte
+//! literals, the proc macro derives the bump at expansion time and emits
+//! it as a const. Falls back to the runtime path for non-literal seeds
+//! or when program id discovery fails.
 //!
 //! Program id discovery walks the `CARGO_MANIFEST_DIR`'s `src/lib.rs`
 //! looking for a top-level `declare_id!("...")` macro invocation and
@@ -94,11 +85,8 @@ pub(crate) fn seeds_as_byte_literals(seeds: &[syn::Expr]) -> Option<Vec<Vec<u8>>
 /// to an off-curve Edwards25519 point — along with that hash, which is
 /// the canonical PDA address.
 ///
-/// We return the full 32-byte PDA (not just the bump) because the
-/// generated code can inline it as an `Address` const and do a
-/// direct bytes compare at runtime (~10 CU) instead of re-hashing
-/// with `verify_program_address` (~85 CU). The bump is still needed by
-/// the init arm's `create_and_initialize` CPI so both are returned.
+/// Returns both the PDA address and bump — the address is emitted as a
+/// const for runtime comparison, the bump is needed for init CPI seeds.
 ///
 /// Matches the algorithm in `anchor_lang_v2::cpi::find_program_address`,
 /// just running on the host via `sha2` + `curve25519-dalek` instead of

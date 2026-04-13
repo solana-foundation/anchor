@@ -6,7 +6,7 @@
 //! zero-copy structs on Solana.
 //!
 //! Arithmetic operators (`+`, `-`, `*`) use wrapping semantics in release
-//! builds for CU efficiency and panic on overflow in debug builds. Use
+//! Overflow-checked in debug builds, wrapping in release. Use
 //! `checked_add`, `checked_sub`, `checked_mul`, `checked_div` where overflow
 //! must be detected.
 

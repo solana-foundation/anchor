@@ -306,8 +306,31 @@ pub fn is_nested_type(ty: &Type) -> bool {
     false
 }
 
+/// Pull the first generic arg out of a `Nested<T>` type path, e.g.
+/// `Nested<InnerAccounts>` → `InnerAccounts`. Returns `None` for anything
+/// else. Used by the `HEADER_SIZE` codegen to walk into nested account
+/// structs and sum their compile-time header counts.
+pub fn extract_nested_inner_type(ty: &Type) -> Option<&Type> {
+    if let Type::Path(tp) = ty {
+        if let Some(seg) = tp.path.segments.last() {
+            if seg.ident == "Nested" {
+                if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
+                    if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
+                        return Some(inner);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub struct AccountField {
     pub name: Ident,
+    /// The field's original `syn::Type` — used by `impl_accounts` to build
+    /// the `HEADER_SIZE` compile-time sum (1 per direct field, +
+    /// `<Inner as TryAccounts>::HEADER_SIZE` per `Nested<Inner>`).
+    pub ty: Type,
     pub load: TokenStream2,
     pub constraints: Vec<TokenStream2>,
     pub exit: Option<TokenStream2>,
@@ -347,8 +370,7 @@ fn rewrite_seed_expr(expr: &Expr, field_names: &[String]) -> proc_macro2::TokenS
 /// field. Tries to precompute the canonical PDA bump at macro-expansion
 /// time when all seeds are byte literals and the crate's program id can
 /// be discovered from `src/lib.rs`, emitting `verify_program_address`
-/// (~85 CU) in place of the runtime `find_program_address` loop
-/// (up to ~700 CU).
+/// in place of the runtime `find_program_address` loop.
 ///
 /// Falls back to the dynamic path whenever:
 ///   - any seed is non-literal (field reference, method call, expr),
@@ -377,11 +399,7 @@ fn emit_seeds_check(
     for_init: bool,
     using_our_program_id: bool,
 ) -> TokenStream2 {
-    // Fast path: try to precompute the bump AND the full PDA at expansion
-    // time. The runtime then does a direct `Address` bytes compare
-    // (~10 CU) instead of re-hashing via `verify_program_address`
-    // (~85 CU). The bump is still emitted as a const because the init
-    // arm's `create_and_initialize` CPI needs it for signer seeds.
+    // Try to precompute the bump and PDA at expansion time.
     if using_our_program_id {
         if let Some(literal_seeds) = crate::pda::seeds_as_byte_literals(seeds) {
             if let Some(program_id) = crate::pda::discover_program_id() {
@@ -398,16 +416,13 @@ fn emit_seeds_check(
                         Ident::new(&format!("__{}_BUMP", upper), field_name.span());
                     let pda_const =
                         Ident::new(&format!("__{}_PDA", upper), field_name.span());
-                    // Emit the 32-byte PDA as an `Address` const via
-                    // the const fn constructor. LLVM places this in
-                    // `.rodata` and compiles the runtime `!=` check
-                    // down to a straight 32-byte compare.
+                    // Emit the 32-byte PDA as an `Address` const.
                     let pda_bytes_tokens = pda_bytes.iter().map(|b| quote! { #b });
                     let check = quote! {
                         const #bump_const: u8 = #bump;
                         const #pda_const: anchor_lang_v2::Address =
                             anchor_lang_v2::Address::new_from_array([#(#pda_bytes_tokens),*]);
-                        if *#target_addr_ref != #pda_const {
+                        if !anchor_lang_v2::address_eq(#target_addr_ref, &#pda_const) {
                             return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
                         }
                         __bumps.#field_name = #bump_const;
@@ -428,14 +443,11 @@ fn emit_seeds_check(
         }
     }
 
-    // Fallback: runtime find_program_address loop.
+    // Fallback: runtime find-and-verify (returns just the bump).
     let find = quote! {
-        let (__pda, __bump) = anchor_lang_v2::find_program_address(
-            &[#(#seed_exprs),*], #pda_program,
-        );
-        if *#target_addr_ref != __pda {
-            return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
-        }
+        let __bump = anchor_lang_v2::find_and_verify_program_address(
+            &[#(#seed_exprs),*], #pda_program, #target_addr_ref,
+        ).map_err(|_| anchor_lang_v2::ErrorCode::ConstraintSeeds)?;
         __bumps.#field_name = __bump;
     };
     if for_init {
@@ -445,6 +457,59 @@ fn emit_seeds_check(
         }
     } else {
         find
+    }
+}
+
+/// Emit the shared init body used by both `#[account(init)]` and
+/// `#[account(init_if_needed)]`: seeds check, param assignments,
+/// `create_and_initialize`, and `load_mut_after_init`.
+fn emit_init_body(
+    field_name: &Ident,
+    field_ty: &Type,
+    attrs: &AccountAttrs,
+    field_names: &[String],
+) -> TokenStream2 {
+    let payer = attrs.payer.as_ref().expect("init requires payer");
+    let space = attrs.space.as_ref().expect("init requires space");
+    let inner_ty = extract_inner_type_for_init(field_ty)
+        .expect("init requires Account<T> or BorshAccount<T>");
+
+    let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
+        let key = Ident::new(&nc.raw_key, proc_macro2::Span::call_site());
+        let value = &nc.value;
+        if nc.is_field_ref {
+            quote! { __p.#key = Some(#value.account()); }
+        } else {
+            quote! { __p.#key = Some(#value); }
+        }
+    }).collect();
+
+    let seeds_arg = if let Some(ref seeds) = attrs.seeds {
+        let seed_exprs: Vec<_> = seeds.iter()
+            .map(|s| rewrite_seed_expr(s, field_names)).collect();
+        emit_seeds_check(
+            seeds, &seed_exprs,
+            &quote! { __program_id },
+            &quote! { __target.address() },
+            field_name, true, true,
+        )
+    } else {
+        quote! { let __seeds: Option<&[&[u8]]> = None; }
+    };
+
+    quote! {
+        let __payer = #payer.account();
+        #seeds_arg
+        let __init_params = {
+            type __P<'__a> = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
+            let mut __p = <__P as Default>::default();
+            #(#param_assignments)*
+            __p
+        };
+        <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
+            __payer, &__target, #space, __program_id, &__init_params, __seeds,
+        )?;
+        <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut_after_init(__target, __program_id)?
     }
 }
 
@@ -466,107 +531,22 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
     let load = if is_nested_type(field_ty) {
         quote! { compile_error!("Nested<T> codegen not yet implemented"); }
     } else if attrs.is_init {
-        let payer = attrs.payer.as_ref().expect("#[account(init)] requires payer");
-        let space = attrs.space.as_ref().expect("#[account(init)] requires space");
-        let inner_ty = extract_inner_type_for_init(field_ty)
-            .expect("#[account(init)] requires Account<T> or BorshAccount<T>");
-
-        let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-            let key = syn::Ident::new(&nc.raw_key.clone(), proc_macro2::Span::call_site());
-            let value = &nc.value;
-            if nc.is_field_ref {
-                quote! { __p.#key = Some(#value.account()); }
-            } else {
-                quote! { __p.#key = Some(#value); }
-            }
-        }).collect();
-
-        let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
-            let pda_program = quote! { __program_id };
-            let target_addr_ref = quote! { __target.address() };
-            emit_seeds_check(
-                seeds,
-                &seed_exprs,
-                &pda_program,
-                &target_addr_ref,
-                field_name,
-                /* for_init */ true,
-                /* using_our_program_id */ true,
-            )
-        } else {
-            quote! { let __seeds: Option<&[&[u8]]> = None; }
-        };
-
+        let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
             let mut #field_name = {
                 let __target = __loader.next_view()?;
-                let __payer = #payer.account();
-                #seeds_arg
-                let __init_params = {
-                    type __P<'__a> = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
-                    let mut __p = <__P as Default>::default();
-                    #(#param_assignments)*
-                    __p
-                };
-                <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
-                    __payer, &__target, #space, __program_id, &__init_params, __seeds,
-                )?;
-                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
+                #init_body
             };
         }
     } else if attrs.is_init_if_needed {
-        let payer = attrs.payer.as_ref().expect("#[account(init_if_needed)] requires payer");
-        let space = attrs.space.as_ref().expect("#[account(init_if_needed)] requires space");
-        let inner_ty = extract_inner_type_for_init(field_ty)
-            .expect("#[account(init_if_needed)] requires Account<T> or BorshAccount<T>");
-
-        let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
-            let pda_program = quote! { __program_id };
-            let target_addr_ref = quote! { __target.address() };
-            emit_seeds_check(
-                seeds,
-                &seed_exprs,
-                &pda_program,
-                &target_addr_ref,
-                field_name,
-                /* for_init */ true,
-                /* using_our_program_id */ true,
-            )
-        } else {
-            quote! { let __seeds: Option<&[&[u8]]> = None; }
-        };
-
-        let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-            let key = syn::Ident::new(&nc.raw_key.clone(), proc_macro2::Span::call_site());
-            let value = &nc.value;
-            if nc.is_field_ref {
-                quote! { __p.#key = Some(#value.account()); }
-            } else {
-                quote! { __p.#key = Some(#value); }
-            }
-        }).collect();
-
+        let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
             let mut #field_name = {
                 let __target = __loader.next_view()?;
-                let __already_init = __target.owned_by(__program_id) && __target.data_len() > 0;
-                if __already_init {
+                if __target.owned_by(__program_id) && __target.data_len() > 0 {
                     <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
                 } else {
-                    let __payer = #payer.account();
-                    #seeds_arg
-                    let __init_params = {
-                        type __P<'__a> = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
-                        let mut __p = <__P as Default>::default();
-                        #(#param_assignments)*
-                        __p
-                    };
-                    <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
-                        __payer, &__target, #space, __program_id, &__init_params, __seeds,
-                    )?;
-                    <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
+                    #init_body
                 }
             };
         }
@@ -608,14 +588,13 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
     // --- Constraints ---
     let mut constraints = Vec::new();
 
-    // mut writability check
-    if attrs.is_mut && !attrs.is_init && !attrs.is_init_if_needed {
-        constraints.push(quote! {
-            if !#field_name.account().is_writable() {
-                return Err(anchor_lang_v2::ErrorCode::ConstraintMut.into());
-            }
-        });
-    }
+    // Writable check is now owned by `AnchorAccount::load_mut` (default
+    // impl in `lang-v2/src/traits.rs`), so the derive no longer emits a
+    // separate constraint block for `#[account(mut)]`. Types that
+    // override `load_mut` (Slab/Account, BorshAccount, Signer, Boxed,
+    // Option) each validate is_writable themselves; types that inherit
+    // the default (UncheckedAccount, SystemAccount, Program, Sysvar) get
+    // it via the trait default.
 
     // signer check
     if attrs.is_signer {
@@ -656,7 +635,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
             };
             if let Some(Some(ref bump_expr)) = attrs.bump {
                 // User-supplied bump (e.g. stored in account data). Always
-                // uses the cheap verify path — no need to precompute.
+                // User-supplied bump — verify directly.
                 constraints.push(quote! {
                     {
                         let __bump_val: u8 = #bump_expr;
@@ -705,8 +684,12 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
             quote! { anchor_lang_v2::ErrorCode::ConstraintAddress.into() }
         };
         constraints.push(quote! {
-            if *#field_name.account().address() != #addr {
-                return Err(#err);
+            {
+                // Bind the expected address to a local for `address_eq`.
+                let __expected: anchor_lang_v2::Address = #addr;
+                if !anchor_lang_v2::address_eq(#field_name.account().address(), &__expected) {
+                    return Err(#err);
+                }
             }
         });
     }
@@ -794,7 +777,10 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
     // close (self-close prevention constraint + exit)
     let exit = if let Some(ref close_target) = attrs.close {
         constraints.push(quote! {
-            if #field_name.account().address() == #close_target.account().address() {
+            if anchor_lang_v2::address_eq(
+                #field_name.account().address(),
+                #close_target.account().address(),
+            ) {
                 return Err(anchor_lang_v2::ErrorCode::ConstraintClose.into());
             }
         });
@@ -811,6 +797,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String]) -> AccountField {
 
     AccountField {
         name: field_name.clone(),
+        ty: field.ty.clone(),
         load,
         constraints,
         exit,

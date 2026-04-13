@@ -39,6 +39,9 @@ unsafe impl Pod for Mint {}
 unsafe impl Zeroable for Mint {}
 
 impl AccountValidate for Mint {
+    // External types start at offset 0 — no Anchor discriminator.
+    const DATA_OFFSET: usize = 0;
+
     fn validate(view: &AccountView, data: &[u8], _program_id: &Address) -> Result<(), ProgramError> {
         if !view.owned_by(&Token::id()) && !view.owned_by(&Token2022::id()) {
             return Err(ProgramError::IllegalOwner);
@@ -48,7 +51,6 @@ impl AccountValidate for Mint {
         }
         Ok(())
     }
-    fn data_offset() -> usize { 0 }
 }
 
 /// Init params for `#[account(init, mint::decimals = 6, mint::authority = ..., ...)]`.

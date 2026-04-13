@@ -1,61 +1,86 @@
 use {
-    pinocchio::{
-        account::AccountView,
-        address::Address,
-        sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BYTE},
-    },
+    pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
 };
 
-/// Largest `space` for which `rent_exempt_lamports` is guaranteed not to
-/// overflow `u64`. Computed from pinocchio's rate constants — when those
-/// change, this bound updates automatically.
+#[cfg(feature = "const-rent")]
+use pinocchio::sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BYTE};
+
+/// Largest `space` for which the const path is guaranteed not to
+/// overflow `u64`. Only referenced when the `const-rent` feature is on.
 ///
 /// `(MAX_SAFE_SPACE + ACCOUNT_STORAGE_OVERHEAD) * DEFAULT_LAMPORTS_PER_BYTE`
-/// is the largest expression that fits in `u64`. Anything beyond this
-/// would wrap; in practice the Solana runtime caps account data at 10 MiB
-/// (~262× smaller than this bound) so the precondition is essentially
-/// unreachable from honest callers.
+/// is the largest expression that fits in `u64`. In practice the Solana
+/// runtime caps account data at 10 MiB (~262× smaller than this bound) so
+/// the precondition is essentially unreachable from honest callers.
+#[cfg(feature = "const-rent")]
 const MAX_SAFE_SPACE: u64 =
     (u64::MAX / DEFAULT_LAMPORTS_PER_BYTE) - ACCOUNT_STORAGE_OVERHEAD;
 
 /// Compute the rent-exempt minimum balance for an account of `space` bytes.
 ///
-/// `const fn` so that callers passing a constant `space` (the common case —
-/// `<MyAccount>::SPACE`, etc.) get the entire expression folded at compile
-/// time. Runtime callers get a single forward-predicted compare against
-/// `MAX_SAFE_SPACE` plus a 64-bit `mul`; the overflow-panic branch is
-/// `#[cold]` so the optimizer pushes it out of the hot path.
-///
-/// # Panics
-///
-/// If `space > MAX_SAFE_SPACE`. The Solana runtime's 10 MiB account data
-/// cap is well below this bound, so this is unreachable from honest
-/// callers. The check is real (not a debug assert) so a misuse fails
-/// loudly rather than silently producing wrapped lamports.
+/// Default path calls `Rent::get()` (picks up runtime formula changes).
+/// With `const-rent` feature, uses baked-in constants (zero syscall cost
+/// but locks the formula into the binary).
+#[cfg(not(feature = "const-rent"))]
+#[inline]
+pub fn rent_exempt_lamports(space: usize) -> Result<u64, ProgramError> {
+    use pinocchio::sysvars::{rent::Rent, Sysvar};
+    Rent::get()?.try_minimum_balance(space)
+}
+
+#[cfg(feature = "const-rent")]
 #[inline(always)]
-pub const fn rent_exempt_lamports(space: usize) -> u64 {
+pub fn rent_exempt_lamports(space: usize) -> Result<u64, ProgramError> {
     if space as u64 > MAX_SAFE_SPACE {
-        rent_exempt_overflow();
+        return Err(ProgramError::InvalidArgument);
     }
-    // Bounded by MAX_SAFE_SPACE → no overflow → cheap 64-bit `mul`.
-    (ACCOUNT_STORAGE_OVERHEAD + space as u64).wrapping_mul(DEFAULT_LAMPORTS_PER_BYTE)
+    // Bounded by MAX_SAFE_SPACE → no overflow.
+    Ok((ACCOUNT_STORAGE_OVERHEAD + space as u64).wrapping_mul(DEFAULT_LAMPORTS_PER_BYTE))
 }
 
-#[cold]
-#[inline(never)]
-const fn rent_exempt_overflow() -> ! {
-    panic!("rent_exempt_lamports: space exceeds u64 lamport capacity")
+/// PDA bump-search loop. `$on_found` receives the hash bytes and bump
+/// when a valid off-curve PDA is found.
+#[cfg(target_os = "solana")]
+macro_rules! pda_find_loop {
+    ($seeds:expr, $program_id:expr, |$h:ident, $b:ident| $on_found:expr) => {{
+        use solana_define_syscall::definitions::{sol_curve_validate_point, sol_sha256};
+        const CURVE25519_EDWARDS: u64 = 0;
+        const PDA_MARKER: &[u8; 21] = b"ProgramDerivedAddress";
+
+        let n = $seeds.len();
+        let mut slices = core::mem::MaybeUninit::<[&[u8]; 19]>::uninit();
+        let sptr = slices.as_mut_ptr() as *mut &[u8];
+        let mut i = 0;
+        while i < n { unsafe { sptr.add(i).write($seeds[i]) }; i += 1; }
+        unsafe {
+            sptr.add(n + 1).write($program_id.as_ref());
+            sptr.add(n + 2).write(PDA_MARKER.as_slice());
+        }
+        let mut bump_arr = [u8::MAX];
+        let bump_ptr = bump_arr.as_mut_ptr();
+        unsafe { sptr.add(n).write(core::slice::from_raw_parts(bump_ptr, 1)) };
+        let input = unsafe { core::slice::from_raw_parts(sptr, n + 3) };
+        let mut hash = core::mem::MaybeUninit::<[u8; 32]>::uninit();
+        let mut bump: u64 = u8::MAX as u64;
+
+        loop {
+            unsafe { bump_ptr.write(bump as u8) };
+            unsafe { sol_sha256(input as *const _ as *const u8, input.len() as u64, hash.as_mut_ptr() as *mut u8) };
+            let on_curve = unsafe { sol_curve_validate_point(CURVE25519_EDWARDS, hash.as_ptr() as *const u8, core::ptr::null_mut()) };
+            if on_curve != 0 {
+                let $h = unsafe { hash.assume_init() };
+                let $b = bump as u8;
+                return $on_found;
+            }
+            if bump == 0 { break; }
+            bump -= 1;
+        }
+        Err(ProgramError::InvalidSeeds)
+    }};
 }
 
-/// Find a program-derived address (PDA) and its bump seed.
-///
-/// Uses raw `sol_sha256` + `sol_curve_validate_point` syscalls directly instead
-/// of the higher-level `sol_try_find_program_address` syscall, reducing per-attempt
-/// cost from ~1,500 CU to ~544 CU.
-///
-/// Based on Quasar's implementation:
-/// https://github.com/blueshift-gg/quasar/blob/8a62367/lang/src/pda.rs#L93-L182
+/// Find a PDA and its bump seed.
 #[inline(always)]
 pub fn find_program_address(seeds: &[&[u8]], program_id: &Address) -> (Address, u8) {
     match try_find_program_address(seeds, program_id) {
@@ -64,13 +89,7 @@ pub fn find_program_address(seeds: &[&[u8]], program_id: &Address) -> (Address, 
     }
 }
 
-/// Find a program-derived address, returning an error if none exists.
-///
-/// Uses raw `sol_sha256` + `sol_curve_validate_point` syscalls for ~3x lower CU
-/// than `sol_try_find_program_address`.
-///
-/// Based on Quasar's implementation:
-/// https://github.com/blueshift-gg/quasar/blob/8a62367/lang/src/pda.rs#L93-L182
+/// Find a PDA, returning an error if none exists.
 #[inline(always)]
 pub fn try_find_program_address(
     seeds: &[&[u8]],
@@ -82,86 +101,54 @@ pub fn try_find_program_address(
 
     #[cfg(target_os = "solana")]
     {
-        use solana_define_syscall::definitions::{sol_curve_validate_point, sol_sha256};
-
-        const CURVE25519_EDWARDS: u64 = 0;
-        const PDA_MARKER: &[u8; 21] = b"ProgramDerivedAddress";
-
-        let n = seeds.len();
-
-        // Build the input array: [seeds..., bump, program_id, PDA_MARKER].
-        // Max 16 seeds + bump + program_id + marker = 19 entries.
-        let mut slices = core::mem::MaybeUninit::<[&[u8]; 19]>::uninit();
-        let sptr = slices.as_mut_ptr() as *mut &[u8];
-
-        let mut i = 0;
-        while i < n {
-            unsafe { sptr.add(i).write(seeds[i]) };
-            i += 1;
-        }
-        unsafe {
-            sptr.add(n + 1).write(program_id.as_ref());
-            sptr.add(n + 2).write(PDA_MARKER.as_slice());
-        }
-
-        // The bump slot points into bump_arr — only the byte changes per iteration.
-        let mut bump_arr = [u8::MAX];
-        let bump_ptr = bump_arr.as_mut_ptr();
-        unsafe { sptr.add(n).write(core::slice::from_raw_parts(bump_ptr, 1)) };
-
-        let input = unsafe { core::slice::from_raw_parts(sptr, n + 3) };
-        let mut hash = core::mem::MaybeUninit::<[u8; 32]>::uninit();
-
-        let mut bump: u64 = u8::MAX as u64;
-
-        loop {
-            unsafe { bump_ptr.write(bump as u8) };
-
-            unsafe {
-                sol_sha256(
-                    input as *const _ as *const u8,
-                    input.len() as u64,
-                    hash.as_mut_ptr() as *mut u8,
-                );
-            }
-
-            // Returns 0 if on curve, non-zero if off curve (valid PDA).
-            let on_curve = unsafe {
-                sol_curve_validate_point(
-                    CURVE25519_EDWARDS,
-                    hash.as_ptr() as *const u8,
-                    core::ptr::null_mut(),
-                )
-            };
-
-            if on_curve != 0 {
-                let hash_bytes = unsafe { hash.assume_init() };
-                return Ok((Address::new_from_array(hash_bytes), bump as u8));
-            }
-
-            if bump == 0 {
-                break;
-            }
-            bump -= 1;
-        }
-
-        Err(ProgramError::InvalidSeeds)
+        pda_find_loop!(seeds, program_id, |hash_bytes, bump| {
+            Ok((Address::new_from_array(hash_bytes), bump))
+        })
     }
 
     #[cfg(not(target_os = "solana"))]
     {
-        // Off-chain fallback: use the standard SDK implementation.
         Ok(Address::find_program_address(seeds, program_id))
     }
 }
 
-/// Verify a program-derived address (PDA) using a known bump seed.
-///
-/// Uses `sol_sha256` directly (~200 CU) instead of `sol_create_program_address`
-/// (~1,500 CU). The seeds slice should already include the bump byte.
-///
-/// Based on Quasar's implementation:
-/// https://github.com/blueshift-gg/quasar/blob/8a62367/lang/src/pda.rs#L23-L84
+/// Find the canonical bump for `seeds` + `program_id` and verify that the
+/// derived PDA equals `expected`. Returns just the bump on success.
+#[inline(always)]
+pub fn find_and_verify_program_address(
+    seeds: &[&[u8]],
+    program_id: &Address,
+    expected: &Address,
+) -> Result<u8, ProgramError> {
+    if seeds.len() > 16 {
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    #[cfg(target_os = "solana")]
+    {
+        pda_find_loop!(seeds, program_id, |hash_bytes, bump| {
+            let derived = Address::new_from_array(hash_bytes);
+            if pinocchio::address::address_eq(&derived, expected) {
+                Ok(bump)
+            } else {
+                Err(ProgramError::InvalidSeeds)
+            }
+        })
+    }
+
+    #[cfg(not(target_os = "solana"))]
+    {
+        let (pda, bump) = Address::find_program_address(seeds, program_id);
+        if pinocchio::address::address_eq(&pda, expected) {
+            Ok(bump)
+        } else {
+            Err(ProgramError::InvalidSeeds)
+        }
+    }
+}
+
+/// Create a program address from seeds (including bump byte).
+/// Uses `sol_sha256` directly rather than `sol_create_program_address`.
 #[inline(always)]
 pub fn create_program_address(seeds: &[&[u8]], program_id: &Address) -> Result<Address, ProgramError> {
     #[cfg(target_os = "solana")]
@@ -177,12 +164,8 @@ pub fn create_program_address(seeds: &[&[u8]], program_id: &Address) -> Result<A
 
 /// Verify that `expected` matches the PDA derived from `seeds` and `program_id`.
 ///
-/// Skips the `sol_curve_validate_point` check — the bump is assumed valid
-/// (it was derived during account creation). Only computes `sha256` and
-/// compares the hash (~200 CU vs ~544 CU for find, ~350 CU for create).
-///
-/// Based on Quasar's `verify_program_address`:
-/// https://github.com/blueshift-gg/quasar/blob/8a62367/lang/src/pda.rs#L23-L84
+/// Verify that `expected` matches the PDA derived from `seeds` and `program_id`.
+/// Skips the on-curve check (bump is assumed valid from account creation).
 #[inline(always)]
 pub fn verify_program_address(
     seeds: &[&[u8]],
@@ -192,7 +175,7 @@ pub fn verify_program_address(
     #[cfg(target_os = "solana")]
     {
         let computed = hash_pda_seeds(seeds, program_id)?;
-        if computed == *expected {
+        if pinocchio::address::address_eq(&computed, expected) {
             Ok(())
         } else {
             Err(ProgramError::InvalidSeeds)
@@ -203,7 +186,7 @@ pub fn verify_program_address(
     {
         let computed = Address::create_program_address(seeds, program_id)
             .map_err(|_| ProgramError::InvalidSeeds)?;
-        if computed == *expected {
+        if pinocchio::address::address_eq(&computed, expected) {
             Ok(())
         } else {
             Err(ProgramError::InvalidSeeds)
@@ -258,7 +241,7 @@ pub fn create_account(
     space: usize,
     owner: &Address,
 ) -> Result<(), ProgramError> {
-    let required = rent_exempt_lamports(space);
+    let required = rent_exempt_lamports(space)?;
     let current = target.lamports();
 
     if current == 0 {
@@ -282,12 +265,14 @@ pub fn create_account_signed(
     owner: &Address,
     seeds: &[&[u8]],
 ) -> Result<(), ProgramError> {
-    let required = rent_exempt_lamports(space);
+    let required = rent_exempt_lamports(space)?;
     let current = target.lamports();
 
-    // SAFETY: `Seed` is repr(C) with layout (*const u8, u64, PhantomData) = 16 bytes,
-    // identical to `&[u8]` on SBF (*const u8, u64) = 16 bytes. PhantomData is zero-sized.
-    // This cast avoids copying seed data into a MaybeUninit array.
+    // SAFETY: Seed is repr(C) { *const u8, u64, PhantomData } = 16 bytes,
+    // identical to &[u8] on SBF (*const u8, u64) = 16 bytes.
+    // PhantomData is zero-sized. Static assertions verify at compile time.
+    const _: () = assert!(core::mem::size_of::<&[u8]>() == core::mem::size_of::<pinocchio::cpi::Seed>());
+    const _: () = assert!(core::mem::align_of::<&[u8]>() == core::mem::align_of::<pinocchio::cpi::Seed>());
     let signer_seeds: &[pinocchio::cpi::Seed] = unsafe {
         core::slice::from_raw_parts(seeds.as_ptr() as *const pinocchio::cpi::Seed, seeds.len())
     };
@@ -304,10 +289,7 @@ pub fn create_account_signed(
 }
 
 /// Rare-path fallback for when the target account already holds lamports
-/// at creation time (e.g. airdropped PDAs or `init_if_needed` after partial
-/// funding). Marked `#[cold]` + `#[inline(never)]` so LTO keeps it out of
-/// the hot dispatch path and the ~1.4 KB of Transfer/Allocate/Assign CPI
-/// glue doesn't bloat the `entrypoint` or per-instruction wrappers.
+/// at creation time (e.g. airdropped PDAs or `init_if_needed`).
 #[cold]
 #[inline(never)]
 fn create_prefunded(
@@ -353,7 +335,7 @@ pub fn realloc_account(
     use pinocchio::Resize;
 
     let old_space = account.data_len();
-    let required = rent_exempt_lamports(new_space);
+    let required = rent_exempt_lamports(new_space)?;
     let current_lamports = account.lamports();
 
     if new_space > old_space {

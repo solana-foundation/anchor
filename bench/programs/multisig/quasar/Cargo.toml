@@ -21,3 +21,12 @@ solana-instruction = { version = "3.2.0" }
 level = "allow"
 
 [workspace]
+
+[profile.release]
+overflow-checks = false
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+[profile.release.build-override]
+opt-level = 3
+codegen-units = 1

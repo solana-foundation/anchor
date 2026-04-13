@@ -223,10 +223,12 @@ dependencies = [
  "solana-keypair",
  "solana-message",
  "solana-pubkey 3.0.0",
+ "solana-rent",
  "solana-sbpf",
  "solana-signer",
  "solana-transaction",
  "tempfile",
+ "vault-v2",
 ]
 
 [[package]]
@@ -242,6 +244,8 @@ dependencies = [
 name = "anchor-derive-accounts-v2"
 version = "0.1.0"
 dependencies = [
+ "bs58",
+ "curve25519-dalek",
  "proc-macro2",
  "quote",
  "sha2 0.10.9",
@@ -343,9 +347,9 @@ dependencies = [
  "pinocchio-system",
  "sha2 0.10.9",
  "solana-address 2.6.0",
- "solana-define-syscall 4.0.1",
- "solana-msg",
+ "solana-define-syscall 5.0.0",
  "solana-program-error",
+ "solana-program-log",
  "wincode 0.4.9",
 ]
 
@@ -3588,6 +3592,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-program-log"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b26115ff9ec592bb4407379c82e7f00b9d0ae4e3fac80c3fd28c932aec852dc6"
+dependencies = [
+ "solana-define-syscall 4.0.1",
+ "solana-program-log-macro",
+]
+
+[[package]]
+name = "solana-program-log-macro"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de2b224806ef141865d2f4b4614179089e3b80ba7311fc3bb28742c1d8323946"
+dependencies = [
+ "quote",
+ "regex",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "solana-program-memory"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4502,6 +4527,18 @@ checksum = "0200d0fc04d809396c2ad43f3c95da3582a2556eba8d453c1087f4120ee352ff"
 dependencies = [
  "fnv",
  "lazy_static",
+]
+
+[[package]]
+name = "vault-v2"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang-v2",
+ "borsh",
+ "bytemuck",
+ "pinocchio",
+ "pinocchio-system",
+ "wincode 0.4.9",
 ]
 
 [[package]]

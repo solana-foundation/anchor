@@ -16,10 +16,10 @@ use std::sync::Arc;
 use super::walker::FlamegraphReport;
 
 /// Size in bytes of one register trace entry: 12 x u64 = 96 bytes.
-const REGS_ENTRY_SIZE: usize = 12 * std::mem::size_of::<u64>();
+pub(super) const REGS_ENTRY_SIZE: usize = 12 * std::mem::size_of::<u64>();
 
 /// Size in bytes of one raw SBPF instruction: 8 bytes.
-const INSN_ENTRY_SIZE: usize = 8;
+pub(super) const INSN_ENTRY_SIZE: usize = 8;
 
 /// Provides the minimal VM context needed to parse and inspect an executable.
 #[derive(Default)]
@@ -190,7 +190,7 @@ fn process_trace(
 }
 
 /// Reads the i-th register entry (12 x u64) from raw bytes.
-fn read_regs(data: &[u8], i: usize) -> [u64; 12] {
+pub(super) fn read_regs(data: &[u8], i: usize) -> [u64; 12] {
     let offset = i * REGS_ENTRY_SIZE;
     let mut regs = [0u64; 12];
     for r in 0..12 {
@@ -202,7 +202,7 @@ fn read_regs(data: &[u8], i: usize) -> [u64; 12] {
 }
 
 /// Reads the i-th instruction entry (8 bytes) from raw bytes.
-fn read_insn(data: &[u8], i: usize) -> [u8; 8] {
+pub(super) fn read_insn(data: &[u8], i: usize) -> [u8; 8] {
     let offset = i * INSN_ENTRY_SIZE;
     data[offset..offset + 8].try_into().unwrap()
 }
@@ -211,7 +211,7 @@ fn read_insn(data: &[u8], i: usize) -> [u8; 8] {
 /// map, by walking to the nearest lower-or-equal symbol entry. Returns
 /// `("unknown_{pc:#x}", pc)` as a fallback when the map has no covering
 /// entry.
-fn lookup_function_with_pc(symbol_map: &BTreeMap<u64, String>, pc: u64) -> (String, u64) {
+pub(super) fn lookup_function_with_pc(symbol_map: &BTreeMap<u64, String>, pc: u64) -> (String, u64) {
     symbol_map
         .range(..=pc)
         .next_back()
@@ -220,7 +220,7 @@ fn lookup_function_with_pc(symbol_map: &BTreeMap<u64, String>, pc: u64) -> (Stri
 }
 
 /// Finds all (*.regs, *.insns) file pairs in the trace directory.
-fn find_trace_files(trace_dir: &Path) -> Result<Vec<(std::path::PathBuf, std::path::PathBuf)>> {
+pub(super) fn find_trace_files(trace_dir: &Path) -> Result<Vec<(std::path::PathBuf, std::path::PathBuf)>> {
     let mut pairs = Vec::new();
 
     if !trace_dir.exists() {
@@ -254,7 +254,7 @@ fn find_trace_files(trace_dir: &Path) -> Result<Vec<(std::path::PathBuf, std::pa
 /// If the deployed binary is stripped (common for `cargo-build-sbf`), we also
 /// try loading symbols from the unstripped build artifact in the
 /// `target/sbpf-solana-solana/release/` directory.
-fn load_function_map(
+pub(super) fn load_function_map(
     elf_path: &Path,
     manifest_dir: Option<&Path>,
 ) -> Result<(BTreeMap<u64, String>, BTreeMap<u32, String>)> {

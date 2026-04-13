@@ -1,0 +1,36 @@
+[package]
+# Renamed from upstream `quasar-vault` to fit the bench suite's
+# `<family>_<framework>` naming convention (so the compiled `.so`
+# lands at `target/deploy/vault_quasar.so` which the harness
+# expects). Everything under src/ is a byte-identical verbatim
+# copy from ~/git/quasar/examples/vault/src/.
+name = "vault-quasar"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "vault_quasar"
+
+[features]
+alloc = []
+client = []
+debug = []
+
+[dependencies]
+quasar-lang = { path = "../../../../quasar/lang" }
+
+[lints.rust.unexpected_cfgs]
+level = "allow"
+
+[workspace]
+
+[profile.release]
+overflow-checks = false
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+[profile.release.build-override]
+opt-level = 3
+codegen-units = 1

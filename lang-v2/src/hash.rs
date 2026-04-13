@@ -1,11 +1,6 @@
 /// SHA-256 hash of `data`.
 ///
-/// On-chain (`target_os = "solana"`): `sol_sha256` syscall (~85 CU + zero
-/// bytes of program text). Off-chain: `sha2` crate.
-///
-/// Going through this helper instead of pulling in `sha2` directly saves
-/// ~54 KB of `.text` per program — `sha2::sha256::compress256` is the
-/// dominant cost when it gets linked in.
+/// On-chain: `sol_sha256` syscall. Off-chain: `sha2` crate.
 #[inline]
 pub fn sha256(data: &[u8]) -> [u8; 32] {
     #[cfg(target_os = "solana")]

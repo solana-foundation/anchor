@@ -5,3 +5,5 @@ target/
 # (plus `BENCH_FLAMEGRAPHS=1` for the SVGs).
 flamegraphs/
 graphs/
+# Per-instruction register/disassembly traces from `BENCH_IX_TRACE=<label>`.
+ix_traces/

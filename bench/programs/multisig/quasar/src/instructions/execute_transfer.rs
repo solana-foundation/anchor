@@ -4,21 +4,22 @@ use {
 };
 
 #[derive(Accounts)]
-pub struct ExecuteTransfer<'info> {
+pub struct ExecuteTransfer {
     #[account(
         has_one = creator,
         seeds = MultisigConfig::seeds(creator),
         bump = config.bump
     )]
-    pub config: Account<MultisigConfig<'info>>,
-    pub creator: &'info UncheckedAccount,
+    pub config: Account<MultisigConfig>,
+    pub creator: UncheckedAccount,
     #[account(mut, seeds = [b"vault", config], bump)]
-    pub vault: &'info mut UncheckedAccount,
-    pub recipient: &'info mut UncheckedAccount,
-    pub system_program: &'info Program<System>,
+    pub vault: UncheckedAccount,
+    #[account(mut)]
+    pub recipient: UncheckedAccount,
+    pub system_program: Program<System>,
 }
 
-impl<'info> ExecuteTransfer<'info> {
+impl ExecuteTransfer {
     #[inline(always)]
     pub fn verify_and_transfer(
         &self,
@@ -50,7 +51,7 @@ impl<'info> ExecuteTransfer<'info> {
 
         let seeds = self.vault_seeds(bumps);
         self.system_program
-            .transfer(self.vault, self.recipient, amount)
+            .transfer(&self.vault, &self.recipient, amount)
             .invoke_signed(&seeds)?;
         Ok(())
     }
