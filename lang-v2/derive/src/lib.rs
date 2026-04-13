@@ -318,7 +318,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 __cursor: &mut anchor_lang_v2::AccountCursor,
                 __ix_data: &[u8],
             ) -> anchor_lang_v2::Result<(Self, #bumps_name)> {
-                use anchor_lang_v2::AnchorAccount as _;
                 #ix_deser
                 let mut __loader = anchor_lang_v2::AccountLoader::new(__program_id, __cursor);
                 let __views = __loader.walk_n(Self::HEADER_SIZE);
@@ -331,7 +330,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             //
             #[inline(always)]
             fn exit_accounts(&mut self) -> anchor_lang_v2::Result<()> {
-                use anchor_lang_v2::AnchorAccount as _;
                 #(#exits)*
                 Ok(())
             }
@@ -496,9 +494,7 @@ fn process_handler(
 
     // Dispatch arm.
     let dispatch_arm = quote! {
-        #disc_match_arm_pattern => __handlers::#fn_name(
-            __program_id, &mut __cursor, __ix_data, __num
-        ),
+        #disc_match_arm_pattern => __handlers::#fn_name(__program_id, &mut __cursor, __ix_data, __num),
     };
 
     // Handler wrapper.
@@ -518,9 +514,7 @@ fn process_handler(
                 __cursor,
                 __ix_data,
                 __num_accounts,
-                |__ctx| {
-                    #mod_name::#fn_name(__ctx, #(#extra_arg_names),*)
-                },
+                |__ctx| #mod_name::#fn_name(__ctx, #(#extra_arg_names),*),
             ) {
                 Ok(()) => 0,
                 Err(__e) => __e.into(),
@@ -697,14 +691,13 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         quote! {
             const __MIN_IX_DATA_LEN: usize = #disc_size + #min_args_size_expr;
             if __ix_data_len < __MIN_IX_DATA_LEN {
-                let __e: anchor_lang_v2::Error = anchor_lang_v2::ErrorCode::InstructionFallbackNotFound.into();
-                return __e.into();
+                return anchor_lang_v2::Error::from(
+                    anchor_lang_v2::ErrorCode::InstructionFallbackNotFound,
+                ).into();
             }
             let __disc: u8 = *__ix_data_ptr;
-            let __ix_data: &[u8] = ::core::slice::from_raw_parts(
-                __ix_data_ptr.add(1),
-                __ix_data_len - 1,
-            );
+            let __ix_data: &[u8] =
+                ::core::slice::from_raw_parts(__ix_data_ptr.add(1), __ix_data_len - 1);
         }
     } else {
         quote! {
@@ -771,8 +764,6 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             __input: *mut u8,
             __ix_data_ptr: *const u8,
         ) -> u64 {
-            use ::core::mem::MaybeUninit;
-
             let __ix_data_len = *(__ix_data_ptr.sub(8) as *const u64) as usize;
             let __program_id: &anchor_lang_v2::Address =
                 &*(__ix_data_ptr.add(__ix_data_len) as *const anchor_lang_v2::Address);
@@ -788,12 +779,14 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             let __num = *(__input as *const u64) as usize;
             #[cfg(feature = "guardrails")]
             if __num > __ANCHOR_MAX_ACCOUNTS {
-                let __e: anchor_lang_v2::Error = anchor_lang_v2::ErrorCode::AccountNotEnoughKeys.into();
-                return __e.into();
+                return anchor_lang_v2::Error::from(
+                    anchor_lang_v2::ErrorCode::AccountNotEnoughKeys,
+                ).into();
             }
 
-            let mut __lookup: [MaybeUninit<anchor_lang_v2::AccountView>; __ANCHOR_MAX_ACCOUNTS] =
-                [const { MaybeUninit::uninit() }; __ANCHOR_MAX_ACCOUNTS];
+            let mut __lookup: [::core::mem::MaybeUninit<anchor_lang_v2::AccountView>;
+                __ANCHOR_MAX_ACCOUNTS] =
+                [const { ::core::mem::MaybeUninit::uninit() }; __ANCHOR_MAX_ACCOUNTS];
             let mut __cursor = anchor_lang_v2::AccountCursor::new(
                 __input,
                 __lookup.as_mut_ptr() as *mut anchor_lang_v2::AccountView,
@@ -802,10 +795,9 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             // Each dispatch arm returns u64 directly (0 = success).
             match __disc {
                 #(#dispatch_arms)*
-                _ => {
-                    let __e: anchor_lang_v2::Error = anchor_lang_v2::ErrorCode::InstructionFallbackNotFound.into();
-                    __e.into()
-                },
+                _ => anchor_lang_v2::Error::from(
+                    anchor_lang_v2::ErrorCode::InstructionFallbackNotFound,
+                ).into(),
             }
         }
 

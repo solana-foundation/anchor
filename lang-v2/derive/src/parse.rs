@@ -545,7 +545,7 @@ fn emit_init_body(
         <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
             __payer, &__target, #space, __program_id, &__init_params, __seeds,
         )?;
-        <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut_after_init(__target, __program_id)?
+        anchor_lang_v2::AnchorAccount::load_mut_after_init(__target, __program_id)?
     }
 }
 
@@ -553,6 +553,9 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
     let attrs = parse_account_attrs(&field.attrs);
+    // Unsuffixed literal so the expansion shows `__views[0]` instead of
+    // `__views[0usize]` — the type is unambiguous from the indexing context.
+    let field_index = proc_macro2::Literal::usize_unsuffixed(field_index);
 
     let is_signer = field_ty_str(field_ty) == "Signer";
     let is_optional = field_ty_str(field_ty) == "Optional";
@@ -570,7 +573,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
     } else if attrs.is_init {
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
-            let mut #field_name = {
+            let mut #field_name: #field_ty = {
                 let __target = __views[#field_index];
                 #init_body
             };
@@ -578,10 +581,10 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
     } else if attrs.is_init_if_needed {
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
-            let mut #field_name = {
+            let mut #field_name: #field_ty = {
                 let __target = __views[#field_index];
                 if __target.data_len() > 0 && !__target.owned_by(&anchor_lang_v2::programs::System::id()) {
-                    <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
+                    anchor_lang_v2::AnchorAccount::load_mut(__target, __program_id)?
                 } else {
                     #init_body
                 }
@@ -593,7 +596,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
         let inner_ty = extract_inner_type_for_init(field_ty)
             .expect("#[account(zeroed)] requires Account<T> or BorshAccount<T>");
         quote! {
-            let mut #field_name = {
+            let mut #field_name: #field_ty = {
                 let __target = __views[#field_index];
                 {
                     let __data = __target.try_borrow()?;
@@ -609,16 +612,16 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
                     let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
                     __data[..__disc.len()].copy_from_slice(__disc);
                 }
-                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
+                anchor_lang_v2::AnchorAccount::load_mut(__target, __program_id)?
             };
         }
     } else if attrs.is_mut {
         quote! {
-            let mut #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__views[#field_index], __program_id)?;
+            let mut #field_name: #field_ty = anchor_lang_v2::AnchorAccount::load_mut(__views[#field_index], __program_id)?;
         }
     } else {
         quote! {
-            let #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::load(__views[#field_index], __program_id)?;
+            let #field_name: #field_ty = anchor_lang_v2::AnchorAccount::load(__views[#field_index], __program_id)?;
         }
     };
 
@@ -828,11 +831,14 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
             }
         });
         Some(quote! {
-            anchor_lang_v2::AnchorAccount::close(&mut self.#field_name, *self.#close_target.account())?;
+            anchor_lang_v2::AnchorAccount::close(
+                &mut self.#field_name,
+                *self.#close_target.account(),
+            )?;
         })
     } else if attrs.is_mut {
         Some(quote! {
-            self.#field_name.exit()?;
+            anchor_lang_v2::AnchorAccount::exit(&mut self.#field_name)?;
         })
     } else {
         None

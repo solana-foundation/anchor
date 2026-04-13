@@ -84,6 +84,7 @@ pub(super) fn cold_owner_error(view: &AccountView) -> ProgramError {
 }
 
 /// Error for read-only account passed to `load_mut`.
+#[cfg(feature = "guardrails")]
 #[inline(always)]
 pub(super) fn cold_not_writable() -> ProgramError {
     ProgramError::InvalidAccountData
