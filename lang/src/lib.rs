@@ -79,21 +79,6 @@ pub enum WriteError {
     Other,
 }
 
-// Blanket impl: &mut W implements Write when W implements Write
-impl<W: Write + ?Sized> Write for &mut W {
-    fn write(&mut self, buf: &[u8]) -> core::result::Result<usize, WriteError> {
-        (**self).write(buf)
-    }
-
-    fn write_all(&mut self, buf: &[u8]) -> core::result::Result<(), WriteError> {
-        (**self).write_all(buf)
-    }
-
-    fn flush(&mut self) -> core::result::Result<(), WriteError> {
-        (**self).flush()
-    }
-}
-
 /// When `std` is enabled, any `std::io::Write` target can be used as [`Write`].
 #[cfg(feature = "std")]
 impl<T: std::io::Write + ?Sized> Write for T {
