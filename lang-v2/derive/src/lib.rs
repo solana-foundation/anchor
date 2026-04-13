@@ -199,12 +199,16 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
     let fields: Vec<parse::AccountField> = match &input.data {
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named
-                .named
-                .iter()
-                .enumerate()
-                .map(|(i, f)| parse::parse_field(f, &raw_field_names, i))
-                .collect(),
+            Fields::Named(named) => {
+                assert!(named.named.len() <= 255);
+                named
+                    .named
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| parse::parse_field(f, &raw_field_names, i as u8))
+                    .collect()
+            }
+
             _ => panic!("Accounts derive only supports named fields"),
         },
         _ => panic!("Accounts derive only supports structs"),
@@ -346,7 +350,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 use anchor_lang_v2::AnchorAccount as _;
                 #ix_deser
                 let mut __loader = anchor_lang_v2::AccountLoader::new(__program_id, __cursor);
-                let __views = __loader.walk_n(Self::HEADER_SIZE);
+                let (__views, __duplicates) = __loader.walk_n(Self::HEADER_SIZE);
                 #bumps_init
                 #(#loads)*
                 #(#constraints)*

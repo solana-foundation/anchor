@@ -20,9 +20,7 @@ pub mod programs;
 mod traits;
 
 // Re-export derive macros
-pub use anchor_derive_accounts_v2::Accounts;
 // Re-export borsh and bytemuck for generated code
-pub use borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize};
 #[cfg(feature = "account-resize")]
 pub use cpi::realloc_account;
 /// Chunked 4×u64 equality compare for `Address`. Preferred over `==`
@@ -36,7 +34,8 @@ pub use solana_program_log::log as msg;
 pub use wincode;
 pub use {
     accounts::AccountInitialize,
-    anchor_derive_accounts_v2::{account, emit, event, program},
+    anchor_derive_accounts_v2::{account, emit, event, program, Accounts},
+    borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
     context::{Bumps, Context},
     cpi::{
@@ -95,6 +94,7 @@ pub enum ErrorCode {
     ConstraintExecutable,
     ConstraintRentExempt,
     ConstraintZero,
+    ConstraintDuplicateMutableAccount,
     InstructionDidNotDeserialize,
     DeclaredProgramIdMismatch,
     InstructionFallbackNotFound,
@@ -128,6 +128,9 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             ErrorCode::ConstraintExecutable => solana_program_error::ProgramError::Custom(2002),
             ErrorCode::ConstraintRentExempt => solana_program_error::ProgramError::Custom(2003),
             ErrorCode::ConstraintZero => solana_program_error::ProgramError::Custom(2004),
+            ErrorCode::ConstraintDuplicateMutableAccount => {
+                solana_program_error::ProgramError::Custom(2040)
+            }
             ErrorCode::InstructionDidNotDeserialize => {
                 solana_program_error::ProgramError::InvalidInstructionData
             }

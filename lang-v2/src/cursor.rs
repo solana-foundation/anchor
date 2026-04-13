@@ -63,6 +63,10 @@ pub struct AccountCursor {
     /// into `lookup` and as a runtime counter exposed to callers for
     /// bookkeeping (e.g., remaining-accounts walks).
     consumed: u8,
+
+    /// Tracks accounts that are duplicates; the first instance of a duplicated account
+    /// will also be marked.
+    duplicate: AccountBitvec,
 }
 
 impl AccountCursor {
@@ -80,6 +84,7 @@ impl AccountCursor {
             ptr: input_ptr.add(core::mem::size_of::<u64>()),
             lookup,
             consumed: 0,
+            duplicate: Default::default(),
         }
     }
 
@@ -90,19 +95,23 @@ impl AccountCursor {
     }
 
     /// Walk N accounts in a tight loop, storing views in the lookup array.
-    /// Returns a slice of the walked views. This avoids interleaving cursor
-    /// math with validation logic, letting LLVM optimize the walk loop.
+    /// Returns a slice of the walked views and the duplicate tracking bitvec.
+    /// This avoids interleaving cursor math with validation logic, letting
+    /// LLVM optimize the walk loop.
     ///
     /// # Safety
     ///
     /// Caller must ensure N does not exceed the remaining accounts.
     #[inline(always)]
-    pub unsafe fn walk_n(&mut self, n: usize) -> &[AccountView] {
+    pub unsafe fn walk_n(&mut self, n: usize) -> (&[AccountView], &AccountBitvec) {
         let start = self.consumed as usize;
         for _ in 0..n {
             self.next();
         }
-        core::slice::from_raw_parts(self.lookup.add(start), n)
+        (
+            core::slice::from_raw_parts(self.lookup.add(start), n),
+            &self.duplicate,
+        )
     }
 
     /// Advance past one account record and return its `AccountView`.
@@ -136,7 +145,8 @@ impl AccountCursor {
 
         // First account (consumed == 0) can never be a duplicate —
         // short-circuits the dup check for the first field.
-        let view = if self.consumed == 0 || (*account).borrow_state == NON_DUP_MARKER {
+        let borrow_state = (*account).borrow_state;
+        let view = if self.consumed == 0 || borrow_state == NON_DUP_MARKER {
             // Non-dup: write data_len into the padding slot so
             // `AccountView::resize()` can enforce
             // MAX_PERMITTED_DATA_INCREASE later without another
@@ -158,12 +168,52 @@ impl AccountCursor {
             // runtime only emits dup indices that are strictly less
             // than the current `consumed`, so the slot is already
             // populated by a prior `next()` call.
-            *self.lookup.add((*account).borrow_state as usize)
+            self.duplicate.set(self.consumed);
+            self.duplicate.set(borrow_state);
+            *self.lookup.add(borrow_state as usize)
         };
 
         // Record this view so later dup references can resolve it.
         *self.lookup.add(self.consumed as usize) = view;
         self.consumed = self.consumed.wrapping_add(1);
         view
+    }
+}
+
+/// A 256-bit bitvec used to store boolean information during account loading.
+/// Does not derive `Copy` to avoid accidental large stack moves.
+#[derive(Default, Clone)]
+pub struct AccountBitvec {
+    data: [u64; 4],
+}
+
+impl AccountBitvec {
+    pub fn get(&self, index: u8) -> bool {
+        let index = index as usize;
+        let arr_index = index / 64;
+        let bit_index = index % 64;
+        (self.data[arr_index] >> bit_index) & 1 == 1
+    }
+
+    fn set(&mut self, index: u8) {
+        let index = index as usize;
+        let arr_index = index / 64;
+        let bit_index = index % 64;
+        self.data[arr_index] |= 1 << bit_index
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_bitvec() {
+        let mut bv = AccountBitvec::default();
+        for i in 0..=255 {
+            assert!(!bv.get(i));
+            bv.set(i);
+            assert!(bv.get(i));
+        }
     }
 }
