@@ -1,0 +1,29 @@
+[package]
+name = "anchor-lang-v2"
+version = "0.1.0"
+edition = "2021"
+description = "Anchor v2: trait-based account system for Solana (no_std)"
+license = "Apache-2.0"
+
+[features]
+default = ["alloc"]
+alloc = ["pinocchio/alloc"]
+idl-build = []
+
+[dependencies]
+anchor-derive-accounts-v2 = { path = "./derive", version = "0.1.0" }
+pinocchio = { workspace = true, features = ["copy", "account-resize"] }
+pinocchio-system = "0.6"
+solana-address = { version = "2.0", features = ["bytemuck", "borsh", "syscalls", "curve25519"] }
+solana-program-error = { version = "3.0", features = ["borsh"] }
+solana-msg = { workspace = true }
+borsh = "1.5.7"
+bytemuck = { version = "1", features = ["derive"] }
+wincode = { version = "0.4", features = ["derive"] }
+
+[target.'cfg(target_os = "solana")'.dependencies]
+solana-define-syscall = "4.0"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(target_os, values("solana"))']

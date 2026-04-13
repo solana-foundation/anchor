@@ -204,7 +204,6 @@ dependencies = [
  "console 0.15.11",
  "dirs",
  "ed25519-dalek",
- "flate2",
  "heck 0.4.1",
  "pathdiff",
  "portpicker",
