@@ -408,10 +408,13 @@ pub fn create_account_signed(
     // SAFETY: Seed is repr(C) { *const u8, u64, PhantomData } = 16 bytes,
     // identical to &[u8] on SBF (*const u8, u64) = 16 bytes.
     // PhantomData is zero-sized. Static assertions verify at compile time.
-    const _: () =
+    const _: () = {
         assert!(core::mem::size_of::<&[u8]>() == core::mem::size_of::<pinocchio::cpi::Seed>());
-    const _: () =
         assert!(core::mem::align_of::<&[u8]>() == core::mem::align_of::<pinocchio::cpi::Seed>());
+        let probe: &[u8] = b"anchor";
+        let (_ptr, len): (*const u8, usize) = unsafe { core::mem::transmute(probe) };
+        assert!(len == probe.len());
+    };
     let signer_seeds: &[pinocchio::cpi::Seed] = unsafe {
         core::slice::from_raw_parts(seeds.as_ptr() as *const pinocchio::cpi::Seed, seeds.len())
     };
