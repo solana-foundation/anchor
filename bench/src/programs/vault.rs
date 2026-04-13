@@ -1,5 +1,4 @@
 pub mod anchor_v2 {
-    use super::*;
     use {
         crate::bench::{keypair_for_account, BenchContext, BenchInstruction},
         anchor_lang::solana_program::{instruction::AccountMeta, system_program},
@@ -75,7 +74,6 @@ pub mod anchor_v2 {
 }
 
 pub mod quasar {
-    use super::*;
     use {
         crate::bench::{keypair_for_account, BenchContext, BenchInstruction},
         anchor_lang::solana_program::{instruction::AccountMeta, system_program},

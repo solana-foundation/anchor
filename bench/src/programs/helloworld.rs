@@ -1,5 +1,4 @@
 pub mod anchor_v1 {
-    use super::*;
     use {
         crate::bench::{BenchContext, BenchInstruction},
         anchor_lang::{
@@ -28,7 +27,6 @@ pub mod anchor_v1 {
 }
 
 pub mod anchor_v2 {
-    use super::*;
     use {
         crate::bench::{BenchContext, BenchInstruction},
         anchor_lang::solana_program::{instruction::AccountMeta, system_program},
@@ -55,7 +53,6 @@ pub mod anchor_v2 {
 }
 
 pub mod pinocchio {
-    use super::*;
     use {
         crate::bench::{BenchContext, BenchInstruction},
         anchor_lang::solana_program::{instruction::AccountMeta, system_program},
@@ -80,7 +77,6 @@ pub mod pinocchio {
 }
 
 pub mod quasar {
-    use super::*;
     use {
         crate::bench::{BenchContext, BenchInstruction},
         anchor_lang::solana_program::{instruction::AccountMeta, system_program},
@@ -104,7 +100,6 @@ pub mod quasar {
 }
 
 pub mod steel {
-    use super::*;
     use {
         crate::bench::{BenchContext, BenchInstruction},
         anchor_lang::solana_program::{instruction::AccountMeta, system_program},

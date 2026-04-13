@@ -7,7 +7,7 @@ use {
     crate::token::create_token_account,
     anchor_lang_v2::{
         accounts::{Account, AccountInitialize, AccountValidate},
-        programs::{Token, Token2022},
+        programs::Token,
         Constrain, Id,
     },
     bytemuck::{Pod, Zeroable},

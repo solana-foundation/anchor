@@ -13,7 +13,11 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use super::walker::FlamegraphReport;
+pub struct FlamegraphReport {
+    pub program_name: String,
+    pub total_cu: u64,
+    pub stacks: BTreeMap<Vec<String>, u64>,
+}
 
 /// Size in bytes of one register trace entry: 12 x u64 = 96 bytes.
 pub(super) const REGS_ENTRY_SIZE: usize = 12 * std::mem::size_of::<u64>();

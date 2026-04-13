@@ -1,5 +1,4 @@
 pub mod anchor_v1 {
-    use super::*;
     use {
         crate::bench::{keypair_for_account, BenchContext, BenchInstruction},
         anchor_lang::{
@@ -172,7 +171,6 @@ pub mod anchor_v1 {
 }
 
 pub mod anchor_v2 {
-    use super::*;
     use {
         crate::bench::{keypair_for_account, BenchContext, BenchInstruction},
         anchor_lang::solana_program::instruction::AccountMeta,
@@ -409,7 +407,6 @@ pub mod anchor_v2 {
 }
 
 pub mod pinocchio {
-    use super::*;
     // Bench runner for the raw-pinocchio multisig program.
     //
     // Like quasar, pinocchio uses a 1-byte instruction discriminator + raw LE
@@ -589,7 +586,6 @@ pub mod pinocchio {
 }
 
 pub mod quasar {
-    use super::*;
     use {
         crate::bench::{keypair_for_account, BenchContext, BenchInstruction},
         anchor_lang::solana_program::instruction::AccountMeta,
@@ -766,7 +762,6 @@ pub mod quasar {
 }
 
 pub mod steel {
-    use super::*;
     // Bench runner for the steel multisig program.
     //
     // Like pinocchio/quasar, the steel port uses a 1-byte instruction

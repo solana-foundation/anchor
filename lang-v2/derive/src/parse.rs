@@ -453,19 +453,9 @@ fn emit_seeds_check(
 
     // Fallback: runtime find loop fused with the equality check.
     //
-    // Skip the per-iteration `sol_curve_validate_point` (~159 CU) when
-    // the account is provably signed-for:
-    //
-    //   - `for_init`: account is system-owned + zero-data (checked before
-    //     init runs). The subsequent CreateAccount/Allocate/Assign CPI
-    //     requires the account to be a signer. For PDAs, signing goes
-    //     through `invoke_signed` → `create_program_address` which
-    //     includes the curve check. So the system program will reject
-    //     any on-curve address.
-    //
-    //   - `MIN_DATA_LEN > 0`: account has data → was created via
-    //     CreateAccount/Allocate (which require signing) → same
-    //     reasoning: the account was signed for, so it's a valid PDA.
+    // Skip `sol_curve_validate_point` when the account is provably
+    // signed-for (init path or MIN_DATA_LEN > 0), since CreateAccount
+    // already validates the PDA via `create_program_address`.
     //
     // Otherwise (`UncheckedAccount` with zero data, non-init): the curve
     // check is the only proof the address is a real PDA.

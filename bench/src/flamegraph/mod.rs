@@ -1,7 +1,6 @@
 mod ix_trace;
 mod svg;
 mod trace;
-pub mod walker;
 
 use anyhow::Result;
 use std::fs;

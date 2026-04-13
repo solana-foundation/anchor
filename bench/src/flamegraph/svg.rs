@@ -1,4 +1,4 @@
-use super::walker::FlamegraphReport;
+use super::trace::FlamegraphReport;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
