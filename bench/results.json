@@ -1,0 +1,1503 @@
+{
+  "baseline": {
+    "hello_world_quasar": {
+      "binary_size_bytes": 2944,
+      "compute_units": {
+        "hello": 115
+      }
+    },
+    "multisig_quasar": {
+      "binary_size_bytes": 31096,
+      "compute_units": {
+        "create": 3152,
+        "deposit": 2304,
+        "execute_transfer": 2173,
+        "set_label": 1864
+      }
+    }
+  },
+  "baseline_programs": {
+    "hello_world": [
+      "hello_world_quasar"
+    ],
+    "multisig": [
+      "multisig_quasar"
+    ]
+  },
+  "results": [
+    {
+      "commit": "current",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 122272,
+          "compute_units": {
+            "init": 5722
+          }
+        },
+        "hello_world_pinocchio": {
+          "binary_size_bytes": 5128,
+          "compute_units": {
+            "init": 1244
+          }
+        },
+        "hello_world_quasar": {
+          "binary_size_bytes": 7424,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "hello_world_steel": {
+          "binary_size_bytes": 77600,
+          "compute_units": {
+            "init": 4867
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 15808,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 32624,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 646
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_pinocchio": {
+          "binary_size_bytes": 5128,
+          "compute_units": {
+            "init": 1244
+          }
+        },
+        "hello_world_quasar": {
+          "binary_size_bytes": 7424,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 15808,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 32624,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 646
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_pinocchio": {
+          "binary_size_bytes": 5128,
+          "compute_units": {
+            "init": 1244
+          }
+        },
+        "hello_world_quasar": {
+          "binary_size_bytes": 7424,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 15832,
+          "compute_units": {
+            "init": 1735
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 32624,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 646
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_pinocchio": {
+          "binary_size_bytes": 5128,
+          "compute_units": {
+            "init": 1244
+          }
+        },
+        "hello_world_quasar": {
+          "binary_size_bytes": 7424,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 15808,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 32624,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 646
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_quasar": {
+          "binary_size_bytes": 7728,
+          "compute_units": {
+            "init": 1769
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 16120,
+          "compute_units": {
+            "init": 1789
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 32624,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 646
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_quasar": {
+          "binary_size_bytes": 7728,
+          "compute_units": {
+            "init": 1769
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 16120,
+          "compute_units": {
+            "init": 1789
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 30720,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 465
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_quasar": {
+          "binary_size_bytes": 7656,
+          "compute_units": {
+            "init": 1755
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 16024,
+          "compute_units": {
+            "init": 1755
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 30720,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 465
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_quasar": {
+          "binary_size_bytes": 7424,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 15808,
+          "compute_units": {
+            "init": 1732
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 30720,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 465
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_quasar": {
+          "binary_size_bytes": 3128,
+          "compute_units": {
+            "increment": 42
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 11312,
+          "compute_units": {
+            "increment": 137
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 30720,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 465
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world_quasar": {
+          "binary_size_bytes": 3520,
+          "compute_units": {
+            "increment": 206
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 11944,
+          "compute_units": {
+            "increment": 324
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 30720,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 465
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 55736,
+          "compute_units": {
+            "hello": 644
+          }
+        },
+        "hello_world_pinocchio": {
+          "binary_size_bytes": 3160,
+          "compute_units": {
+            "hello": 111
+          }
+        },
+        "hello_world_quasar": {
+          "binary_size_bytes": 2944,
+          "compute_units": {
+            "hello": 115
+          }
+        },
+        "hello_world_steel": {
+          "binary_size_bytes": 18672,
+          "compute_units": {
+            "hello": 409
+          }
+        },
+        "hello_world_v2": {
+          "binary_size_bytes": 5200,
+          "compute_units": {
+            "hello": 160
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177584,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 30720,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 465
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 30712,
+          "compute_units": {
+            "create": 2960,
+            "deposit": 1774,
+            "execute_transfer": 2239,
+            "set_label": 465
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 33240,
+          "compute_units": {
+            "create": 2995,
+            "deposit": 1826,
+            "execute_transfer": 2309,
+            "set_label": 484
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 32304,
+          "compute_units": {
+            "create": 2995,
+            "deposit": 1827,
+            "execute_transfer": 2311,
+            "set_label": 484
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 33640,
+          "compute_units": {
+            "create": 3003,
+            "deposit": 1817,
+            "execute_transfer": 2305,
+            "set_label": 484
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 30144,
+          "compute_units": {
+            "create": 2967,
+            "deposit": 1770,
+            "execute_transfer": 2233,
+            "set_label": 469
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 33480,
+          "compute_units": {
+            "create": 3027,
+            "deposit": 1844,
+            "execute_transfer": 2333,
+            "set_label": 535
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 33320,
+          "compute_units": {
+            "create": 3007,
+            "deposit": 1877,
+            "execute_transfer": 2373,
+            "set_label": 489
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 32944,
+          "compute_units": {
+            "create": 3002,
+            "deposit": 1820,
+            "execute_transfer": 2314,
+            "set_label": 488
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 57112,
+          "compute_units": {
+            "hello": 362
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 182168,
+          "compute_units": {
+            "create": 12793,
+            "deposit": 5316,
+            "execute_transfer": 8210,
+            "set_label": 4918
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 34776,
+          "compute_units": {
+            "create": 3182,
+            "deposit": 1944,
+            "execute_transfer": 2449,
+            "set_label": 572
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 33232,
+          "compute_units": {
+            "create": 3086,
+            "deposit": 1834,
+            "execute_transfer": 2310,
+            "set_label": 477
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 31856,
+          "compute_units": {
+            "create": 3080,
+            "deposit": 1806,
+            "execute_transfer": 2272,
+            "set_label": 472
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 31688,
+          "compute_units": {
+            "create": 3077,
+            "deposit": 1806,
+            "execute_transfer": 2270,
+            "set_label": 454
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 51016,
+          "compute_units": {
+            "create": 3079,
+            "deposit": 1808,
+            "execute_transfer": 2270,
+            "set_label": 472
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 63464,
+          "compute_units": {
+            "create": 3079,
+            "deposit": 1808,
+            "execute_transfer": 2270,
+            "set_label": 725
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 64376,
+          "compute_units": {
+            "create": 3097,
+            "deposit": 1808,
+            "execute_transfer": 2275,
+            "set_label": 725
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 64568,
+          "compute_units": {
+            "create": 3097,
+            "deposit": 1808,
+            "execute_transfer": 2443,
+            "set_label": 890
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 64568,
+          "compute_units": {
+            "create": 2451,
+            "deposit": 2132,
+            "execute_transfer": 2443,
+            "set_label": 890
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_quasar": {
+          "binary_size_bytes": 30928,
+          "compute_units": {
+            "create": 4195,
+            "deposit": 1661,
+            "execute_transfer": 2211,
+            "set_label": 1925
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 65008,
+          "compute_units": {
+            "create": 2554,
+            "deposit": 2239,
+            "execute_transfer": 2550,
+            "set_label": 996
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 65008,
+          "compute_units": {
+            "create": 2554,
+            "deposit": 2239,
+            "execute_transfer": 2550,
+            "set_label": 996
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 64008,
+          "compute_units": {
+            "create": 4915,
+            "deposit": 4601,
+            "execute_transfer": 4965,
+            "set_label": 2229
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 65976,
+          "compute_units": {
+            "create": 5324,
+            "deposit": 5829,
+            "execute_transfer": 6408,
+            "set_label": 2845
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 63032,
+          "compute_units": {
+            "create": 4915,
+            "deposit": 4601,
+            "execute_transfer": 6454,
+            "set_label": 2189
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 63032,
+          "compute_units": {
+            "create": 3415,
+            "deposit": 9101,
+            "execute_transfer": 6454,
+            "set_label": 2189
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 63368,
+          "compute_units": {
+            "create": 5244,
+            "deposit": 10971,
+            "execute_transfer": 8315,
+            "set_label": 4086
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 70000,
+          "compute_units": {
+            "create": 5514,
+            "deposit": 11198,
+            "execute_transfer": 8552,
+            "set_label": 4288
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177568,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        },
+        "multisig_v2": {
+          "binary_size_bytes": 63368,
+          "compute_units": {
+            "create": 5244,
+            "deposit": 10971,
+            "execute_transfer": 8315,
+            "set_label": 4086
+          }
+        }
+      }
+    },
+    {
+      "commit": "2e135c69743b54245a5ddebe6b3f840d53a3032a",
+      "programs": {
+        "hello_world": {
+          "binary_size_bytes": 54728,
+          "compute_units": {
+            "hello": 347
+          }
+        },
+        "multisig": {
+          "binary_size_bytes": 177560,
+          "compute_units": {
+            "create": 11759,
+            "deposit": 4872,
+            "execute_transfer": 7446,
+            "set_label": 4541
+          }
+        }
+      }
+    }
+  ]
+}

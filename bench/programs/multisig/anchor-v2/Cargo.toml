@@ -1,0 +1,32 @@
+[package]
+name = "multisig-v2"
+version = "0.1.0"
+description = "Anchor v2 port of the Quasar multisig benchmark example"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "multisig_v2"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+cpi = ["no-entrypoint", "dep:borsh"]
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang-v2/idl-build"]
+
+[dependencies]
+# Opt out of the `account-resize` default feature — multisig never reallocs
+# any account, so the ~300 bytes of pinocchio's resize syscall glue would
+# just bloat the binary. Keep `alloc` + `guardrails` (the latter gates the
+# Account<T> borrow-state checks + the entry()-level program-id check).
+anchor-lang-v2 = { path = "../../../../lang-v2", default-features = false, features = ["alloc", "guardrails"] }
+borsh = { version = "1", optional = true }
+pinocchio = { version = "0.11", default-features = false, features = ["copy"] }
+pinocchio-system = "0.6"
+wincode = { version = "0.4", features = ["derive"] }
+
+[lints.rust.unexpected_cfgs]
+level = "allow"

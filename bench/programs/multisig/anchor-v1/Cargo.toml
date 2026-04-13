@@ -1,0 +1,22 @@
+[package]
+name = "multisig-v1"
+version = "0.1.0"
+description = "Anchor v1 port of the Quasar multisig benchmark example"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "multisig_v1"
+
+[features]
+no-entrypoint = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+no-log-ix-name = []
+custom-heap = []
+custom-panic = []
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }
