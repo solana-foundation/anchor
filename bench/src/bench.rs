@@ -438,16 +438,6 @@ pub fn build_results(bench_dir: &Path, suites: &[ProgramSuite]) -> Result<Benchm
         for instruction in suite.instructions {
             let metadata =
                 execute_benchmark(&program_path, (instruction.program_id)(), instruction.build)?;
-            // Print transaction logs for v2 and quasar programs to analyze CU breakdown
-            if suite.name.contains("v2") || suite.name.contains("quasar") {
-                println!(
-                    "\n=== {}/{} ({} CU) ===",
-                    suite.name, instruction.name, metadata.compute_units_consumed
-                );
-                for log in &metadata.logs {
-                    println!("  {log}");
-                }
-            }
             compute_units.insert(instruction.name.to_owned(), metadata.compute_units_consumed);
         }
 

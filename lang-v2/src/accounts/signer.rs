@@ -1,19 +1,15 @@
 use {
-    crate::{accounts::view_wrapper_traits, AnchorAccount},
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
+    crate::{AnchorAccount, accounts::view_wrapper_traits},
 };
 
-pub struct Signer {
-    view: AccountView,
-}
+pub struct Signer { view: AccountView }
 
 impl Signer {
     /// Returns the account's address.
     #[inline(always)]
-    pub fn address(&self) -> &Address {
-        self.view.address()
-    }
+    pub fn address(&self) -> &Address { self.view.address() }
 }
 
 impl AnchorAccount for Signer {
@@ -21,9 +17,7 @@ impl AnchorAccount for Signer {
 
     #[inline(always)]
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
-        if !view.is_signer() {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
+        if !view.is_signer() { return Err(ProgramError::MissingRequiredSignature); }
         Ok(Self { view })
     }
 
@@ -44,7 +38,9 @@ impl AnchorAccount for Signer {
         // Byte `+1` and `+2` are always in bounds within the 88-byte header.
         // The read is byte-aligned (offset 1 into a u16) but SBF allows
         // unaligned access.
-        let flags_ptr = unsafe { (view.account_ptr() as *const u8).add(1) as *const u16 };
+        let flags_ptr = unsafe {
+            (view.account_ptr() as *const u8).add(1) as *const u16
+        };
         let flags = unsafe { core::ptr::read_unaligned(flags_ptr) };
         // Little-endian: low byte = is_signer, high byte = is_writable.
         // Both must be 1 → u16 value 0x0101.
@@ -55,9 +51,7 @@ impl AnchorAccount for Signer {
     }
 
     #[inline(always)]
-    fn account(&self) -> &AccountView {
-        &self.view
-    }
+    fn account(&self) -> &AccountView { &self.view }
 }
 
 view_wrapper_traits!(Signer);

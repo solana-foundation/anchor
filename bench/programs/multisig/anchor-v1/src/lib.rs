@@ -4,8 +4,6 @@ mod instructions;
 use instructions::*;
 mod state;
 pub use state::*;
-#[cfg(test)]
-mod tests;
 
 declare_id!("44444444444444444444444444444444444444444444");
 

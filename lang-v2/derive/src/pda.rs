@@ -11,10 +11,9 @@
 //! multi-`#[derive(Accounts)]` crates don't re-parse the file for each
 //! derive.
 
-use {
-    sha2::{Digest, Sha256},
-    std::cell::RefCell,
-};
+use std::cell::RefCell;
+
+use sha2::{Digest, Sha256};
 
 const PDA_MARKER: &[u8; 21] = b"ProgramDerivedAddress";
 
@@ -41,9 +40,7 @@ pub(crate) fn discover_program_id() -> Option<[u8; 32]> {
 
 fn try_discover_program_id() -> Option<[u8; 32]> {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").ok()?;
-    let lib_rs = std::path::PathBuf::from(manifest_dir)
-        .join("src")
-        .join("lib.rs");
+    let lib_rs = std::path::PathBuf::from(manifest_dir).join("src").join("lib.rs");
     let source = std::fs::read_to_string(&lib_rs).ok()?;
     let file = syn::parse_file(&source).ok()?;
 
@@ -97,7 +94,10 @@ pub(crate) fn seeds_as_byte_literals(seeds: &[syn::Expr]) -> Option<Vec<Vec<u8>>
 ///
 /// Returns `None` if no valid bump exists (cryptographically ~2^-256, so
 /// effectively unreachable).
-pub(crate) fn precompute_pda(seeds: &[&[u8]], program_id: &[u8; 32]) -> Option<(u8, [u8; 32])> {
+pub(crate) fn precompute_pda(
+    seeds: &[&[u8]],
+    program_id: &[u8; 32],
+) -> Option<(u8, [u8; 32])> {
     use curve25519_dalek::edwards::CompressedEdwardsY;
 
     let mut bump: i32 = u8::MAX as i32;

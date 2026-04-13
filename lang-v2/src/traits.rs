@@ -1,6 +1,9 @@
 use {
     core::ops::Deref,
-    pinocchio::{account::AccountView, address::Address},
+    pinocchio::{
+        account::AccountView,
+        address::Address,
+    },
     solana_program_error::{ProgramError, ProgramResult},
 };
 
@@ -39,10 +42,7 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     /// `Signer` overrides this with a fused 2-byte `is_signer` +
     /// `is_writable` check — see `accounts/signer.rs`.
     #[inline(always)]
-    fn load_mut(
-        view: AccountView,
-        program_id: &Address,
-    ) -> core::result::Result<Self, ProgramError> {
+    fn load_mut(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError> {
         if !view.is_writable() {
             return Err(crate::ErrorCode::ConstraintMut.into());
         }
@@ -72,9 +72,7 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
 
     fn account(&self) -> &AccountView;
 
-    fn exit(&mut self) -> ProgramResult {
-        Ok(())
-    }
+    fn exit(&mut self) -> ProgramResult { Ok(()) }
 
     fn close(&mut self, mut destination: AccountView) -> ProgramResult {
         let mut self_view = *self.account();
@@ -127,13 +125,9 @@ pub struct Nested<T>(pub T);
 
 impl<T> Deref for Nested<T> {
     type Target = T;
-    fn deref(&self) -> &T {
-        &self.0
-    }
+    fn deref(&self) -> &T { &self.0 }
 }
 
 impl<T> core::ops::DerefMut for Nested<T> {
-    fn deref_mut(&mut self) -> &mut T {
-        &mut self.0
-    }
+    fn deref_mut(&mut self) -> &mut T { &mut self.0 }
 }

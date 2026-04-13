@@ -1,12 +1,10 @@
 use {
-    crate::{AnchorAccount, Discriminator, Owner},
-    borsh::{BorshDeserialize, BorshSerialize},
     core::ops::{Deref, DerefMut},
-    pinocchio::{
-        account::{AccountView, Ref, RefMut},
-        address::Address,
-    },
+    pinocchio::account::{AccountView, Ref, RefMut},
+    pinocchio::address::Address,
+    borsh::{BorshDeserialize, BorshSerialize},
     solana_program_error::ProgramError,
+    crate::{AnchorAccount, Discriminator, Owner},
 };
 
 /// Discriminator length in bytes. All `#[account]` types use an 8-byte
@@ -51,11 +49,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
         Ok(())
     }
 
-    fn validate_and_load(
-        view: AccountView,
-        data: &[u8],
-        program_id: &Address,
-    ) -> Result<T, ProgramError> {
+    fn validate_and_load(view: AccountView, data: &[u8], program_id: &Address) -> Result<T, ProgramError> {
         // Hot path: a single owner check. The "uninitialized placeholder"
         // disambiguation lives in `cold_owner_error` (account.rs) — see
         // the comment there for why this is safe.
@@ -68,13 +62,12 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
         if &data[..DISC_LEN] != T::DISCRIMINATOR {
             return Err(ProgramError::InvalidAccountData);
         }
-        T::deserialize(&mut &data[DISC_LEN..]).map_err(|_| ProgramError::InvalidAccountData)
+        T::deserialize(&mut &data[DISC_LEN..])
+            .map_err(|_| ProgramError::InvalidAccountData)
     }
 }
 
-impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
-    for BorshAccount<T>
-{
+impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount for BorshAccount<T> {
     type Data = T;
     const MIN_DATA_LEN: usize = 8;
 
@@ -85,11 +78,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         // lifetime (Solana runtime guarantee). We hold the Ref to prevent
         // subsequent mutable borrows on the same account (duplicate detection).
         let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        Ok(Self {
-            view,
-            data,
-            borrow: BorshBorrow::Immutable { _guard: guard },
-        })
+        Ok(Self { view, data, borrow: BorshBorrow::Immutable { _guard: guard } })
     }
 
     fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
@@ -107,16 +96,10 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         // SAFETY: Same as load(). RefMut provides exclusive access and prevents
         // any other borrow on the same account.
         let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        Ok(Self {
-            view,
-            data,
-            borrow: BorshBorrow::Mutable { guard },
-        })
+        Ok(Self { view, data, borrow: BorshBorrow::Mutable { guard } })
     }
 
-    fn account(&self) -> &AccountView {
-        &self.view
-    }
+    fn account(&self) -> &AccountView { &self.view }
 
     fn close(&mut self, mut destination: AccountView) -> pinocchio::ProgramResult {
         // Release the borrow guard before closing so pinocchio's close() can proceed
@@ -139,8 +122,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         }
         // Write through the held RefMut — no need to re-acquire the borrow
         if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
-            self.data
-                .serialize(&mut &mut guard[DISC_LEN..])
+            self.data.serialize(&mut &mut guard[DISC_LEN..])
                 .map_err(|_| ProgramError::InvalidAccountData)?;
         }
         Ok(())
@@ -149,9 +131,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> Deref for BorshAccount<T> {
     type Target = T;
-    fn deref(&self) -> &T {
-        &self.data
-    }
+    fn deref(&self) -> &T { &self.data }
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> DerefMut for BorshAccount<T> {
@@ -164,10 +144,6 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> DerefMut for 
     }
 }
 
-impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AsRef<AccountView>
-    for BorshAccount<T>
-{
-    fn as_ref(&self) -> &AccountView {
-        &self.view
-    }
+impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AsRef<AccountView> for BorshAccount<T> {
+    fn as_ref(&self) -> &AccountView { &self.view }
 }

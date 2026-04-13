@@ -1,6 +1,4 @@
 use {
-    crate::{AnchorAccount, Discriminator, Id, Owner},
-    bytemuck::{Pod, Zeroable},
     core::{
         marker::PhantomData,
         ops::{Deref, DerefMut, Index, IndexMut},
@@ -9,7 +7,9 @@ use {
         account::{AccountView, Ref, RefMut},
         address::Address,
     },
+    bytemuck::{Pod, Zeroable},
     solana_program_error::ProgramError,
+    crate::{AnchorAccount, Discriminator, Id, Owner},
 };
 
 // ---------------------------------------------------------------------------
@@ -43,9 +43,7 @@ pub trait AccountValidate {
     /// Byte offset where `Self`'s data starts in the account buffer.
     /// Default impl delegates to the `DATA_OFFSET` associated const.
     #[inline(always)]
-    fn data_offset() -> usize {
-        Self::DATA_OFFSET
-    }
+    fn data_offset() -> usize { Self::DATA_OFFSET }
 }
 
 /// Blanket impl: every `#[account]` type (Owner + Discriminator) gets standard
@@ -303,7 +301,9 @@ where
         let data_ref = self.view.try_borrow()?;
         // SAFETY: AccountView's raw pointer outlives this instruction.
         let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        self.header_ptr = unsafe { (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET) } as *mut H;
+        self.header_ptr = unsafe {
+            (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET)
+        } as *mut H;
         self.guard = Some(BorrowGuard::Immutable(guard));
         Ok(())
     }
@@ -313,7 +313,9 @@ where
         let mut view_mut = self.view;
         let data_ref = view_mut.try_borrow_mut()?;
         let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        self.header_ptr = unsafe { guard.as_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
+        self.header_ptr = unsafe {
+            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
+        } as *mut H;
         self.guard = Some(BorrowGuard::Mutable(guard));
         Ok(())
     }
@@ -348,7 +350,9 @@ where
         // SAFETY: extend lifetime — the underlying data outlives any local
         // scope within the instruction, and the Ref guard prevents aliasing.
         let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let header_ptr = unsafe { (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET) } as *mut H;
+        let header_ptr = unsafe {
+            (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET)
+        } as *mut H;
         Ok(Self {
             view,
             header_ptr,
@@ -380,7 +384,9 @@ where
         // Derive header_ptr through DerefMut (as_mut_ptr) to preserve write
         // provenance. Using as_ptr() routes through Deref → *const, losing
         // write provenance under Stacked Borrows / Tree Borrows.
-        let header_ptr = unsafe { guard.as_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
+        let header_ptr = unsafe {
+            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
+        } as *mut H;
         Ok(Self {
             view,
             header_ptr,
@@ -482,8 +488,8 @@ where
             Some(BorrowGuard::Immutable(r)) => r,
             Some(BorrowGuard::Mutable(r)) => r,
             None => panic!(
-                "Slab<H, T> accessed after release_borrow() or close(). Call \
-                 reacquire_borrow_mut() before touching the tail."
+                "Slab<H, T> accessed after release_borrow() or close(). \
+                 Call reacquire_borrow_mut() before touching the tail."
             ),
         }
     }
@@ -495,12 +501,12 @@ where
         match &mut self.guard {
             Some(BorrowGuard::Mutable(r)) => r,
             Some(BorrowGuard::Immutable(_)) => panic!(
-                "Slab<H, T> mutated through a read-only guard. Add #[account(mut)] to your \
-                 accounts struct."
+                "Slab<H, T> mutated through a read-only guard. \
+                 Add #[account(mut)] to your accounts struct."
             ),
             None => panic!(
-                "Slab<H, T> mutated after release_borrow() or close(). Call \
-                 reacquire_borrow_mut() before touching the tail."
+                "Slab<H, T> mutated after release_borrow() or close(). \
+                 Call reacquire_borrow_mut() before touching the tail."
             ),
         }
     }
@@ -519,7 +525,8 @@ where
     #[inline(always)]
     fn write_len(&mut self, new_len: u32) {
         let bytes = self.guard_bytes_mut();
-        bytes[Self::LEN_OFFSET..Self::LEN_OFFSET + 4].copy_from_slice(&new_len.to_le_bytes());
+        bytes[Self::LEN_OFFSET..Self::LEN_OFFSET + 4]
+            .copy_from_slice(&new_len.to_le_bytes());
     }
 
     /// Total account data size required to hold the header plus `capacity`
@@ -561,8 +568,7 @@ where
         // `ITEMS_OFFSET` is const-computed to be `align_of::<T>()`-aligned,
         // and Pod requires `size_of` is a multiple of `align_of`, so every
         // per-item offset is aligned. bytemuck will verify this at runtime.
-        let items_bytes =
-            &bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
+        let items_bytes = &bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
         bytemuck::cast_slice(items_bytes)
     }
 
@@ -571,8 +577,7 @@ where
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         let len = self.len();
         let bytes = self.guard_bytes_mut();
-        let items_bytes =
-            &mut bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
+        let items_bytes = &mut bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
         bytemuck::cast_slice_mut(items_bytes)
     }
 
@@ -715,7 +720,9 @@ where
         let data_ref = view_mut.try_borrow_mut()?;
         // SAFETY: same lifetime-transmute pattern as `build_mutable`.
         let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        self.header_ptr = unsafe { guard.as_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
+        self.header_ptr = unsafe {
+            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
+        } as *mut H;
         self.guard = Some(BorrowGuard::Mutable(guard));
         // Clamp len down if we shrunk below the current item count.
         let new_cap = self.capacity();
@@ -773,7 +780,10 @@ where
     /// Under `guardrails`, `build_mutable` still does a length check so the
     /// cached `header_ptr` is valid. Under `guardrails = off`, drops it too.
     #[inline(always)]
-    fn load_mut_after_init(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
+    fn load_mut_after_init(
+        view: AccountView,
+        _program_id: &Address,
+    ) -> Result<Self, ProgramError> {
         // Guardrail: catches "forgot `#[account(mut)]`" early with a clear
         // error. Under `default-features = false` the Solana runtime still
         // rejects the tx when we try to write, just with a less specific
@@ -817,8 +827,8 @@ where
         #[cfg(feature = "guardrails")]
         if self.guard.is_none() {
             panic!(
-                "Slab<H, T> dereferenced after release_borrow() or close(). Call \
-                 reacquire_borrow_mut() before accessing fields again."
+                "Slab<H, T> dereferenced after release_borrow() or close(). \
+                 Call reacquire_borrow_mut() before accessing fields again."
             );
         }
         // SAFETY: while `guard` is `Some`, pinocchio's refcount holds the
@@ -839,12 +849,12 @@ where
         // release builds.
         match &self.guard {
             None => panic!(
-                "Slab<H, T> mutably dereferenced after release_borrow() or close(). Call \
-                 reacquire_borrow_mut() before accessing fields again."
+                "Slab<H, T> mutably dereferenced after release_borrow() or close(). \
+                 Call reacquire_borrow_mut() before accessing fields again."
             ),
             Some(BorrowGuard::Immutable(_)) => panic!(
-                "Slab<H, T> mutably dereferenced but loaded read-only. Add #[account(mut)] to \
-                 your accounts struct."
+                "Slab<H, T> mutably dereferenced but loaded read-only. \
+                 Add #[account(mut)] to your accounts struct."
             ),
             Some(BorrowGuard::Mutable(_)) => {}
         }

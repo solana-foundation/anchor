@@ -3,7 +3,7 @@
 # `<family>_<framework>` naming convention (so the compiled `.so`
 # lands at `target/deploy/vault_quasar.so` which the harness
 # expects). Everything under src/ is a byte-identical verbatim
-# copy from ~/git/quasar/examples/vault/src/.
+# copy from the quasar vault example source.
 name = "vault-quasar"
 version = "0.1.0"
 edition = "2021"

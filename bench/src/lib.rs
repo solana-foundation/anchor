@@ -180,7 +180,7 @@ pub const SUITES: &[ProgramSuite] = &[
     // 2-way quasar-vault benchmark: a minimal SOL vault with deposit
     // (system::transfer CPI) and withdraw (direct lamport arithmetic).
     // The quasar variant is copied verbatim from
-    // `~/git/quasar/examples/vault`; the v2 variant is a shape-matched
+    // `the quasar vault example`; the v2 variant is a shape-matched
     // port. Only these two variants for now — v1 / pinocchio / steel
     // can be added later if useful for direct comparison.
     ProgramSuite {

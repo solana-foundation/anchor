@@ -1,7 +1,7 @@
 //! End-to-end benchmark test for the vault family (2 framework variants).
 //!
 //! The quasar variant is an **exact copy** of
-//! `~/git/quasar/examples/vault/src/` so the comparison measures the
+//! `the quasar vault example source` so the comparison measures the
 //! hand-tuned quasar-lang implementation; the v2 variant is a shape-
 //! matched port using anchor-lang-v2. Both expose two instructions:
 //! `deposit` (SOL via system::Transfer CPI) and `withdraw` (direct

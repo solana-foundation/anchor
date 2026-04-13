@@ -1,4 +1,5 @@
-use {crate::Discriminator, alloc::vec::Vec};
+use alloc::vec::Vec;
+use crate::Discriminator;
 
 /// Trait for event structs. Implemented by the `#[event]` attribute macro.
 pub trait Event: Discriminator {
@@ -28,8 +29,12 @@ pub trait Event: Discriminator {
 /// Off-chain (tests / non-Solana), this is a no-op.
 pub fn sol_log_data(data: &[&[u8]]) {
     #[cfg(target_os = "solana")]
+    // SAFETY: data is a valid slice-of-slices; the syscall reads but does not write.
     unsafe {
-        pinocchio::syscalls::sol_log_data(data as *const _ as *const u8, data.len() as u64)
+        pinocchio::syscalls::sol_log_data(
+            data as *const _ as *const u8,
+            data.len() as u64,
+        )
     };
 
     #[cfg(not(target_os = "solana"))]

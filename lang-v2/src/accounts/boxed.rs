@@ -1,10 +1,13 @@
 extern crate alloc;
 
 use {
-    crate::AnchorAccount,
     alloc::boxed::Box,
-    pinocchio::{account::AccountView, address::Address},
+    pinocchio::{
+        account::AccountView,
+        address::Address,
+    },
     solana_program_error::ProgramError,
+    crate::AnchorAccount,
 };
 
 impl<T: AnchorAccount> AnchorAccount for Box<T> {

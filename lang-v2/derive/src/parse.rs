@@ -1,12 +1,6 @@
-use {
-    proc_macro2::TokenStream as TokenStream2,
-    quote::quote,
-    syn::{
-        ext::IdentExt,
-        parse::{Parse, ParseStream},
-        Attribute, Expr, Ident, Token, Type,
-    },
-};
+use syn::{ext::IdentExt, parse::{Parse, ParseStream}, Attribute, Expr, Ident, Token, Type};
+use quote::quote;
+use proc_macro2::TokenStream as TokenStream2;
 
 /// A namespaced constraint like `token::mint = expr`.
 pub struct NamespacedConstraint {
@@ -30,7 +24,6 @@ pub struct AccountAttrs {
     pub is_init_if_needed: bool,
     pub is_zeroed: bool,
     pub is_executable: bool,
-    pub is_dup: bool,
     /// None = not specified, Some(true) = enforce, Some(false) = skip
     pub rent_exempt: Option<bool>,
     /// None = no bump attr, Some(None) = `bump` without value, Some(Some(expr)) = `bump = expr`
@@ -81,7 +74,6 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         realloc_payer: None,
         realloc_zero: false,
         namespaced: Vec::new(),
-        is_dup: false,
     };
 
     for attr in attrs {
@@ -196,10 +188,6 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             result.constraint_error = Some(input.parse()?);
                         }
                     }
-                    "dup" => {
-                        result.is_dup = true;
-                        result.is_mut = true;
-                    }
                     _ => {
                         // Check for namespaced constraint: namespace::key = value
                         if input.peek(Token![::]) {
@@ -209,9 +197,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             if ident == "seeds" && key_ident == "program" {
                                 input.parse::<Token![=]>()?;
                                 result.seeds_program = Some(input.parse()?);
-                                if !input.is_empty() {
-                                    input.parse::<Token![,]>()?;
-                                }
+                                if !input.is_empty() { input.parse::<Token![,]>()?; }
                                 continue;
                             }
                             input.parse::<Token![=]>()?;
@@ -237,7 +223,8 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                                 value,
                                 is_field_ref,
                             });
-                        } else {
+                        }
+                        else {
                             // No `::` follows — not a namespaced constraint.
                             // Reject to catch typos like `singler` instead of `signer`.
                             return Err(syn::Error::new(
@@ -424,7 +411,8 @@ fn emit_seeds_check(
     if using_our_program_id {
         if let Some(literal_seeds) = crate::pda::seeds_as_byte_literals(seeds) {
             if let Some(program_id) = crate::pda::discover_program_id() {
-                let seed_slices: Vec<&[u8]> = literal_seeds.iter().map(|s| s.as_slice()).collect();
+                let seed_slices: Vec<&[u8]> =
+                    literal_seeds.iter().map(|s| s.as_slice()).collect();
                 if let Some((bump, pda_bytes)) =
                     crate::pda::precompute_pda(&seed_slices, &program_id)
                 {
@@ -432,8 +420,10 @@ fn emit_seeds_check(
                     // bumps + PDAs from colliding, even when two
                     // constraints share an outer scope.
                     let upper = field_name.to_string().to_uppercase();
-                    let bump_const = Ident::new(&format!("__{}_BUMP", upper), field_name.span());
-                    let pda_const = Ident::new(&format!("__{}_PDA", upper), field_name.span());
+                    let bump_const =
+                        Ident::new(&format!("__{}_BUMP", upper), field_name.span());
+                    let pda_const =
+                        Ident::new(&format!("__{}_PDA", upper), field_name.span());
                     // Emit the 32-byte PDA as an `Address` const.
                     let pda_bytes_tokens = pda_bytes.iter().map(|b| quote! { #b });
                     let check = quote! {
@@ -522,42 +512,32 @@ fn emit_init_body(
 ) -> TokenStream2 {
     let payer = attrs.payer.as_ref().expect("init requires payer");
     let space = attrs.space.as_ref().expect("init requires space");
-    let inner_ty =
-        extract_inner_type_for_init(field_ty).expect("init requires Account<T> or BorshAccount<T>");
+    let inner_ty = extract_inner_type_for_init(field_ty)
+        .expect("init requires Account<T> or BorshAccount<T>");
 
-    let param_assignments: Vec<_> = attrs
-        .namespaced
-        .iter()
-        .map(|nc| {
-            let key = Ident::new(&nc.raw_key, proc_macro2::Span::call_site());
-            let value = &nc.value;
-            if nc.is_field_ref {
-                quote! { __p.#key = Some(#value.account()); }
-            } else {
-                quote! { __p.#key = Some(#value); }
-            }
-        })
-        .collect();
+    let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
+        let key = Ident::new(&nc.raw_key, proc_macro2::Span::call_site());
+        let value = &nc.value;
+        if nc.is_field_ref {
+            quote! { __p.#key = Some(#value.account()); }
+        } else {
+            quote! { __p.#key = Some(#value); }
+        }
+    }).collect();
 
     let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-        let seed_exprs: Vec<_> = seeds
-            .iter()
-            .map(|s| rewrite_seed_expr(s, field_names))
-            .collect();
+        let seed_exprs: Vec<_> = seeds.iter()
+            .map(|s| rewrite_seed_expr(s, field_names)).collect();
         let using_our_program_id = attrs.seeds_program.is_none();
         let pda_program = match &attrs.seeds_program {
             Some(prog) => quote! { &#prog },
             None => quote! { __program_id },
         };
         emit_seeds_check(
-            seeds,
-            &seed_exprs,
+            seeds, &seed_exprs,
             &pda_program,
             &quote! { __target.address() },
-            field_name,
-            None,
-            true,
-            using_our_program_id,
+            field_name, None, true, using_our_program_id,
         )
     } else {
         quote! { let __seeds: Option<&[&[u8]]> = None; }
@@ -579,8 +559,7 @@ fn emit_init_body(
     }
 }
 
-pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) -> AccountField {
-    let field_index_usize = field_index as usize;
+pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usize) -> AccountField {
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
     let attrs = parse_account_attrs(&field.attrs);
@@ -602,7 +581,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
             let mut #field_name = {
-                let __target = __views[#field_index_usize];
+                let __target = __views[#field_index];
                 #init_body
             };
         }
@@ -610,7 +589,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
             let mut #field_name = {
-                let __target = __views[#field_index_usize];
+                let __target = __views[#field_index];
                 if __target.data_len() > 0 && !__target.owned_by(&anchor_lang_v2::programs::System::id()) {
                     <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)?
                 } else {
@@ -625,7 +604,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
             .expect("#[account(zeroed)] requires Account<T> or BorshAccount<T>");
         quote! {
             let mut #field_name = {
-                let __target = __views[#field_index_usize];
+                let __target = __views[#field_index];
                 {
                     let __data = __target.try_borrow()?;
                     let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
@@ -645,11 +624,11 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         }
     } else if attrs.is_mut {
         quote! {
-            let mut #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__views[#field_index_usize], __program_id)?;
+            let mut #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__views[#field_index], __program_id)?;
         }
     } else {
         quote! {
-            let #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::load(__views[#field_index_usize], __program_id)?;
+            let #field_name = <#field_ty as anchor_lang_v2::AnchorAccount>::load(__views[#field_index], __program_id)?;
         }
     };
 
@@ -699,10 +678,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     // skipped to avoid a redundant find loop.
     if !attrs.is_init {
         if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs: Vec<_> = seeds
-                .iter()
-                .map(|s| rewrite_seed_expr(s, field_names))
-                .collect();
+            let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
             // seeds::program = expr overrides which program_id to derive PDA from
             let using_our_program_id = attrs.seeds_program.is_none();
             let pda_program = match &attrs.seeds_program {
@@ -823,10 +799,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
 
     // realloc
     if let Some(ref new_space) = attrs.realloc {
-        let realloc_payer = attrs
-            .realloc_payer
-            .as_ref()
-            .expect("realloc requires realloc_payer");
+        let realloc_payer = attrs.realloc_payer.as_ref().expect("realloc requires realloc_payer");
         let zero_fill = attrs.realloc_zero;
         constraints.push(quote! {
             {
@@ -875,25 +848,14 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         None
     };
 
-    if attrs.is_mut && !attrs.is_dup {
-        constraints.push(quote! {
-            if __duplicates.get(#field_index) {
-                return Err(anchor_lang_v2::ErrorCode::ConstraintDuplicateMutableAccount.into());
-            }
-        });
-    }
-
     // For Optional<T> fields, wrap all constraints and exit in is_some()
     // guards. When the account is None (client passed the program ID
     // sentinel), code that calls .account() would panic. Skipping is
     // correct: a None optional has no account to validate or close.
     let (constraints, exit) = if is_optional {
-        let constraints = constraints
-            .into_iter()
-            .map(|c| {
-                quote! { if #field_name.is_some() { #c } }
-            })
-            .collect();
+        let constraints = constraints.into_iter().map(|c| {
+            quote! { if #field_name.is_some() { #c } }
+        }).collect();
         let exit = exit.map(|e| {
             quote! { if self.#field_name.is_some() { #e } }
         });
@@ -923,24 +885,14 @@ pub fn extract_program_address(ty: &Type) -> Option<String> {
         if let Some(seg) = tp.path.segments.last() {
             if seg.ident == "Program" {
                 if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-                    if let Some(syn::GenericArgument::Type(Type::Path(inner_tp))) =
-                        args.args.first()
-                    {
+                    if let Some(syn::GenericArgument::Type(Type::Path(inner_tp))) = args.args.first() {
                         if let Some(inner_seg) = inner_tp.path.segments.last() {
                             return match inner_seg.ident.to_string().as_str() {
                                 "System" => Some("11111111111111111111111111111111".to_string()),
-                                "Token" => {
-                                    Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string())
-                                }
-                                "Token2022" => {
-                                    Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".to_string())
-                                }
-                                "AssociatedToken" => {
-                                    Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".to_string())
-                                }
-                                "Memo" => {
-                                    Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr".to_string())
-                                }
+                                "Token" => Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string()),
+                                "Token2022" => Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".to_string()),
+                                "AssociatedToken" => Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".to_string()),
+                                "Memo" => Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr".to_string()),
                                 _ => None,
                             };
                         }
