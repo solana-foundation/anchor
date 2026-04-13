@@ -832,7 +832,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
         })
     } else if attrs.is_mut {
         Some(quote! {
-            anchor_lang_v2::AnchorAccount::exit(&mut self.#field_name)?;
+            self.#field_name.exit()?;
         })
     } else {
         None
