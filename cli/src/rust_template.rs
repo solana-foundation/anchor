@@ -445,7 +445,8 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
   "license": "{license}",
   "scripts": {{
     "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check",
+    "tsx": "tsx"
   }},
   "dependencies": {{
     "@anchor-lang/core": "^{VERSION}"
@@ -456,6 +457,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "jest": "^29.0.3",
     "prettier": "^2.6.2",
     "ts-jest": "^29.0.2",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.3"
   }}
 }}
@@ -467,7 +469,8 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
   "license": "{license}",
   "scripts": {{
     "lint:fix": "prettier */*.js \"*/**/*{{.js,.ts}}\" -w",
-    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
+    "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check",
+    "tsx": "tsx"
   }},
   "dependencies": {{
     "@anchor-lang/core": "^{VERSION}"
@@ -479,6 +482,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.0.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.3",
     "prettier": "^2.6.2"
   }}
