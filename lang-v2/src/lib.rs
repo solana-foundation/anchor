@@ -24,7 +24,7 @@ pub use pinocchio::address::Address;
 /// Chunked 4×u64 equality compare for `Address`. Preferred over `==`
 /// on `&Address`. See <https://github.com/anza-xyz/solana-sdk/issues/345>.
 pub use pinocchio::address::address_eq;
-pub use accounts::AccountInitialize;
+pub use accounts::{AccountInitialize, SlabInit};
 pub use context::{Context, Bumps};
 pub use cursor::AccountCursor;
 pub use dispatch::{TryAccounts, run_handler, parse_instruction};

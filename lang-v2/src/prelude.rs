@@ -7,7 +7,7 @@ pub use crate::{
     Owner, Id, Discriminator,
     // Account types
     accounts::{
-        Account, AccountValidate, BorshAccount, Optional, Program, Signer,
+        Account, SlabValidate, BorshAccount, Optional, Program, Signer,
         SystemAccount, UncheckedAccount, Sysvar, SysvarId,
     },
     // Programs

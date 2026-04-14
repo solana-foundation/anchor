@@ -6,6 +6,7 @@ mod boxed;
 mod option;
 mod borsh_account;
 mod slab;
+mod slab_hooks;
 mod sysvar;
 
 pub use unchecked_account::UncheckedAccount;
@@ -14,7 +15,9 @@ pub use system_account::SystemAccount;
 pub use program::Program;
 pub use option::Optional;
 pub use borsh_account::BorshAccount;
-pub use slab::{Slab, HeaderOnly, AccountValidate, AccountInitialize};
+pub use slab::{Slab, HeaderOnly};
+pub use slab_hooks::{SlabInit, SlabValidate};
+pub use crate::AccountInitialize;
 pub use sysvar::{Sysvar, SysvarId};
 
 /// Anchor account with a typed header and no trailing items.

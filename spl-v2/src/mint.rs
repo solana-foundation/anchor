@@ -1,4 +1,4 @@
-//! SPL Token mint type with `AccountValidate` impl for use with `Account<T>`.
+//! SPL Token mint type with `SlabValidate` impl for use with `Account<T>`.
 //!
 //! Layout mirrors `pinocchio-token` — all fields are alignment-1 to support
 //! zerocopy mapping from the account data buffer.
@@ -6,7 +6,7 @@
 use {
     crate::token::create_token_account,
     anchor_lang_v2::{
-        accounts::{Account, AccountInitialize, AccountValidate},
+        accounts::{Account, SlabValidate, SlabInit},
         programs::Token,
         Constrain, Id,
     },
@@ -38,7 +38,7 @@ pub struct Mint {
 unsafe impl Pod for Mint {}
 unsafe impl Zeroable for Mint {}
 
-impl AccountValidate for Mint {
+impl SlabValidate for Mint {
     // External types start at offset 0 — no Anchor discriminator.
     const DATA_OFFSET: usize = 0;
 
@@ -63,7 +63,7 @@ pub struct MintInitParams<'a> {
     pub freeze_authority: Option<&'a AccountView>,
 }
 
-impl AccountInitialize for Mint {
+impl SlabInit for Mint {
     type Params<'a> = MintInitParams<'a>;
 
     #[cold]

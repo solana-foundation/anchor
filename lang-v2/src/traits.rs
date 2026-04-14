@@ -110,6 +110,27 @@ pub trait Discriminator {
     const DISCRIMINATOR: &'static [u8];
 }
 
+/// Wrapper-level init: creates the on-chain account *and* returns a loaded
+/// `Self`. Implementers can capture init-time context (e.g. cache a payer
+/// for later tail mutations) between the byte-write and the load.
+///
+/// `Slab<H, T>` (= `Account<H>` / `BorshAccount<H>`) gets this automatically
+/// for any `H: SlabInit` via a forward impl in `accounts/slab.rs`.
+/// Self-contained wrappers (custom `AnchorAccount` types that aren't
+/// `Slab`-backed) implement it directly.
+pub trait AccountInitialize: Sized {
+    type Params<'a>: Default;
+
+    fn create_and_initialize<'a>(
+        payer: &AccountView,
+        account: &AccountView,
+        space: usize,
+        program_id: &Address,
+        params: &Self::Params<'a>,
+        signer_seeds: Option<&[&[u8]]>,
+    ) -> Result<Self, ProgramError>;
+}
+
 /// A constraint check on an account. Each account type opts in to specific
 /// constraint keys by implementing this trait for the corresponding marker.
 ///

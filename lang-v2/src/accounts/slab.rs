@@ -9,71 +9,16 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program_error::ProgramError,
-    crate::{AnchorAccount, Discriminator, Id, Owner},
+    crate::{AccountInitialize, AnchorAccount, Discriminator, Id},
+    super::slab_hooks::{SlabInit, SlabValidate},
 };
 
-// ---------------------------------------------------------------------------
-// AccountValidate / AccountInitialize traits (moved here from the old
-// account.rs). External types like SPL TokenAccount / Mint implement
-// these directly; every `#[account]` struct gets the default impls via the
-// blanket impls below.
-// ---------------------------------------------------------------------------
-
-/// Controls how `Slab<H, T>` (and therefore the `Account<T>` alias)
-/// validates and maps account data.
-///
-/// Types marked with `#[account]` get this automatically via the blanket impl
-/// over `Owner + Discriminator`. External types (e.g. SPL `TokenAccount`)
-/// implement this directly with custom validation (exact length checks, no
-/// discriminator).
-pub trait AccountValidate {
-    /// Byte offset where `Self`'s data starts in the account buffer.
-    /// - Anchor native types (`#[account]`): 8 (discriminator length)
-    /// - External types (SPL `Mint` / `TokenAccount`): 0
-    ///
-    /// Exposed as a `const` so `Slab`'s layout constants (`HEADER_OFFSET`,
-    /// `ITEMS_OFFSET`, `space_for`) can be computed at const-eval time per
-    /// monomorphization.
-    const DATA_OFFSET: usize;
-
-    /// Validate the raw account data before mapping.
-    /// `program_id` is available for owner checks via `Owner::owner(program_id)`.
-    fn validate(view: &AccountView, data: &[u8], program_id: &Address) -> Result<(), ProgramError>;
-
-    /// Byte offset where `Self`'s data starts in the account buffer.
-    /// Default impl delegates to the `DATA_OFFSET` associated const.
-    #[inline(always)]
-    fn data_offset() -> usize { Self::DATA_OFFSET }
-}
-
-/// Blanket impl: every `#[account]` type (Owner + Discriminator) gets standard
-/// Anchor validation — owner check via `Owner::owner(program_id)`.
-impl<T: Owner + Discriminator> AccountValidate for T {
-    const DATA_OFFSET: usize = 8;
-
-    #[inline(always)]
-    fn validate(view: &AccountView, data: &[u8], program_id: &Address) -> Result<(), ProgramError> {
-        // Hot path: a single owner check. The "uninitialized placeholder"
-        // disambiguation lives in `cold_owner_error` — placeholder accounts
-        // (lamports=0, owner=system) always fail this owner check too, since
-        // `T::owner(program_id)` is the user's program, never system.
-        if !view.owned_by(&T::owner(program_id)) {
-            return Err(cold_owner_error(view));
-        }
-        let disc = T::DISCRIMINATOR;
-        let min_len = disc.len() + core::mem::size_of::<T>();
-        if data.len() < min_len {
-            return Err(ProgramError::AccountDataTooSmall);
-        }
-        if &data[..disc.len()] != disc {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(())
-    }
-}
+// SlabValidate / SlabInit (bytes-level hooks Slab invokes on `H`) live in
+// `accounts::view_wrapper_traits`. The forwards below tie them + the
+// wrapper-level `AccountInitialize` together.
 
 /// Disambiguation for failed owner checks: uninitialized placeholder vs.
-/// genuine wrong owner.
+/// genuine wrong owner. Used by `SlabValidate`'s blanket impl (via `super::`).
 #[inline(always)]
 pub(super) fn cold_owner_error(view: &AccountView) -> ProgramError {
     if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
@@ -90,34 +35,14 @@ pub(super) fn cold_not_writable() -> ProgramError {
     ProgramError::InvalidAccountData
 }
 
-/// Defines how to create and initialize an account type via CPI.
-///
-/// The `Params` struct acts as a compile-time hashmap: its fields are the valid
-/// init parameter keys. The macro constructs it from namespaced constraints
-/// (`token::mint = mint` → `params.mint = Some(mint.account())`).
-///
-/// Blanket impl for `Owner + Discriminator` handles Anchor program accounts
-/// (create account + write discriminator). External types (TokenAccount, Mint)
-/// implement this directly with custom CPI logic.
-pub trait AccountInitialize {
-    type Params<'a>: Default;
-
-    fn create_and_initialize<'a>(
-        payer: &AccountView,
-        account: &AccountView,
-        space: usize,
-        program_id: &Address,
-        params: &Self::Params<'a>,
-        signer_seeds: Option<&[&[u8]]>,
-    ) -> Result<(), ProgramError>;
-}
-
-/// Blanket impl: all Anchor program accounts (Owner + Discriminator) get default
-/// init behavior — create_account + write discriminator. The remaining data is
-/// zeroed by create_account, so `Slab::len` starts at 0 and items are `T::zeroed()`
-/// without needing an explicit initialisation pass.
-impl<T: Owner + Discriminator> AccountInitialize for T {
-    type Params<'a> = ();
+/// `Account<H>` / `BorshAccount<H>` get `AccountInitialize` for free by
+/// running `H::SlabInit::create_and_initialize(...)` and then loading.
+impl<H, T> AccountInitialize for Slab<H, T>
+where
+    H: SlabInit + Pod + Zeroable + SlabValidate,
+    Self: AnchorAccount,
+{
+    type Params<'a> = H::Params<'a>;
 
     #[inline(always)]
     fn create_and_initialize<'a>(
@@ -125,28 +50,23 @@ impl<T: Owner + Discriminator> AccountInitialize for T {
         account: &AccountView,
         space: usize,
         program_id: &Address,
-        _params: &(),
+        params: &Self::Params<'a>,
         signer_seeds: Option<&[&[u8]]>,
-    ) -> Result<(), ProgramError> {
-        let disc: &[u8; 8] = T::DISCRIMINATOR
-            .try_into()
-            .map_err(|_| ProgramError::InvalidAccountData)?;
-        match signer_seeds {
-            Some(seeds) => crate::create_account_signed(payer, account, space, program_id, seeds)?,
-            None => crate::create_account(payer, account, space, program_id)?,
-        }
-        // Panic-free disc write: `first_chunk_mut::<8>` returns `Option`, so
-        // Single store on the happy path and a plain
-        // ProgramError return on failure — no `slice_end_index_len_fail` and
-        // no core::fmt panic machinery pulled into the binary.
-        let mut account_view = *account;
-        let data = unsafe { account_view.borrow_unchecked_mut() };
-        match data.first_chunk_mut::<8>() {
-            Some(dst) => *dst = *disc,
-            None => return Err(ProgramError::AccountDataTooSmall),
-        }
-        Ok(())
+    ) -> Result<Self, ProgramError> {
+        H::create_and_initialize(payer, account, space, program_id, params, signer_seeds)?;
+        <Self as AnchorAccount>::load_mut_after_init(*account, program_id)
     }
+}
+
+/// Forward `Discriminator` from a `Slab<H, _>` to its header type. Lets the
+/// `#[account(zeroed)]` derive codegen look up the disc via the field type
+/// directly (e.g. `<Account<Counter> as Discriminator>::DISCRIMINATOR`)
+/// instead of extracting an inner type by string-matching on "Account".
+impl<H, T> Discriminator for Slab<H, T>
+where
+    H: Discriminator + Pod + Zeroable + SlabValidate,
+{
+    const DISCRIMINATOR: &'static [u8] = H::DISCRIMINATOR;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +125,7 @@ impl<T: Owner + Discriminator> AccountInitialize for T {
 /// - `DerefMut` on a read-only-loaded account (missing `#[account(mut)]`)
 pub struct Slab<H, T = HeaderOnly>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
 {
     view: AccountView,
     /// Cached pointer to the header (at `HEADER_OFFSET`). Valid while `guard`
@@ -247,7 +167,7 @@ enum BorrowGuard {
 
 impl<H, T> Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
 {
     /// Whether `T` is a non-zero-sized type. Folds to a const at
     /// monomorphization time.
@@ -469,7 +389,7 @@ where
 
 impl<H, T> Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
     T: Pod,
 {
     // -----------------------------------------------------------------------
@@ -740,7 +660,7 @@ where
 
 impl<H, T> AnchorAccount for Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
 {
     type Data = H;
     const MIN_DATA_LEN: usize = 8;
@@ -819,7 +739,7 @@ where
 
 impl<H, T> Deref for Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
 {
     type Target = H;
 
@@ -840,7 +760,7 @@ where
 
 impl<H, T> DerefMut for Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
 {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut H {
@@ -870,7 +790,7 @@ where
 // `Slab<H, T>` where `T` is a real pod type, not `HeaderOnly`.
 impl<H, T> Index<usize> for Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
     T: Pod,
 {
     type Output = T;
@@ -883,7 +803,7 @@ where
 
 impl<H, T> IndexMut<usize> for Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
     T: Pod,
 {
     #[inline(always)]
@@ -894,7 +814,7 @@ where
 
 impl<H, T> AsRef<AccountView> for Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
 {
     #[inline(always)]
     fn as_ref(&self) -> &AccountView {
@@ -904,7 +824,7 @@ where
 
 impl<H, T> AsRef<Address> for Slab<H, T>
 where
-    H: Pod + Zeroable + AccountValidate,
+    H: Pod + Zeroable + SlabValidate,
 {
     #[inline(always)]
     fn as_ref(&self) -> &Address {

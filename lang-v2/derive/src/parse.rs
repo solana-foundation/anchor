@@ -283,25 +283,12 @@ pub fn extract_inner_data_type(ty: &Type) -> Option<proc_macro2::TokenStream> {
     None
 }
 
-/// Extract the inner `T` from `BorshAccount<T>` or `Account<T>` for init codegen.
-///
-/// Unlike `extract_inner_data_type`, this does NOT skip external types like
-/// TokenAccount and Mint, since init needs the type for `AccountInitialize` calls.
-pub fn extract_inner_type_for_init(ty: &Type) -> Option<proc_macro2::TokenStream> {
-    use quote::quote;
-    if let Type::Path(tp) = ty {
-        if let Some(seg) = tp.path.segments.last() {
-            let name = seg.ident.to_string();
-            if name == "BorshAccount" || name == "Account" {
-                if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-                    if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
-                        return Some(quote! { #inner });
-                    }
-                }
-            }
-        }
-    }
-    None
+/// Namespaced constraints whose impls are runtime-only and should NOT be
+/// threaded as init-time `Params` fields. External crates add their own
+/// runtime-only namespaces here (e.g. `dynamic_account` from
+/// `anchor-dynamic`).
+pub fn is_runtime_only_constraint_ns(ns: &str) -> bool {
+    matches!(ns, "dynamic_account")
 }
 
 pub fn is_nested_type(ty: &Type) -> bool {
@@ -502,18 +489,23 @@ fn emit_init_body(
 ) -> TokenStream2 {
     let payer = attrs.payer.as_ref().expect("init requires payer");
     let space = attrs.space.as_ref().expect("init requires space");
-    let inner_ty = extract_inner_type_for_init(field_ty)
-        .expect("init requires Account<T> or BorshAccount<T>");
 
-    let param_assignments: Vec<_> = attrs.namespaced.iter().map(|nc| {
-        let key = Ident::new(&nc.raw_key, proc_macro2::Span::call_site());
-        let value = &nc.value;
-        if nc.is_field_ref {
-            quote! { __p.#key = Some(#value.account()); }
-        } else {
-            quote! { __p.#key = Some(#value); }
-        }
-    }).collect();
+    // Init params come from namespaced constraints that name init-time
+    // inputs (e.g. `mint::Authority = x`). Runtime-only constraints —
+    // currently any constraint whose Params type has no matching field —
+    // would fail to typecheck if threaded here. We filter out the ones
+    // we know are runtime-only before collecting param assignments.
+    let param_assignments: Vec<_> = attrs.namespaced.iter()
+        .filter(|nc| !is_runtime_only_constraint_ns(&nc.namespace))
+        .map(|nc| {
+            let key = Ident::new(&nc.raw_key, proc_macro2::Span::call_site());
+            let value = &nc.value;
+            if nc.is_field_ref {
+                quote! { __p.#key = Some(#value.account()); }
+            } else {
+                quote! { __p.#key = Some(#value); }
+            }
+        }).collect();
 
     let seeds_arg = if let Some(ref seeds) = attrs.seeds {
         let seed_exprs: Vec<_> = seeds.iter()
@@ -537,15 +529,14 @@ fn emit_init_body(
         let __payer = #payer.account();
         #seeds_arg
         let __init_params = {
-            type __P<'__a> = <#inner_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
+            type __P<'__a> = <#field_ty as anchor_lang_v2::AccountInitialize>::Params<'__a>;
             let mut __p = <__P as Default>::default();
             #(#param_assignments)*
             __p
         };
-        <#inner_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
+        <#field_ty as anchor_lang_v2::AccountInitialize>::create_and_initialize(
             __payer, &__target, #space, __program_id, &__init_params, __seeds,
-        )?;
-        anchor_lang_v2::AnchorAccount::load_mut_after_init(__target, __program_id)?
+        )?
     }
 }
 
@@ -591,25 +582,21 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
             };
         }
     } else if attrs.is_zeroed {
-        // zeroed: account exists but discriminator must be all zeros. Load mutably,
-        // check disc is zero, then write the real discriminator.
-        let inner_ty = extract_inner_type_for_init(field_ty)
-            .expect("#[account(zeroed)] requires Account<T> or BorshAccount<T>");
+        // zeroed: account exists but discriminator must be all zeros. Verify,
+        // stamp the real discriminator, then load mutably.
         quote! {
             let mut #field_name: #field_ty = {
                 let __target = __views[#field_index];
+                let __disc = <#field_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
                 {
                     let __data = __target.try_borrow()?;
-                    let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
                     if __data.len() < __disc.len() || __data[..__disc.len()].iter().any(|b| *b != 0) {
                         return Err(anchor_lang_v2::ErrorCode::ConstraintZero.into());
                     }
                 }
-                // Write discriminator then load
                 unsafe {
                     let mut __view = __target;
                     let __data = __view.borrow_unchecked_mut();
-                    let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
                     __data[..__disc.len()].copy_from_slice(__disc);
                 }
                 anchor_lang_v2::AnchorAccount::load_mut(__target, __program_id)?
@@ -768,27 +755,33 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
         });
     }
 
-    // namespaced constraints (skip for init/init_if_needed)
-    if !attrs.is_init && !attrs.is_init_if_needed {
-        for nc in &attrs.namespaced {
-            let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
-            let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
-            let value = &nc.value;
-            // BYOC: marker path resolves via user's `use` imports. Field
-            // refs go through `AsRef::as_ref` with V inferred from the
-            // Constrain impl (wrappers impl both `AsRef<Address>` and
-            // `AsRef<AccountView>`). Literals pass through as `&value`.
-            let expected = if nc.is_field_ref {
-                quote! { AsRef::as_ref(&#value) }
-            } else {
-                quote! { &#value }
-            };
-            constraints.push(quote! {
-                anchor_lang_v2::Constrain::<#ns::#key, _>::constrain(
-                    &mut #field_name, #expected,
-                )?;
-            });
+    // Namespaced constraints: usually skipped on init/init_if_needed
+    // because those constraints are instead threaded into
+    // `AccountInitialize::Params` at init time. Runtime-only namespaces
+    // (see `is_runtime_only_constraint_ns`) still need the `Constrain`
+    // call on init paths — they aren't init params.
+    for nc in &attrs.namespaced {
+        let is_runtime_only = is_runtime_only_constraint_ns(&nc.namespace);
+        if (attrs.is_init || attrs.is_init_if_needed) && !is_runtime_only {
+            continue;
         }
+        let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
+        let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
+        let value = &nc.value;
+        // BYOC: marker path resolves via user's `use` imports. Field
+        // refs go through `AsRef::as_ref` with V inferred from the
+        // Constrain impl (wrappers impl both `AsRef<Address>` and
+        // `AsRef<AccountView>`). Literals pass through as `&value`.
+        let expected = if nc.is_field_ref {
+            quote! { AsRef::as_ref(&#value) }
+        } else {
+            quote! { &#value }
+        };
+        constraints.push(quote! {
+            anchor_lang_v2::Constrain::<#ns::#key, _>::constrain(
+                &mut #field_name, #expected,
+            )?;
+        });
     }
 
     // realloc
