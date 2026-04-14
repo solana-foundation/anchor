@@ -111,6 +111,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             #field
                         }
                     }
+                    #[allow(
+                        clippy::panic,
+                        reason = "invariant: ix_api expressions are Expr::Type, validated by the \
+                                  parser before codegen"
+                    )]
                     _ => panic!("Invalid instruction declaration"),
                 })
                 .collect();
@@ -176,7 +181,14 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             {}
                         }
                     } else {
-                        panic!("Invalid instruction declaration");
+                        #[allow(
+                            clippy::panic,
+                            reason = "invariant: ix_api expressions are Expr::Type, validated by \
+                                      the parser before codegen"
+                        )]
+                        {
+                            panic!("Invalid instruction declaration");
+                        }
                     }
                 })
                 .collect();

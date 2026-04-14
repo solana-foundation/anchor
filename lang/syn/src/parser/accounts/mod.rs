@@ -116,12 +116,24 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
             // ensures that a non optional `system_program` is present with non optional `init`
             .any(|f| f.ident() == "system_program" && !(required_init && f.is_optional()))
         {
+            #[allow(
+                clippy::indexing_slicing,
+                reason = "guarded by !init_fields.is_empty() above"
+            )]
             return Err(ParseError::new(
                 init_fields[0].ident.span(),
                 message("init", "system_program", required_init),
             ));
         }
 
+        #[allow(
+            clippy::indexing_slicing,
+            reason = "guarded by !init_fields.is_empty() above"
+        )]
+        #[allow(
+            clippy::unwrap_used,
+            reason = "init_fields only contains fields with init constraint set"
+        )]
         let kind = &init_fields[0].constraints.init.as_ref().unwrap().kind;
         // init token/a_token/mint needs token program.
         match kind {
@@ -140,6 +152,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                 if !fields.iter().any(|f| {
                     f.ident() == &token_program_field && !(required_init && f.is_optional())
                 }) {
+                    #[allow(
+                        clippy::indexing_slicing,
+                        reason = "guarded by !init_fields.is_empty() above"
+                    )]
                     return Err(ParseError::new(
                         init_fields[0].ident.span(),
                         message("init", &token_program_field, required_init),
@@ -153,6 +169,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
             if !fields.iter().any(|f| {
                 f.ident() == "associated_token_program" && !(required_init && f.is_optional())
             }) {
+                #[allow(
+                    clippy::indexing_slicing,
+                    reason = "guarded by !init_fields.is_empty() above"
+                )]
                 return Err(ParseError::new(
                     init_fields[0].ident.span(),
                     message("init", "associated_token_program", required_init),
@@ -162,6 +182,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 
         for (pos, field) in init_fields.iter().enumerate() {
             // Get payer for init-ed account
+            #[allow(
+                clippy::unwrap_used,
+                reason = "init_fields only contains fields with init constraint set"
+            )]
             let associated_payer_name = match field.constraints.init.clone().unwrap().payer {
                 // composite payer, check not supported
                 Expr::Field(_) => continue,
@@ -196,6 +220,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     ));
                 }
             }
+            #[allow(
+                clippy::unwrap_used,
+                reason = "init_fields only contains fields with init constraint set"
+            )]
             match &field.constraints.init.as_ref().unwrap().kind {
                 // This doesn't catch cases like account.key() or account.key.
                 // My guess is that doesn't happen often and we can revisit
@@ -217,6 +245,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                 // Make sure initialized token accounts are always declared after their corresponding mint.
                 InitKind::Mint { .. } => {
                     if init_fields.iter().enumerate().any(|(f_pos, f)| {
+                        #[allow(
+                            clippy::unwrap_used,
+                            reason = "init_fields only contains fields with init constraint set"
+                        )]
                         match &f.constraints.init.as_ref().unwrap().kind {
                             InitKind::Token { mint, .. }
                             | InitKind::AssociatedToken { mint, .. } => {
@@ -258,6 +290,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
             .iter()
             .any(|f| f.ident() == "system_program" && !(required_realloc && f.is_optional()))
         {
+            #[allow(
+                clippy::indexing_slicing,
+                reason = "guarded by !realloc_fields.is_empty() above"
+            )]
             return Err(ParseError::new(
                 realloc_fields[0].ident.span(),
                 message("realloc", "system_program", required_realloc),
@@ -266,6 +302,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 
         for field in realloc_fields {
             // Get allocator for realloc-ed account
+            #[allow(
+                clippy::unwrap_used,
+                reason = "realloc_fields only contains fields with realloc constraint set"
+            )]
             let associated_payer_name = match field.constraints.realloc.clone().unwrap().payer {
                 // composite allocator, check not supported
                 Expr::Field(_) => continue,
@@ -310,6 +350,10 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
 }
 
 pub fn parse_account_field(f: &syn::Field) -> ParseResult<AccountField> {
+    #[allow(
+        clippy::unwrap_used,
+        reason = "#[derive(Accounts)] always has named fields with idents"
+    )]
     let ident = f.ident.clone().unwrap();
     let docs = docs::parse(&f.attrs);
     let account_field = match is_field_primitive(f)? {

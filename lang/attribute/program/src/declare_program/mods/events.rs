@@ -9,6 +9,10 @@ pub fn gen_events_mod(idl: &Idl) -> proc_macro2::TokenStream {
         let name = format_ident!("{}", ev.name);
         let discriminator = gen_discriminator(&ev.discriminator);
 
+        #[allow(
+            clippy::expect_used,
+            reason = "IDL event types are guaranteed to exist in types array"
+        )]
         let ty_def = idl
             .types
             .iter()

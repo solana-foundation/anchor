@@ -81,4 +81,47 @@ describe("token extensions", () => {
       .signers([payer])
       .rpc();
   });
+
+  describe("group_pointer_update", () => {
+    let groupPointerMint = new Keypair();
+
+    it("Create mint with group pointer extension", async () => {
+      await program.methods
+        .createGroupPointerMint()
+        .accountsStrict({
+          payer: payer.publicKey,
+          authority: payer.publicKey,
+          mint: groupPointerMint.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer, groupPointerMint])
+        .rpc();
+    });
+
+    it("Update group pointer via CPI succeeds", async () => {
+      const newGroupAddress = Keypair.generate().publicKey;
+      await program.methods
+        .updateGroupPointer(newGroupAddress)
+        .accountsStrict({
+          authority: payer.publicKey,
+          mint: groupPointerMint.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer])
+        .rpc();
+    });
+
+    it("Update group pointer to None via CPI succeeds", async () => {
+      await program.methods
+        .updateGroupPointer(null)
+        .accountsStrict({
+          authority: payer.publicKey,
+          mint: groupPointerMint.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer])
+        .rpc();
+    });
+  });
 });
