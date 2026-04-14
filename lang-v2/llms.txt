@@ -1,0 +1,523 @@
+# Anchor v2: Trait-Based Account System for Solana Programs
+
+## Quick Start
+
+Anchor v2 is a minimal framework for writing Solana programs with zero dependencies besides `pinocchio`, `borsh`, and `bytemuck`. It provides safe account deserialization, constraint validation, and CPI helpers through a trait-based architecture.
+
+```rust
+use anchor_lang_v2::prelude::*;
+
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+
+#[program]
+pub mod hello {
+    pub fn create_counter(ctx: Context<CreateCounter>) -> Result<()> {
+        let counter = &mut ctx.accounts.counter;
+        counter.authority = ctx.accounts.payer.key();
+        counter.count = 0;
+        Ok(())
+    }
+
+    pub fn increment(ctx: Context<Increment>) -> Result<()> {
+        ctx.accounts.counter.count = ctx.accounts.counter.count
+            .checked_add(1)
+            .ok_or(ProgramError::ArithmeticOverflow)?;
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct CreateCounter<'info> {
+    #[account(init, payer = payer, space = 8 + 32 + 8)]
+    pub counter: Account<'info, Counter>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Increment<'info> {
+    #[account(mut, has_one = authority)]
+    pub counter: Account<'info, Counter>,
+    pub authority: Signer<'info>,
+}
+
+#[account]
+pub struct Counter {
+    pub authority: Address,
+    pub count: u64,
+}
+```
+
+## Core Concepts (Concise)
+
+**Programs:** Every `#[program]` module holds instruction handlers. Each handler takes `Context<T>` (validated accounts) plus deserialized instruction args.
+
+**Accounts Struct:** `#[derive(Accounts)]` declares accounts + constraints. Anchor validates everything before your handler runs.
+
+**Account Data:** `#[account]` generates an 8-byte discriminator prefix, `Owner` trait, and `Discriminator` trait. Layout: `[8-byte disc][Borsh data]`.
+
+**Traits:**
+- `AnchorAccount`: `load()`, `load_mut()`, `load_mut_after_init()`, `exit()`, `close()`
+- `Owner`: Which program owns the account
+- `Discriminator`: 8-byte type identifier (SHA256 hash)
+- `Constrain<C, V>`: Validates constraints (e.g., `has_one`, `seeds`)
+
+**Context:** Holds `accounts` (validated), `bumps` (PDA seeds), `program_id` (borrowed), `remaining_accounts()` (lazy-parsed).
+
+## Account Types
+
+| Type | Usage | Notes |
+|------|-------|-------|
+| `Account<T>` | **Your program's data (preferred)** | Zero-copy Pod types, interior mutability, borrow tracking. Layout: `[disc][Pod data]`. Use this for ~95% of your accounts. Lifetime is `'info` from Context. |
+| `Signer` | Validates signature | Must have `is_signer = true`. Cheap validation |
+| `Program<T>` | CPI routing | Validates executable + ID match. Generic T type-checks only |
+| `SystemAccount` | Generic system-owned | No data validation, just owner check |
+| `UncheckedAccount` | No validation | Raw `AccountView` access. Use sparingly |
+| `Optional<T>` | Optional account | Present if in account list, validated if present |
+| `Sysvar<T>` | Clock, Rent, etc | Requires account entry for address validation. `.get()` via syscall |
+| `BorshAccount<T>` | External Borsh data | Validates discriminator + owner, deserializes via Borsh on load, serializes on exit. For types that can't be Pod (Vec, String, enums). |
+
+### Why Account<T> is Preferred
+
+**Performance:**
+- **Zero-cost field access**: Cached typed pointer to data. `ctx.accounts.ledger.authority` is a single pointer dereference—no per-field overhead
+- **Zerocopy reads**: Pod types (PodU64, custom structs with `#[repr(C)]`) read directly via bytemuck. No deserialization pass. Layout: `[8-byte disc][Pod-serialized data]`
+- **Zero-cost exit**: Changes already in-place. No serialization pass (unlike BorshAccount, which serializes on every exit)
+- **No heap allocation**: No separate data copy (unlike BorshAccount)
+
+**Safety:**
+- **Pinocchio borrow tracking**: Prevents aliasing bugs. Panics on use-after-release or wrong mutability
+- **Guardrails checks**: Early `#[account(mut)]` validation before handler runs
+- **Compile-time enforcement**: Pod bound prevents unsafe types. HeaderOnly prevents `.push()` on non-Slab accounts
+
+**When to use BorshAccount instead:**
+- Type can't be Pod (contains Vec, String, enums with variant data)
+- You need format flexibility (data layout can change without on-chain migration)
+- You want decoupling between wire format and in-memory representation
+
+**When to use Slab<H, Item>:**
+- Need dynamic-length array of Items (ledger entries, event log)
+- Slab<H, Item> adds 4-byte length prefix + manages growth
+
+## Key Constraints
+
+```rust
+#[derive(Accounts)]
+pub struct Example {
+    #[account(mut)]
+    pub data: Account<Data>,                           // Writable
+
+    #[account(init, payer = payer, space = 200)]
+    pub new_data: Account<Data>,                       // Create account
+
+    #[account(has_one = authority)]
+    pub managed: Account<Managed>,                     // data.authority == authority.key()
+
+    #[account(
+        mut,
+        seeds = [b"vault", user.key().as_ref()],
+        bump,
+    )]
+    pub vault: Account<Vault>,                         // PDA: derives address, extracts bump to ctx.bumps.vault
+
+    #[account(constraint = data.count > 0)]
+    pub data: Account<Data>,                          // Custom constraint: field must be > 0
+
+    #[account(close = rent_refund)]
+    pub closeable: Account<Data>,                      // Close to rent_refund address
+}
+```
+
+## Design Patterns (from clear-msig-anchor)
+
+### 1. Pod Types for Zero-Copy Compatibility
+
+```rust
+#[account]
+pub struct Proposal {
+    pub wallet: Address,              // 32 bytes
+    pub proposal_index: PodU64,       // Always 8 bytes, 1-byte aligned
+    pub approval_bitmap: PodU16,      // Efficient vote tracking
+    pub bump: u8,
+    pub params_data: PodVec<u8, 512>, // Fixed-capacity vector
+}
+```
+
+Use `PodU16`, `PodU32`, `PodU64` instead of native Rust integers to ensure predictable byte-alignment for zerocopy.
+
+### 2. Custom Account Wrappers for Extra Validation
+
+```rust
+// Wrapper that adds extra validation logic
+pub struct ProposalAccount {
+    inner: Account<Proposal>,
+}
+
+impl AnchorAccount for ProposalAccount {
+    type Data = Proposal;
+
+    fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+        let account = Account::<Proposal>::load(view, program_id)?;
+
+        // Custom validation beyond standard discriminator/owner check
+        require!(account.proposal_index.get() < 10, ProgramError::InvalidArgument);
+
+        Ok(ProposalAccount { inner: account })
+    }
+
+    fn account(&self) -> &AccountView {
+        self.inner.account()
+    }
+}
+
+// Implement Deref for transparent field access
+impl Deref for ProposalAccount {
+    type Target = Proposal;
+    fn deref(&self) -> &Self::Target {
+        &*self.inner
+    }
+}
+
+impl DerefMut for ProposalAccount {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.inner
+    }
+}
+```
+
+### 3. Bitmap-Based State Tracking
+
+```rust
+pub struct Vote {
+    pub approval_bitmap: PodU16,      // Tracks who approved
+}
+
+impl Vote {
+    pub fn set_approval(&mut self, idx: u8) {
+        self.approval_bitmap |= PodU16::from(1u16 << idx);
+    }
+
+    pub fn has_approved(&self, idx: u8) -> bool {
+        self.approval_bitmap.get() & (1 << idx) != 0
+    }
+
+    pub fn approval_count(&self) -> u8 {
+        self.approval_bitmap.get().count_ones() as u8
+    }
+}
+```
+
+Efficient vote tracking: 16 approvers per u16.
+
+### 4. PDA Creation with Bump Storage (When Needed)
+
+```rust
+#[derive(Accounts)]
+pub struct CreateWallet {
+    #[account(init, payer = payer, space = 8 + 32 + 1)]  // disc + authority + bump
+    pub wallet: Account<Wallet>,
+    #[account(mut)]
+    pub payer: Signer,
+    pub system_program: Program<System>,
+}
+
+#[account]
+pub struct Wallet {
+    pub authority: Address,
+    pub bump: u8,  // Store only if you need to sign CPIs
+}
+
+pub fn create_wallet(ctx: Context<CreateWallet>) -> Result<()> {
+    ctx.accounts.wallet.authority = ctx.accounts.payer.key();
+    ctx.accounts.wallet.bump = ctx.bumps.wallet;  // Store for future signed CPIs
+    Ok(())
+}
+```
+
+**When to store bumps:**
+- Your program creates child PDAs or calls other programs with this PDA as signer
+- The CPI is inside a handler that can't use constraint validation (e.g., dynamic routing)
+
+**When to skip storing bumps:**
+- If you can validate the PDA via `#[account(seeds=[...], bump)]` in every instruction (the macro re-derives the bump for free)
+- If your account is already at maximum size
+
+In most cases, the `#[account(seeds=[...], bump)]` constraint re-derives the bump on each instruction, so storing it is an optimization, not a requirement.
+
+### 5. Validation Order: Security-Critical First, Then Optimize
+
+```rust
+pub fn approve(ctx: Context<Approve>, args: ApproveArgs) -> Result<()> {
+    let clock = Clock::get()?;
+
+    // 1. Security-critical: Signature verification (do this FIRST to fail on invalid signatures immediately)
+    brine_ed25519::sig_verify(
+        args.approver.as_ref(),
+        args.signature,
+        &message_bytes,
+    )?;
+
+    // 2. Membership check (medium cost)
+    let is_approver = ctx.accounts.intent.approvers.contains(&args.approver);
+    require!(is_approver, ProgramError::MissingRequiredSignature);
+
+    // 3. State check (cheap)
+    require!(!ctx.accounts.proposal.is_approved, ProgramError::InvalidArgument);
+
+    // 4. Timelock check (cheap)
+    require!(args.expiry > clock.unix_timestamp, ProgramError::InvalidArgument);
+
+    // 5. Mutation
+    ctx.accounts.proposal.set_approval(args.approver_index);
+    Ok(())
+}
+```
+
+**Note**: Don't blindly optimize to "cheapest first"—security checks (signatures, authorization) should be early. Optimize within safety constraints.
+
+### 6. Dynamic CPI Account Injection with remaining_accounts()
+
+```rust
+#[derive(Accounts)]
+pub struct Execute {
+    #[account(mut)]
+    pub authority: Signer,
+    #[account(mut, has_one = vault)]
+    pub proposal: Account<Proposal>,
+    pub vault: Account<Vault>,
+}
+
+pub fn execute(ctx: Context<Execute>) -> Result<()> {
+    let remaining = ctx.remaining_accounts();  // Lazy parse on first call
+
+    // Remaining accounts can pass arbitrary accounts (e.g., token pairs for CPI)
+    require!(remaining.len() % 2 == 0, ProgramError::InvalidArgument);  // Must be even
+
+    for chunk in remaining.chunks(2) {
+        let from = &chunk[0];
+        let to = &chunk[1];
+
+        // Validate then use for CPI...
+        require_keys_eq!(from.owner(), Token::id());
+        require_keys_eq!(to.owner(), Token::id());
+    }
+    Ok(())
+}
+```
+
+### 7. Separate Accounts Struct from Args Struct
+
+```rust
+#[derive(Accounts)]
+pub struct TransferTokens {
+    #[account(mut, has_one = authority)]
+    pub from: Account<TokenAccount>,
+    #[account(mut)]
+    pub to: Account<TokenAccount>,
+    pub authority: Signer,
+    pub token_program: Program<Token>,
+}
+
+// Instruction args separate from account struct
+pub struct TransferArgs {
+    pub amount: u64,
+    pub memo: String,
+}
+
+// Entrypoint delegates to handler
+pub fn transfer_tokens(
+    ctx: Context<TransferTokens>,
+    amount: u64,
+    memo: String,
+) -> Result<()> {
+    let args = TransferArgs { amount, memo };
+    ctx.accounts.execute(&args)?;
+    Ok(())
+}
+
+// Implementation in separate fn or impl block
+impl TransferTokens {
+    pub fn execute(&mut self, args: &TransferArgs) -> Result<()> {
+        // ...
+        Ok(())
+    }
+}
+```
+
+## Error Handling
+
+```rust
+require!(condition, ErrorCode::ConstraintMut);
+require_eq!(a, b);
+require_neq!(a, b);
+require_keys_eq!(addr1, addr2);
+require_keys_neq!(addr1, addr2);
+require_gt!(val, 0);
+require_gte!(val, 1);
+```
+
+All errors map to `ProgramError`. No custom error enums needed unless desired.
+
+## CPI Helpers
+
+```rust
+use anchor_lang_v2::prelude::*;
+
+// Simple account creation
+anchor_lang_v2::create_account(&payer, &new_account, space, &owner_program)?;
+
+// PDA-signed creation
+anchor_lang_v2::create_account_signed(
+    &payer,
+    &new_account,
+    space,
+    &owner_program,
+    &[b"seed", &[bump]],  // Must include bump as final element
+)?;
+
+// Find or verify PDA
+let (address, bump) = find_program_address(&[b"vault", user.key().as_ref()], program_id);
+
+// Verify a PDA exists (with curve check for untrusted bumps)
+let bump = verify_program_address(&[b"vault", user.key().as_ref()], program_id, &expected_addr)?;
+
+// Skip curve check if account has data (was already created via signed CPI)
+let bump = find_and_verify_program_address_skip_curve(&[b"vault", user.key().as_ref()], program_id, &expected_addr)?;
+```
+
+## Best Practices
+
+0. **Prefer Account<T> for your program's data** — It's the standard choice. Only use BorshAccount, Slab, or custom wrappers when you have a specific reason (external data, variable-length tails, extra validation logic).
+
+1. **Use Address, not Pubkey** — `Address` from `pinocchio::address`. 32 bytes, zerocopy-safe.
+
+2. **Validate in Accounts struct, compute in handler** — All constraints should be attributes. Keep handlers focused on business logic.
+
+3. **Store PDA bumps in account data** — Future instructions use the stored value instead of re-deriving. Saves cost of `verify_program_address()`.
+
+4. **Remaining accounts are lazy** — First call walks the cursor and caches. Subsequent calls clone the cache. No double-borrow with `self.accounts`.
+
+5. **Minimize account data size** — Smaller accounts = lower rent. Use tight structs, no unnecessary padding.
+
+6. **Order validation cheapest-to-most-expensive** — Clock checks, then membership, then signature verification.
+
+7. **Use Pod types (PodU64, PodU16) for zerocopy** — Ensures 1-byte alignment across all fields.
+
+8. **Separate Accounts struct from Args struct** — Makes parameters clear and testable.
+
+9. **Defensive remaining_accounts handling** — Always validate account count and owner before using.
+
+10. **Constraint attributes + custom trait impls** — Combine declarative constraints with custom AnchorAccount impls for complex validation logic.
+
+## Architecture
+
+```
+my_program/
+├── src/
+│   ├── lib.rs           // declare_id! + #[program]
+│   ├── state.rs         // #[account] types
+│   ├── instructions/
+│   │   ├── mod.rs
+│   │   ├── create.rs    // CreateX Accounts struct + handler
+│   │   ├── update.rs    // UpdateX Accounts struct + handler
+│   │   └── execute.rs   // ExecuteX Accounts struct + handler
+│   └── utils.rs         // Helper functions
+└── Cargo.toml
+```
+
+## Key Code Paths
+
+| Concept | File | What to Study |
+|---------|------|---------------|
+| Account types | `src/accounts/mod.rs` | How Account<T>, Signer, Program<T> are defined |
+| Core traits | `src/traits.rs` | AnchorAccount, Owner, Discriminator, Constrain |
+| Derive macro | `derive/src/lib.rs` | How #[derive(Accounts)] generates TryAccounts impl |
+| Dispatch | `src/dispatch.rs` | run_handler, Context setup, remaining_accounts caching |
+| CPI | `src/cpi.rs` | PDA derivation, create_account, verify_program_address |
+| Slab/Account | `src/accounts/slab.rs` | Borrow tracking, interior mutability, exit serialization |
+| Constraints | `derive/src/parse.rs` | How constraint attributes parse and validate |
+| SPL types | `../spl-v2/src/` | Zero-copy Token, Mint with no discriminator |
+
+## References
+
+- **Example Program:** `~/ai/clear-msig/clear-msig-anchor` — Full multisig implementation with all patterns
+- **Prelude:** `src/prelude.rs` — One import for everything
+- **Traits:** `src/traits.rs` — Start here for the AnchorAccount contract
+- **Accounts:** `src/accounts/borsh_account.rs` — Study for pattern examples
+
+## For LLMs
+
+When helping with Anchor v2:
+
+0. **Account<T> is the default choice** — Zero-cost field access (cached pointer dereference), zerocopy reads (no deserialization), zero exit cost (no serialization). Pod-based, compile-safe. Only use BorshAccount for complex types (Vec, String, enums), Slab for dynamic arrays.
+
+1. **Constraints are cheap** — Abuse them. Use `has_one`, `seeds`, `constraint = ...` liberally in the Accounts struct.
+
+2. **Address, not Pubkey** — It's from pinocchio. 32 bytes. Import: `use anchor_lang_v2::prelude::*`.
+
+3. **Remaining accounts are lazy** — Only parsed when `.remaining_accounts()` is called. First call walks cursor + caches. Subsequent calls clone the vec (no borrow issues).
+
+4. **BorshAccount validates both discriminator and owner** — Not "no discriminator check." It validates the 8-byte prefix exists and matches before deserializing.
+
+5. **Sysvar requires account list entry** — The account must be passed (address validated against sysvar ID). No magic bypass.
+
+6. **Traits over macros** — AnchorAccount, Owner, Constrain, Discriminator model. Implement custom traits for complex validation.
+
+7. **Pod types are 1-byte aligned** — PodU64, PodU32, PodU16, etc. Use for zerocopy fields. Guarantees layout stability.
+
+8. **Guardrails catch early errors** — ~0-5 CU to catch "forgot #[account(mut)]", use-after-release, executable check. Keep enabled. Negligible cost for huge debugging value.
+
+9. **Feature flags:** Keep defaults (`guardrails`, `account-resize`). Only add `const-rent` if creating 100+ accounts per instruction (saves ~85 CU each, but locks rent formula). Compile error if you call `realloc_account` without `account-resize` feature—it's a safety coupling.
+
+8. **Program<T> validates ID + executable (with guardrails feature)** — Can be used for CPI routing. Generic T type-checks only.
+
+9. **Store PDA bumps in account data** — Necessary for signed CPIs. Set during init via `ctx.bumps.field_name`.
+
+10. **Error handling is ProgramError** — Use `require!` macros. No custom error types needed (though allowed).
+
+## Feature Flags
+
+Set in `Cargo.toml`:
+
+```toml
+[features]
+default = ["alloc", "guardrails", "account-resize"]
+alloc = ["pinocchio/alloc"]
+guardrails = []
+account-resize = ["pinocchio/account-resize"]
+const-rent = []
+```
+
+| Feature | Default | Purpose | Cost Estimate | When to Enable |
+|---------|---------|---------|------|---|
+| **guardrails** | ✅ | Runtime safety: writable check, use-after-release panic, executable check | ~0-5 CU per instruction | Always. Catches "forgot `#[account(mut)]`" bugs early |
+| **account-resize** | ✅ | Enable `realloc_account()` CPI for dynamic account growth | ~1 CU per account processed | Keep on (needed if you resize accounts). Compile error if off and you call realloc |
+| **const-rent** | ❌ | Bake rent-exempt lamport formula into binary (saves syscall) | Saves ~85-90 CU per create_account* | Only for high-creation programs (100+ accounts per instruction). Otherwise keep off for formula freshness |
+| **no-log-ix-name** | ❌ | Skip logging instruction name ("Instruction: handler_name") on each call | Saves ~20-50 CU per instruction* | Extreme CU constraints only. Default logs help debugging |
+
+*Estimates based on typical Solana conditions. Actual costs vary by runtime state and instruction complexity. Profile your program before optimizing.
+
+**Recommended:**
+- **Development/general**: `default = ["alloc", "guardrails", "account-resize"]` (current)
+- **Extreme CU constraints** (rare): Add `"const-rent", "no-log-ix-name"`
+
+**Key insight on `const-rent`:**
+- Locks rent formula into binary at compile time
+- Saves ~85 CU per `create_account()` call
+- Risk: If Solana changes rent formula, you must redeploy (but you probably will anyway)
+- Only enable if creating 100+ accounts per instruction
+
+## v1 vs v2
+
+| Feature | v1 | v2 |
+|---------|----|----|
+| Dependencies | Multiple (anchor-lang, anchor-spl, etc.) | Minimal (pinocchio, borsh, bytemuck) |
+| Stdlib | Always std | no_std by default |
+| Binary size | Larger | 20-40% smaller |
+| Account loading | Macro-based | Trait-based (AnchorAccount) |
+| Constraints | Generated validation fns | Trait impls (Constrain) |
+| Dispatch | Match statement | Direct trait calls |
+| Type | Pubkey | Address (from pinocchio) |
+
+**Use v2 for new programs.** It's faster, smaller, and cleaner.
