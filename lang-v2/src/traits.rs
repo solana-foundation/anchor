@@ -118,7 +118,7 @@ pub trait Discriminator {
 ///
 /// Unknown keys → compile error ("Constrain<X> is not implemented for Y").
 pub trait Constrain<C, V = Address> {
-    fn constrain(&self, expected: &V) -> core::result::Result<(), ProgramError>;
+    fn constrain(&mut self, expected: &V) -> core::result::Result<(), ProgramError>;
 }
 
 pub struct Nested<T>(pub T);

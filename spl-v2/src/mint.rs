@@ -138,7 +138,7 @@ pub struct TokenProgramConstraint;
 
 impl Constrain<AuthorityConstraint> for Account<Mint> {
     #[inline(always)]
-    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
         match self.mint_authority() {
             Some(addr) if addr == expected => Ok(()),
             _ => Err(ProgramError::InvalidAccountData),
@@ -148,7 +148,7 @@ impl Constrain<AuthorityConstraint> for Account<Mint> {
 
 impl Constrain<FreezeAuthorityConstraint> for Account<Mint> {
     #[inline(always)]
-    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
         match self.freeze_authority() {
             Some(addr) if addr == expected => Ok(()),
             _ => Err(ProgramError::InvalidAccountData),
@@ -159,7 +159,7 @@ impl Constrain<FreezeAuthorityConstraint> for Account<Mint> {
 /// `mint::Decimals = 6` — non-address constraint, compares u8.
 impl Constrain<DecimalsConstraint, u8> for Account<Mint> {
     #[inline(always)]
-    fn constrain(&self, expected: &u8) -> Result<(), ProgramError> {
+    fn constrain(&mut self, expected: &u8) -> Result<(), ProgramError> {
         if self.decimals() != *expected {
             Err(ProgramError::InvalidAccountData)
         } else {
@@ -171,7 +171,7 @@ impl Constrain<DecimalsConstraint, u8> for Account<Mint> {
 /// `mint::TokenProgram = token_program` — check mint is owned by given program.
 impl Constrain<TokenProgramConstraint> for Account<Mint> {
     #[inline(always)]
-    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
         if !AsRef::<AccountView>::as_ref(self).owned_by(expected) {
             Err(ProgramError::IllegalOwner)
         } else {

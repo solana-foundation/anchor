@@ -185,7 +185,7 @@ pub struct TokenProgramConstraint;
 
 impl Constrain<MintConstraint> for Account<TokenAccount> {
     #[inline(always)]
-    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
         // `address_eq` is the chunked 4×u64 compare; faster than the
         // default `PartialEq` derive on `[u8; 32]`. See lang-v2/src/lib.rs.
         if !anchor_lang_v2::address_eq(self.mint(), expected) {
@@ -198,7 +198,7 @@ impl Constrain<MintConstraint> for Account<TokenAccount> {
 
 impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
     #[inline(always)]
-    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
         if !anchor_lang_v2::address_eq(self.owner(), expected) {
             Err(ProgramError::InvalidAccountData)
         } else {
@@ -210,7 +210,7 @@ impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
 /// `token::TokenProgram = token_program` — check account is owned by given program.
 impl Constrain<TokenProgramConstraint> for Account<TokenAccount> {
     #[inline(always)]
-    fn constrain(&self, expected: &Address) -> Result<(), ProgramError> {
+    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
         if !AsRef::<AccountView>::as_ref(self).owned_by(expected) {
             Err(ProgramError::IllegalOwner)
         } else {

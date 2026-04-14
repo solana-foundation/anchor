@@ -774,17 +774,18 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
             let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
             let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
             let value = &nc.value;
-            // BYOC: marker path resolves via user's `use` imports.
-            // Field refs (is_field_ref=true) → convert to Address via AsRef.
-            // Literals (is_field_ref=false) → pass directly (e.g. mint::Decimals = 6).
+            // BYOC: marker path resolves via user's `use` imports. Field
+            // refs go through `AsRef::as_ref` with V inferred from the
+            // Constrain impl (wrappers impl both `AsRef<Address>` and
+            // `AsRef<AccountView>`). Literals pass through as `&value`.
             let expected = if nc.is_field_ref {
-                quote! { AsRef::<anchor_lang_v2::Address>::as_ref(&#value) }
+                quote! { AsRef::as_ref(&#value) }
             } else {
                 quote! { &#value }
             };
             constraints.push(quote! {
                 anchor_lang_v2::Constrain::<#ns::#key, _>::constrain(
-                    &#field_name, #expected,
+                    &mut #field_name, #expected,
                 )?;
             });
         }
