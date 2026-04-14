@@ -193,7 +193,12 @@ impl AccountsStruct {
                     let arg = parser::tts_to_string(expr);
                     let components: Vec<&str> = arg.split(" : ").collect();
                     assert!(components.len() == 2);
-                    (components[0].to_string(), components[1].to_string())
+                    #[allow(
+                        clippy::indexing_slicing,
+                        reason = "len == 2 asserted immediately above"
+                    )]
+                    let result = (components[0].to_string(), components[1].to_string());
+                    result
                 })
                 .collect()
         })

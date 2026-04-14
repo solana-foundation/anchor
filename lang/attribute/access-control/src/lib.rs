@@ -56,8 +56,17 @@ pub fn access_control(
         .filter(|ac| !ac.is_empty())
         .map(|ac| format!("{ac})")) // Put back on the split char.
         .map(|ac| format!("{ac}?;")) // Add `?;` syntax.
-        .map(|ac| ac.parse().unwrap())
-        .collect();
+        .map(|ac| {
+            ac.parse::<proc_macro2::TokenStream>().map_err(|_| {
+                syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    format!("`#[access_control]` argument `{ac} is not valid Rust syntax"),
+                )
+                .into_compile_error()
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_else(|err| vec![err]);
 
     let item_fn = parse_macro_input!(input as syn::ItemFn);
 

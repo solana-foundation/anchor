@@ -29,7 +29,12 @@ pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
     if f.is_optional && !constraints.is_empty() {
         let ident = &f.ident;
         let ty_decl = f.ty_decl(false);
-        all_checks = match &constraints[0] {
+        #[allow(
+            clippy::indexing_slicing,
+            reason = "guarded by !constraints.is_empty() above"
+        )]
+        let first_constraint = &constraints[0];
+        all_checks = match first_constraint {
             Constraint::Init(_) | Constraint::Zeroed(_) => {
                 quote! {
                     let #ident: #ty_decl = if let Some(#ident) = #ident {
@@ -61,6 +66,11 @@ pub fn generate_composite(f: &CompositeField) -> proc_macro2::TokenStream {
         .iter()
         .map(|c| match c {
             Constraint::Raw(_) => c,
+            #[allow(
+                clippy::panic,
+                reason = "invariant: linearize() only yields Raw for CompositeField; non-Raw is a \
+                          bug in constraint parsing"
+            )]
             _ => panic!("Invariant violation: composite constraints can only be raw or literals"),
         })
         .map(|c| generate_constraint_composite(f, c))
@@ -174,6 +184,11 @@ fn generate_constraint(
 fn generate_constraint_composite(f: &CompositeField, c: &Constraint) -> proc_macro2::TokenStream {
     match c {
         Constraint::Raw(c) => generate_constraint_raw(&f.ident, c),
+        #[allow(
+            clippy::panic,
+            reason = "invariant: only Raw constraints reach generate_constraint_composite; \
+                      non-Raw is a bug in codegen dispatch"
+        )]
         _ => panic!("Invariant violation"),
     }
 }
