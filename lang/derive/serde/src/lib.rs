@@ -35,12 +35,19 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
     {
         use {anchor_syn::idl::*, quote::quote, syn::Item};
 
-        let idl_build_impl = match syn::parse(input).unwrap() {
-            Item::Struct(item) => impl_idl_build_struct(&item),
-            Item::Enum(item) => impl_idl_build_enum(&item),
-            Item::Union(item) => impl_idl_build_union(&item),
-            // Derive macros can only be defined on structs, enums, and unions.
-            _ => unreachable!(),
+        #[allow(clippy::disallowed_macros)]
+        let idl_build_impl = match syn::parse(input) {
+            Err(e) => return e.to_compile_error().into(),
+            Ok(item) => match item {
+                Item::Struct(item) => impl_idl_build_struct(&item),
+                Item::Enum(item) => impl_idl_build_enum(&item),
+                Item::Union(item) => impl_idl_build_union(&item),
+                _ => syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    "AnchorSerialize can only be derived on structs, enums, and unions",
+                )
+                .to_compile_error(),
+            },
         };
 
         return TokenStream::from(quote! {
@@ -86,8 +93,16 @@ fn helper_attrs(mac: &str) -> TokenStream2 {
     // 3. This results in the trait implementations being produced, but the duplicate type definition being deleted
 
     let mac_path = Ident::new(mac, Span::call_site());
-    let anchor = proc_macro_crate::crate_name("anchor-lang")
-        .expect("`anchor-derive-serde` must be used via `anchor-lang`");
+    let anchor = match proc_macro_crate::crate_name("anchor-lang") {
+        Ok(found) => found,
+        Err(_) => {
+            return syn::Error::new(
+                Span::call_site(),
+                "`anchor-derive-serde` must be used via `anchor-lang`",
+            )
+            .into_compile_error()
+        }
+    };
 
     let anchor_path = Ident::new(
         match &anchor {

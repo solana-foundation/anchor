@@ -752,6 +752,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
 
             match (self.space.is_some(), initializing_token_program_acc) {
                 (true, true) => {
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "inside (true, _) arm so space is guaranteed Some"
+                    )]
                     return Err(ParseError::new(
                         self.space.as_ref().unwrap().span(),
                         "space is not required for initializing an spl account",
@@ -828,6 +832,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         }
 
         let is_init = init.is_some();
+        #[allow(
+            clippy::expect_used,
+            reason = "bump presence validated earlier in constraint parsing"
+        )]
         let seeds = seeds.map(|c| ConstraintSeedsGroup {
             is_init,
             seeds: c.seeds.clone(),
@@ -978,6 +986,10 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     Ok(ConstraintInitGroup {
                         if_needed: i.if_needed,
                         seeds: seeds.clone(),
+                        #[allow(
+                            clippy::unwrap_used,
+                            reason = "payer is guaranteed present when init constraint exists"
+                        )]
                         payer: into_inner!(payer.clone()).unwrap().target,
                         space: space.clone().map(|s| s.space.clone()),
                         kind: if let Some(tm) = &token_mint {
@@ -1054,8 +1066,16 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 })
                 .transpose()?,
             realloc: realloc.as_ref().map(|r| ConstraintReallocGroup {
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "realloc payer guaranteed when realloc constraint present"
+                )]
                 payer: into_inner!(realloc_payer).unwrap().target,
                 space: r.space.clone(),
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "realloc zero guaranteed when realloc constraint present"
+                )]
                 zero: into_inner!(realloc_zero).unwrap().zero,
             }),
             zeroed: into_inner!(zeroed),

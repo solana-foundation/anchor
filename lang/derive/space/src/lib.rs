@@ -41,7 +41,7 @@ use {
 pub fn derive_init_space(item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    let name = input.ident;
+    let name = input.ident.clone();
 
     let process_struct_fields = |fields: Punctuated<Field, Comma>| {
         let recurse = fields.into_iter().map(|f| {
@@ -89,7 +89,14 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
                 }
             }
         }
-        _ => unimplemented!(),
+        _ => {
+            return syn::Error::new(
+                input.ident.span(),
+                "#[derive(InitSpace)] is only supported on structs and enums",
+            )
+            .into_compile_error()
+            .into()
+        }
     };
 
     TokenStream::from(expanded)
@@ -112,7 +119,13 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
             quote!((#array_len * #type_len))
         }
         Type::Path(ty_path) => {
-            let path_segment = ty_path.path.segments.last().unwrap();
+            let path_segment = match ty_path.path.segments.last() {
+                Some(seg) => seg,
+                None => {
+                    return syn::Error::new_spanned(ty_path, "expected a valid type path")
+                        .into_compile_error()
+                }
+            };
             let ident = &path_segment.ident;
             let type_name = ident.to_string();
             let first_ty = get_first_ty_arg(&path_segment.arguments);
@@ -162,7 +175,11 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
                 (0 #(+ #recurse)*)
             }
         }
-        _ => panic!("Type {ty:?} is not supported"),
+        _ => {
+            let ty_type = ty.to_token_stream();
+            syn::Error::new_spanned(ty_type, "Type is not supported by `#[derive(InitSpace)]`")
+                .into_compile_error()
+        }
     }
 }
 

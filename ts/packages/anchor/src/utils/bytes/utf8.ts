@@ -1,6 +1,6 @@
 import { isBrowser } from "../common";
 
-export function decode(array: Uint8Array): string {
+export function decode(array: Buffer | Uint8Array): string {
   const decoder = isBrowser
     ? new TextDecoder("utf-8") // Browser https://caniuse.com/textencoder.
     : new (require("util").TextDecoder)("utf-8"); // Node.

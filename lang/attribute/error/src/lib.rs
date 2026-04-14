@@ -62,7 +62,10 @@ pub fn error_code(
         false => Some(parse_macro_input!(args as ErrorArgs)),
     };
     let mut error_enum = parse_macro_input!(input as syn::ItemEnum);
-    let error = codegen::error::generate(error_parser::parse(&mut error_enum, args));
+    let error = match error_parser::parse(&mut error_enum, args) {
+        Ok(e) => codegen::error::generate(e),
+        Err(e) => e.into_compile_error(),
+    };
     proc_macro::TokenStream::from(error)
 }
 
