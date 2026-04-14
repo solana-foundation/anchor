@@ -1616,12 +1616,12 @@ fn install_solana_skill() {
     const SKILL_NAME: &str = "solana-dev";
 
     // Skip if globally installed (active across all projects already)
-    let global_path = home_dir()
-        .unwrap_or_default()
-        .join(".agents")
-        .join("skills")
-        .join(SKILL_NAME);
-    if global_path.exists() {
+    if home_dir().is_some_and(|home| {
+        home.join(".agents")
+            .join("skills")
+            .join(SKILL_NAME)
+            .exists()
+    }) {
         return;
     }
 
