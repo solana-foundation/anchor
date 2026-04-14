@@ -583,6 +583,19 @@ fn generate_constraint_init_group(
                     quote!(__bump)
                 };
 
+                let validate_bump = if let Some(b) = &c.bump {
+                    quote! {
+                        if __bump != #b {
+                            return Err(anchor_lang::error::Error::from(
+                                anchor_lang::error::ErrorCode::ConstraintSeeds
+                            ).with_account_name(#name_str)
+                             .with_values((__bump, #b)));
+                        }
+                    }
+                } else {
+                    quote! {}
+                };
+
                 (
                     quote! {
                         let __seeds_slice: &[&[u8]] = #expr;
@@ -601,6 +614,7 @@ fn generate_constraint_init_group(
                             ).with_account_name(#name_str)
                              .with_pubkeys((#field.key(), __pda_address)));
                         }
+                        #validate_bump
                     },
                     quote! { &__signer_seeds[..] },
                 )
