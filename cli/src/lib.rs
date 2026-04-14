@@ -1411,14 +1411,11 @@ fn init(
 
     // Remove the default program if `--force` is passed
     if force {
-        let default_program_path = std::env::current_dir()?
-            .join("programs")
-            .join(&project_name);
-        if let Err(err) = fs::remove_dir_all(&default_program_path) {
-            if err.kind() != std::io::ErrorKind::NotFound {
-                return Err(err.into());
-            }
-        }
+        fs::remove_dir_all(
+            std::env::current_dir()?
+                .join("programs")
+                .join(&project_name),
+        )?;
     }
 
     // Build the program.
