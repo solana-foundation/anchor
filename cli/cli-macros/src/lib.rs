@@ -1,6 +1,8 @@
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-use syn::{DataEnum, DataStruct, DeriveInput, Fields, parse_macro_input};
+use {
+    proc_macro2::TokenStream,
+    quote::{format_ident, quote},
+    syn::{parse_macro_input, DataEnum, DataStruct, DeriveInput, Fields},
+};
 
 #[proc_macro_derive(AbsolutePath)]
 pub fn absolute_path_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

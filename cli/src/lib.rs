@@ -5,6 +5,8 @@ use {
         SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
         STARTUP_WAIT, SURFPOOL_HOST,
     },
+    abs_path::AbsolutePath,
+    anchor_cli_macros::AbsolutePath,
     anchor_client::Cluster,
     anchor_lang::{
         prelude::UpgradeableLoaderState, solana_program::bpf_loader_upgradeable, AnchorDeserialize,
@@ -47,8 +49,6 @@ use {
         sync::LazyLock,
     },
 };
-use abs_path::AbsolutePath;
-use anchor_cli_macros::AbsolutePath;
 
 mod abs_path;
 mod account;
