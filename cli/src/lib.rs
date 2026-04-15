@@ -2933,8 +2933,12 @@ fn account(
 
     let idl = idl_filepath.map_or_else(
         || {
-            let config = Config::discover(cfg_override)?
-                .ok_or_else(|| anyhow!("The 'anchor account' command requires an Anchor workspace with Anchor.toml for IDL type generation."))?;
+            let config = Config::discover(cfg_override)?.ok_or_else(|| {
+                anyhow!(
+                    "The 'anchor account' command requires an Anchor workspace with Anchor.toml \
+                     for IDL type generation."
+                )
+            })?;
             let programs = config
                 .read_all_programs()
                 .expect("Workspace must contain atleast one program.");
@@ -2943,28 +2947,27 @@ fn account(
                 .iter()
                 .find(|p| p.lib_name.eq_ignore_ascii_case(program_name))
                 .ok_or_else(|| {
-                    let mut available_programs: Vec<String> = programs
-                        .iter()
-                        .map(|p| p.lib_name.clone())
-                        .collect();
+                    let mut available_programs: Vec<String> =
+                        programs.iter().map(|p| p.lib_name.clone()).collect();
                     available_programs.sort();
 
                     if available_programs.is_empty() {
-                        anyhow!("Program '{program_name}' not found in workspace. No programs available.")
+                        anyhow!(
+                            "Program '{program_name}' not found in workspace. No programs \
+                             available."
+                        )
                     } else {
                         anyhow!(
-                            "Program '{program_name}' not found in workspace.\n\nAvailable programs:\n  {}",
+                            "Program '{program_name}' not found in workspace.\n\nAvailable \
+                             programs:\n  {}",
                             available_programs.join("\n  ")
                         )
                     }
                 })?;
 
-            program.idl.clone()
-                .ok_or_else(|| {
-                    anyhow!(
-                        "IDL not found. Please build the program atleast once to generate the IDL."
-                    )
-                })
+            program.idl.clone().ok_or_else(|| {
+                anyhow!("IDL not found. Please build the program atleast once to generate the IDL.")
+            })
         },
         |idl_path| {
             let idl = fs::read(idl_path)?;
@@ -2991,18 +2994,19 @@ fn account(
         .find(|acc| acc.name.eq_ignore_ascii_case(account_type_name))
         .map(|acc| acc.discriminator.len())
         .ok_or_else(|| {
-            let mut available_accounts: Vec<String> = idl
-                .accounts
-                .iter()
-                .map(|acc| acc.name.clone())
-                .collect();
+            let mut available_accounts: Vec<String> =
+                idl.accounts.iter().map(|acc| acc.name.clone()).collect();
             available_accounts.sort();
 
             if available_accounts.is_empty() {
-                anyhow!("Account '{account_type_name}' not found in IDL. No accounts available in program '{program_name}'.")
+                anyhow!(
+                    "Account '{account_type_name}' not found in IDL. No accounts available in \
+                     program '{program_name}'."
+                )
             } else {
                 anyhow!(
-                    "Account '{account_type_name}' not found in IDL.\n\nAvailable accounts in program '{program_name}':\n  {}",
+                    "Account '{account_type_name}' not found in IDL.\n\nAvailable accounts in \
+                     program '{program_name}':\n  {}",
                     available_accounts.join("\n  ")
                 )
             }
