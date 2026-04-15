@@ -462,35 +462,32 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
 
     get_non_instruction_composite_accounts(&ix_accs, idl)
         .into_iter()
-        .fold(
-            instruction_accounts.clone(),
-            |mut all, accs| {
-                // Skip if the account layout is already represented.
-                if all.iter().any(|a| a.accounts == accs.accounts) {
-                    return all;
-                }
+        .fold(instruction_accounts.clone(), |mut all, accs| {
+            // Skip if the account layout is already represented.
+            if all.iter().any(|a| a.accounts == accs.accounts) {
+                return all;
+            }
 
-                let name = if all.iter().all(|a| a.name != accs.name) {
-                    accs.name.to_owned()
-                } else {
-                    // Append numbers to the field name until we find a unique name
-                    #[allow(
-                        clippy::expect_used,
-                        reason = "unbounded integer search always finds a free slot"
-                    )]
-                    (2..)
-                        .find_map(|i| {
-                            let candidate = format!("{}{i}", accs.name);
-                            all.iter().all(|a| a.name != candidate).then_some(candidate)
-                        })
-                        .expect("Should always find a valid name")
-                };
+            let name = if all.iter().all(|a| a.name != accs.name) {
+                accs.name.to_owned()
+            } else {
+                // Append numbers to the field name until we find a unique name
+                #[allow(
+                    clippy::expect_used,
+                    reason = "unbounded integer search always finds a free slot"
+                )]
+                (2..)
+                    .find_map(|i| {
+                        let name = format!("{}{i}", accs.name);
+                        all.iter().all(|a| a.name != name).then_some(name)
+                    })
+                    .expect("Should always find a valid name")
+            };
 
-                all.push(IdlInstructionAccounts {
-                    name,
-                    accounts: accs.accounts.to_owned(),
-                });
-                all
-            },
-        )
+            all.push(IdlInstructionAccounts {
+                name,
+                accounts: accs.accounts.to_owned(),
+            });
+            all
+        })
 }
