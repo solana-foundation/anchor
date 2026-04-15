@@ -63,9 +63,14 @@ impl<'a> AccountLoader<'a> {
     }
 
     /// Walk + `T::load_mut()` the next account.
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure no other live `&mut` to the same account's data
+    /// exists — see [`AnchorAccount::load_mut`] for the full precondition.
     #[inline(always)]
-    pub fn next_mut<T: AnchorAccount>(&mut self) -> Result<T, ProgramError> {
-        let view = unsafe { self.cursor.next() };
+    pub unsafe fn next_mut<T: AnchorAccount>(&mut self) -> Result<T, ProgramError> {
+        let view = self.cursor.next();
         T::load_mut(view, self.program_id)
     }
 }

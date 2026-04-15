@@ -54,7 +54,9 @@ where
         signer_seeds: Option<&[&[u8]]>,
     ) -> Result<Self, ProgramError> {
         H::create_and_initialize(payer, account, space, program_id, params, signer_seeds)?;
-        <Self as AnchorAccount>::load_mut_after_init(*account, program_id)
+        // SAFETY: `create_and_initialize` just created this account; no other
+        // mutable reference to its data can exist yet.
+        unsafe { <Self as AnchorAccount>::load_mut_after_init(*account, program_id) }
     }
 }
 
@@ -597,8 +599,12 @@ where
         Self::from_ref(view, program_id)
     }
 
+    /// # Safety
+    ///
+    /// See [`AnchorAccount::load_mut`] — caller must ensure no other live
+    /// `&mut` to the same account data exists.
     #[inline(always)]
-    fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+    unsafe fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         // Reuses the post-init primitive for construction, then layers full
         // validation on top.
         let slab = Self::load_mut_after_init(view, program_id)?;
@@ -621,8 +627,13 @@ where
     ///
     /// Under `guardrails`, `build_mutable` still does a length check so the
     /// cached `header_ptr` is valid. Under `guardrails = off`, drops it too.
+    ///
+    /// # Safety
+    ///
+    /// See [`AnchorAccount::load_mut`] — caller must ensure no other live
+    /// `&mut` to the same account data exists.
     #[inline(always)]
-    fn load_mut_after_init(
+    unsafe fn load_mut_after_init(
         view: AccountView,
         _program_id: &Address,
     ) -> Result<Self, ProgramError> {

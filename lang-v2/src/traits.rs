@@ -24,25 +24,33 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
 
     fn load(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError>;
 
-    /// Default impl: validates `is_writable`, then delegates to `load()`.
+    /// Load an account for mutable access.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that no other live `&mut` reference to the
+    /// same account's data exists for the duration that the returned value
+    /// (or any `&mut` derived from it) is alive. Violating this creates two
+    /// `&mut` references aliasing the same memory, which is immediate
+    /// undefined behaviour under Rust's aliasing rules.
+    ///
+    /// In generated `#[derive(Accounts)]` code this invariant is upheld by
+    /// the bitvec duplicate-account check that fires before any handler code
+    /// runs. Direct callers are responsible for the same guarantee.
+    ///
+    /// ## Implementing types
     ///
     /// Zero-data view wrappers (`UncheckedAccount`, `SystemAccount`,
-    /// `Program<T>`, `Sysvar<T>`) inherit this default, so every
-    /// `#[account(mut)] pub x: X` gets a writable check without the
-    /// derive having to emit a separate constraint block. This moves
-    /// the check from the derive's constraints list into the trait
-    /// itself — single place, single rule.
-    ///
-    /// Data-carrying wrappers (`Account<T>`, `BorshAccount<T>`,
-    /// `Slab<H, T>`) override this to acquire a mutable borrow via
-    /// pinocchio's borrow tracking AND perform the writable check
-    /// themselves (currently gated behind the `guardrails` feature
-    /// for efficiency).
-    ///
-    /// `Signer` overrides this with a fused 2-byte `is_signer` +
-    /// `is_writable` check — see `accounts/signer.rs`.
+    /// `Program<T>`, `Sysvar<T>`) inherit this default, which validates
+    /// `is_writable` and delegates to `load()`. Data-carrying wrappers
+    /// (`Account<T>`, `BorshAccount<T>`, `Slab<H, T>`) override this to
+    /// use `borrow_unchecked_mut` for zero-cost access with write provenance.
+    /// `Signer` overrides with a fused `is_signer` + `is_writable` check.
     #[inline(always)]
-    fn load_mut(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError> {
+    unsafe fn load_mut(
+        view: AccountView,
+        program_id: &Address,
+    ) -> core::result::Result<Self, ProgramError> {
         if !view.is_writable() {
             return Err(crate::ErrorCode::ConstraintMut.into());
         }
@@ -58,12 +66,16 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     ///
     /// Default forwards to [`load_mut`] so every type that doesn't care
     /// (Sysvar, Signer, Program, …) keeps the same behavior. Data-carrying
-    /// wrappers override this to skip the redundant validation and save
-    /// the redundant validation.
+    /// wrappers override this to skip the redundant validation.
+    ///
+    /// # Safety
+    ///
+    /// Same precondition as [`load_mut`]: no other live `&mut` to the same
+    /// account data may exist while the returned value is alive.
     ///
     /// [`load_mut`]: Self::load_mut
     #[inline(always)]
-    fn load_mut_after_init(
+    unsafe fn load_mut_after_init(
         view: AccountView,
         program_id: &Address,
     ) -> core::result::Result<Self, ProgramError> {

@@ -34,7 +34,11 @@ impl<T: AnchorAccount> AnchorAccount for Optional<T> {
         }
     }
 
-    fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+    /// # Safety
+    ///
+    /// See [`AnchorAccount::load_mut`] — caller must ensure no other live
+    /// `&mut` to the same account data exists.
+    unsafe fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         if crate::address_eq(view.address(), program_id) {
             Ok(Self(None))
         } else {
@@ -42,7 +46,11 @@ impl<T: AnchorAccount> AnchorAccount for Optional<T> {
         }
     }
 
-    fn load_mut_after_init(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+    /// # Safety
+    ///
+    /// See [`AnchorAccount::load_mut_after_init`] — caller must ensure no
+    /// other live `&mut` to the same account data exists.
+    unsafe fn load_mut_after_init(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         if crate::address_eq(view.address(), program_id) {
             Ok(Self(None))
         } else {

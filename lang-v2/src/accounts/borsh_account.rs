@@ -81,7 +81,11 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         Ok(Self { view, data, borrow: BorshBorrow::Immutable { _guard: guard } })
     }
 
-    fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+    /// # Safety
+    ///
+    /// See [`AnchorAccount::load_mut`] — caller must ensure no other live
+    /// `&mut` to the same account data exists.
+    unsafe fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
         // Guardrail: catches "forgot `#[account(mut)]`" early with a clear
         // error. Under `default-features = false` the Solana runtime still
         // rejects the tx when we try to write, just with a less specific

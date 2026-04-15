@@ -23,17 +23,18 @@ impl AnchorAccount for Signer {
 
     /// Fused `is_signer` + `is_writable` check via a single 2-byte load.
     ///
-    /// # Safety assumption
+    /// # Safety
     ///
-    /// Reads bytes at offsets `+1` (is_signer) and `+2` (is_writable) from
-    /// the serialized account header as a single LE u16. This layout is
-    /// defined by agave's `serialize_parameters_aligned` (see
+    /// See [`AnchorAccount::load_mut`]. Additionally, reads bytes at offsets
+    /// `+1` (is_signer) and `+2` (is_writable) from the serialized account
+    /// header as a single LE u16. This layout is defined by agave's
+    /// `serialize_parameters_aligned` (see
     /// `agave/program-runtime/src/serialization.rs`) and is part of the
     /// stable SBF ABI: `[NON_DUP_MARKER, is_signer, is_writable, key...]`.
     ///
     /// Returns `ConstraintSignerOrMut` if either flag is unset.
     #[inline(always)]
-    fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
+    unsafe fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
         // SAFETY: view.account_ptr() points at a valid RuntimeAccount header.
         // Byte `+1` and `+2` are always in bounds within the 88-byte header.
         // The read is byte-aligned (offset 1 into a u16) but SBF allows
