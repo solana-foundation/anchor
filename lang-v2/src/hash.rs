@@ -11,11 +11,7 @@ pub fn sha256(data: &[u8]) -> [u8; 32] {
         // SAFETY: slices is a valid single-element array; sol_sha256 writes
         // exactly 32 bytes into out, fully initializing it.
         unsafe {
-            sol_sha256(
-                slices.as_ptr() as *const u8,
-                1,
-                out.as_mut_ptr() as *mut u8,
-            );
+            sol_sha256(slices.as_ptr() as *const u8, 1, out.as_mut_ptr() as *mut u8);
             out.assume_init()
         }
     }

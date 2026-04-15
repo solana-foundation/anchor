@@ -1,6 +1,12 @@
-use syn::{ext::IdentExt, parse::{Parse, ParseStream}, Attribute, Expr, Ident, Token, Type};
-use quote::quote;
-use proc_macro2::TokenStream as TokenStream2;
+use {
+    proc_macro2::TokenStream as TokenStream2,
+    quote::quote,
+    syn::{
+        ext::IdentExt,
+        parse::{Parse, ParseStream},
+        Attribute, Expr, Ident, Token, Type,
+    },
+};
 
 /// A namespaced constraint like `token::mint = expr`.
 pub struct NamespacedConstraint {
@@ -112,8 +118,8 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     "dup" => {
                         return Err(syn::Error::new(
                             ident.span(),
-                            "`dup` bypasses duplicate-account safety checks and \
-                             must be explicitly marked unsafe: use `unsafe(dup)`",
+                            "`dup` bypasses duplicate-account safety checks and must be \
+                             explicitly marked unsafe: use `unsafe(dup)`",
                         ));
                     }
                     "unsafe" => {
@@ -223,7 +229,9 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             if ident == "seeds" && key_ident == "program" {
                                 input.parse::<Token![=]>()?;
                                 result.seeds_program = Some(input.parse()?);
-                                if !input.is_empty() { input.parse::<Token![,]>()?; }
+                                if !input.is_empty() {
+                                    input.parse::<Token![,]>()?;
+                                }
                                 continue;
                             }
                             input.parse::<Token![=]>()?;
@@ -249,8 +257,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                                 value,
                                 is_field_ref,
                             });
-                        }
-                        else {
+                        } else {
                             // No `::` follows — not a namespaced constraint.
                             // Reject to catch typos like `singler` instead of `signer`.
                             return Err(syn::Error::new(
@@ -424,8 +431,7 @@ fn emit_seeds_check(
     if using_our_program_id {
         if let Some(literal_seeds) = crate::pda::seeds_as_byte_literals(seeds) {
             if let Some(program_id) = crate::pda::discover_program_id() {
-                let seed_slices: Vec<&[u8]> =
-                    literal_seeds.iter().map(|s| s.as_slice()).collect();
+                let seed_slices: Vec<&[u8]> = literal_seeds.iter().map(|s| s.as_slice()).collect();
                 if let Some((bump, pda_bytes)) =
                     crate::pda::precompute_pda(&seed_slices, &program_id)
                 {
@@ -433,10 +439,8 @@ fn emit_seeds_check(
                     // bumps + PDAs from colliding, even when two
                     // constraints share an outer scope.
                     let upper = field_name.to_string().to_uppercase();
-                    let bump_const =
-                        Ident::new(&format!("__{}_BUMP", upper), field_name.span());
-                    let pda_const =
-                        Ident::new(&format!("__{}_PDA", upper), field_name.span());
+                    let bump_const = Ident::new(&format!("__{}_BUMP", upper), field_name.span());
+                    let pda_const = Ident::new(&format!("__{}_PDA", upper), field_name.span());
                     // Emit the 32-byte PDA as an `Address` const.
                     let pda_bytes_tokens = pda_bytes.iter().map(|b| quote! { #b });
                     let check = quote! {
@@ -521,7 +525,9 @@ fn emit_init_body(
     // currently any constraint whose Params type has no matching field —
     // would fail to typecheck if threaded here. We filter out the ones
     // we know are runtime-only before collecting param assignments.
-    let param_assignments: Vec<_> = attrs.namespaced.iter()
+    let param_assignments: Vec<_> = attrs
+        .namespaced
+        .iter()
         .filter(|nc| !is_runtime_only_constraint_ns(&nc.namespace))
         .map(|nc| {
             let key = Ident::new(&nc.raw_key, proc_macro2::Span::call_site());
@@ -531,21 +537,28 @@ fn emit_init_body(
             } else {
                 quote! { __p.#key = Some(#value); }
             }
-        }).collect();
+        })
+        .collect();
 
     let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-        let seed_exprs: Vec<_> = seeds.iter()
-            .map(|s| rewrite_seed_expr(s, field_names)).collect();
+        let seed_exprs: Vec<_> = seeds
+            .iter()
+            .map(|s| rewrite_seed_expr(s, field_names))
+            .collect();
         let using_our_program_id = attrs.seeds_program.is_none();
         let pda_program = match &attrs.seeds_program {
             Some(prog) => quote! { &#prog },
             None => quote! { __program_id },
         };
         emit_seeds_check(
-            seeds, &seed_exprs,
+            seeds,
+            &seed_exprs,
             &pda_program,
             &quote! { __target.address() },
-            field_name, None, true, using_our_program_id,
+            field_name,
+            None,
+            true,
+            using_our_program_id,
         )
     } else {
         quote! { let __seeds: Option<&[&[u8]]> = None; }
@@ -688,7 +701,10 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     // skipped to avoid a redundant find loop.
     if !attrs.is_init {
         if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs: Vec<_> = seeds.iter().map(|s| rewrite_seed_expr(s, field_names)).collect();
+            let seed_exprs: Vec<_> = seeds
+                .iter()
+                .map(|s| rewrite_seed_expr(s, field_names))
+                .collect();
             // seeds::program = expr overrides which program_id to derive PDA from
             let using_our_program_id = attrs.seeds_program.is_none();
             let pda_program = match &attrs.seeds_program {
@@ -816,7 +832,10 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
 
     // realloc
     if let Some(ref new_space) = attrs.realloc {
-        let realloc_payer = attrs.realloc_payer.as_ref().expect("realloc requires realloc_payer");
+        let realloc_payer = attrs
+            .realloc_payer
+            .as_ref()
+            .expect("realloc requires realloc_payer");
         let zero_fill = attrs.realloc_zero;
         constraints.push(quote! {
             {
@@ -874,9 +893,12 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     // sentinel), code that calls .account() would panic. Skipping is
     // correct: a None optional has no account to validate or close.
     let (constraints, exit) = if is_optional {
-        let constraints = constraints.into_iter().map(|c| {
-            quote! { if #field_name.is_some() { #c } }
-        }).collect();
+        let constraints = constraints
+            .into_iter()
+            .map(|c| {
+                quote! { if #field_name.is_some() { #c } }
+            })
+            .collect();
         let exit = exit.map(|e| {
             quote! { if self.#field_name.is_some() { #e } }
         });
@@ -906,14 +928,24 @@ pub fn extract_program_address(ty: &Type) -> Option<String> {
         if let Some(seg) = tp.path.segments.last() {
             if seg.ident == "Program" {
                 if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-                    if let Some(syn::GenericArgument::Type(Type::Path(inner_tp))) = args.args.first() {
+                    if let Some(syn::GenericArgument::Type(Type::Path(inner_tp))) =
+                        args.args.first()
+                    {
                         if let Some(inner_seg) = inner_tp.path.segments.last() {
                             return match inner_seg.ident.to_string().as_str() {
                                 "System" => Some("11111111111111111111111111111111".to_string()),
-                                "Token" => Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string()),
-                                "Token2022" => Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".to_string()),
-                                "AssociatedToken" => Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".to_string()),
-                                "Memo" => Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr".to_string()),
+                                "Token" => {
+                                    Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string())
+                                }
+                                "Token2022" => {
+                                    Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".to_string())
+                                }
+                                "AssociatedToken" => {
+                                    Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".to_string())
+                                }
+                                "Memo" => {
+                                    Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr".to_string())
+                                }
                                 _ => None,
                             };
                         }

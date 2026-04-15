@@ -1,4 +1,7 @@
 use {
+    super::slab_hooks::{SlabInit, SlabValidate},
+    crate::{AccountInitialize, AnchorAccount, Discriminator, Id},
+    bytemuck::{Pod, Zeroable},
     core::{
         marker::PhantomData,
         ops::{Deref, DerefMut, Index, IndexMut},
@@ -7,10 +10,7 @@ use {
         account::{AccountView, NOT_BORROWED},
         address::Address,
     },
-    bytemuck::{Pod, Zeroable},
     solana_program_error::ProgramError,
-    crate::{AccountInitialize, AnchorAccount, Discriminator, Id},
-    super::slab_hooks::{SlabInit, SlabValidate},
 };
 
 // SlabValidate / SlabInit (bytes-level hooks Slab invokes on `H`) live in
@@ -156,7 +156,6 @@ pub struct HeaderOnly {
     // Prevents instantiation from outside the crate.
     _private: (),
 }
-
 
 impl<H, T> Slab<H, T>
 where
@@ -403,8 +402,7 @@ where
     #[inline(always)]
     fn write_len(&mut self, new_len: u32) {
         let bytes = self.guard_bytes_mut();
-        bytes[Self::LEN_OFFSET..Self::LEN_OFFSET + 4]
-            .copy_from_slice(&new_len.to_le_bytes());
+        bytes[Self::LEN_OFFSET..Self::LEN_OFFSET + 4].copy_from_slice(&new_len.to_le_bytes());
     }
 
     /// Total account data size required to hold the header plus `capacity`
@@ -446,7 +444,8 @@ where
         // `ITEMS_OFFSET` is const-computed to be `align_of::<T>()`-aligned,
         // and Pod requires `size_of` is a multiple of `align_of`, so every
         // per-item offset is aligned. bytemuck will verify this at runtime.
-        let items_bytes = &bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
+        let items_bytes =
+            &bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
         bytemuck::cast_slice(items_bytes)
     }
 
@@ -455,7 +454,8 @@ where
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         let len = self.len();
         let bytes = self.guard_bytes_mut();
-        let items_bytes = &mut bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
+        let items_bytes =
+            &mut bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
         bytemuck::cast_slice_mut(items_bytes)
     }
 

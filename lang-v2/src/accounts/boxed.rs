@@ -1,13 +1,10 @@
 extern crate alloc;
 
 use {
-    alloc::boxed::Box,
-    pinocchio::{
-        account::AccountView,
-        address::Address,
-    },
-    solana_program_error::ProgramError,
     crate::AnchorAccount,
+    alloc::boxed::Box,
+    pinocchio::{account::AccountView, address::Address},
+    solana_program_error::ProgramError,
 };
 
 impl<T: AnchorAccount> AnchorAccount for Box<T> {
@@ -30,7 +27,10 @@ impl<T: AnchorAccount> AnchorAccount for Box<T> {
     ///
     /// See [`AnchorAccount::load_mut_after_init`] — caller must ensure no
     /// other live `&mut` to the same account data exists.
-    unsafe fn load_mut_after_init(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+    unsafe fn load_mut_after_init(
+        view: AccountView,
+        program_id: &Address,
+    ) -> Result<Self, ProgramError> {
         T::load_mut_after_init(view, program_id).map(Box::new)
     }
 

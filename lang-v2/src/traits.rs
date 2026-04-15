@@ -1,9 +1,6 @@
 use {
     core::ops::Deref,
-    pinocchio::{
-        account::AccountView,
-        address::Address,
-    },
+    pinocchio::{account::AccountView, address::Address},
     solana_program_error::{ProgramError, ProgramResult},
 };
 
@@ -84,7 +81,9 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
 
     fn account(&self) -> &AccountView;
 
-    fn exit(&mut self) -> ProgramResult { Ok(()) }
+    fn exit(&mut self) -> ProgramResult {
+        Ok(())
+    }
 
     fn close(&mut self, mut destination: AccountView) -> ProgramResult {
         let mut self_view = *self.account();
@@ -158,9 +157,13 @@ pub struct Nested<T>(pub T);
 
 impl<T> Deref for Nested<T> {
     type Target = T;
-    fn deref(&self) -> &T { &self.0 }
+    fn deref(&self) -> &T {
+        &self.0
+    }
 }
 
 impl<T> core::ops::DerefMut for Nested<T> {
-    fn deref_mut(&mut self) -> &mut T { &mut self.0 }
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.0
+    }
 }

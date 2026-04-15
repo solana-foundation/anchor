@@ -1,12 +1,8 @@
 use {
-    core::{marker::PhantomData, ops::Deref},
-    pinocchio::{
-        account::AccountView,
-        address::Address,
-        sysvars::Sysvar as PinocchioSysvar,
-    },
-    solana_program_error::ProgramError,
     crate::AnchorAccount,
+    core::{marker::PhantomData, ops::Deref},
+    pinocchio::{account::AccountView, address::Address, sysvars::Sysvar as PinocchioSysvar},
+    solana_program_error::ProgramError,
 };
 
 /// Trait that connects a pinocchio sysvar type to its well-known address.
@@ -48,17 +44,27 @@ impl<T: PinocchioSysvar + SysvarId + Copy> AnchorAccount for Sysvar<T> {
         // Use pinocchio's Sysvar::get() which reads directly from the runtime
         // via syscall, avoiding the need to deserialize from account data.
         let data = T::get().map_err(|_| ProgramError::UnsupportedSysvar)?;
-        Ok(Self { view, data, _phantom: PhantomData })
+        Ok(Self {
+            view,
+            data,
+            _phantom: PhantomData,
+        })
     }
 
-    fn account(&self) -> &AccountView { &self.view }
+    fn account(&self) -> &AccountView {
+        &self.view
+    }
 }
 
 impl<T: PinocchioSysvar + SysvarId + Copy> Deref for Sysvar<T> {
     type Target = T;
-    fn deref(&self) -> &T { &self.data }
+    fn deref(&self) -> &T {
+        &self.data
+    }
 }
 
 impl<T: PinocchioSysvar + SysvarId + Copy> AsRef<AccountView> for Sysvar<T> {
-    fn as_ref(&self) -> &AccountView { &self.view }
+    fn as_ref(&self) -> &AccountView {
+        &self.view
+    }
 }

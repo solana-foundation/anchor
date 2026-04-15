@@ -106,13 +106,10 @@ struct ArgsDeser {
 ///
 /// `inline_error`: when `true`, deser failure returns a `u64` directly (handler
 /// wrapper context); when `false`, it returns `Err(...)` (try_accounts context).
-fn emit_args_deser(
-    args: &[(&Ident, &Type)],
-    struct_name: &str,
-    inline_error: bool,
-) -> ArgsDeser {
+fn emit_args_deser(args: &[(&Ident, &Type)], struct_name: &str, inline_error: bool) -> ArgsDeser {
     let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
-    let arg_types: Vec<Type> = args.iter()
+    let arg_types: Vec<Type> = args
+        .iter()
         .map(|(_, t)| with_ix_lifetime(t, &ix_lifetime))
         .collect();
     let has_refs = args.iter().any(|(_, t)| needs_ix_lifetime(t));
@@ -153,7 +150,11 @@ fn emit_args_deser(
         }
     };
 
-    ArgsDeser { deser, arg_types, has_refs }
+    ArgsDeser {
+        deser,
+        arg_types,
+        has_refs,
+    }
 }
 
 /// Parse `#[instruction(name: Type, ...)]` from struct-level attributes.
@@ -219,7 +220,11 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let loads: Vec<_> = fields.iter().map(|f| &f.load).collect();
     let constraints: Vec<_> = fields.iter().flat_map(|f| &f.constraints).collect();
     let exits: Vec<_> = fields.iter().filter_map(|f| f.exit.as_ref()).collect();
-    let bump_fields: Vec<_> = fields.iter().filter(|f| f.has_bump).map(|f| &f.name).collect();
+    let bump_fields: Vec<_> = fields
+        .iter()
+        .filter(|f| f.has_bump)
+        .map(|f| &f.name)
+        .collect();
 
     // Compile-time sum for `<T as TryAccounts>::HEADER_SIZE`:
     //   - 1 per non-`Nested<_>` field (consumes one account view)
@@ -227,7 +232,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     //     which recursively expands at monomorphization time.
     // The direct-field count is a single literal so the emitted
     // const is short in the common (no-nested) case.
-    let direct_count: usize = fields.iter().filter(|f| !parse::is_nested_type(&f.ty)).count();
+    let direct_count: usize = fields
+        .iter()
+        .filter(|f| !parse::is_nested_type(&f.ty))
+        .count();
     let nested_inner_types: Vec<&syn::Type> = fields
         .iter()
         .filter_map(|f| parse::extract_nested_inner_type(&f.ty))
@@ -241,11 +249,22 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     };
 
     // IDL collection
-    let idl_accounts: Vec<_> = fields.iter().map(|f| {
-        (f.name.to_string(), f.idl_writable, f.idl_signer, f.idl_program_address.clone())
-    }).collect();
+    let idl_accounts: Vec<_> = fields
+        .iter()
+        .map(|f| {
+            (
+                f.name.to_string(),
+                f.idl_writable,
+                f.idl_signer,
+                f.idl_program_address.clone(),
+            )
+        })
+        .collect();
     let idl_json = idl::build_accounts_json(&idl_accounts);
-    let idl_data_types: Vec<_> = fields.iter().filter_map(|f| f.idl_data_type.as_ref()).collect();
+    let idl_data_types: Vec<_> = fields
+        .iter()
+        .filter_map(|f| f.idl_data_type.as_ref())
+        .collect();
 
     let ix_deser = if ix_args.is_empty() {
         quote! {}
@@ -275,19 +294,25 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         &format!("__client_accounts_{}", name.to_string().to_lowercase()),
         name.span(),
     );
-    let client_fields: Vec<_> = field_names.iter().map(|f| {
-        quote! { pub #f: anchor_lang_v2::Address }
-    }).collect();
-    let client_meta_entries: Vec<_> = idl_accounts.iter().map(|(fname, writable, signer, _)| {
-        let field_ident = syn::Ident::new(fname, proc_macro2::Span::call_site());
-        quote! {
-            anchor_lang_v2::AccountMeta {
-                address: self.#field_ident,
-                is_writable: #writable,
-                is_signer: #signer,
+    let client_fields: Vec<_> = field_names
+        .iter()
+        .map(|f| {
+            quote! { pub #f: anchor_lang_v2::Address }
+        })
+        .collect();
+    let client_meta_entries: Vec<_> = idl_accounts
+        .iter()
+        .map(|(fname, writable, signer, _)| {
+            let field_ident = syn::Ident::new(fname, proc_macro2::Span::call_site());
+            quote! {
+                anchor_lang_v2::AccountMeta {
+                    address: self.#field_ident,
+                    is_writable: #writable,
+                    is_signer: #signer,
+                }
             }
-        }
-    }).collect();
+        })
+        .collect();
 
     quote! {
         /// Client-side accounts struct with `Address` fields for off-chain use.
@@ -378,7 +403,10 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let (struct_attrs, pod_impls) = if is_borsh {
-        (quote! { #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)] }, quote! {})
+        (
+            quote! { #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)] },
+            quote! {},
+        )
     } else {
         let field_types: Vec<_> = if let Fields::Named(named) = fields {
             named.named.iter().map(|f| &f.ty).collect()
@@ -461,22 +489,26 @@ fn process_handler(
     // Discriminator: 1-byte user-specified or 8-byte sha256 hash.
     use sha2::Digest;
     let hash = sha2::Sha256::digest(format!("global:{fn_name_str}").as_bytes());
-    let (disc_bytes_for_idl, disc_literal_bytes, disc_match_arm_pattern):
-        (Vec<u8>, Vec<TokenStream2>, TokenStream2) =
-        if use_byte_disc {
-            let byte = discrim_byte.unwrap();
-            (vec![byte], vec![quote! { #byte }], quote! { #byte })
-        } else {
-            let disc_bytes = &hash[..8];
-            let disc_u64 = u64::from_le_bytes(disc_bytes.try_into().unwrap());
-            let lits: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
-            (disc_bytes.to_vec(), lits, quote! { #disc_u64 })
-        };
+    let (disc_bytes_for_idl, disc_literal_bytes, disc_match_arm_pattern): (
+        Vec<u8>,
+        Vec<TokenStream2>,
+        TokenStream2,
+    ) = if use_byte_disc {
+        let byte = discrim_byte.unwrap();
+        (vec![byte], vec![quote! { #byte }], quote! { #byte })
+    } else {
+        let disc_bytes = &hash[..8];
+        let disc_u64 = u64::from_le_bytes(disc_bytes.try_into().unwrap());
+        let lits: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
+        (disc_bytes.to_vec(), lits, quote! { #disc_u64 })
+    };
     let fn_name_log = format!("Instruction: {fn_name_str}");
 
     // Parse args.
     let mut args_iter = handler.sig.inputs.iter();
-    let first_arg = args_iter.next().expect("handler must have a Context parameter");
+    let first_arg = args_iter
+        .next()
+        .expect("handler must have a Context parameter");
     let accounts_type = extract_context_inner_type(first_arg);
 
     let extra_args: Vec<(&Ident, &Type)> = args_iter
@@ -553,7 +585,10 @@ fn process_handler(
 
     // Client accounts re-export.
     let client_mod = syn::Ident::new(
-        &format!("__client_accounts_{}", accounts_type.to_string().to_lowercase()),
+        &format!(
+            "__client_accounts_{}",
+            accounts_type.to_string().to_lowercase()
+        ),
         fn_name.span(),
     );
     let accounts_reexport = quote! {
@@ -596,20 +631,29 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     // --- Parse #[discrim = N] attributes ---
     // If any handler has #[discrim = N], all must. The byte value becomes
     // the 1-byte discriminator instead of the default sha256("global:<name>")[..8].
-    let discrim_attrs: Vec<Option<u8>> = handlers.iter().map(|h| {
-        h.attrs.iter().find_map(|attr| {
-            if let syn::Meta::NameValue(nv) = &attr.meta {
-                if nv.path.is_ident("discrim") {
-                    if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(lit), .. }) = &nv.value {
-                        return Some(lit.base10_parse::<u8>()
-                            .expect("#[discrim = N] value must be a u8 (0..=255)"));
+    let discrim_attrs: Vec<Option<u8>> = handlers
+        .iter()
+        .map(|h| {
+            h.attrs.iter().find_map(|attr| {
+                if let syn::Meta::NameValue(nv) = &attr.meta {
+                    if nv.path.is_ident("discrim") {
+                        if let syn::Expr::Lit(syn::ExprLit {
+                            lit: syn::Lit::Int(lit),
+                            ..
+                        }) = &nv.value
+                        {
+                            return Some(
+                                lit.base10_parse::<u8>()
+                                    .expect("#[discrim = N] value must be a u8 (0..=255)"),
+                            );
+                        }
+                        panic!("#[discrim = N] value must be an integer literal");
                     }
-                    panic!("#[discrim = N] value must be an integer literal");
                 }
-            }
-            None
+                None
+            })
         })
-    }).collect();
+        .collect();
 
     let has_any_discrim = discrim_attrs.iter().any(|d| d.is_some());
     let has_all_discrim = discrim_attrs.iter().all(|d| d.is_some());
@@ -623,13 +667,17 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         for (i, d) in discrim_attrs.iter().enumerate() {
             let byte = d.unwrap();
             if !seen.insert(byte) {
-                panic!("Duplicate #[discrim = {}] on instruction '{}'",
-                    byte, handlers[i].sig.ident);
+                panic!(
+                    "Duplicate #[discrim = {}] on instruction '{}'",
+                    byte, handlers[i].sig.ident
+                );
             }
         }
     }
 
-    let codegen: Vec<HandlerCodegen> = handlers.iter().enumerate()
+    let codegen: Vec<HandlerCodegen> = handlers
+        .iter()
+        .enumerate()
         .map(|(i, h)| process_handler(h, mod_name, use_byte_disc, discrim_attrs[i]))
         .collect();
 
@@ -656,9 +704,18 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             syn::Type::Path(p) => {
                 if p.path.segments.len() == 1 {
                     let name = p.path.segments[0].ident.to_string();
-                    matches!(name.as_str(),
-                        "u8" | "u16" | "u32" | "u64" | "u128" |
-                        "i8" | "i16" | "i32" | "i64" | "i128" | "bool"
+                    matches!(
+                        name.as_str(),
+                        "u8" | "u16"
+                            | "u32"
+                            | "u64"
+                            | "u128"
+                            | "i8"
+                            | "i16"
+                            | "i32"
+                            | "i64"
+                            | "i128"
+                            | "bool"
                     )
                 } else {
                     false
@@ -670,13 +727,16 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     let min_args_size_expr = if all_ix_arg_types.is_empty() {
         quote! { 0usize }
     } else {
-        let per_ix_sizes: Vec<_> = all_ix_arg_types.iter().map(|types| {
-            if types.is_empty() || !types.iter().all(is_fixed_size_primitive) {
-                quote! { 0usize }
-            } else {
-                quote! { core::mem::size_of::<(#(#types,)*)>() }
-            }
-        }).collect();
+        let per_ix_sizes: Vec<_> = all_ix_arg_types
+            .iter()
+            .map(|types| {
+                if types.is_empty() || !types.iter().all(is_fixed_size_primitive) {
+                    quote! { 0usize }
+                } else {
+                    quote! { core::mem::size_of::<(#(#types,)*)>() }
+                }
+            })
+            .collect();
         quote! { {
             const __SIZES: &[usize] = &[#(#per_ix_sizes),*];
             const fn __const_min(s: &[usize]) -> usize {
@@ -714,17 +774,20 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
     // Strip #[discrim = N] attributes from handler outputs so rustc
     // doesn't complain about an unknown attribute.
-    let handlers: Vec<_> = handlers.iter().map(|func| {
-        let mut func = (*func).clone();
-        func.attrs.retain(|attr| {
-            if let syn::Meta::NameValue(nv) = &attr.meta {
-                !nv.path.is_ident("discrim")
-            } else {
-                true
-            }
-        });
-        func
-    }).collect();
+    let handlers: Vec<_> = handlers
+        .iter()
+        .map(|func| {
+            let mut func = (*func).clone();
+            func.attrs.retain(|attr| {
+                if let syn::Meta::NameValue(nv) = &attr.meta {
+                    !nv.path.is_ident("discrim")
+                } else {
+                    true
+                }
+            });
+            func
+        })
+        .collect();
 
     quote! {
         #mod_vis mod #mod_name {
@@ -986,7 +1049,9 @@ fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {
         FnArg::Typed(pt) => &*pt.ty,
         _ => panic!("first parameter must be ctx: &mut Context<T>"),
     };
-    if let Type::Reference(r) = ty { return extract_generic_arg(&r.elem); }
+    if let Type::Reference(r) = ty {
+        return extract_generic_arg(&r.elem);
+    }
     extract_generic_arg(ty)
 }
 

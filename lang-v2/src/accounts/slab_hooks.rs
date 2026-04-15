@@ -10,9 +10,9 @@
 //!   `AccountInitialize` forward impl.
 
 use {
+    crate::{Discriminator, Owner},
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
-    crate::{Discriminator, Owner},
 };
 
 /// Validation hook Slab runs on its header type's bytes before mapping.
@@ -29,7 +29,9 @@ pub trait SlabValidate {
     fn validate(view: &AccountView, data: &[u8], program_id: &Address) -> Result<(), ProgramError>;
 
     #[inline(always)]
-    fn data_offset() -> usize { Self::DATA_OFFSET }
+    fn data_offset() -> usize {
+        Self::DATA_OFFSET
+    }
 }
 
 impl<T: Owner + Discriminator> SlabValidate for T {

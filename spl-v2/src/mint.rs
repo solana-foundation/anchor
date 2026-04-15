@@ -6,7 +6,7 @@
 use {
     crate::token::create_token_account,
     anchor_lang_v2::{
-        accounts::{Account, SlabValidate, SlabInit},
+        accounts::{Account, SlabInit, SlabValidate},
         programs::Token,
         Constrain, Id,
     },
@@ -43,7 +43,11 @@ impl SlabValidate for Mint {
     const DATA_OFFSET: usize = 0;
 
     #[inline(always)]
-    fn validate(view: &AccountView, data: &[u8], _program_id: &Address) -> Result<(), ProgramError> {
+    fn validate(
+        view: &AccountView,
+        data: &[u8],
+        _program_id: &Address,
+    ) -> Result<(), ProgramError> {
         // TODO: Token2022 support — add a Mint2022 type or feature gate.
         if !view.owned_by(&Token::id()) {
             return Err(ProgramError::IllegalOwner);
@@ -108,7 +112,11 @@ impl Mint {
 
     /// The mint authority, if any.
     pub fn mint_authority(&self) -> Option<&Address> {
-        if self.has_mint_authority() { Some(&self.mint_authority) } else { None }
+        if self.has_mint_authority() {
+            Some(&self.mint_authority)
+        } else {
+            None
+        }
     }
 
     /// Whether the mint has been initialized.
@@ -123,7 +131,11 @@ impl Mint {
 
     /// The freeze authority, if any.
     pub fn freeze_authority(&self) -> Option<&Address> {
-        if self.has_freeze_authority() { Some(&self.freeze_authority) } else { None }
+        if self.has_freeze_authority() {
+            Some(&self.freeze_authority)
+        } else {
+            None
+        }
     }
 }
 

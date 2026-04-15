@@ -1,10 +1,9 @@
+#[cfg(feature = "const-rent")]
+use pinocchio::sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BYTE};
 use {
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
 };
-
-#[cfg(feature = "const-rent")]
-use pinocchio::sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BYTE};
 
 /// Largest `space` for which the const path is guaranteed not to
 /// overflow `u64`. Only referenced when the `const-rent` feature is on.
@@ -14,8 +13,7 @@ use pinocchio::sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BY
 /// runtime caps account data at 10 MiB (~262× smaller than this bound) so
 /// the precondition is essentially unreachable from honest callers.
 #[cfg(feature = "const-rent")]
-const MAX_SAFE_SPACE: u64 =
-    (u64::MAX / DEFAULT_LAMPORTS_PER_BYTE) - ACCOUNT_STORAGE_OVERHEAD;
+const MAX_SAFE_SPACE: u64 = (u64::MAX / DEFAULT_LAMPORTS_PER_BYTE) - ACCOUNT_STORAGE_OVERHEAD;
 
 /// Compute the rent-exempt minimum balance for an account of `space` bytes.
 ///
@@ -52,7 +50,10 @@ macro_rules! pda_find_loop {
         let mut slices = core::mem::MaybeUninit::<[&[u8]; 19]>::uninit();
         let sptr = slices.as_mut_ptr() as *mut &[u8];
         let mut i = 0;
-        while i < n { unsafe { sptr.add(i).write($seeds[i]) }; i += 1; }
+        while i < n {
+            unsafe { sptr.add(i).write($seeds[i]) };
+            i += 1;
+        }
         unsafe {
             sptr.add(n + 1).write($program_id.as_ref());
             sptr.add(n + 2).write(PDA_MARKER.as_slice());
@@ -66,14 +67,28 @@ macro_rules! pda_find_loop {
 
         loop {
             unsafe { bump_ptr.write(bump as u8) };
-            unsafe { sol_sha256(input as *const _ as *const u8, input.len() as u64, hash.as_mut_ptr() as *mut u8) };
-            let on_curve = unsafe { sol_curve_validate_point(CURVE25519_EDWARDS, hash.as_ptr() as *const u8, core::ptr::null_mut()) };
+            unsafe {
+                sol_sha256(
+                    input as *const _ as *const u8,
+                    input.len() as u64,
+                    hash.as_mut_ptr() as *mut u8,
+                )
+            };
+            let on_curve = unsafe {
+                sol_curve_validate_point(
+                    CURVE25519_EDWARDS,
+                    hash.as_ptr() as *const u8,
+                    core::ptr::null_mut(),
+                )
+            };
             if on_curve != 0 {
                 let $h = unsafe { hash.assume_init() };
                 let $b = bump as u8;
                 return $on_found;
             }
-            if bump == 0 { break; }
+            if bump == 0 {
+                break;
+            }
             bump -= 1;
         }
         Err(ProgramError::InvalidSeeds)
@@ -153,7 +168,10 @@ pub fn find_and_verify_program_address(
 /// `sol_create_program_address`. The seeds slice should already include
 /// the bump byte.
 #[inline(always)]
-pub fn create_program_address(seeds: &[&[u8]], program_id: &Address) -> Result<Address, ProgramError> {
+pub fn create_program_address(
+    seeds: &[&[u8]],
+    program_id: &Address,
+) -> Result<Address, ProgramError> {
     #[cfg(target_os = "solana")]
     {
         let computed = hash_pda_seeds(seeds, program_id)?;
@@ -237,7 +255,10 @@ pub fn find_and_verify_program_address_skip_curve(
         let mut slices = core::mem::MaybeUninit::<[&[u8]; 19]>::uninit();
         let sptr = slices.as_mut_ptr() as *mut &[u8];
         let mut i = 0;
-        while i < n { unsafe { sptr.add(i).write(seeds[i]) }; i += 1; }
+        while i < n {
+            unsafe { sptr.add(i).write(seeds[i]) };
+            i += 1;
+        }
         unsafe {
             sptr.add(n + 1).write(program_id.as_ref());
             sptr.add(n + 2).write(PDA_MARKER.as_slice());
@@ -251,13 +272,21 @@ pub fn find_and_verify_program_address_skip_curve(
 
         loop {
             unsafe { bump_ptr.write(bump as u8) };
-            unsafe { sol_sha256(input as *const _ as *const u8, input.len() as u64, hash.as_mut_ptr() as *mut u8) };
+            unsafe {
+                sol_sha256(
+                    input as *const _ as *const u8,
+                    input.len() as u64,
+                    hash.as_mut_ptr() as *mut u8,
+                )
+            };
             let h = unsafe { hash.assume_init() };
             let derived = Address::new_from_array(h);
             if pinocchio::address::address_eq(&derived, expected) {
                 return Ok(bump as u8);
             }
-            if bump == 0 { break; }
+            if bump == 0 {
+                break;
+            }
             bump -= 1;
         }
         Err(ProgramError::InvalidSeeds)
@@ -347,8 +376,13 @@ pub fn create_account(
 
     if current == 0 {
         pinocchio_system::instructions::CreateAccount {
-            from: payer, to: target, lamports: required, space: space as u64, owner,
-        }.invoke()?;
+            from: payer,
+            to: target,
+            lamports: required,
+            space: space as u64,
+            owner,
+        }
+        .invoke()?;
     } else {
         create_prefunded(payer, target, space, owner, required, current, &[])?;
     }
@@ -372,8 +406,10 @@ pub fn create_account_signed(
     // SAFETY: Seed is repr(C) { *const u8, u64, PhantomData } = 16 bytes,
     // identical to &[u8] on SBF (*const u8, u64) = 16 bytes.
     // PhantomData is zero-sized. Static assertions verify at compile time.
-    const _: () = assert!(core::mem::size_of::<&[u8]>() == core::mem::size_of::<pinocchio::cpi::Seed>());
-    const _: () = assert!(core::mem::align_of::<&[u8]>() == core::mem::align_of::<pinocchio::cpi::Seed>());
+    const _: () =
+        assert!(core::mem::size_of::<&[u8]>() == core::mem::size_of::<pinocchio::cpi::Seed>());
+    const _: () =
+        assert!(core::mem::align_of::<&[u8]>() == core::mem::align_of::<pinocchio::cpi::Seed>());
     let signer_seeds: &[pinocchio::cpi::Seed] = unsafe {
         core::slice::from_raw_parts(seeds.as_ptr() as *const pinocchio::cpi::Seed, seeds.len())
     };
@@ -381,8 +417,13 @@ pub fn create_account_signed(
 
     if current == 0 {
         pinocchio_system::instructions::CreateAccount {
-            from: payer, to: target, lamports: required, space: space as u64, owner,
-        }.invoke_signed(&[signer])?;
+            from: payer,
+            to: target,
+            lamports: required,
+            space: space as u64,
+            owner,
+        }
+        .invoke_signed(&[signer])?;
     } else {
         create_prefunded(payer, target, space, owner, required, current, &[signer])?;
     }
@@ -405,15 +446,22 @@ fn create_prefunded(
     let top_up = required.saturating_sub(current);
     if top_up > 0 {
         pinocchio_system::instructions::Transfer {
-            from: payer, to: target, lamports: top_up,
-        }.invoke()?;
+            from: payer,
+            to: target,
+            lamports: top_up,
+        }
+        .invoke()?;
     }
     pinocchio_system::instructions::Allocate {
-        account: target, space: space as u64,
-    }.invoke_signed(signers)?;
+        account: target,
+        space: space as u64,
+    }
+    .invoke_signed(signers)?;
     pinocchio_system::instructions::Assign {
-        account: target, owner,
-    }.invoke_signed(signers)?;
+        account: target,
+        owner,
+    }
+    .invoke_signed(signers)?;
     Ok(())
 }
 
@@ -443,8 +491,11 @@ pub fn realloc_account(
         let deficit = required.saturating_sub(current_lamports);
         if deficit > 0 {
             pinocchio_system::instructions::Transfer {
-                from: payer, to: account, lamports: deficit,
-            }.invoke()?;
+                from: payer,
+                to: account,
+                lamports: deficit,
+            }
+            .invoke()?;
         }
     } else if new_space < old_space {
         let excess = current_lamports.saturating_sub(required);
