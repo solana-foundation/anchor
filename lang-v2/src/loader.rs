@@ -57,7 +57,7 @@ impl<'a> AccountLoader<'a> {
 
     /// Walk + `T::load()` the next account.
     #[inline(always)]
-    pub fn next<T: AnchorAccount>(&mut self) -> Result<T, ProgramError> {
+    pub fn load_next<T: AnchorAccount>(&mut self) -> Result<T, ProgramError> {
         let view = unsafe { self.cursor.next() };
         T::load(view, self.program_id)
     }

@@ -601,7 +601,6 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     /// Returns the populated elements as a slice.
     #[inline(always)]
     pub fn as_slice(&self) -> &[T] {
-        let _ = Self::_NO_PADDING;
         &self.data[..self.len()]
     }
 

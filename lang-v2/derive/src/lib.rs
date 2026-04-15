@@ -701,25 +701,21 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     // for instructions with references or complex types.
     fn is_fixed_size_primitive(ty: &syn::Type) -> bool {
         match ty {
-            syn::Type::Path(p) => {
-                if p.path.segments.len() == 1 {
-                    let name = p.path.segments[0].ident.to_string();
-                    matches!(
-                        name.as_str(),
-                        "u8" | "u16"
-                            | "u32"
-                            | "u64"
-                            | "u128"
-                            | "i8"
-                            | "i16"
-                            | "i32"
-                            | "i64"
-                            | "i128"
-                            | "bool"
-                    )
-                } else {
-                    false
-                }
+            syn::Type::Path(p) if p.path.segments.len() == 1 => {
+                let name = p.path.segments[0].ident.to_string();
+                matches!(
+                    name.as_str(),
+                    "u8" | "u16"
+                        | "u32"
+                        | "u64"
+                        | "u128"
+                        | "i8"
+                        | "i16"
+                        | "i32"
+                        | "i64"
+                        | "i128"
+                        | "bool"
+                )
             }
             _ => false,
         }

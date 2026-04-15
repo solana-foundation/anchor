@@ -142,7 +142,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     "rent_exempt" => {
                         input.parse::<Token![=]>()?;
                         let val: Ident = input.parse()?;
-                        result.rent_exempt = Some(val.to_string() == "enforce");
+                        result.rent_exempt = Some(val == "enforce");
                     }
                     "payer" => {
                         input.parse::<Token![=]>()?;
@@ -417,6 +417,7 @@ fn rewrite_seed_expr(expr: &Expr, field_names: &[String]) -> proc_macro2::TokenS
 /// `using_our_program_id = false` (i.e. `seeds::program = ...` is set)
 /// unconditionally falls back to the dynamic path, since we only know
 /// how to discover our own crate's `declare_id!`.
+#[allow(clippy::too_many_arguments)]
 fn emit_seeds_check(
     seeds: &[Expr],
     seed_exprs: &[TokenStream2],
