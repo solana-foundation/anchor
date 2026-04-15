@@ -26,7 +26,7 @@ pub use pinocchio::address::Address;
 pub use pinocchio::address::address_eq;
 pub use accounts::{AccountInitialize, SlabInit};
 pub use context::{Context, Bumps};
-pub use cursor::AccountCursor;
+pub use cursor::{AccountCursor, AccountBitvec};
 pub use dispatch::{TryAccounts, run_handler, parse_instruction};
 pub use loader::AccountLoader;
 pub use cpi::{create_account, create_account_signed, find_program_address, find_and_verify_program_address, find_and_verify_program_address_skip_curve, create_program_address, verify_program_address};
@@ -107,6 +107,7 @@ pub enum ErrorCode {
     RequireKeysNeqViolated,
     RequireGtViolated,
     RequireGteViolated,
+    ConstraintDuplicateMutableAccount,
 }
 
 impl From<ErrorCode> for solana_program_error::ProgramError {
@@ -136,6 +137,7 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             ErrorCode::RequireKeysNeqViolated => solana_program_error::ProgramError::Custom(2504),
             ErrorCode::RequireGtViolated => solana_program_error::ProgramError::Custom(2505),
             ErrorCode::RequireGteViolated => solana_program_error::ProgramError::Custom(2506),
+            ErrorCode::ConstraintDuplicateMutableAccount => solana_program_error::ProgramError::Custom(2005),
         }
     }
 }

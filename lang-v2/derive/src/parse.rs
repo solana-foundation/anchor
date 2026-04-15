@@ -24,6 +24,7 @@ pub struct AccountAttrs {
     pub is_init_if_needed: bool,
     pub is_zeroed: bool,
     pub is_executable: bool,
+    pub is_dup: bool,
     /// None = not specified, Some(true) = enforce, Some(false) = skip
     pub rent_exempt: Option<bool>,
     /// None = no bump attr, Some(None) = `bump` without value, Some(Some(expr)) = `bump = expr`
@@ -56,6 +57,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         is_init_if_needed: false,
         is_zeroed: false,
         is_executable: false,
+        is_dup: false,
         rent_exempt: None,
         bump: None,
         payer: None,
@@ -107,6 +109,10 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     }
                     "signer" => result.is_signer = true,
                     "executable" => result.is_executable = true,
+                    "dup" => {
+                        result.is_dup = true;
+                        result.is_mut = true;
+                    }
                     "rent_exempt" => {
                         input.parse::<Token![=]>()?;
                         let val: Ident = input.parse()?;
@@ -540,13 +546,11 @@ fn emit_init_body(
     }
 }
 
-pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usize) -> AccountField {
+pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) -> AccountField {
+    let field_index_usize = field_index as usize;
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
     let attrs = parse_account_attrs(&field.attrs);
-    // Unsuffixed literal so the expansion shows `__views[0]` instead of
-    // `__views[0usize]` — the type is unambiguous from the indexing context.
-    let field_index = proc_macro2::Literal::usize_unsuffixed(field_index);
 
     let is_signer = field_ty_str(field_ty) == "Signer";
     let is_optional = field_ty_str(field_ty) == "Optional";
@@ -565,7 +569,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
             let mut #field_name: #field_ty = {
-                let __target = __views[#field_index];
+                let __target = __views[#field_index_usize];
                 #init_body
             };
         }
@@ -573,7 +577,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
         quote! {
             let mut #field_name: #field_ty = {
-                let __target = __views[#field_index];
+                let __target = __views[#field_index_usize];
                 if __target.data_len() > 0 && !__target.owned_by(&anchor_lang_v2::programs::System::id()) {
                     anchor_lang_v2::AnchorAccount::load_mut(__target, __program_id)?
                 } else {
@@ -586,7 +590,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
         // stamp the real discriminator, then load mutably.
         quote! {
             let mut #field_name: #field_ty = {
-                let __target = __views[#field_index];
+                let __target = __views[#field_index_usize];
                 let __disc = <#field_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
                 {
                     let __data = __target.try_borrow()?;
@@ -604,11 +608,11 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
         }
     } else if attrs.is_mut {
         quote! {
-            let mut #field_name: #field_ty = anchor_lang_v2::AnchorAccount::load_mut(__views[#field_index], __program_id)?;
+            let mut #field_name: #field_ty = anchor_lang_v2::AnchorAccount::load_mut(__views[#field_index_usize], __program_id)?;
         }
     } else {
         quote! {
-            let #field_name: #field_ty = anchor_lang_v2::AnchorAccount::load(__views[#field_index], __program_id)?;
+            let #field_name: #field_ty = anchor_lang_v2::AnchorAccount::load(__views[#field_index_usize], __program_id)?;
         }
     };
 
@@ -830,6 +834,14 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: usiz
     } else {
         None
     };
+
+    if attrs.is_mut && !attrs.is_dup {
+        constraints.push(quote! {
+            if __duplicates.get(#field_index) {
+                return Err(anchor_lang_v2::ErrorCode::ConstraintDuplicateMutableAccount.into());
+            }
+        });
+    }
 
     // For Optional<T> fields, wrap all constraints and exit in is_some()
     // guards. When the account is None (client passed the program ID
