@@ -113,26 +113,24 @@ pub fn account(
     let account_name_str = account_name.to_string();
     let (impl_gen, type_gen, where_clause) = account_strct.generics.split_for_impl();
 
+    fn is_zero_lit(expr: &Expr) -> bool {
+        matches!(
+            expr,
+            Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(val), .. })
+                if val.base10_parse::<u128>().is_ok_and(|v| v == 0)
+        )
+    }
+
     fn is_zeroed_discriminator(mut discr: &Expr) -> bool {
         // Peel references
         while let Expr::Reference(syn::ExprReference { expr, .. }) = discr {
             discr = expr;
         }
         match discr {
-            Expr::Lit(syn::ExprLit {
-                lit: syn::Lit::Int(val),
-                ..
-            }) => val.base10_parse::<u128>().is_ok_and(|v| v == 0),
-            Expr::Array(arr) => arr.elems.iter().all(|expr| {
-                let Expr::Lit(syn::ExprLit {
-                    lit: syn::Lit::Int(val),
-                    ..
-                }) = expr
-                else {
-                    return false;
-                };
-                val.base10_parse::<u128>().is_ok_and(|v| v == 0)
-            }),
+            Expr::Lit(_) => is_zero_lit(discr),
+            Expr::Array(arr) => arr.elems.iter().all(is_zero_lit),
+            // [0; N] — repeat expression
+            Expr::Repeat(rep) => is_zero_lit(&rep.expr),
             _ => false,
         }
     }
