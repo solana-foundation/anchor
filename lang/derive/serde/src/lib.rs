@@ -120,13 +120,33 @@ fn gen_borsh_deserialize(input: TokenStream) -> TokenStream {
     }
 
     let borsh_attrs = extract_borsh_attrs(&mut item);
-    if !borsh_attrs.is_empty() && cfg!(feature = "lazy-account") {
-        return syn::Error::new(
-            borsh_attrs[0].span(),
-            "`borsh` attributes are not currently supported with `lazy-account`",
-        )
-        .into_compile_error()
-        .into();
+    #[cfg(feature = "lazy-account")]
+    {
+        // `use_discriminant = false` is safe with `lazy-account` because it preserves
+        // borsh's default sequential tag encoding (0, 1, 2, ...) which Lazy's
+        // `size_of` relies on. `use_discriminant = true` would encode explicit
+        // discriminant values as the tag byte, breaking the Lazy match arms.
+        // Other item-level borsh attrs are not yet supported.
+        let unsupported: Vec<_> = borsh_attrs
+            .iter()
+            .filter(|attr| {
+                !matches!(
+                    attr,
+                    NestedMeta::Meta(Meta::NameValue(nv))
+                        if nv.path.is_ident("use_discriminant")
+                            && matches!(&nv.lit, syn::Lit::Bool(b) if !b.value)
+                )
+            })
+            .collect();
+        if let Some(attr) = unsupported.first() {
+            return syn::Error::new(
+                attr.span(),
+                "only `#[borsh(use_discriminant = false)]` is supported with `lazy-account`; \
+                 `use_discriminant = true` and other `borsh` attributes are not yet supported",
+            )
+            .into_compile_error()
+            .into();
+        }
     }
     let attrs = helper_attrs("BorshDeserialize", borsh_attrs);
     quote! {
@@ -138,17 +158,14 @@ fn gen_borsh_deserialize(input: TokenStream) -> TokenStream {
 
 /// Implements `borsh` deserialization for this structure, as well as implementing lazy
 /// deserialization if the `lazy-account` feature is enabled.
-/// `#[borsh(use_discriminant = ..)]` is supported, but _not_ currently in conjunction
-/// with `lazy-account`.
-#[cfg_attr(feature = "lazy-account", doc = "```compile_fail")]
-#[cfg_attr(
-    feature = "lazy-account",
-    doc = "// Will not compile with `lazy-account`"
-)]
-#[cfg_attr(not(feature = "lazy-account"), doc = "```")]
+/// `#[borsh(use_discriminant = false)]` is supported with `lazy-account`;
+/// `use_discriminant = true` and other `#[borsh]` attributes (e.g. `skip`) are not yet
+/// supported in conjunction with `lazy-account`.
+///
+/// ```
 /// # use anchor_derive_serde::AnchorDeserialize;
 /// #[derive(AnchorDeserialize)]
-/// #[borsh(use_discriminant = true)]
+/// #[borsh(use_discriminant = false)]
 /// pub enum Example {
 ///     Foo = 1,
 ///     Bar = 2,
