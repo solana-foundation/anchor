@@ -129,18 +129,15 @@ fn gen_borsh_deserialize(input: TokenStream) -> TokenStream {
         // `size_of` relies on. `use_discriminant = true` would encode explicit
         // discriminant values as the tag byte, breaking the Lazy match arms.
         // Other item-level borsh attrs are not yet supported.
-        let unsupported: Vec<_> = borsh_attrs
-            .iter()
-            .filter(|attr| {
-                !matches!(
-                    attr,
-                    NestedMeta::Meta(Meta::NameValue(nv))
-                        if nv.path.is_ident("use_discriminant")
-                            && matches!(&nv.lit, syn::Lit::Bool(b) if !b.value)
-                )
-            })
-            .collect();
-        if let Some(attr) = unsupported.first() {
+        let unsupported = borsh_attrs.iter().find(|attr| {
+            !matches!(
+                attr,
+                NestedMeta::Meta(Meta::NameValue(nv))
+                    if nv.path.is_ident("use_discriminant")
+                        && matches!(&nv.lit, syn::Lit::Bool(b) if !b.value)
+            )
+        });
+        if let Some(attr) = unsupported {
             return syn::Error::new(
                 attr.span(),
                 "only `#[borsh(use_discriminant = false)]` is supported with `lazy-account`; \
