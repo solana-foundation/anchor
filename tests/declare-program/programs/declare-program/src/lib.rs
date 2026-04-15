@@ -12,9 +12,14 @@ declare_program!(external_legacy);
 // https://github.com/raydium-io/raydium-idl/blob/6123104304ebcb42be175cc297a2c221ac96bb96/raydium_clmm/amm_v3.json
 declare_program!(amm_v3);
 
+pub const GLOBAL: &[u8] = b"global";
+
 #[program]
 pub mod declare_program {
-    use super::*;
+    use {
+        super::*,
+        anchor_lang::solana_program::{instruction::Instruction, program::invoke_signed},
+    };
 
     pub fn cpi(ctx: Context<Cpi>, value: u32) -> Result<()> {
         let cpi_my_account = &mut ctx.accounts.cpi_my_account;
@@ -89,6 +94,84 @@ pub mod declare_program {
 
         Ok(())
     }
+
+    #[cfg(not(target_os = "solana"))]
+    pub fn account_utils(_ctx: Context<Utils>) -> Result<()> {
+        use external::parsers::Account;
+
+        // Empty
+        if Account::parse(&[]).is_ok() {
+            return Err(ProgramError::Custom(0).into());
+        }
+
+        const DISC: &[u8] = external::accounts::MyAccount::DISCRIMINATOR;
+
+        // Correct discriminator but invalid data
+        if Account::parse(DISC).is_ok() {
+            return Err(ProgramError::Custom(1).into());
+        };
+
+        // Correct discriminator and valid data
+        match Account::parse(&[DISC, &[1, 0, 0, 0]].concat()) {
+            Ok(Account::MyAccount(my_account)) => require_eq!(my_account.field, 1),
+            Ok(_) => return Err(ProgramError::Custom(2).into()),
+            Err(e) => return Err(e.into()),
+        }
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "solana"))]
+    pub fn event_utils(_ctx: Context<Utils>) -> Result<()> {
+        use external::parsers::Event;
+
+        // Empty
+        if Event::parse(&[]).is_ok() {
+            return Err(ProgramError::Custom(0).into());
+        }
+
+        const DISC: &[u8] = external::events::MyEvent::DISCRIMINATOR;
+
+        // Correct discriminator but invalid data
+        if Event::parse(DISC).is_ok() {
+            return Err(ProgramError::Custom(1).into());
+        };
+
+        // Correct discriminator and valid data
+        match Event::parse(&[DISC, &[1, 0, 0, 0]].concat()) {
+            Ok(Event::MyEvent(my_event)) => require_eq!(my_event.value, 1),
+            Err(e) => return Err(e.into()),
+        }
+
+        Ok(())
+    }
+
+    pub fn proxy(ctx: Context<Proxy>, data: Vec<u8>) -> Result<()> {
+        let (authority, bump) = Pubkey::find_program_address(&[GLOBAL], &ID);
+
+        let accounts = ctx
+            .remaining_accounts
+            .iter()
+            .map(|ra| AccountMeta {
+                pubkey: ra.key(),
+                is_signer: ra.is_signer || &authority == ra.key,
+                is_writable: ra.is_writable,
+            })
+            .collect();
+
+        let signer_seeds: &[&[&[u8]]] = &[&[GLOBAL, &[bump]]];
+        invoke_signed(
+            &Instruction {
+                program_id: ctx.accounts.program.key(),
+                accounts,
+                data,
+            },
+            ctx.remaining_accounts,
+            signer_seeds,
+        )?;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -102,4 +185,9 @@ pub struct Cpi<'info> {
 #[derive(Accounts)]
 pub struct Utils<'info> {
     pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct Proxy<'info> {
+    pub program: Program<'info, External>,
 }

@@ -173,6 +173,7 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                 }
                 IdlInstructionAccountItem::Composite(accs) => {
                     let name = format_ident!("{}", accs.name);
+                    #[allow(clippy::expect_used, reason = "accounts are guaranteed to exist by prior deduplication pass")]
                     let accounts = all_ix_accs
                         .iter()
                         .find(|a| a.accounts == accs.accounts)

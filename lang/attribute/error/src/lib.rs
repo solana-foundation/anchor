@@ -62,14 +62,19 @@ pub fn error_code(
         false => Some(parse_macro_input!(args as ErrorArgs)),
     };
     let mut error_enum = parse_macro_input!(input as syn::ItemEnum);
-    let error = codegen::error::generate(error_parser::parse(&mut error_enum, args));
+    let error = match error_parser::parse(&mut error_enum, args) {
+        Ok(e) => codegen::error::generate(e),
+        Err(e) => e.into_compile_error(),
+    };
     proc_macro::TokenStream::from(error)
 }
 
 /// Generates an [`Error::AnchorError`](../../anchor_lang/error/enum.Error.html) that includes file and line information.
 ///
 /// # Example
-/// ```rust,ignore
+/// ```ignore
+/// use anchor_lang::prelude::*;
+///
 /// #[program]
 /// mod errors {
 ///     use super::*;
@@ -77,6 +82,9 @@ pub fn error_code(
 ///         Err(error!(MyError::Hello))
 ///     }
 /// }
+///
+/// #[derive(Accounts)]
+/// pub struct Example {}
 ///
 /// #[error_code]
 /// pub enum MyError {

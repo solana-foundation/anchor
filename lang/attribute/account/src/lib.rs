@@ -2,13 +2,14 @@ extern crate proc_macro;
 
 use {
     anchor_syn::{codegen::program::common::gen_discriminator, Overrides},
-    quote::{quote, ToTokens},
+    quote::{quote, quote_spanned, ToTokens},
     syn::{
         parenthesized,
         parse::{Parse, ParseStream},
         parse_macro_input,
+        spanned::Spanned,
         token::{Comma, Paren},
-        Ident, LitStr,
+        Expr, Ident, LitStr,
     },
 };
 
@@ -55,6 +56,8 @@ mod lazy;
 ///     - `discriminator = MY_DISC`
 ///     - `discriminator = get_disc(...)`
 ///
+/// All-zeroed discriminators are not supported.
+///
 /// # Zero Copy Deserialization
 ///
 /// **WARNING**: Zero copy deserialization is an experimental feature. It's
@@ -67,7 +70,7 @@ mod lazy;
 /// To enable zero-copy-deserialization, one can pass in the `zero_copy`
 /// argument to the macro as follows:
 ///
-/// ```ignore
+/// ```rust,ignore
 /// #[account(zero_copy)]
 /// ```
 ///
@@ -110,10 +113,41 @@ pub fn account(
     let account_name_str = account_name.to_string();
     let (impl_gen, type_gen, where_clause) = account_strct.generics.split_for_impl();
 
-    let discriminator = args
-        .overrides
-        .and_then(|ov| ov.discriminator)
-        .unwrap_or_else(|| {
+    fn is_zero_lit(expr: &Expr) -> bool {
+        matches!(
+            expr,
+            Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(val), .. })
+                if val.base10_parse::<u128>().is_ok_and(|v| v == 0)
+        )
+    }
+
+    fn is_zeroed_discriminator(mut discr: &Expr) -> bool {
+        // Peel references
+        while let Expr::Reference(syn::ExprReference { expr, .. }) = discr {
+            discr = expr;
+        }
+        match discr {
+            Expr::Lit(_) => is_zero_lit(discr),
+            Expr::Array(arr) => arr.elems.iter().all(is_zero_lit),
+            // [0; N] — repeat expression
+            Expr::Repeat(rep) => is_zero_lit(&rep.expr),
+            _ => false,
+        }
+    }
+
+    let discriminator = match args.overrides.and_then(|ov| ov.discriminator) {
+        Some(discrim) => {
+            let zero_err = is_zeroed_discriminator(&discrim).then(||
+                quote_spanned! {discrim.span() => compile_error!("all-zero discriminators are not supported");}
+            );
+            quote! {
+                {
+                    #zero_err
+                    #discrim
+                }
+            }
+        }
+        None => {
             // Namespace the discriminator to prevent collisions.
             let namespace = if namespace.is_empty() {
                 "account"
@@ -122,7 +156,9 @@ pub fn account(
             };
 
             gen_discriminator(namespace, account_name)
-        });
+        }
+    };
+
     let disc = if account_strct.generics.lt_token.is_some() {
         quote! { #account_name::#type_gen::DISCRIMINATOR }
     } else {
@@ -322,7 +358,11 @@ impl Parse for AccountArg {
         }
 
         // Zero copy
-        if input.fork().parse::<Ident>()? == "zero_copy" {
+        if input
+            .fork()
+            .parse::<Ident>()
+            .is_ok_and(|ident| ident == "zero_copy")
+        {
             input.parse::<Ident>()?;
             let is_unsafe = if input.peek(Paren) {
                 let content;
@@ -334,16 +374,17 @@ impl Parse for AccountArg {
                         "Expected `unsafe`",
                     ));
                 }
-
                 true
             } else {
                 false
             };
 
             return Ok(Self::ZeroCopy { is_unsafe });
-        };
+        }
 
-        // Overrides
+        // Overrides (handles discriminator = ...)
+        // This will catch invalid arguments like `size = 1234` and provide
+        // an informative error message via Overrides::parse
         input.parse::<Overrides>().map(Self::Overrides)
     }
 }
@@ -356,7 +397,14 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
 
     let fields = match &account_strct.fields {
         syn::Fields::Named(n) => n,
-        _ => panic!("Fields must be named"),
+        _ => {
+            return syn::Error::new_spanned(
+                &account_strct.ident,
+                "#[derive(ZeroCopyAccessor)] requires a struct with named fields",
+            )
+            .into_compile_error()
+            .into()
+        }
     };
     let methods: Vec<proc_macro2::TokenStream> = fields
         .named
@@ -368,19 +416,53 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
                 .find(|attr| anchor_syn::parser::tts_to_string(&attr.path) == "accessor")
                 .map(|attr| {
                     let mut tts = attr.tokens.clone().into_iter();
-                    let g_stream = match tts.next().expect("Must have a token group") {
-                        proc_macro2::TokenTree::Group(g) => g.stream(),
-                        _ => panic!("Invalid syntax"),
+                    // if user writes #[accessor] with no arguments on a field, tts.next() returns None
+                    let g_stream = match tts.next() {
+                        Some(proc_macro2::TokenTree::Group(g)) => g.stream(),
+                        Some(_) => {
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "invalid `#[accessor]` syntax, expected `#[accessor(Type)]`",
+                            )
+                            .into_compile_error();
+                        }
+                        None => {
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "`#[accessor]` requires a type argument, e.g `#[accessor(MyType)]`",
+                            )
+                            .into_compile_error();
+                        }
                     };
                     let accessor_ty = match g_stream.into_iter().next() {
                         Some(token) => token,
-                        _ => panic!("Missing accessor type"),
+                        None => {
+                            return syn::Error::new_spanned(
+                                &attr.tokens,
+                                "`#[accessor]` requires a type inside the parantheses e.g \
+                                 `#[accessor(MyType)]`",
+                            )
+                            .into_compile_error()
+                        }
                     };
 
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "accessor fields always have idents (named struct fields)"
+                    )]
                     let field_name = field.ident.as_ref().unwrap();
-
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "get_<field_name> formed from a valid Rust identifier is always \
+                                  valid TokenStream"
+                    )]
                     let get_field: proc_macro2::TokenStream =
                         format!("get_{field_name}").parse().unwrap();
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "set_<field_name> formed from a valid Rust identifier is always \
+                                  valid TokenStream"
+                    )]
                     let set_field: proc_macro2::TokenStream =
                         format!("set_{field_name}").parse().unwrap();
 
@@ -408,7 +490,7 @@ pub fn derive_zero_copy_accessor(item: proc_macro::TokenStream) -> proc_macro::T
 ///
 /// `#[zero_copy]` is just a convenient alias for
 ///
-/// ```ignore
+/// ```rust,ignore
 /// #[derive(Copy, Clone)]
 /// #[derive(bytemuck::Zeroable)]
 /// #[derive(bytemuck::Pod)]
@@ -434,12 +516,21 @@ pub fn zero_copy(
                     // ```
                     is_unsafe = true;
                 } else {
-                    // TODO: how to return a compile error with a span (can't return prase error because expected type TokenStream)
-                    panic!("expected single ident `unsafe`");
+                    return syn::Error::new(
+                        proc_macro2::Span::from(ident.span()),
+                        "expected `unsafe`, e.g `#[zero_copy(unsafe)]`",
+                    )
+                    .into_compile_error()
+                    .into();
                 }
             }
             _ => {
-                panic!("expected single ident `unsafe`");
+                return syn::Error::new(
+                    proc_macro2::Span::from(arg.span()),
+                    "expected `unsafe`, e.g `#[zero_copy(unsafe)]`",
+                )
+                .into_compile_error()
+                .into();
             }
         }
     }
@@ -508,11 +599,11 @@ pub fn zero_copy(
         } else {
             quote! {}
         };
-        let zc_struct = syn::parse2(quote! {
+
+        let zc_struct = syn::parse_quote! {
             #derive_unsafe
             #ret
-        })
-        .unwrap();
+        };
         let idl_build_impl = anchor_syn::idl::impl_idl_build_struct(&zc_struct);
         return proc_macro::TokenStream::from(quote! {
             #ret

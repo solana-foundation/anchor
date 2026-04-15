@@ -1,7 +1,7 @@
 use {
     crate::{codegen::program::common::*, parser, Program},
     heck::CamelCase,
-    quote::{quote, quote_spanned},
+    quote::{quote, quote_spanned, ToTokens},
 };
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -20,15 +20,21 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 .args
                 .iter()
                 .map(|arg| {
-                    format!("pub {}", parser::tts_to_string(&arg.raw_arg))
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "\"pub \" prepended to a valid field token string is always \
+                                  valid Rust"
+                    )]
+                    let ts = format!("pub {}", parser::tts_to_string(&arg.raw_arg))
                         .parse()
-                        .unwrap()
+                        .unwrap();
+                    ts
                 })
                 .collect();
             let impls = {
                 let discriminator = match ix.overrides.as_ref() {
                     Some(overrides) if overrides.discriminator.is_some() => {
-                        overrides.discriminator.as_ref().unwrap().to_owned()
+                        overrides.discriminator.to_token_stream()
                     }
                     _ => gen_discriminator(SIGHASH_GLOBAL_NAMESPACE, name),
                 };

@@ -13,10 +13,14 @@ The minor version will be incremented upon a breaking change and the patch versi
 ### Features
 
 - ts: Add `decodeIdlAccountRaw` ([#4375](https://github.com/solana-foundation/anchor/pull/4375)).
-- cli: Write `anchor expand` output to stdout instead of a file ([#4269](https://github.com/solana-foundation/anchor/pull/4269)).
+- cli: Add `--stdout` flag to the `expand` command ([#4400](https://github.com/solana-foundation/anchor/pull/4400)).
+- client: Add versioned tx support ([#4207](https://github.com/solana-foundation/anchor/pull/4207)).
 
 ### Fixes
 
+- spl: Fix wrong owner pubkey in CPI Guard enable/disable ([#4322](https://github.com/solana-foundation/anchor/pull/4322)).
+- spl: Add missing auth account to `group_pointer_update` ([#4324](https://github.com/solana-foundation/anchor/pull/4324)).
+- lang: Make idl build time way faster by caching `CrateContext` ([#4325](https://github.com/solana-foundation/anchor/pull/4325)).
 - cli: Bind `localnet` to `127.0.0.1` by default to fix a panic in `solana-test-validator` version `3.1.10` ([#4397](https://github.com/solana-foundation/anchor/pull/4397)).
 
 ### Breaking
