@@ -6,7 +6,6 @@ use {
     },
     proc_macro2::Literal,
     quote::{format_ident, quote},
-    std::collections::HashSet,
 };
 
 /// This function should ideally return the absolute path to the declared program's id but because
@@ -461,47 +460,37 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
         })
         .collect();
 
-    // Seed both sets from the regular instruction accounts so composites are
-    // checked against them before being accepted.
-    let mut seen_accounts: HashSet<Vec<IdlInstructionAccountItem>> = instruction_accounts
-        .iter()
-        .map(|a| a.accounts.clone())
-        .collect();
-    let mut seen_names: HashSet<String> = instruction_accounts
-        .iter()
-        .map(|a| a.name.clone())
-        .collect();
-
-    let composites = get_non_instruction_composite_accounts(&ix_accs, idl)
+    get_non_instruction_composite_accounts(&ix_accs, idl)
         .into_iter()
-        .filter_map(|accs| {
-            // Skip if the account layout is already represented.
-            if !seen_accounts.insert(accs.accounts.to_vec()) {
-                return None;
-            }
+        .fold(
+            instruction_accounts.clone(),
+            |mut all, accs| {
+                // Skip if the account layout is already represented.
+                if all.iter().any(|a| a.accounts == accs.accounts) {
+                    return all;
+                }
 
-            let name = if seen_names.insert(accs.name.to_owned()) {
-                accs.name.to_owned()
-            } else {
-                // Append numbers to the field name until we find a unique name
-                #[allow(
-                    clippy::expect_used,
-                    reason = "unbounded integer search always finds a free slot"
-                )]
-                (2..)
-                    .find_map(|i| {
-                        let candidate = format!("{}{i}", accs.name);
-                        seen_names.insert(candidate.clone()).then_some(candidate)
-                    })
-                    .expect("Should always find a valid name")
-            };
+                let name = if all.iter().all(|a| a.name != accs.name) {
+                    accs.name.to_owned()
+                } else {
+                    // Append numbers to the field name until we find a unique name
+                    #[allow(
+                        clippy::expect_used,
+                        reason = "unbounded integer search always finds a free slot"
+                    )]
+                    (2..)
+                        .find_map(|i| {
+                            let candidate = format!("{}{i}", accs.name);
+                            all.iter().all(|a| a.name != candidate).then_some(candidate)
+                        })
+                        .expect("Should always find a valid name")
+                };
 
-            Some(IdlInstructionAccounts {
-                name,
-                accounts: accs.accounts.to_vec(),
-            })
-        })
-        .collect::<Vec<_>>();
-
-    composites.into_iter().chain(instruction_accounts).collect()
+                all.push(IdlInstructionAccounts {
+                    name,
+                    accounts: accs.accounts.to_owned(),
+                });
+                all
+            },
+        )
 }

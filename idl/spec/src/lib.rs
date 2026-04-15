@@ -69,14 +69,14 @@ pub struct IdlInstruction {
     pub returns: Option<IdlType>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum IdlInstructionAccountItem {
     Composite(IdlInstructionAccounts),
     Single(IdlInstructionAccount),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlInstructionAccount {
     pub name: String,
     #[serde(default, skip_serializing_if = "is_default")]
@@ -95,20 +95,20 @@ pub struct IdlInstructionAccount {
     pub relations: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlInstructionAccounts {
     pub name: String,
     pub accounts: Vec<IdlInstructionAccountItem>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlPda {
     pub seeds: Vec<IdlSeed>,
     #[serde(skip_serializing_if = "is_default")]
     pub program: Option<IdlSeed>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum IdlSeed {
     Const(IdlSeedConst),
@@ -116,17 +116,17 @@ pub enum IdlSeed {
     Account(IdlSeedAccount),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlSeedConst {
     pub value: Vec<u8>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlSeedArg {
     pub path: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdlSeedAccount {
     pub path: String,
     #[serde(skip_serializing_if = "is_default")]
