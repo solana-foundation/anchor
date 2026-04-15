@@ -866,7 +866,8 @@ fn get_cluster_and_wallet(cfg_override: &ConfigOverride) -> Result<(String, Stri
 pub fn get_recommended_micro_lamport_fee(client: &RpcClient) -> u64 {
     let mut fees = match client.get_recent_prioritization_fees(&[]) {
         // Fees may be empty or query may fail, e.g. on localnet
-        Err(_) => {
+        Err(e) => {
+            eprintln!("Warning: failed to fetch prioritization fees, defaulting to 0: {e}");
             return 0;
         }
         Ok(f) if f.is_empty() => {
