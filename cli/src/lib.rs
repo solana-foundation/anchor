@@ -2599,7 +2599,7 @@ fn idl_init(
             program_id,
             idl_filepath: idl_filepath
                 .to_str()
-                .expect("path should be utf8")
+                .ok_or_else(|| anyhow!("IDL filepath is not valid UTF-8"))?
                 .to_string(),
             non_canonical,
         },
@@ -2650,7 +2650,7 @@ fn idl_upgrade(
             program_id,
             idl_filepath: idl_filepath
                 .to_str()
-                .expect("path should be utf8")
+                .ok_or_else(|| anyhow!("IDL filepath is not valid UTF-8"))?
                 .to_string(),
             non_canonical: false,
         },
@@ -2819,7 +2819,10 @@ fn idl_create_buffer(
         wallet_path,
         priority_fee,
         metadata::FundedIdlSubcommand::CreateBuffer {
-            filepath: filepath.to_str().expect("path should be utf8").to_string(),
+            filepath: filepath
+                .to_str()
+                .ok_or_else(|| anyhow!("IDL filepath is not valid UTF-8"))?
+                .to_string(),
         },
     );
 
