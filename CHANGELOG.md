@@ -17,6 +17,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- cli: Bind `localnet` to `127.0.0.1` by default to fix a panic in `solana-test-validator` version `3.1.10` ([#4397](https://github.com/solana-foundation/anchor/pull/4397)).
+
 ### Breaking
 
 ## [1.0.0] - 2026-04-02
