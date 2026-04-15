@@ -1,0 +1,32 @@
+[package]
+name = "multisig-v2"
+version = "0.1.0"
+description = "Anchor v2 port of the Quasar multisig benchmark example"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "multisig_v2"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+cpi = ["no-entrypoint", "dep:borsh"]
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang-v2/idl-build"]
+
+[dependencies]
+# Opt out of `account-resize` (multisig never reallocs) and `guardrails`
+# (the executable check on Program<T> and Slab borrow-state assertions are
+# development aids — the runtime already rejects CPI to non-executable
+# accounts, and borrow violations are caught by the VM).
+anchor-lang-v2 = { path = "../../../../lang-v2", default-features = false, features = ["alloc"] }
+borsh = { version = "1", optional = true }
+pinocchio = { version = "0.11", default-features = false, features = ["copy"] }
+pinocchio-system = "0.6"
+wincode = { version = "0.4", features = ["derive"] }
+
+[lints.rust.unexpected_cfgs]
+level = "allow"

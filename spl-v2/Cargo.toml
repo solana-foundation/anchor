@@ -1,0 +1,21 @@
+[package]
+name = "anchor-spl-v2"
+version = "0.1.0"
+edition = "2021"
+description = "Anchor v2 SPL account types and constraint markers"
+license = "Apache-2.0"
+
+[features]
+default = []
+
+[dependencies]
+anchor-lang-v2 = { path = "../lang-v2", version = "0.1.0" }
+pinocchio = { workspace = true }
+pinocchio-token = "0.6"
+bytemuck = { version = "1", features = ["derive"] }
+solana-address = { version = "2.0", features = ["bytemuck"] }
+solana-program-error = "3.0"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(target_os, values("solana"))']

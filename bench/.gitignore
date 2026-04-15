@@ -1,0 +1,9 @@
+# Cargo build artifacts — bench workspace + every isolated program sub-workspace.
+target/
+
+# Generated benchmark outputs. Regenerate with `cargo test --test multisig -- --nocapture`
+# (plus `BENCH_FLAMEGRAPHS=1` for the SVGs).
+flamegraphs/
+graphs/
+# Per-instruction register/disassembly traces from `BENCH_IX_TRACE=<label>`.
+ix_traces/

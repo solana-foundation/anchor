@@ -278,6 +278,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-derive-accounts-v2"
+version = "0.1.0"
+dependencies = [
+ "bs58",
+ "curve25519-dalek",
+ "proc-macro2",
+ "quote",
+ "sha2",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "anchor-derive-serde"
 version = "1.0.0"
 dependencies = [
@@ -362,6 +374,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-lang-v2"
+version = "0.1.0"
+dependencies = [
+ "anchor-derive-accounts-v2",
+ "borsh 1.6.1",
+ "bytemuck",
+ "pinocchio",
+ "pinocchio-system",
+ "sha2",
+ "solana-address 2.4.0",
+ "solana-define-syscall 5.0.0",
+ "solana-program-error",
+ "solana-program-log",
+ "wincode",
+]
+
+[[package]]
 name = "anchor-spl"
 version = "1.0.0"
 dependencies = [
@@ -377,6 +406,18 @@ dependencies = [
  "spl-token-group-interface",
  "spl-token-interface",
  "spl-token-metadata-interface",
+]
+
+[[package]]
+name = "anchor-spl-v2"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang-v2",
+ "bytemuck",
+ "pinocchio",
+ "pinocchio-token",
+ "solana-address 2.4.0",
+ "solana-program-error",
 ]
 
 [[package]]
@@ -3140,6 +3181,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
+name = "pinocchio"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d707cea2843c1a2fd8ec49e4116ce3fdaedcd552a3ee168b03ce60e627fc0f62"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.4.0",
+ "solana-define-syscall 5.0.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
+name = "pinocchio-system"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b47216785b5877051afa074920e88b5990c4ce74f0da94c7cb5a139684c48ffe"
+dependencies = [
+ "pinocchio",
+ "solana-address 2.4.0",
+]
+
+[[package]]
+name = "pinocchio-token"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "825f59c8348e5c2d3fd56432ef927f5819542b3b05fae4f5b6869801113e775e"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.4.0",
+ "solana-instruction-view",
+ "solana-program-error",
+]
+
+[[package]]
 name = "pkcs8"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4235,6 +4311,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-account-view"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc141b940560430425ebaadb7645496c45f6a10fad9911d719bd03eab7f4d422"
+dependencies = [
+ "solana-address 2.4.0",
+ "solana-program-error",
+]
+
+[[package]]
 name = "solana-address"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4841,6 +4927,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-instruction-view"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ab7a27d0c4214b9f7389c3dd00b68c93093a67f1dcc5b7893aebe299bbcbb47"
+dependencies = [
+ "solana-account-view",
+ "solana-address 2.4.0",
+ "solana-define-syscall 5.0.0",
+ "solana-program-error",
+]
+
+[[package]]
 name = "solana-instructions-sysvar"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5186,6 +5284,27 @@ dependencies = [
  "borsh 1.6.1",
  "serde",
  "serde_derive",
+]
+
+[[package]]
+name = "solana-program-log"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b26115ff9ec592bb4407379c82e7f00b9d0ae4e3fac80c3fd28c932aec852dc6"
+dependencies = [
+ "solana-define-syscall 4.0.1",
+ "solana-program-log-macro",
+]
+
+[[package]]
+name = "solana-program-log-macro"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de2b224806ef141865d2f4b4614179089e3b80ba7311fc3bb28742c1d8323946"
+dependencies = [
+ "quote",
+ "regex",
+ "syn 2.0.117",
 ]
 
 [[package]]

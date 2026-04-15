@@ -1,0 +1,21 @@
+[package]
+name = "anchor-derive-accounts-v2"
+version = "0.1.0"
+edition = "2021"
+description = "Anchor v2 derive macro for Accounts structs"
+license = "Apache-2.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full", "parsing", "extra-traits"] }
+# Host-only deps used at macro-expansion time to precompute the canonical
+# PDA bump when `#[account(seeds = [b"..."], bump)]` has all byte-literal
+# seeds. Not part of user programs' runtime — these compile for the host
+# toolchain that runs the proc macro.
+sha2 = "0.10"
+curve25519-dalek = { version = "4", default-features = false, features = ["alloc"] }
+bs58 = "0.5"

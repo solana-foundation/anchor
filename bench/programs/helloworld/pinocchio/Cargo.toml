@@ -1,0 +1,35 @@
+[package]
+name = "hello-world-pinocchio"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "hello_world_pinocchio"
+
+[features]
+no-entrypoint = []
+
+[dependencies]
+pinocchio = { version = "0.11", default-features = false, features = ["copy"] }
+pinocchio-system = "0.6"
+solana-program-error = "3.0"
+# Used only as a utility shim for PDA derivation + signed create_account —
+# we do NOT use any anchor macros, just the `find_program_address` and
+# `create_account_signed` helpers that wrap raw pinocchio primitives.
+anchor-lang-v2 = { path = "../../../../lang-v2", default-features = false, features = ["alloc"] }
+
+[lints.rust.unexpected_cfgs]
+level = "allow"
+
+[workspace]
+
+[profile.release]
+overflow-checks = false
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+[profile.release.build-override]
+opt-level = 3
+codegen-units = 1

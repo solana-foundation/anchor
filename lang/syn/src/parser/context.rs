@@ -25,23 +25,23 @@ impl CrateContext {
     }
 
     pub fn consts(&self) -> impl Iterator<Item = &syn::ItemConst> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.consts())
+        self.modules.values().flat_map(|ctx| ctx.consts())
     }
 
     pub fn impl_consts(&self) -> impl Iterator<Item = (&Ident, &syn::ImplItemConst)> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.impl_consts())
+        self.modules.values().flat_map(|ctx| ctx.impl_consts())
     }
 
     pub fn structs(&self) -> impl Iterator<Item = &syn::ItemStruct> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.structs())
+        self.modules.values().flat_map(|ctx| ctx.structs())
     }
 
     pub fn enums(&self) -> impl Iterator<Item = &syn::ItemEnum> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.enums())
+        self.modules.values().flat_map(|ctx| ctx.enums())
     }
 
     pub fn type_aliases(&self) -> impl Iterator<Item = &syn::ItemType> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.type_aliases())
+        self.modules.values().flat_map(|ctx| ctx.type_aliases())
     }
 
     pub fn modules(&self) -> impl Iterator<Item = ModuleContext<'_>> {

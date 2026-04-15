@@ -1,0 +1,32 @@
+[package]
+name = "hello-world-quasar"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "hello_world_quasar"
+
+[features]
+client = []
+debug = []
+
+[dependencies]
+quasar-lang = { git = "https://github.com/blueshift-gg/quasar", branch = "feat/dynamic-types-rework" }
+solana-program-log = "1.0.0"
+
+[lints.rust.unexpected_cfgs]
+level = "allow"
+
+[workspace]
+
+
+[profile.release]
+overflow-checks = false
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+[profile.release.build-override]
+opt-level = 3
+codegen-units = 1
