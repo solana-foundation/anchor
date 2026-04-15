@@ -20,7 +20,7 @@ describe("Test CLI IDL commands", () => {
   it("Can initialize IDL account", async () => {
     execSync(
       `anchor idl init --filepath target/idl/idl_commands_one.json --allow-localnet`,
-      { stdio: "inherit" },
+      { stdio: "inherit" }
     );
   });
 
@@ -38,7 +38,7 @@ describe("Test CLI IDL commands", () => {
     // Upgrade the IDL of program one to the IDL of program two to test upgrade
     execSync(
       `anchor idl upgrade --filepath target/idl/idl_commands_two.json --allow-localnet ${programOne.programId}`,
-      { stdio: "inherit" },
+      { stdio: "inherit" }
     );
     const idl = await fetchIdl(programOne.programId, provider);
     assert.deepEqual(idl, programTwo.rawIdl);
@@ -72,7 +72,7 @@ describe("Test CLI IDL commands", () => {
 
     const idlActual = await fetchIdl(programOne.programId);
     const idlExpected = JSON.parse(
-      fs.readFileSync("testLargeIdl.json", "utf8"),
+      fs.readFileSync("testLargeIdl.json", "utf8")
     );
     assert.deepEqual(idlActual, idlExpected);
   });
