@@ -4,7 +4,7 @@ use {
         ops::{Deref, DerefMut, Index, IndexMut},
     },
     pinocchio::{
-        account::{AccountView, Ref, RefMut},
+        account::AccountView,
         address::Address,
     },
     bytemuck::{Pod, Zeroable},
@@ -113,24 +113,21 @@ where
 ///
 /// ## Internals
 ///
-/// Holds a cached typed pointer plus the pinocchio borrow guard. The guard's
-/// existence is what prevents aliasing — pinocchio's refcount rejects
-/// further `try_borrow*` calls while it's alive. Field access goes through
+/// Holds a cached typed pointer to the header. The pointer is valid for the
+/// entire instruction lifetime (Solana runtime guarantee). Duplicate mutable
+/// account detection is handled at deserialization time by the derive macro,
+/// so no pinocchio borrow guard is needed here. Field access goes through
 /// the cached pointer with no per-access dispatch in the common case.
 ///
-/// The optional `guardrails` feature (default-on) adds a runtime check on
-/// `Deref`/`DerefMut` that catches:
-/// - Use-after-`release_borrow()` (caller forgot to `reacquire_borrow_mut`)
-/// - Use-after-`close()`
-/// - `DerefMut` on a read-only-loaded account (missing `#[account(mut)]`)
+/// The `is_mutable` flag distinguishes read-only loads from mutable ones;
+/// `DerefMut` panics on a read-only `Slab` (missing `#[account(mut)]`).
 pub struct Slab<H, T = HeaderOnly>
 where
     H: Pod + Zeroable + SlabValidate,
 {
     view: AccountView,
-    /// Cached pointer to the header (at `HEADER_OFFSET`). Valid while `guard`
-    /// is `Some`. After `release_borrow()` or `close()`, the pointer is stale
-    /// and must not be dereferenced (panics with `guardrails`).
+    /// Cached pointer to the header (at `HEADER_OFFSET`). Valid for the
+    /// entire instruction lifetime (Solana runtime guarantee).
     ///
     /// `len_ptr`, `items_ptr`, and `capacity` are NOT cached here — they're
     /// derived on demand from `header_ptr` + const offsets + `view.data_len()`.
@@ -138,7 +135,10 @@ where
     /// `Account<T>`), so multi-instruction programs don't pay extra stack
     /// frame bytes at every load site.
     header_ptr: *mut H,
-    guard: Option<BorrowGuard>,
+    /// Whether this slab was loaded via `load_mut`. Guards `DerefMut` to catch
+    /// missing `#[account(mut)]` at the point of access rather than silently
+    /// producing UB through a const-provenance pointer.
+    is_mutable: bool,
     _tail: PhantomData<T>,
 }
 
@@ -155,15 +155,6 @@ pub struct HeaderOnly {
     _private: (),
 }
 
-/// Holds the live pinocchio borrow guard for a `Slab<H, T>`. Kept around for
-/// its Drop side effect (releasing the underlying borrow refcount), not its
-/// data — `Slab` reads and writes through its cached pointers instead. The
-/// variant distinguishes whether `DerefMut` is allowed.
-#[allow(dead_code)]
-enum BorrowGuard {
-    Immutable(Ref<'static, [u8]>),
-    Mutable(RefMut<'static, [u8]>),
-}
 
 impl<H, T> Slab<H, T>
 where
@@ -208,39 +199,6 @@ where
         &self.view
     }
 
-    /// Release the data borrow guard so the underlying `AccountView` can be
-    /// passed to CPI calls that check `is_borrowed()`. After calling this,
-    /// `Deref`/`DerefMut` will panic (with `guardrails`) until
-    /// `reacquire_borrow_mut()` is called.
-    #[inline]
-    pub fn release_borrow(&mut self) {
-        self.guard = None;
-    }
-
-    /// Re-acquire an immutable borrow after a `release_borrow()` + CPI.
-    pub fn reacquire_borrow(&mut self) -> core::result::Result<(), ProgramError> {
-        let data_ref = self.view.try_borrow()?;
-        // SAFETY: AccountView's raw pointer outlives this instruction.
-        let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        self.header_ptr = unsafe {
-            (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET)
-        } as *mut H;
-        self.guard = Some(BorrowGuard::Immutable(guard));
-        Ok(())
-    }
-
-    /// Re-acquire a mutable borrow after a `release_borrow()` + CPI.
-    pub fn reacquire_borrow_mut(&mut self) -> core::result::Result<(), ProgramError> {
-        let mut view_mut = self.view;
-        let data_ref = view_mut.try_borrow_mut()?;
-        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        self.header_ptr = unsafe {
-            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
-        } as *mut H;
-        self.guard = Some(BorrowGuard::Mutable(guard));
-        Ok(())
-    }
-
     /// Validate `len <= capacity` for the tail region before we do the
     /// lifetime transmute. Works on `&[u8]` directly — no unsafe, no
     /// alignment concerns (uses `u32::from_le_bytes` on a stack copy).
@@ -262,27 +220,25 @@ where
 
     #[inline(always)]
     fn from_ref(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
-        let data_ref = view.try_borrow()?;
-        H::validate(&view, &data_ref, program_id)?;
-        if data_ref.len() < Self::ITEMS_OFFSET {
+        // SAFETY: AccountView's data pointer is valid for the instruction lifetime
+        // (Solana runtime guarantee). Duplicate mutable accounts are rejected at
+        // deserialization, so no aliasing can occur.
+        let data = unsafe { view.borrow_unchecked() };
+        H::validate(&view, data, program_id)?;
+        if data.len() < Self::ITEMS_OFFSET {
             return Err(ProgramError::AccountDataTooSmall);
         }
-        Self::validate_tail(&data_ref)?;
-        // SAFETY: extend lifetime — the underlying data outlives any local
-        // scope within the instruction, and the Ref guard prevents aliasing.
-        let guard: Ref<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        let header_ptr = unsafe {
-            (guard.as_ptr() as *mut u8).add(Self::HEADER_OFFSET)
-        } as *mut H;
+        Self::validate_tail(data)?;
+        let header_ptr = unsafe { view.data_ptr().add(Self::HEADER_OFFSET) } as *mut H;
         Ok(Self {
             view,
             header_ptr,
-            guard: Some(BorrowGuard::Immutable(guard)),
+            is_mutable: false,
             _tail: PhantomData,
         })
     }
 
-    /// Low-level constructor: acquire a mutable borrow, set up `header_ptr`,
+    /// Low-level constructor: set up `header_ptr` with write provenance,
     /// return a `Slab` with no validation. Shared by `load_mut_after_init`
     /// (which calls it directly) and `load_mut` (which calls it via
     /// `load_mut_after_init` then validates on top).
@@ -292,26 +248,23 @@ where
     /// account data region.
     #[inline(always)]
     fn build_mutable(view: AccountView) -> Result<Self, ProgramError> {
-        let mut view_mut = view;
-        let data_ref = view_mut.try_borrow_mut()?;
+        // SAFETY: AccountView's data pointer is valid for the instruction lifetime.
+        // Duplicate mutable accounts are rejected at deserialization.
         #[cfg(feature = "guardrails")]
-        if data_ref.len() < Self::ITEMS_OFFSET {
-            return Err(ProgramError::AccountDataTooSmall);
+        {
+            let data = unsafe { view.borrow_unchecked() };
+            if data.len() < Self::ITEMS_OFFSET {
+                return Err(ProgramError::AccountDataTooSmall);
+            }
         }
-        // SAFETY: same lifetime-transmute pattern as `from_ref`. The
-        // underlying data buffer lives for the whole instruction and the
-        // guard prevents aliasing.
-        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        // Derive header_ptr through DerefMut (as_mut_ptr) to preserve write
-        // provenance. Using as_ptr() routes through Deref → *const, losing
-        // write provenance under Stacked Borrows / Tree Borrows.
-        let header_ptr = unsafe {
-            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
-        } as *mut H;
+        // Derive header_ptr through data_mut_ptr to preserve write provenance.
+        // Using data_ptr → *const would lose it under Stacked Borrows / Tree Borrows.
+        let mut view_mut = view;
+        let header_ptr = unsafe { view_mut.data_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
         Ok(Self {
             view,
             header_ptr,
-            guard: Some(BorrowGuard::Mutable(guard)),
+            is_mutable: true,
             _tail: PhantomData,
         })
     }
@@ -401,35 +354,26 @@ where
     // unchanged.
     // -----------------------------------------------------------------------
 
-    /// The account data bytes via the currently-held borrow guard. Panics if
-    /// `release_borrow()` or `close()` dropped the guard.
+    /// The account data bytes. Always valid for the instruction lifetime.
     #[inline(always)]
     fn guard_bytes(&self) -> &[u8] {
-        match &self.guard {
-            Some(BorrowGuard::Immutable(r)) => r,
-            Some(BorrowGuard::Mutable(r)) => r,
-            None => panic!(
-                "Slab<H, T> accessed after release_borrow() or close(). \
-                 Call reacquire_borrow_mut() before touching the tail."
-            ),
-        }
+        // SAFETY: AccountView data is valid for the instruction lifetime.
+        // Duplicate mutable accounts are rejected at deserialization.
+        unsafe { self.view.borrow_unchecked() }
     }
 
-    /// Mutable variant. Panics if the slab was loaded read-only, or if
-    /// the guard was dropped.
+    /// Mutable account data bytes. Panics if the slab was loaded read-only.
     #[inline(always)]
     fn guard_bytes_mut(&mut self) -> &mut [u8] {
-        match &mut self.guard {
-            Some(BorrowGuard::Mutable(r)) => r,
-            Some(BorrowGuard::Immutable(_)) => panic!(
-                "Slab<H, T> mutated through a read-only guard. \
-                 Add #[account(mut)] to your accounts struct."
-            ),
-            None => panic!(
-                "Slab<H, T> mutated after release_borrow() or close(). \
-                 Call reacquire_borrow_mut() before touching the tail."
-            ),
+        if !self.is_mutable {
+            panic!(
+                "Slab<H, T> mutated through a read-only load. Add #[account(mut)] to your \
+                 accounts struct."
+            );
         }
+        // SAFETY: is_mutable guarantees this was loaded via load_mut.
+        // AccountView data is valid for the instruction lifetime.
+        unsafe { self.view.borrow_unchecked_mut() }
     }
 
     /// Read the `len` field without requiring `LEN_OFFSET` alignment —
@@ -612,39 +556,22 @@ where
     /// touching lamports. After calling this, compose with `top_up` (grow)
     /// or `refund` (shrink) to get back to the rent floor.
     ///
-    /// Drops and re-acquires the borrow guard across the `resize` call.
-    /// The guard's `RefMut<[u8]>` has a frozen slice length captured at
-    /// borrow time, so holding it across `resize` would leave `self.guard`
-    /// pointing at a stale-length view of the data region. On grow, the
-    /// stale slice would miss the newly-allocated tail; on shrink, it
-    /// would extend past the new data end into pinocchio's padding. Both
-    /// cases manifest as bounds-check panics on the next tail op. The
-    /// drop-and-reborrow dance avoids that footgun.
-    ///
-    /// `header_ptr` is re-derived from the fresh guard — on SBF it points
-    /// at the same address (the data region is stable — pinocchio
-    /// pre-allocates `MAX_PERMITTED_DATA_INCREASE` bytes of padding after
-    /// each account), but re-deriving is cheap and future-proofs against
-    /// any runtime that *does* relocate the buffer.
+    /// `header_ptr` is re-derived after the resize — on SBF the data region
+    /// is stable (pinocchio pre-allocates `MAX_PERMITTED_DATA_INCREASE` bytes
+    /// of padding after each account), but re-deriving is cheap and
+    /// future-proofs against any runtime that *does* relocate the buffer.
+    /// `guard_bytes*` derive their slice length from `view.data_len()` on
+    /// every call, so they see the updated size without any further action.
     #[cfg(feature = "account-resize")]
     pub fn resize_to_capacity(&mut self, new_capacity: usize) -> Result<(), ProgramError> {
         use pinocchio::Resize;
 
         let new_space = Self::space_for(new_capacity);
-        // Drop the stale-length guard before calling resize. pinocchio's
-        // refcount won't let us have a live RefMut and also mutate data_len
-        // cleanly, so we release and re-acquire.
-        self.guard = None;
         let mut view_mut = self.view;
         view_mut.resize(new_space)?;
-        // Re-acquire with the new length and re-derive header_ptr.
-        let data_ref = view_mut.try_borrow_mut()?;
-        // SAFETY: same lifetime-transmute pattern as `build_mutable`.
-        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
-        self.header_ptr = unsafe {
-            guard.as_mut_ptr().add(Self::HEADER_OFFSET)
-        } as *mut H;
-        self.guard = Some(BorrowGuard::Mutable(guard));
+        // Re-derive header_ptr with write provenance in case the runtime
+        // relocated the buffer.
+        self.header_ptr = unsafe { view_mut.data_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
         // Clamp len down if we shrunk below the current item count.
         let new_cap = self.capacity();
         if self.len() > new_cap {
@@ -672,17 +599,11 @@ where
 
     #[inline(always)]
     fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
-        // Reuses the post-init primitive for construction, then layers
-        // full validation on top. `load_mut_after_init` already handles
-        // the writable check and the mutable borrow; we validate through
-        // the guard bytes it sets up, avoiding a second `try_borrow` pair.
+        // Reuses the post-init primitive for construction, then layers full
+        // validation on top.
         let slab = Self::load_mut_after_init(view, program_id)?;
-        // SAFETY: `load_mut_after_init` always returns with a `Mutable`
-        // guard set on success.
-        let data: &[u8] = match &slab.guard {
-            Some(BorrowGuard::Mutable(r)) => r,
-            _ => unreachable!("load_mut_after_init returns Mutable guard"),
-        };
+        // SAFETY: build_mutable succeeded, so the data pointer is valid.
+        let data: &[u8] = unsafe { slab.view.borrow_unchecked() };
         H::validate(&slab.view, data, program_id)?;
         if data.len() < Self::ITEMS_OFFSET {
             return Err(ProgramError::AccountDataTooSmall);
@@ -722,9 +643,6 @@ where
     }
 
     fn close(&mut self, mut destination: AccountView) -> pinocchio::ProgramResult {
-        // Drop the borrow guard before mutating the underlying account
-        // state, so any nested helpers can re-borrow cleanly.
-        self.guard = None;
         let mut self_view = self.view;
         let dest_lamports = destination
             .lamports()
@@ -745,15 +663,9 @@ where
 
     #[inline(always)]
     fn deref(&self) -> &H {
-        #[cfg(feature = "guardrails")]
-        if self.guard.is_none() {
-            panic!(
-                "Slab<H, T> dereferenced after release_borrow() or close(). \
-                 Call reacquire_borrow_mut() before accessing fields again."
-            );
-        }
-        // SAFETY: while `guard` is `Some`, pinocchio's refcount holds the
-        // borrow open and prevents aliasing.
+        // SAFETY: header_ptr is valid for the instruction lifetime (Solana
+        // runtime guarantee). Duplicate mutable accounts are rejected at
+        // deserialization, so no aliasing can occur.
         unsafe { &*self.header_ptr }
     }
 }
@@ -765,23 +677,15 @@ where
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut H {
         // Always checked (not guardrails-gated): creating `&mut H` from a
-        // pointer derived from a `Ref` (shared borrow) is UB. The guard
-        // check is the only thing preventing it, so it must run even in
-        // release builds.
-        match &self.guard {
-            None => panic!(
-                "Slab<H, T> mutably dereferenced after release_borrow() or close(). \
-                 Call reacquire_borrow_mut() before accessing fields again."
-            ),
-            Some(BorrowGuard::Immutable(_)) => panic!(
-                "Slab<H, T> mutably dereferenced but loaded read-only. \
-                 Add #[account(mut)] to your accounts struct."
-            ),
-            Some(BorrowGuard::Mutable(_)) => {}
+        // const-provenance pointer is UB, so this must run even in release.
+        if !self.is_mutable {
+            panic!(
+                "Slab<H, T> mutably dereferenced but loaded read-only. Add #[account(mut)] to \
+                 your accounts struct."
+            );
         }
-        // SAFETY: under a Mutable guard, the pointer was derived from a
-        // RefMut (exclusive borrow) with write provenance. No other live
-        // borrow exists; we hold `&mut self`.
+        // SAFETY: is_mutable guarantees header_ptr was derived via data_mut_ptr
+        // (write provenance). No other live mutable borrow exists; we hold &mut self.
         unsafe { &mut *self.header_ptr }
     }
 }
