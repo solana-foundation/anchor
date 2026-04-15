@@ -110,8 +110,28 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                     "signer" => result.is_signer = true,
                     "executable" => result.is_executable = true,
                     "dup" => {
-                        result.is_dup = true;
-                        result.is_mut = true;
+                        return Err(syn::Error::new(
+                            ident.span(),
+                            "`dup` bypasses duplicate-account safety checks and \
+                             must be explicitly marked unsafe: use `unsafe(dup)`",
+                        ));
+                    }
+                    "unsafe" => {
+                        let content;
+                        syn::parenthesized!(content in input);
+                        let inner: Ident = content.parse()?;
+                        match inner.to_string().as_str() {
+                            "dup" => {
+                                result.is_dup = true;
+                                result.is_mut = true;
+                            }
+                            _ => {
+                                return Err(syn::Error::new(
+                                    inner.span(),
+                                    format!("unknown unsafe constraint `{inner}`"),
+                                ));
+                            }
+                        }
                     }
                     "rent_exempt" => {
                         input.parse::<Token![=]>()?;
