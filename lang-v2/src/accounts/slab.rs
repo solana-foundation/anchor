@@ -4,7 +4,7 @@ use {
         ops::{Deref, DerefMut, Index, IndexMut},
     },
     pinocchio::{
-        account::AccountView,
+        account::{AccountView, NOT_BORROWED},
         address::Address,
     },
     bytemuck::{Pod, Zeroable},
@@ -232,6 +232,11 @@ where
         }
         Self::validate_tail(data)?;
         let header_ptr = unsafe { view.data_ptr().add(Self::HEADER_OFFSET) } as *mut H;
+        // Mark one immutable borrow outstanding so that any copied AccountView
+        // cannot obtain a mutable borrow via try_borrow_mut(). Additional
+        // immutable borrows are still allowed (safe — they alias &H, not &mut H,
+        // and DerefMut panics on a read-only Slab).
+        unsafe { (*view.account_ptr().cast_mut()).borrow_state = NOT_BORROWED - 1 };
         Ok(Self {
             view,
             header_ptr,
@@ -263,6 +268,12 @@ where
         // Using data_ptr → *const would lose it under Stacked Borrows / Tree Borrows.
         let mut view_mut = view;
         let header_ptr = unsafe { view_mut.data_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
+        // Mark as mutably borrowed so that any copied AccountView cannot
+        // obtain any borrow (immutable or mutable) via try_borrow*().
+        // borrow_state == 0 means "exclusively borrowed" in pinocchio's
+        // protocol. Slab itself accesses data via borrow_unchecked*() which
+        // bypasses this check.
+        unsafe { (*view_mut.account_mut_ptr()).borrow_state = 0 };
         Ok(Self {
             view,
             header_ptr,
@@ -570,7 +581,10 @@ where
 
         let new_space = Self::space_for(new_capacity);
         let mut view_mut = self.view;
-        view_mut.resize(new_space)?;
+        // SAFETY: Slab owns exclusive access to the data (enforced by the
+        // borrow flag set in build_mutable). Use resize_unchecked to bypass
+        // pinocchio's check_borrow_mut() which would see our flag and fail.
+        unsafe { view_mut.resize_unchecked(new_space)? };
         // Re-derive header_ptr with write provenance in case the runtime
         // relocated the buffer.
         self.header_ptr = unsafe { view_mut.data_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
@@ -661,7 +675,9 @@ where
             .ok_or(ProgramError::ArithmeticOverflow)?;
         destination.set_lamports(dest_lamports);
         self_view.set_lamports(0);
-        self_view.close()?;
+        // SAFETY: Slab owns exclusive access (borrow flag is set). Use
+        // close_unchecked to bypass pinocchio's is_borrowed() check.
+        unsafe { self_view.close_unchecked() };
         Ok(())
     }
 }

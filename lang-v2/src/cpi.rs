@@ -463,7 +463,11 @@ pub fn realloc_account(
         }
     }
 
-    account.resize(new_space)?;
+    // SAFETY: realloc is called from derive-generated code on an AccountView
+    // whose backing Slab holds the conceptual borrow (borrow_state == 0).
+    // Using resize_unchecked bypasses pinocchio's check_borrow_mut() which
+    // would reject the operation due to the Slab's borrow flag.
+    unsafe { account.resize_unchecked(new_space)? };
 
     if zero && new_space > old_space {
         unsafe {
