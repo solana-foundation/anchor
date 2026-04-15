@@ -7,12 +7,14 @@ extern crate proc_macro;
 #[cfg(feature = "lazy-account")]
 mod lazy;
 
+#[cfg(feature = "lazy-account")]
+use syn::spanned::Spanned;
 use {
     proc_macro::TokenStream,
     proc_macro2::{Span, TokenStream as TokenStream2},
     proc_macro_crate::FoundCrate,
     quote::quote,
-    syn::{parse_macro_input, spanned::Spanned, DeriveInput, Ident, Meta, NestedMeta},
+    syn::{parse_macro_input, DeriveInput, Ident, Meta, NestedMeta},
 };
 
 /// Only one item-level `#[borsh]` attribute may be present, and we apply our own borsh attribute.
