@@ -28,8 +28,10 @@ impl Hasher {
         }
     }
     pub fn result(self) -> Hash {
-        // At the time of this writing, the sha2 library is stuck on an old version
-        // of generic_array (0.9.0). Decouple ourselves with a clone to our version.
+        // `generic-array ^0.14.8` logs deprecation warnings
+        //
+        // TODO: Remove once `sha2` (transitively) depends on `generic-array` v1.
+        #[allow(deprecated)]
         #[allow(
             clippy::unwrap_used,
             reason = "SHA256 always produces exactly HASH_BYTES (32) bytes"
