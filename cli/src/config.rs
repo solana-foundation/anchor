@@ -308,6 +308,16 @@ impl WithPath<Config> {
     }
 }
 
+impl WalletPath {
+    fn resolve_relative_to(self, base: &Path) -> Self {
+        if self.0.is_relative() {
+            Self(base.join(self.0))
+        } else {
+            self
+        }
+    }
+}
+
 impl<T> std::ops::Deref for WithPath<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -479,21 +489,6 @@ pub enum BootstrapMode {
     Debian,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
-pub enum ProgramArch {
-    Bpf,
-    Sbf,
-}
-
-impl ProgramArch {
-    /// Subcommand and any arguments to be passed to cargo
-    pub fn build_subcommand(&self) -> &[&'static str] {
-        match self {
-            Self::Bpf => &["build-bpf"],
-            Self::Sbf => &["build-sbf", "--tools-version", "v1.52"],
-        }
-    }
-}
 #[derive(Debug, Clone)]
 pub struct BuildConfig {
     pub verifiable: bool,
@@ -551,15 +546,17 @@ impl Config {
                     .path();
                 if let Some(filename) = p.file_name() {
                     if filename.to_str() == Some("Anchor.toml") {
+                        let config_dir = p.parent().unwrap();
                         // Make sure the program id is correct (only on the initial build)
                         let mut cfg = Config::from_path(&p)?;
-                        let deploy_dir = p.parent().unwrap().join("target").join("deploy");
+                        let deploy_dir = config_dir.join("target").join("deploy");
                         if !deploy_dir.exists() && !cfg.programs.contains_key(&Cluster::Localnet) {
                             println!("Updating program ids...");
                             fs::create_dir_all(deploy_dir)?;
                             keys_sync(&ConfigOverride::default(), None)?;
                             cfg = Config::from_path(&p)?;
                         }
+                        cfg.provider.wallet = cfg.provider.wallet.resolve_relative_to(config_dir);
 
                         return Ok(Some(WithPath::new(cfg, p)));
                     }
