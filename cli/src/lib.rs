@@ -709,7 +709,7 @@ pub enum IdlCommand {
         path: PathBuf,
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
-        out: Option<String>,
+        out: Option<PathBuf>,
         /// Program id to initialize IDL for.
         /// If not provided, discovers program ID from IDL.
         #[clap(short, long)]
@@ -2746,7 +2746,7 @@ fn idl_fetch(
     Ok(())
 }
 
-fn idl_convert(path: PathBuf, out: Option<String>, program_id: Option<Pubkey>) -> Result<()> {
+fn idl_convert(path: PathBuf, out: Option<PathBuf>, program_id: Option<Pubkey>) -> Result<()> {
     let idl = fs::read(path)?;
 
     // Set the `metadata.address` field based on the given `program_id`
@@ -2767,7 +2767,7 @@ fn idl_convert(path: PathBuf, out: Option<String>, program_id: Option<Pubkey>) -
     let idl = convert_idl(&idl)?;
     let out = match out {
         None => OutFile::Stdout,
-        Some(out) => OutFile::File(PathBuf::from(out)),
+        Some(out) => OutFile::File(out),
     };
     write_idl(&idl, out)
 }
