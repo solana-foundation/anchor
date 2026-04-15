@@ -64,8 +64,10 @@ pub fn test_event_parser() {
 
 #[test]
 pub fn test_instruction_parser() {
-    use anchor_lang::solana_program::instruction::Instruction as SolanaInstruction;
-    use external::parsers::Instruction;
+    use {
+        anchor_lang::solana_program::instruction::Instruction as SolanaInstruction,
+        external::parsers::Instruction,
+    };
 
     // Incorrect program
     assert!(Instruction::parse(&SolanaInstruction::new_with_bytes(

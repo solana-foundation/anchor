@@ -16,9 +16,10 @@ pub const GLOBAL: &[u8] = b"global";
 
 #[program]
 pub mod declare_program {
-    use anchor_lang::solana_program::{instruction::Instruction, program::invoke_signed};
-
-    use super::*;
+    use {
+        super::*,
+        anchor_lang::solana_program::{instruction::Instruction, program::invoke_signed},
+    };
 
     pub fn cpi(ctx: Context<Cpi>, value: u32) -> Result<()> {
         let cpi_my_account = &mut ctx.accounts.cpi_my_account;
@@ -94,47 +95,50 @@ pub mod declare_program {
         Ok(())
     }
 
+    #[cfg(not(target_os = "solana"))]
     pub fn account_utils(_ctx: Context<Utils>) -> Result<()> {
-        use external::utils::Account;
+        use external::parsers::Account;
 
         // Empty
-        if Account::try_from_bytes(&[]).is_ok() {
+        if Account::parse(&[]).is_ok() {
             return Err(ProgramError::Custom(0).into());
         }
 
         const DISC: &[u8] = external::accounts::MyAccount::DISCRIMINATOR;
 
         // Correct discriminator but invalid data
-        if Account::try_from_bytes(DISC).is_ok() {
+        if Account::parse(DISC).is_ok() {
             return Err(ProgramError::Custom(1).into());
         };
 
         // Correct discriminator and valid data
-        match Account::try_from_bytes(&[DISC, &[1, 0, 0, 0]].concat()) {
+        match Account::parse(&[DISC, &[1, 0, 0, 0]].concat()) {
             Ok(Account::MyAccount(my_account)) => require_eq!(my_account.field, 1),
+            Ok(_) => return Err(ProgramError::Custom(2).into()),
             Err(e) => return Err(e.into()),
         }
 
         Ok(())
     }
 
+    #[cfg(not(target_os = "solana"))]
     pub fn event_utils(_ctx: Context<Utils>) -> Result<()> {
-        use external::utils::Event;
+        use external::parsers::Event;
 
         // Empty
-        if Event::try_from_bytes(&[]).is_ok() {
+        if Event::parse(&[]).is_ok() {
             return Err(ProgramError::Custom(0).into());
         }
 
         const DISC: &[u8] = external::events::MyEvent::DISCRIMINATOR;
 
         // Correct discriminator but invalid data
-        if Event::try_from_bytes(DISC).is_ok() {
+        if Event::parse(DISC).is_ok() {
             return Err(ProgramError::Custom(1).into());
         };
 
         // Correct discriminator and valid data
-        match Event::try_from_bytes(&[DISC, &[1, 0, 0, 0]].concat()) {
+        match Event::parse(&[DISC, &[1, 0, 0, 0]].concat()) {
             Ok(Event::MyEvent(my_event)) => require_eq!(my_event.value, 1),
             Err(e) => return Err(e.into()),
         }

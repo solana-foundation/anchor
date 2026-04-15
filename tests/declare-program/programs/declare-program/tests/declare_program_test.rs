@@ -1,8 +1,5 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_sdk::{
-    native_token::LAMPORTS_PER_SOL, signature::Signer, system_instruction, transaction::Transaction,
-};
 use {
     anchor_lang::{
         prelude::Pubkey,
@@ -11,6 +8,10 @@ use {
     },
     declare_program::external,
     solana_program_test::{tokio, ProgramTest},
+    solana_sdk::{
+        native_token::LAMPORTS_PER_SOL, signature::Signer, system_instruction,
+        transaction::Transaction,
+    },
 };
 
 #[tokio::test]
