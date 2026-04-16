@@ -1,6 +1,7 @@
 extern crate proc_macro;
 
 mod access_control;
+mod constant;
 mod idl;
 mod parse;
 mod pda;
@@ -1074,6 +1075,25 @@ pub fn emit(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn access_control(args: TokenStream, input: TokenStream) -> TokenStream {
     access_control::expand(args, input)
+}
+
+// ---------------------------------------------------------------------------
+// #[constant]
+// ---------------------------------------------------------------------------
+
+/// Marker attribute for `pub const` items that should appear in the generated
+/// IDL. Does nothing at runtime. When the `idl-build` feature is enabled, a
+/// companion test function emits the constant's metadata for `anchor idl build`.
+///
+/// # Example
+///
+/// ```ignore
+/// #[constant]
+/// pub const SEED: &str = "anchor";
+/// ```
+#[proc_macro_attribute]
+pub fn constant(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    constant::expand(input)
 }
 
 fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {

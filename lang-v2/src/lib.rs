@@ -34,7 +34,9 @@ pub use solana_program_log::log as msg;
 pub use wincode;
 pub use {
     accounts::{AccountInitialize, SlabInit},
-    anchor_derive_accounts_v2::{access_control, account, emit, event, program, Accounts},
+    anchor_derive_accounts_v2::{
+        access_control, account, constant, emit, event, program, Accounts,
+    },
     borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
     context::{Bumps, Context},
