@@ -2,6 +2,7 @@ extern crate proc_macro;
 
 mod access_control;
 mod constant;
+mod error_code;
 mod idl;
 mod init_space;
 mod parse;
@@ -1121,6 +1122,34 @@ pub fn constant(_attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(InitSpace, attributes(max_len))]
 pub fn derive_init_space(item: TokenStream) -> TokenStream {
     init_space::expand(item)
+}
+
+// ---------------------------------------------------------------------------
+// #[error_code]
+// ---------------------------------------------------------------------------
+
+/// Port of v1's `#[error_code]` without the runtime `AnchorError` heap
+/// allocations. Emits `impl From<E> for Error` returning
+/// `Error::Custom(variant_index + offset)`. `#[msg("text")]` is IDL-only.
+///
+/// # Example
+///
+/// ```ignore
+/// #[error_code]
+/// pub enum MyError {
+///     #[msg("invalid threshold")]
+///     InvalidThreshold,
+///     TooManySigners,
+/// }
+///
+/// // usage:
+/// return Err(MyError::InvalidThreshold.into());
+/// ```
+///
+/// Supports `#[error_code(offset = N)]` for the first code (default 6000).
+#[proc_macro_attribute]
+pub fn error_code(args: TokenStream, input: TokenStream) -> TokenStream {
+    error_code::expand(args, input)
 }
 
 fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {

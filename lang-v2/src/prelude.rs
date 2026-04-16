@@ -4,6 +4,7 @@ pub use crate::{
     access_control,
     account,
     constant,
+    error_code,
     InitSpace,
     // Account types
     accounts::{
