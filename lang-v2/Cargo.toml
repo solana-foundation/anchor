@@ -9,6 +9,13 @@ license = "Apache-2.0"
 default = ["alloc", "guardrails", "account-resize"]
 alloc = ["pinocchio/alloc"]
 idl-build = []
+# Opt-in v1-compat shims for users porting anchor-lang code. Currently
+# exposes `debug!` — a `msg!`-shaped macro that accepts any Rust format
+# string (`{:?}`, `{:x}`, dynamic width, …) via `alloc::format!`. Default-off
+# because the heap allocation + fmt trait dispatch is meaningfully more
+# expensive than v2's native `msg!`; users who explicitly want v1-parity
+# logging opt in by enabling the feature.
+compat = []
 # Runtime safety nets that catch caller bugs the Rust borrow checker
 # can't see statically. Default-on. Disabling saves CU at the cost of
 # diagnostic panics for misuse — see lib.rs / Account<T> docs.

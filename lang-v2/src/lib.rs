@@ -31,6 +31,18 @@ pub use solana_address::declare_id;
 #[doc(hidden)]
 pub use solana_program_log::log as __log_impl;
 
+// Re-export `solana_program_log::log` (the plain `&str` → syscall wrapper)
+// and the `alloc` crate so the `debug!` macro below can route through this
+// crate's namespace — user programs don't need `solana-program-log` or
+// `extern crate alloc;` to use it.
+#[cfg(feature = "compat")]
+#[doc(hidden)]
+pub use solana_program_log::log as __log_str;
+
+#[cfg(feature = "compat")]
+#[doc(hidden)]
+pub extern crate alloc as __alloc;
+
 /// Logs a message via `solana_program_log`.
 ///
 /// Thin wrapper around `solana_program_log::log!` that always evaluates to
@@ -41,6 +53,33 @@ pub use solana_program_log::log as __log_impl;
 macro_rules! msg {
     ($($arg:tt)*) => {{
         $crate::__log_impl!($($arg)*);
+    }};
+}
+
+/// v1-compat logger with full Rust format-string support.
+///
+/// Accepts any `format!` pattern (`{:?}`, `{:x}`, dynamic width, …) at the
+/// cost of a heap allocation via `alloc::format!` plus `fmt::Display` trait
+/// dispatch. Prefer [`msg!`] for production paths — it's dramatically
+/// cheaper in CUs. Use `debug!` for the cases where you specifically need
+/// `{:?}` on a type that doesn't impl `solana_program_log::Log`.
+///
+/// Gated behind the `compat` feature so the heap cost is opt-in.
+///
+/// # Example
+///
+/// ```ignore
+/// debug!("raw bytes: {:?}", &data[..32]);
+/// debug!("{:>8x}", pubkey);
+/// ```
+#[cfg(feature = "compat")]
+#[macro_export]
+macro_rules! debug {
+    ($msg:expr) => {{
+        $crate::__log_str($msg)
+    }};
+    ($($arg:tt)*) => {{
+        $crate::__log_str(&$crate::__alloc::format!($($arg)*))
     }};
 }
 // Re-export wincode for instruction data serialization
