@@ -91,6 +91,11 @@ pub struct AccountsJsonField<'a> {
     /// `"optional":true` in the emitted JSON (matches
     /// `IdlInstructionAccount.optional` in `idl/spec/src/lib.rs:89`).
     pub is_optional: bool,
+    /// Names of sibling fields whose `has_one` chain targets this field.
+    /// Emitted as `"relations":[...]`. Matches v1's semantics: relations
+    /// live on the *target* account (the account being referenced), not
+    /// the source — see `lang/syn/src/idl/accounts.rs::get_relations`.
+    pub relations: Vec<&'a str>,
     /// The wrapper `Type` (post-`Option` unwrap) whose trait consts we
     /// dispatch on at runtime. Should match `AccountField::idl_field_ty`.
     pub field_ty: &'a Option<Type>,
@@ -121,6 +126,13 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
             } else {
                 ""
             };
+            let relations_json = if f.relations.is_empty() {
+                String::new()
+            } else {
+                let list: Vec<String> =
+                    f.relations.iter().map(|r| format!("\"{r}\"")).collect();
+                format!(",\"relations\":[{}]", list.join(","))
+            };
             let init_signer = f.init_signer;
             if let Some(ty) = f.field_ty {
                 quote! {
@@ -137,12 +149,13 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                             None => anchor_lang_v2::__alloc::string::String::new(),
                         };
                         anchor_lang_v2::__alloc::format!(
-                            "{{\"name\":\"{}\"{}{}{}{}}}",
+                            "{{\"name\":\"{}\"{}{}{}{}{}}}",
                             #name,
                             #writable_json,
                             __signer_json,
                             __addr_json,
                             #optional_json,
+                            #relations_json,
                         )
                     }
                 }
@@ -153,11 +166,12 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                 let signer_json = if init_signer { ",\"signer\":true" } else { "" };
                 quote! {
                     anchor_lang_v2::__alloc::format!(
-                        "{{\"name\":\"{}\"{}{}{}}}",
+                        "{{\"name\":\"{}\"{}{}{}{}}}",
                         #name,
                         #writable_json,
                         #signer_json,
                         #optional_json,
+                        #relations_json,
                     )
                 }
             }

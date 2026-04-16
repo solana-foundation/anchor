@@ -378,6 +378,11 @@ pub struct AccountField {
     /// IDL. Orthogonal to the `Signer` field type — those contribute via
     /// `<Ty as IdlAccountType>::__IDL_IS_SIGNER` at runtime.
     pub idl_init_signer: bool,
+    /// `has_one = target` targets declared on this field's attrs. Relations
+    /// emission walks every field and looks for has_one chains targeting
+    /// *another* field, so we need to keep them addressable per-source to
+    /// build the inverse mapping (matches v1's `get_relations`).
+    pub idl_has_one: Vec<String>,
     /// The raw field type, post-`Option<T>` unwrap. Used by the generated
     /// `__idl_types()` function to dispatch `<Ty as IdlAccountType>::__IDL_TYPE`
     /// on the wrapper type (`Program<T>`, `Account<T>`, …) rather than on its
@@ -633,6 +638,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     // `IdlAccountType::__IDL_IS_SIGNER` at runtime.
     let idl_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
     let idl_writable = attrs.is_mut;
+    let idl_has_one: Vec<String> = attrs.has_one.iter().map(|(i, _)| i.to_string()).collect();
     let idl_field_ty: Option<syn::Type> = {
         let base_ty = option_inner.unwrap_or(field_ty);
         if let Type::Path(_) = base_ty {
@@ -1082,6 +1088,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         is_optional,
         idl_writable,
         idl_init_signer,
+        idl_has_one,
         idl_field_ty,
     }
 }

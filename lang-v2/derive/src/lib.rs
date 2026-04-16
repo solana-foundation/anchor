@@ -277,19 +277,43 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     // IDL collection — the accounts-JSON emission is a runtime function
     // (not a `&'static str` const) so it can read
     // `<FieldTy as IdlAccountType>::__IDL_IS_SIGNER / __IDL_ADDRESS` off
-    // the wrapper type. Compile-time flags (writable, init_signer) are
-    // baked directly into the format strings, so the runtime only pays
-    // for trait dispatch + concatenation.
+    // the wrapper type. Compile-time flags (writable, init_signer,
+    // optional, relations) are baked directly into the format strings, so
+    // the runtime only pays for trait dispatch + concatenation.
     let field_names_str: Vec<String> = fields.iter().map(|f| f.name.to_string()).collect();
+
+    // Build the inverse has_one mapping: relations on field `X` lists every
+    // sibling whose `has_one = X` chain targets X. Mirrors v1's
+    // `get_relations` — relations live on the target, not the source.
+    let relations_by_target: std::collections::HashMap<String, Vec<String>> = {
+        let mut m: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+        for f in &fields {
+            let src = f.name.to_string();
+            for target in &f.idl_has_one {
+                m.entry(target.clone()).or_default().push(src.clone());
+            }
+        }
+        m
+    };
+
     let accounts_fields: Vec<idl::AccountsJsonField<'_>> = fields
         .iter()
         .enumerate()
-        .map(|(i, f)| idl::AccountsJsonField {
-            name: &field_names_str[i],
-            writable: f.idl_writable,
-            init_signer: f.idl_init_signer,
-            is_optional: f.is_optional,
-            field_ty: &f.idl_field_ty,
+        .map(|(i, f)| {
+            let name: &str = &field_names_str[i];
+            let relations: Vec<&str> = relations_by_target
+                .get(name)
+                .map(|v| v.iter().map(|s| s.as_str()).collect())
+                .unwrap_or_default();
+            idl::AccountsJsonField {
+                name,
+                writable: f.idl_writable,
+                init_signer: f.idl_init_signer,
+                is_optional: f.is_optional,
+                relations,
+                field_ty: &f.idl_field_ty,
+            }
         })
         .collect();
     let idl_accounts_fn = idl::build_accounts_emission(&accounts_fields);
