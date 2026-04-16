@@ -249,3 +249,137 @@ impl Constrain<TokenProgramConstraint> for Account<TokenAccount> {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// CPI helpers for SPL Token program invocations (`anchor_spl_v2::token::cpi`)
+// ---------------------------------------------------------------------------
+//
+// Minimum viable surface — only `Transfer` and `TransferChecked` for now.
+// Mirrors v1's `anchor_spl::token::cpi` path so users writing
+// `anchor_spl_v2::token::cpi::transfer(ctx, amount)?` get the same
+// ergonomics they had in v1.
+//
+// Each helper routes through `anchor_lang_v2::CpiContext::invoke`, which
+// uses pinocchio's `invoke_signed_unchecked` — bypassing the borrow-state
+// check that rejected the old `pinocchio_token::Transfer::invoke()` call
+// against Slab-loaded `Account<TokenAccount>` accounts.
+//
+// TODO: add the rest of the SPL Token instruction surface here before
+// this crate stabilizes:
+//   - MintTo, MintToChecked
+//   - Burn, BurnChecked
+//   - Approve, ApproveChecked, Revoke
+//   - SetAuthority
+//   - CloseAccount
+//   - SyncNative
+//   - InitializeAccount[2/3], InitializeMint[2], InitializeMultisig[2]
+//   - FreezeAccount, ThawAccount
+// V1's `anchor_spl::token::cpi` covers all of these; porting is mostly
+// mechanical (disc + data layout + accounts list), one function per
+// instruction. We stop here to unblock the e2e tests — anything else
+// wouldn't be exercised yet.
+pub mod cpi {
+    extern crate alloc;
+    use {
+        alloc::{vec, vec::Vec},
+        anchor_lang_v2::{CpiContext, CpiHandle, ToCpiAccounts},
+        pinocchio::instruction::InstructionAccount,
+        solana_program_error::ProgramError,
+    };
+
+    /// Accounts structs consumed by each CPI helper. Each field is a
+    /// `CpiHandle<'a>` obtained from `AnchorAccount::cpi_handle{,_mut}`.
+    pub mod accounts {
+        use super::*;
+
+        /// `spl_token::instruction::transfer` — accounts list:
+        ///   0. `[writable]` from
+        ///   1. `[writable]` to
+        ///   2. `[signer]` authority (owner/delegate)
+        pub struct Transfer<'a> {
+            pub from: CpiHandle<'a>,
+            pub to: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for Transfer<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.from.address()),
+                    InstructionAccount::writable(self.to.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.from, self.to, self.authority]
+            }
+        }
+
+        /// `spl_token::instruction::transfer_checked` — adds the mint and
+        /// verifies the declared decimals match on-chain.
+        ///   0. `[writable]` from
+        ///   1. `[]` mint
+        ///   2. `[writable]` to
+        ///   3. `[signer]` authority
+        pub struct TransferChecked<'a> {
+            pub from: CpiHandle<'a>,
+            pub mint: CpiHandle<'a>,
+            pub to: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for TransferChecked<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.from.address()),
+                    InstructionAccount::new(self.mint.address(), false, false),
+                    InstructionAccount::writable(self.to.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.from, self.mint, self.to, self.authority]
+            }
+        }
+    }
+
+    // SPL Token instruction discriminators — see the pinocchio-token crate
+    // or the upstream spl-token source of truth.
+    const DISC_TRANSFER: u8 = 3;
+    const DISC_TRANSFER_CHECKED: u8 = 12;
+
+    /// Invoke SPL Token `Transfer` with a fixed `amount`.
+    ///
+    /// The authority is the single source-account owner or a delegate.
+    /// Multisig authorities are not supported by this helper — use a
+    /// hand-built `CpiContext` if you need them.
+    pub fn transfer<'a>(
+        ctx: CpiContext<'a, accounts::Transfer<'a>>,
+        amount: u64,
+    ) -> Result<(), ProgramError> {
+        // Layout: 1-byte discriminator + u64 amount LE = 9 bytes.
+        let mut data = [0u8; 9];
+        data[0] = DISC_TRANSFER;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        ctx.invoke(&data)
+    }
+
+    /// Invoke SPL Token `TransferChecked`. Extra on-chain safety over
+    /// `transfer`: the SPL program verifies that `decimals` matches the
+    /// mint's stored decimals and that the mint address matches the
+    /// one threaded through the token accounts.
+    pub fn transfer_checked<'a>(
+        ctx: CpiContext<'a, accounts::TransferChecked<'a>>,
+        amount: u64,
+        decimals: u8,
+    ) -> Result<(), ProgramError> {
+        // Layout: 1-byte discriminator + u64 amount LE + u8 decimals = 10 bytes.
+        let mut data = [0u8; 10];
+        data[0] = DISC_TRANSFER_CHECKED;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        data[9] = decimals;
+        ctx.invoke(&data)
+    }
+}
