@@ -191,34 +191,42 @@ fn parse_instruction_attrs(attrs: &[syn::Attribute]) -> Vec<(Ident, Type)> {
 fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let name = &input.ident;
     let bumps_name = syn::Ident::new(&format!("{name}Bumps"), name.span());
-    // Collect field names first so we can rewrite bare-ident seed expressions.
-    let raw_field_names: Vec<String> = match &input.data {
+
+    // Bail with a properly-spanned diagnostic on unsupported shapes.
+    let named_fields = match &input.data {
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named
-                .named
-                .iter()
-                .filter_map(|f| f.ident.as_ref().map(|i| i.to_string()))
-                .collect(),
-            _ => panic!("Accounts derive only supports named fields"),
+            Fields::Named(named) => named,
+            _ => {
+                return syn::Error::new(name.span(), "`Accounts` derive only supports named fields")
+                    .to_compile_error()
+            }
         },
-        _ => panic!("Accounts derive only supports structs"),
+        _ => {
+            return syn::Error::new(name.span(), "`Accounts` derive only supports structs")
+                .to_compile_error()
+        }
     };
 
-    let fields: Vec<parse::AccountField> = match &input.data {
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => {
-                assert!(named.named.len() <= 255);
-                named
-                    .named
-                    .iter()
-                    .enumerate()
-                    .map(|(i, f)| parse::parse_field(f, &raw_field_names, i as u8))
-                    .collect()
-            }
-            _ => panic!("Accounts derive only supports named fields"),
-        },
-        _ => panic!("Accounts derive only supports structs"),
-    };
+    // Collect field names first so we can rewrite bare-ident seed expressions.
+    let raw_field_names: Vec<String> = named_fields
+        .named
+        .iter()
+        .filter_map(|f| f.ident.as_ref().map(|i| i.to_string()))
+        .collect();
+
+    if named_fields.named.len() > 255 {
+        return syn::Error::new(
+            name.span(),
+            "`Accounts` derive supports at most 255 fields",
+        )
+        .to_compile_error();
+    }
+    let fields: Vec<parse::AccountField> = named_fields
+        .named
+        .iter()
+        .enumerate()
+        .map(|(i, f)| parse::parse_field(f, &raw_field_names, i as u8))
+        .collect();
 
     // Parse #[instruction(arg: Type, ...)] for early deserialization
     let ix_args = parse_instruction_attrs(&input.attrs);
@@ -394,7 +402,11 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attrs = &input.attrs;
     let fields = match &input.data {
         Data::Struct(data) => &data.fields,
-        _ => panic!("#[account] only supports structs"),
+        _ => {
+            return syn::Error::new(name.span(), "`#[account]` only supports structs")
+                .to_compile_error()
+                .into()
+        }
     };
 
     use sha2::Digest;
@@ -486,6 +498,33 @@ struct HandlerCodegen {
     arg_types: Vec<Type>,
 }
 
+impl HandlerCodegen {
+    /// Build a codegen result that surfaces a single `compile_error!` in the
+    /// emitted handler wrapper. Used when handler validation fails so the
+    /// proc-macro returns a properly-spanned error instead of panicking.
+    fn error(handler: &syn::ItemFn, err: syn::Error) -> Self {
+        let err_tokens = err.to_compile_error();
+        let fn_name = &handler.sig.ident;
+        Self {
+            dispatch_arm: quote! {},
+            wrapper: quote! {
+                #[allow(non_snake_case)]
+                pub fn #fn_name() {
+                    #err_tokens
+                }
+            },
+            instruction_struct: quote! {},
+            accounts_reexport: quote! {},
+            accounts_type_name: String::new(),
+            idl_name: fn_name.to_string(),
+            idl_disc: "[]".to_string(),
+            idl_args: "[]".to_string(),
+            idl_accounts_type: quote! { () },
+            arg_types: Vec::new(),
+        }
+    }
+}
+
 fn process_handler(
     handler: &syn::ItemFn,
     mod_name: &Ident,
@@ -515,9 +554,18 @@ fn process_handler(
 
     // Parse args.
     let mut args_iter = handler.sig.inputs.iter();
-    let first_arg = args_iter
-        .next()
-        .expect("handler must have a Context parameter");
+    let first_arg = match args_iter.next() {
+        Some(arg) => arg,
+        None => {
+            return HandlerCodegen::error(
+                handler,
+                syn::Error::new(
+                    handler.sig.ident.span(),
+                    "handler must have a `ctx: &mut Context<'_, T>` parameter",
+                ),
+            )
+        }
+    };
     let accounts_type = extract_context_inner_type(first_arg);
 
     let extra_args: Vec<(&Ident, &Type)> = args_iter
@@ -623,7 +671,13 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     let mod_vis = &module.vis;
     let content = match &module.content {
         Some((_, items)) => items,
-        None => panic!("#[program] module must have a body"),
+        None => {
+            return syn::Error::new(
+                module.ident.span(),
+                "`#[program]` module must have an inline body",
+            )
+            .to_compile_error()
+        }
     };
 
     let mut handlers = Vec::new();
@@ -1007,7 +1061,11 @@ pub fn event(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let attrs = &input.attrs;
     let fields = match &input.data {
         Data::Struct(data) => &data.fields,
-        _ => panic!("#[event] only supports structs"),
+        _ => {
+            return syn::Error::new(name.span(), "`#[event]` only supports structs")
+                .to_compile_error()
+                .into()
+        }
     };
 
     use sha2::Digest;
@@ -1209,7 +1267,13 @@ fn parse_discrim_attr(
 fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {
     let ty = match arg {
         FnArg::Typed(pt) => &*pt.ty,
-        _ => panic!("first parameter must be ctx: &mut Context<T>"),
+        _ => {
+            return syn::Error::new(
+                arg.span(),
+                "first parameter must be `ctx: &mut Context<'_, T>`",
+            )
+            .to_compile_error()
+        }
     };
     if let Type::Reference(r) = ty {
         return extract_generic_arg(&r.elem);
@@ -1229,7 +1293,11 @@ fn extract_generic_arg(ty: &Type) -> TokenStream2 {
             }
         }
     }
-    panic!("could not extract generic type from Context<T>");
+    syn::Error::new(
+        ty.span(),
+        "could not extract generic type from `Context<'_, T>` — expected `Context<'_, YourAccountsStruct>`",
+    )
+    .to_compile_error()
 }
 
 /// Converts `snake_case` to `CamelCase` (e.g. `execute_transfer` → `ExecuteTransfer`).
