@@ -114,7 +114,7 @@ fn gen_cpi_return_type() -> proc_macro2::TokenStream {
                 let (key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
                 if key != self.program_id {
                     anchor_lang::solana_program::log::sol_log("CPI return data program_id mismatch");
-                    panic!("CPI return data from unexpected program: expected {}, got {}", self.program_id, key);
+                    panic!();
                 }
                 T::try_from_slice(&data).unwrap()
             }
