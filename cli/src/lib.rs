@@ -98,9 +98,12 @@ pub enum Command {
         /// Don't install JavaScript dependencies
         #[clap(long)]
         no_install: bool,
-        /// Package Manager to use
-        #[clap(value_enum, long, default_value = "pnpm")]
-        package_manager: PackageManager,
+        /// Package Manager to use. If omitted, detection cascades
+        /// `pnpm` → `yarn` → `npm` and picks the first one on PATH. When
+        /// set explicitly, the chosen binary must be installed — no
+        /// silent fallback.
+        #[clap(value_enum, long)]
+        package_manager: Option<PackageManager>,
         /// Don't initialize git
         #[clap(long)]
         no_git: bool,
@@ -1353,7 +1356,7 @@ fn init(
     name: String,
     javascript: bool,
     no_install: bool,
-    package_manager: PackageManager,
+    package_manager: Option<PackageManager>,
     no_git: bool,
     template: ProgramTemplate,
     test_template: TestTemplate,
@@ -1394,6 +1397,11 @@ fn init(
 
     let mut cfg = Config::default();
 
+    // Resolve once — errors early if an explicit choice is missing, or
+    // waterfalls pnpm → yarn → npm when nothing was requested. The resolved
+    // PM is persisted to Anchor.toml so subsequent `anchor test`/`deploy`
+    // runs use the same one without re-running detection.
+    let package_manager = resolve_package_manager(package_manager)?;
     let test_script = test_template.get_test_script(javascript, &package_manager);
     cfg.scripts.insert("test".to_owned(), test_script);
 
@@ -1461,24 +1469,12 @@ fn init(
     test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
     if !no_install {
-        // Fall back to npm only when the selected package manager isn't
-        // on PATH — that's the "user doesn't have pnpm installed" case,
-        // recoverable because npm ships with Node. If pnpm runs and exits
-        // non-zero (lockfile corruption, network error, missing package),
-        // surface the real failure instead of silently switching tools.
-        let cmd_to_use = if package_manager_cmd != "npm"
-            && !package_manager_available(&package_manager_cmd)
-        {
-            println!(
-                "`{package_manager_cmd}` not found on PATH, falling back to `npm install`"
-            );
-            "npm".to_string()
-        } else {
-            package_manager_cmd.clone()
-        };
-        let output = install_node_modules(&cmd_to_use)?;
+        let output = install_node_modules(&package_manager_cmd)?;
         if !output.status.success() {
-            eprintln!("`{cmd_to_use} install` failed (exit code {:?})", output.status.code());
+            eprintln!(
+                "`{package_manager_cmd} install` failed (exit code {:?})",
+                output.status.code()
+            );
         }
     }
 
@@ -1552,27 +1548,77 @@ fn install_solana_skill() {
     }
 }
 
-/// Check whether a package manager binary (`pnpm`, `yarn`, `npm`, `bun`) is
-/// available on `PATH` without actually installing anything. Used to pick
-/// between the user's chosen PM and the `npm` fallback.
-fn package_manager_available(cmd: &str) -> bool {
-    if cfg!(target_os = "windows") {
-        std::process::Command::new("cmd")
-            .arg(format!("/C {cmd} --version"))
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
+/// Waterfall probed when no package manager is configured. Order matters —
+/// pnpm is preferred (fastest install, disk-efficient), yarn for parity with
+/// older Anchor defaults, npm as the universal fallback since it ships with
+/// Node. Bun stays out of the waterfall: users who want it must opt in
+/// explicitly since it's not commonly installed.
+const PACKAGE_MANAGER_WATERFALL: &[PackageManager] =
+    &[PackageManager::PNPM, PackageManager::Yarn, PackageManager::NPM];
+
+/// Check whether a package manager binary is on `PATH` without installing
+/// anything. Runs `<cmd> --version` and discards output.
+fn package_manager_available(pm: &PackageManager) -> bool {
+    let cmd = pm.to_string();
+    let mut command = if cfg!(target_os = "windows") {
+        let mut c = std::process::Command::new("cmd");
+        c.arg(format!("/C {cmd} --version"));
+        c
     } else {
-        std::process::Command::new(cmd)
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
+        let mut c = std::process::Command::new(&cmd);
+        c.arg("--version");
+        c
+    };
+    command
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+/// Pick the concrete package manager to use.
+///
+/// - `Some(pm)`: user stated a preference (CLI flag or `Anchor.toml`). The
+///   binary must be on PATH; missing binary is a hard error so the user isn't
+///   silently redirected to something they didn't pick.
+/// - `None`: probe the `PACKAGE_MANAGER_WATERFALL` in order and take the first
+///   hit. If the first probe in the waterfall was skipped, emit a warning so
+///   the user knows which binaries were missing.
+///
+/// Errors only when nothing in the waterfall is installed (no pnpm, no yarn,
+/// no npm — extremely unusual, but worth a clear message).
+fn resolve_package_manager(explicit: Option<PackageManager>) -> Result<PackageManager> {
+    if let Some(pm) = explicit {
+        if !package_manager_available(&pm) {
+            return Err(anyhow!(
+                "`{pm}` was requested but is not on PATH. Install it or pick a \
+                 different package manager with `--package-manager`."
+            ));
+        }
+        return Ok(pm);
     }
+
+    let mut skipped = Vec::new();
+    for candidate in PACKAGE_MANAGER_WATERFALL {
+        if package_manager_available(candidate) {
+            if !skipped.is_empty() {
+                let missing = skipped
+                    .iter()
+                    .map(|pm: &PackageManager| pm.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                eprintln!("warning: {missing} not found on PATH, using `{candidate}` instead");
+            }
+            return Ok(candidate.clone());
+        }
+        skipped.push(candidate.clone());
+    }
+
+    Err(anyhow!(
+        "No supported package manager found on PATH (tried pnpm, yarn, npm). \
+         Install one of them, or re-run with `--no-install`."
+    ))
 }
 
 fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
@@ -4418,10 +4464,8 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
                 rust_template::deploy_ts_script_host(&url, &module_path.display().to_string());
             fs::write(deploy_ts, deploy_script_host_str)?;
 
-            let pkg_manager_cmd = match &cfg.toolchain.package_manager {
-                Some(pkg_manager) => pkg_manager.to_string(),
-                None => PackageManager::default().to_string(),
-            };
+            let pkg_manager_cmd =
+                resolve_package_manager(cfg.toolchain.package_manager.clone())?.to_string();
 
             std::process::Command::new(pkg_manager_cmd)
                 .args([
@@ -5370,7 +5414,7 @@ mod tests {
             "await".to_string(),
             true,
             true,
-            PackageManager::default(),
+            None,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -5392,7 +5436,7 @@ mod tests {
             "fn".to_string(),
             true,
             true,
-            PackageManager::default(),
+            None,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -5414,7 +5458,7 @@ mod tests {
             "1project".to_string(),
             true,
             true,
-            PackageManager::default(),
+            None,
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),

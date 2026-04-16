@@ -354,13 +354,17 @@ pub struct ToolchainConfig {
 }
 
 /// Package manager to use for the project.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+///
+/// No `Default` impl — the enum represents an explicit user choice. Call sites
+/// that need to resolve a concrete package manager (when nothing is configured)
+/// should go through `crate::resolve_package_manager` so the waterfall
+/// (pnpm → yarn → npm) and missing-binary diagnostics are centralized.
+#[derive(Clone, Debug, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
     NPM,
     /// Use yarn as the package manager.
-    #[default]
     Yarn,
     /// Use pnpm as the package manager.
     PNPM,
