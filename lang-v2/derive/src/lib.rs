@@ -876,11 +876,14 @@ fn process_handler(
         Vec<TokenStream2>,
         TokenStream2,
     ) = if use_byte_disc {
-        let byte = discrim_byte.unwrap();
+        let byte = discrim_byte
+            .expect("all-or-nothing discrim check guarantees Some when use_byte_disc is true");
         (vec![byte], vec![quote! { #byte }], quote! { #byte })
     } else {
         let disc_bytes = &hash[..8];
-        let disc_u64 = u64::from_le_bytes(disc_bytes.try_into().unwrap());
+        let disc_u64 = u64::from_le_bytes(
+            disc_bytes.try_into().expect("sha256[..8] is always 8 bytes"),
+        );
         let lits: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
         (disc_bytes.to_vec(), lits, quote! { #disc_u64 })
     };
@@ -1071,7 +1074,9 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         let mut seen: std::collections::HashMap<u8, proc_macro2::Span> =
             std::collections::HashMap::new();
         for (i, d) in discrim_attrs.iter().enumerate() {
-            let (byte, span) = d.unwrap();
+            let (byte, span) = d.expect(
+                "all-or-nothing discrim check guarantees every entry is Some",
+            );
             if let Some(_first_span) = seen.insert(byte, span) {
                 return syn::Error::new(
                     span,

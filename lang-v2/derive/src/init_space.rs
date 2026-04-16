@@ -99,7 +99,11 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
             quote!((#array_len * #type_len))
         }
         Type::Path(ty_path) => {
-            let path_segment = ty_path.path.segments.last().unwrap();
+            let path_segment = ty_path
+                .path
+                .segments
+                .last()
+                .expect("syn::TypePath always has at least one segment");
             let ident = &path_segment.ident;
             let type_name = ident.to_string();
             let first_ty = get_first_ty_arg(&path_segment.arguments);

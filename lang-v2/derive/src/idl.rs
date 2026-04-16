@@ -43,19 +43,24 @@ fn type_str_to_idl(s: &str) -> String {
             }
         }
         _ if s.starts_with("Vec<") => {
-            let inner = s.strip_prefix("Vec<").unwrap().strip_suffix('>').unwrap();
+            let inner = s
+                .strip_prefix("Vec<")
+                .and_then(|s| s.strip_suffix('>'))
+                .expect("syn-generated type string has balanced angle brackets");
             format!("{{\"vec\":{}}}", type_str_to_idl(inner))
         }
         _ if s.starts_with("Option<") => {
             let inner = s
                 .strip_prefix("Option<")
-                .unwrap()
-                .strip_suffix('>')
-                .unwrap();
+                .and_then(|s| s.strip_suffix('>'))
+                .expect("syn-generated type string has balanced angle brackets");
             format!("{{\"option\":{}}}", type_str_to_idl(inner))
         }
         _ if s.starts_with("Box<") => {
-            let inner = s.strip_prefix("Box<").unwrap().strip_suffix('>').unwrap();
+            let inner = s
+                .strip_prefix("Box<")
+                .and_then(|s| s.strip_suffix('>'))
+                .expect("syn-generated type string has balanced angle brackets");
             type_str_to_idl(inner)
         }
         other => format!("{{\"defined\":{{\"name\":\"{other}\"}}}}"),
@@ -283,7 +288,11 @@ pub fn build_type_json(
     let field_jsons: Vec<String> = fields
         .iter()
         .map(|f| {
-            let fname = f.ident.as_ref().unwrap().to_string();
+            let fname = f
+                .ident
+                .as_ref()
+                .expect("named fields always have idents")
+                .to_string();
             let ftype = rust_type_to_idl(&f.ty);
             let field_docs = extract_doc_lines(&f.attrs);
             let field_docs_json = if field_docs.is_empty() {
