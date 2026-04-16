@@ -1,6 +1,6 @@
 [package]
 name = "anchor-spl-v2"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Anchor v2 SPL account types and constraint markers"
 license = "Apache-2.0"
@@ -9,7 +9,7 @@ license = "Apache-2.0"
 default = []
 
 [dependencies]
-anchor-lang-v2 = { path = "../lang-v2", version = "0.1.0" }
+anchor-lang-v2 = { path = "../lang-v2", version = "1.0.0" }
 pinocchio = { workspace = true }
 pinocchio-token = "0.6"
 bytemuck = { version = "1", features = ["derive"] }

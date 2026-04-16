@@ -238,7 +238,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-accounts-v2"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bs58",
  "curve25519-dalek",
@@ -334,7 +334,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-lang-v2"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anchor-derive-accounts-v2",
  "borsh",

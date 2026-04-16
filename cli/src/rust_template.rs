@@ -77,7 +77,7 @@ fn create_program_template_single(name: &str, program_path: &Path) -> Files {
     vec![(
         program_path.join("src").join("lib.rs"),
         format!(
-            r#"use anchor_lang::prelude::*;
+            r#"use anchor_lang_v2::prelude::*;
 
 declare_id!("{}");
 
@@ -85,8 +85,8 @@ declare_id!("{}");
 pub mod {} {{
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {{
-        msg!("Greetings from: {{:?}}", ctx.program_id);
+    pub fn initialize(_ctx: &mut Context<'_, Initialize>) -> Result<()> {{
+        msg!("Initialized");
         Ok(())
     }}
 }}
@@ -112,11 +112,10 @@ pub mod error;
 pub mod instructions;
 pub mod state;
 
-use anchor_lang::prelude::*;
+use anchor_lang_v2::prelude::*;
 
 pub use constants::*;
 pub use instructions::*;
-pub use state::*;
 
 declare_id!("{}");
 
@@ -124,7 +123,7 @@ declare_id!("{}");
 pub mod {} {{
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {{
+    pub fn initialize(ctx: &mut Context<'_, Initialize>) -> Result<()> {{
         initialize::handler(ctx)
     }}
 }}
@@ -135,7 +134,7 @@ pub mod {} {{
         ),
         (
             src_path.join("constants.rs"),
-            r#"use anchor_lang::prelude::*;
+            r#"use anchor_lang_v2::prelude::*;
 
 #[constant]
 pub const SEED: &str = "anchor";
@@ -144,7 +143,7 @@ pub const SEED: &str = "anchor";
         ),
         (
             src_path.join("error.rs"),
-            r#"use anchor_lang::prelude::*;
+            r#"use anchor_lang_v2::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
@@ -164,13 +163,13 @@ pub use initialize::*;
         ),
         (
             src_path.join("instructions").join("initialize.rs"),
-            r#"use anchor_lang::prelude::*;
+            r#"use anchor_lang_v2::prelude::*;
 
 #[derive(Accounts)]
 pub struct Initialize {}
 
-pub fn handler(ctx: Context<Initialize>) -> Result<()> {
-    msg!("Greetings from: {:?}", ctx.program_id);
+pub fn handler(_ctx: &mut Context<'_, Initialize>) -> Result<()> {
+    msg!("Initialized");
     Ok(())
 }
 "#
@@ -240,14 +239,17 @@ cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build"]
-anchor-debug = []
+idl-build = ["anchor-lang-v2/idl-build"]
 custom-heap = []
 custom-panic = []
 {2}
 
 [dependencies]
-anchor-lang = "{3}"
+# Once anchor-lang-v2 is published to crates.io, swap to: anchor-lang-v2 = "{3}"
+anchor-lang-v2 = {{ git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }}
+pinocchio = "0.11"
+solana-program-log = {{ version = "1.1", features = ["macro"] }}
+wincode = {{ version = "0.4", features = ["derive"] }}
 {4}
 
 [lints.rust]
@@ -844,7 +846,7 @@ fn create_program_template_mollusk_test(name: &str, tests_path: &Path) -> Files 
             r#"#![cfg(feature = "test-sbf")]
 
 use {{
-    anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    anchor_lang_v2::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
     mollusk_svm::{{result::Check, Mollusk}},
 }};
 
@@ -875,7 +877,7 @@ fn create_program_template_litesvm_test(name: &str, tests_path: &Path) -> Files 
         format!(
             r#"
 use {{
-    anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    anchor_lang_v2::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
     litesvm::LiteSVM,
     solana_message::{{Message, VersionedMessage}},
     solana_signer::Signer,

@@ -1,6 +1,6 @@
 [package]
 name = "anchor-lang-v2"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Anchor v2: trait-based account system for Solana (no_std)"
 license = "Apache-2.0"
@@ -35,7 +35,7 @@ account-resize = ["pinocchio/account-resize"]
 const-rent = []
 
 [dependencies]
-anchor-derive-accounts-v2 = { path = "./derive", version = "0.1.0" }
+anchor-derive-accounts-v2 = { path = "./derive", version = "1.0.0" }
 # "copy" makes AccountView Copy — saves 2 CU per account (avoids memcpy on access).
 pinocchio = { workspace = true, features = ["copy"] }
 pinocchio-system = "0.6"

@@ -1,6 +1,6 @@
 [package]
 name = "anchor-derive-accounts-v2"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Anchor v2 derive macro for Accounts structs"
 license = "Apache-2.0"
