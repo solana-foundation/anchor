@@ -925,8 +925,8 @@ fn test_initialize() {{
         program_id,
         &{0}::instruction::Initialize {{}}.data(),
         {0}::accounts::Initialize {{
-            payer: payer.pubkey().to_bytes().into(),
-            counter: counter.pubkey().to_bytes().into(),
+            payer: payer.pubkey(),
+            counter: counter.pubkey(),
             system_program: System::id(),
         }}
         .to_account_metas(None),
@@ -952,7 +952,7 @@ fn test_initialize() {{
     assert_eq!(account.data.len(), <Account<{0}::state::Counter> as Space>::INIT_SPACE);
     let counter_state: &{0}::state::Counter = bytemuck::from_bytes(&account.data[8..]);
     assert_eq!(counter_state.count, 0);
-    assert_eq!(counter_state.authority, payer.pubkey().to_bytes().into());
+    assert_eq!(counter_state.authority, payer.pubkey());
 }}
 "#,
             name.to_snake_case(),
