@@ -444,6 +444,11 @@ define_pod_signed!(PodI64, i64, 8);
 define_pod_signed!(PodI32, i32, 4);
 define_pod_signed!(PodI16, i16, 2);
 
+// `u8` and `i8` are already alignment-1 in Rust, so no Pod wrapper is needed.
+// These aliases let v1 ports referencing `PodU8`/`PodI8` resolve cleanly.
+pub type PodU8 = u8;
+pub type PodI8 = i8;
+
 const _: () = assert!(core::mem::align_of::<PodU128>() == 1);
 const _: () = assert!(core::mem::size_of::<PodU128>() == 16);
 const _: () = assert!(core::mem::align_of::<PodU64>() == 1);

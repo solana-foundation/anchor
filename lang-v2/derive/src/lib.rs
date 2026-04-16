@@ -12,7 +12,10 @@ use {
     proc_macro::TokenStream,
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
-    syn::{parse_macro_input, Data, DeriveInput, Fields, FnArg, Ident, ItemMod, Pat, Type},
+    syn::{
+        parse_macro_input, spanned::Spanned, Data, DeriveInput, Fields, FnArg, Ident, ItemMod, Pat,
+        Type,
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -638,49 +641,51 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     // --- Parse #[discrim = N] attributes ---
     // If any handler has #[discrim = N], all must. The byte value becomes
     // the 1-byte discriminator instead of the default sha256("global:<name>")[..8].
-    let discrim_attrs: Vec<Option<u8>> = handlers
+    let discrim_attrs: Vec<Option<(u8, proc_macro2::Span)>> = match handlers
         .iter()
-        .map(|h| {
-            h.attrs.iter().find_map(|attr| {
-                if let syn::Meta::NameValue(nv) = &attr.meta {
-                    if nv.path.is_ident("discrim") {
-                        if let syn::Expr::Lit(syn::ExprLit {
-                            lit: syn::Lit::Int(lit),
-                            ..
-                        }) = &nv.value
-                        {
-                            return Some(
-                                lit.base10_parse::<u8>()
-                                    .expect("#[discrim = N] value must be a u8 (0..=255)"),
-                            );
-                        }
-                        panic!("#[discrim = N] value must be an integer literal");
-                    }
-                }
-                None
-            })
-        })
-        .collect();
+        .map(|h| parse_discrim_attr(h))
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(v) => v,
+        Err(e) => return e.to_compile_error(),
+    };
 
     let has_any_discrim = discrim_attrs.iter().any(|d| d.is_some());
     let has_all_discrim = discrim_attrs.iter().all(|d| d.is_some());
     if has_any_discrim && !has_all_discrim {
-        panic!("If any instruction uses #[discrim = N], all instructions must");
+        // Point at the first handler missing #[discrim = N] for clarity.
+        let missing = handlers
+            .iter()
+            .zip(discrim_attrs.iter())
+            .find(|(_, d)| d.is_none())
+            .map(|(h, _)| h.sig.ident.span())
+            .unwrap_or_else(proc_macro2::Span::call_site);
+        return syn::Error::new(
+            missing,
+            "if any instruction in `#[program]` uses `#[discrim = N]`, all must",
+        )
+        .to_compile_error();
     }
     let use_byte_disc = has_any_discrim;
 
     if use_byte_disc {
-        let mut seen = std::collections::HashSet::new();
+        let mut seen: std::collections::HashMap<u8, proc_macro2::Span> =
+            std::collections::HashMap::new();
         for (i, d) in discrim_attrs.iter().enumerate() {
-            let byte = d.unwrap();
-            if !seen.insert(byte) {
-                panic!(
-                    "Duplicate #[discrim = {}] on instruction '{}'",
-                    byte, handlers[i].sig.ident
-                );
+            let (byte, span) = d.unwrap();
+            if let Some(_first_span) = seen.insert(byte, span) {
+                return syn::Error::new(
+                    span,
+                    format!(
+                        "duplicate `#[discrim = {}]` on instruction `{}`",
+                        byte, handlers[i].sig.ident
+                    ),
+                )
+                .to_compile_error();
             }
         }
     }
+    let discrim_attrs: Vec<Option<u8>> = discrim_attrs.iter().map(|d| d.map(|(b, _)| b)).collect();
 
     let codegen: Vec<HandlerCodegen> = handlers
         .iter()
@@ -1070,15 +1075,29 @@ pub fn emit(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```ignore
-/// #[access_control(Create::validate(&ctx, bump_seed))]
-/// pub fn create(ctx: &mut Context<'_, Create>, bump_seed: u8) -> Result<()> {
-///     // handler body
-///     Ok(())
+/// #[program]
+/// mod errors {
+///     use super::*;
+///
+///     #[access_control(Create::validate(&ctx, bump_seed))]
+///     pub fn create(ctx: &mut Context<'_, Create>, bump_seed: u8) -> Result<()> {
+///         ctx.accounts.my_account.bump_seed = bump_seed;
+///         Ok(())
+///     }
+/// }
+///
+/// impl Create {
+///     pub fn validate(ctx: &Context<'_, Create>, bump_seed: u8) -> Result<()> {
+///         // ... custom validation ...
+///         Ok(())
+///     }
 /// }
 /// ```
 ///
-/// Expands to a call to `Create::validate(&ctx, bump_seed)?;` prepended to
-/// the handler body. Multiple calls can be specified, separated by `,`.
+/// This pattern is useful for invariants that depend on instruction
+/// arguments — `#[derive(Accounts)]` constraints fire before args are
+/// unpacked, so any check that needs both an account and an arg goes
+/// here.
 #[proc_macro_attribute]
 pub fn access_control(args: TokenStream, input: TokenStream) -> TokenStream {
     access_control::expand(args, input)
@@ -1155,6 +1174,36 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn error_code(args: TokenStream, input: TokenStream) -> TokenStream {
     error_code::expand(args, input)
+}
+
+/// Parse the optional `#[discrim = N]` attribute on a handler fn.
+/// Returns `Ok(Some((byte, span)))` if present, `Ok(None)` if absent,
+/// or `Err` with a properly-spanned diagnostic on malformed input.
+fn parse_discrim_attr(
+    handler: &syn::ItemFn,
+) -> syn::Result<Option<(u8, proc_macro2::Span)>> {
+    for attr in &handler.attrs {
+        if let syn::Meta::NameValue(nv) = &attr.meta {
+            if nv.path.is_ident("discrim") {
+                let span = nv.value.span();
+                if let syn::Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Int(lit),
+                    ..
+                }) = &nv.value
+                {
+                    let byte = lit.base10_parse::<u8>().map_err(|_| {
+                        syn::Error::new(lit.span(), "`#[discrim = N]` value must fit in a u8 (0..=255)")
+                    })?;
+                    return Ok(Some((byte, span)));
+                }
+                return Err(syn::Error::new(
+                    span,
+                    "`#[discrim = N]` value must be an integer literal",
+                ));
+            }
+        }
+    }
+    Ok(None)
 }
 
 fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {
