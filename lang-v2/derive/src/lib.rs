@@ -512,14 +512,24 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     let disc_literals: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
 
     let struct_docs = idl::extract_doc_lines(attrs);
+    // `#[account]` has two modes: default zero-copy (Pod + repr(C)) and opt-in
+    // borsh (`#[account(borsh)]`). The mode propagates into the IDL type
+    // definition's `serialization` / `repr` fields (spec:180-216) so
+    // downstream codegen knows which wire format to use.
+    let type_kind = if is_borsh {
+        idl::TypeKind::Borsh
+    } else {
+        idl::TypeKind::BytemuckRepr
+    };
     let idl_type_json = if let Fields::Named(named) = fields {
-        idl::build_type_json(&name_str, disc_bytes, &struct_docs, &named.named)
+        idl::build_type_json(&name_str, disc_bytes, &struct_docs, &named.named, type_kind)
     } else {
         idl::build_type_json(
             &name_str,
             disc_bytes,
             &struct_docs,
             &syn::punctuated::Punctuated::new(),
+            type_kind,
         )
     };
 
@@ -1192,20 +1202,51 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 all_types.sort();
                 all_types.dedup();
 
-                // Split each __IDL_TYPE into accounts entry and types entry
+                // Split each __IDL_TYPE into an `IdlAccount`
+                // (name + discriminator, spec:137-140) and an
+                // `IdlTypeDef` (everything else, spec:176-188). The
+                // serialized shape is:
+                //
+                //   {"name":"X","discriminator":[...][,"docs":[...]]
+                //    [,"serialization":"...","repr":{...}],
+                //    "type":{"kind":"struct","fields":[...]}}
+                //
+                // Accounts entries only want `name` + `discriminator`; the
+                // rest (docs, serialization, repr, type) belong in the
+                // types entry. Pull name+disc from the front up to the
+                // first non-disc field, and splice the remainder onto a
+                // fresh `{"name":"X", ...}` wrapper for the types list.
                 let mut accounts_entries = Vec::new();
                 let mut types_entries = Vec::new();
                 for ty in &all_types {
-                    // __IDL_TYPE is: {"name":"X","discriminator":[...],"type":{"kind":"struct","fields":[...]}}
-                    // Split at ,"type": to get accounts part and types part
-                    if let Some(pos) = ty.find(",\"type\":") {
-                        let name_disc = &ty[..pos];
-                        let type_def = &ty[pos+1..ty.len()-1]; // skip trailing }
-                        accounts_entries.push(format!("{}}}", name_disc));
-                        // Extract name for the types entry
-                        let name = ty.split("\"name\":\"").nth(1).unwrap().split("\"").next().unwrap();
-                        types_entries.push(format!("{{\"name\":\"{}\",{}}}", name, type_def));
-                    }
+                    // Find the end of the discriminator array. The shape
+                    // is always `"discriminator":[<comma-separated u8s>]`
+                    // so we walk past the `]` that closes the array.
+                    let disc_key = "\"discriminator\":[";
+                    let Some(disc_start) = ty.find(disc_key) else { continue; };
+                    let after_bracket = disc_start + disc_key.len();
+                    let Some(close_offset) = ty[after_bracket..].find(']') else { continue; };
+                    let disc_end = after_bracket + close_offset + 1; // include `]`
+
+                    // name + discriminator (e.g. `{"name":"X","discriminator":[...]`)
+                    let name_disc_prefix = &ty[..disc_end];
+                    accounts_entries.push(anchor_lang_v2::__alloc::format!("{}}}", name_disc_prefix));
+
+                    // Extract the bare struct name so the types entry is
+                    // a standalone `IdlTypeDef` with its own `name`.
+                    let Some(name) = ty
+                        .split("\"name\":\"")
+                        .nth(1)
+                        .and_then(|s| s.split('"').next())
+                    else { continue; };
+
+                    // Everything after the discriminator — `,"docs":...,"type":...`
+                    // — gets spliced as-is onto the types entry, minus the
+                    // discriminator itself (types don't carry one in the spec).
+                    let rest = &ty[disc_end..ty.len() - 1]; // strip trailing `}`
+                    types_entries.push(anchor_lang_v2::__alloc::format!(
+                        "{{\"name\":\"{}\"{}}}", name, rest,
+                    ));
                 }
 
                 let crate_name = env!("CARGO_CRATE_NAME").replace('-', "_");

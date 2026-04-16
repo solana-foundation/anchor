@@ -234,20 +234,51 @@ pub fn disc_json(disc_bytes: &[u8]) -> String {
     format!("[{}]", parts.join(","))
 }
 
+/// Zero-copy / borsh mode tag passed down from the `#[account]` / `#[event]`
+/// call sites. The spec (`idl/spec/src/lib.rs:180-216`) models this as the
+/// pair `(IdlSerialization, Option<IdlRepr>)`, but both fields are tightly
+/// coupled — bytemuck always pairs with `repr(C)` in our codegen, and borsh
+/// carries no repr — so we collapse them into a single enum and expand both
+/// fields at emission time.
+#[derive(Clone, Copy)]
+pub enum TypeKind {
+    /// Default borsh layout. Spec `skip_serializing_if`s both fields at the
+    /// default value, so nothing extra gets emitted.
+    Borsh,
+    /// `bytemuck` Pod + `repr(C)`. Both fields show up in the JSON.
+    BytemuckRepr,
+}
+
 /// Build IDL type definition JSON from struct fields. `docs` is the list of
 /// `#[doc = "..."]` lines scraped from the struct-level attrs; each named
 /// field also contributes its own `docs` array from its own attrs.
+///
+/// `kind` selects the `serialization` / `repr` metadata emitted onto the
+/// type definition. Zero-copy `#[account]` / default `#[event]` pass
+/// `TypeKind::BytemuckRepr`; their borsh-mode counterparts pass
+/// `TypeKind::Borsh` (the default, which suppresses both fields).
 pub fn build_type_json(
     name: &str,
     disc: &[u8],
     docs: &[String],
     fields: &syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
+    kind: TypeKind,
 ) -> String {
     let disc_json = disc_json(disc);
     let docs_json = if docs.is_empty() {
         String::new()
     } else {
         format!(",\"docs\":{}", docs_to_json_array(docs))
+    };
+    // `IdlSerialization` / `IdlRepr` (spec:190-216). `Borsh` is the default
+    // on both the tagged enum and the `Option<IdlRepr>`, so we splice
+    // nothing and let the serde-default path handle it. `bytemuckUnsafe`
+    // deliberately isn't emitted — its semantics aren't nailed down in v2.
+    let serialization_repr_json = match kind {
+        TypeKind::Borsh => String::new(),
+        TypeKind::BytemuckRepr => {
+            ",\"serialization\":\"bytemuck\",\"repr\":{\"kind\":\"c\"}".to_string()
+        }
     };
     let field_jsons: Vec<String> = fields
         .iter()
@@ -264,7 +295,7 @@ pub fn build_type_json(
         })
         .collect();
     format!(
-        "{{\"name\":\"{name}\",\"discriminator\":{disc_json}{docs_json},\"type\":{{\"kind\":\"struct\",\"\
+        "{{\"name\":\"{name}\",\"discriminator\":{disc_json}{docs_json}{serialization_repr_json},\"type\":{{\"kind\":\"struct\",\"\
          fields\":[{}]}}}}",
         field_jsons.join(",")
     )
