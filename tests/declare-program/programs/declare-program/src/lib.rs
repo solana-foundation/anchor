@@ -95,57 +95,6 @@ pub mod declare_program {
         Ok(())
     }
 
-    #[cfg(not(target_os = "solana"))]
-    pub fn account_utils(_ctx: Context<Utils>) -> Result<()> {
-        use external::parsers::Account;
-
-        // Empty
-        if Account::parse(&[]).is_ok() {
-            return Err(ProgramError::Custom(0).into());
-        }
-
-        const DISC: &[u8] = external::accounts::MyAccount::DISCRIMINATOR;
-
-        // Correct discriminator but invalid data
-        if Account::parse(DISC).is_ok() {
-            return Err(ProgramError::Custom(1).into());
-        };
-
-        // Correct discriminator and valid data
-        match Account::parse(&[DISC, &[1, 0, 0, 0]].concat()) {
-            Ok(Account::MyAccount(my_account)) => require_eq!(my_account.field, 1),
-            Ok(_) => return Err(ProgramError::Custom(2).into()),
-            Err(e) => return Err(e.into()),
-        }
-
-        Ok(())
-    }
-
-    #[cfg(not(target_os = "solana"))]
-    pub fn event_utils(_ctx: Context<Utils>) -> Result<()> {
-        use external::parsers::Event;
-
-        // Empty
-        if Event::parse(&[]).is_ok() {
-            return Err(ProgramError::Custom(0).into());
-        }
-
-        const DISC: &[u8] = external::events::MyEvent::DISCRIMINATOR;
-
-        // Correct discriminator but invalid data
-        if Event::parse(DISC).is_ok() {
-            return Err(ProgramError::Custom(1).into());
-        };
-
-        // Correct discriminator and valid data
-        match Event::parse(&[DISC, &[1, 0, 0, 0]].concat()) {
-            Ok(Event::MyEvent(my_event)) => require_eq!(my_event.value, 1),
-            Err(e) => return Err(e.into()),
-        }
-
-        Ok(())
-    }
-
     pub fn proxy(ctx: Context<Proxy>, data: Vec<u8>) -> Result<()> {
         let (authority, bump) = Pubkey::find_program_address(&[GLOBAL], &ID);
 
