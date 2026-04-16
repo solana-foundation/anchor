@@ -897,8 +897,8 @@ fn create_program_template_litesvm_test(name: &str, tests_path: &Path) -> Files 
             r#"
 use {{
     anchor_lang_v2::{{
-        solana_program::instruction::Instruction, programs::System, Id, InstructionData,
-        ToAccountMetas,
+        accounts::Account, bytemuck, programs::System,
+        solana_program::instruction::Instruction, Id, InstructionData, Space, ToAccountMetas,
     }},
     anchor_v2_testing::{{Keypair, LiteSVM, Message, Signer, VersionedMessage, VersionedTransaction}},
 }};
@@ -943,13 +943,16 @@ fn test_initialize() {{
     let res = svm.send_transaction(tx);
     assert!(res.is_ok(), "send_transaction failed: {{:?}}", res);
 
-    // Verify the counter account was initialized: 8-byte disc + 8-byte count
-    // + 32-byte authority = 48 bytes. Count is LE at offset 8.
+    // Verify the counter account was initialized. Size comes from the same
+    // `Space::INIT_SPACE` expression the `init` constraint allocates with,
+    // so the assertion doesn't rot if `Counter` gains fields. The payload
+    // tail is a `Pod` struct, so we cast directly and read fields by name
+    // instead of hand-slicing bytes.
     let account = svm.get_account(&counter.pubkey()).expect("counter account");
-    assert_eq!(account.data.len(), 8 + 8 + 32);
-    let count = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
-    assert_eq!(count, 0);
-    assert_eq!(&account.data[16..48], &payer.pubkey().to_bytes());
+    assert_eq!(account.data.len(), <Account<{0}::state::Counter> as Space>::INIT_SPACE);
+    let counter_state: &{0}::state::Counter = bytemuck::from_bytes(&account.data[8..]);
+    assert_eq!(counter_state.count, 0);
+    assert_eq!(counter_state.authority, payer.pubkey().to_bytes().into());
 }}
 "#,
             name.to_snake_case(),
