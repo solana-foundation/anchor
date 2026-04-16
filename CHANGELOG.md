@@ -14,6 +14,8 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- lang: Handle user-provided `borsh` attributes in derives ([#4380](https://github.com/solana-foundation/anchor/pull/4380)).
+
 ### Breaking
 
 ## [1.0.0] - 2026-04-02

@@ -282,6 +282,7 @@ dependencies = [
 name = "anchor-derive-serde"
 version = "1.0.0"
 dependencies = [
+ "anchor-lang",
  "anchor-syn",
  "proc-macro-crate 3.5.0",
  "proc-macro2",
