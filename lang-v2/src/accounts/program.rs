@@ -5,6 +5,16 @@ use {
     solana_program_error::ProgramError,
 };
 
+/// Program account wrapper. Validates the account address matches `T::id()`.
+///
+/// ## `#[account(address = X @ MyErr)]` does NOT surface `MyErr`
+///
+/// `Program<T>` validates the address against `T::id()` inside `load`,
+/// before any derive-level constraint hook. A mismatch surfaces as
+/// `ProgramError::IncorrectProgramId`, never as the user's `@ MyErr` code.
+/// If you need a custom error on a program-id mismatch, use
+/// `UncheckedAccount` and add the address check via `address = X @ MyErr`
+/// in the derive — that becomes the authoritative validation.
 pub struct Program<T: Id> {
     view: AccountView,
     _phantom: PhantomData<T>,

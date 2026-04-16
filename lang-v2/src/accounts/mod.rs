@@ -44,6 +44,18 @@ pub use {
 ///     pub ledger: Slab<Ledger, Entry>,  // tail of `Entry` items
 /// }
 /// ```
+///
+/// ## `#[account(owner = X @ MyErr)]` does NOT surface `MyErr`
+///
+/// Owner validation runs inside the wrapper's `load`/`load_mut`, before any
+/// derive-level constraint hook. A mismatch surfaces as
+/// `ProgramError::IllegalOwner`, never as the user's `@ MyErr` code. The
+/// same is true for the discriminator check.
+///
+/// To get a custom error code on owner mismatch, use `UncheckedAccount`
+/// (no built-in owner validation) and rely on the derive-level
+/// `owner = X @ MyErr` as the authoritative check. You'll need to handle
+/// the discriminator and any zero-copy field access by hand.
 pub type Account<T> = slab::Slab<T, HeaderOnly>;
 
 /// Generates `Deref<Target=AccountView>` + `AsRef<AccountView>` + `AsRef<Address>`

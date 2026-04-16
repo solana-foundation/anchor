@@ -20,6 +20,20 @@ const DISC_LEN: usize = 8;
 /// - `load()` takes an immutable borrow (blocks subsequent `load_mut` on same account)
 /// - `load_mut()` takes a mutable borrow (blocks any other borrow on same account)
 /// - `exit()` serializes through the held `RefMut`
+///
+/// ## `#[account(owner = X @ MyErr)]` does NOT surface `MyErr`
+///
+/// `BorshAccount<T>` validates the on-chain owner against `T::owner(program_id)`
+/// as part of `load`/`load_mut` — that check runs *before* any derive-level
+/// constraint hook. A mismatch surfaces as `ProgramError::IllegalOwner`, never
+/// as the user's `@ MyErr` code. The same is true for the discriminator check.
+///
+/// If you need a custom error code on owner mismatch, switch the field to
+/// `UncheckedAccount` (which has no built-in owner validation) and the
+/// derive-level `owner = X @ MyErr` becomes the authoritative check. Note
+/// that you also lose the discriminator and borsh deserialization the wrapper
+/// would have done — make those checks explicit in the handler if you need
+/// them.
 pub struct BorshAccount<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> {
     view: AccountView,
     data: T,
