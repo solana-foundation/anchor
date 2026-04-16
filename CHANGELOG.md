@@ -16,6 +16,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Add `--stdout` flag to the `expand` command ([#4400](https://github.com/solana-foundation/anchor/pull/4400)).
 - client: Add versioned tx support ([#4207](https://github.com/solana-foundation/anchor/pull/4207)).
 - cli: Add `edition` and `rust-version` to template ([#4048](https://github.com/solana-foundation/anchor/pull/4048))
+- lang: Add `AccountLoader::new_unchecked` for constructing an `AccountLoader` without performing owner or discriminator checks ([#4162](https://github.com/solana-foundation/anchor/pull/4162)).
 
 ### Fixes
 
