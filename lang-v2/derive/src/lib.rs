@@ -1338,6 +1338,46 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    // Build the `--- IDL begin event ---` payload. `idl/src/build.rs` expects
+    // a JSON object with `event: IdlEvent` (name + discriminator) plus
+    // `types: Vec<IdlTypeDef>` (the full struct definition). Pod-mode events
+    // carry `serialization:"bytemuck",repr:{"kind":"c"}`; borsh-mode events
+    // fall back to the spec default (both fields skipped on serialize).
+    let type_kind = match mode {
+        EventMode::Pod => idl::TypeKind::BytemuckRepr,
+        EventMode::Borsh => idl::TypeKind::Borsh,
+    };
+    let struct_docs = idl::extract_doc_lines(attrs);
+    let type_def_json = if let Fields::Named(named) = fields {
+        idl::build_type_json(&name_str, disc_bytes, &struct_docs, &named.named, type_kind)
+    } else {
+        idl::build_type_json(
+            &name_str,
+            disc_bytes,
+            &struct_docs,
+            &syn::punctuated::Punctuated::new(),
+            type_kind,
+        )
+    };
+    let event_disc_json = idl::disc_json(disc_bytes);
+    let event_payload_json = format!(
+        "{{\"event\":{{\"name\":\"{}\",\"discriminator\":{}}},\"types\":[{}]}}",
+        name_str, event_disc_json, type_def_json,
+    );
+    let idl_fn_name = quote::format_ident!(
+        "__anchor_private_print_idl_event_{}",
+        name_str.to_lowercase()
+    );
+    let idl_event_print = quote! {
+        #[cfg(all(test, feature = "idl-build"))]
+        #[test]
+        fn #idl_fn_name() {
+            println!("--- IDL begin event ---");
+            println!("{}", #event_payload_json);
+            println!("--- IDL end event ---");
+        }
+    };
+
     match mode {
         EventMode::Pod => {
             let field_types: Vec<_> = fields.iter().map(|f| &f.ty).collect();
@@ -1471,6 +1511,8 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                         buf
                     }
                 }
+
+                #idl_event_print
             })
         }
         EventMode::Borsh => TokenStream::from(quote! {
@@ -1498,6 +1540,8 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                     buf
                 }
             }
+
+            #idl_event_print
         }),
     }
 }
