@@ -12,6 +12,9 @@ pub use crate::{
         UncheckedAccount,
     },
     // CPI
+    CpiContext,
+    CpiHandle,
+    ToCpiAccounts,
     create_account,
     create_account_signed,
     create_program_address,

@@ -5,6 +5,10 @@ use {
     solana_program_error::ProgramError,
 };
 
+/// Re-export pinocchio CPI building blocks for instruction construction.
+pub use pinocchio::cpi::{Seed as CpiSeed, Signer as CpiSigner};
+pub use pinocchio::instruction::{InstructionAccount, InstructionView};
+
 /// Largest `space` for which the const path is guaranteed not to
 /// overflow `u64`. Only referenced when the `const-rent` feature is on.
 ///

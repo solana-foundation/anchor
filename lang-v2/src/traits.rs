@@ -1,8 +1,52 @@
 use {
     core::ops::Deref,
-    pinocchio::{account::AccountView, address::Address},
+    pinocchio::{account::AccountView, address::Address, instruction::InstructionAccount},
     solana_program_error::{ProgramError, ProgramResult},
 };
+
+/// Zero-cost CPI handle that borrows an anchor account at the Rust level.
+///
+/// Obtained via [`AnchorAccount::cpi_handle`] (shared borrow) or
+/// [`AnchorAccount::cpi_handle_mut`] (exclusive borrow). Pinocchio's
+/// `borrow_state` is never modified — CPI is routed through
+/// `invoke_signed_unchecked` by [`CpiContext::invoke`].
+///
+/// Deliberately does NOT implement `Deref<Target = AccountView>` to
+/// prevent accidental use with pinocchio's checked invoke builders.
+#[derive(Clone, Copy)]
+pub struct CpiHandle<'a> {
+    view: &'a AccountView,
+}
+
+impl<'a> CpiHandle<'a> {
+    /// The account's on-chain address.
+    #[inline(always)]
+    pub fn address(&self) -> &Address {
+        self.view.address()
+    }
+
+    /// Access the underlying `AccountView` for CPI account construction.
+    ///
+    /// Restricted to the crate so external code cannot extract the view
+    /// and pass it to pinocchio's checked invoke.
+    #[inline(always)]
+    pub(crate) fn account_view(&self) -> &'a AccountView {
+        self.view
+    }
+}
+
+/// Converts a CPI accounts struct into instruction metadata and handles.
+///
+/// Implemented by generated CPI accounts structs. Each field maps to an
+/// [`InstructionAccount`] (address + writable/signer flags) and a
+/// [`CpiHandle`] for the actual invocation.
+pub trait ToCpiAccounts<'a> {
+    /// Produce instruction account metadata for the CPI instruction.
+    fn to_instruction_accounts(&self) -> alloc::vec::Vec<InstructionAccount<'a>>;
+
+    /// Collect all CPI handles for the invocation.
+    fn to_cpi_handles(&self) -> alloc::vec::Vec<CpiHandle<'a>>;
+}
 
 pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     type Data;
@@ -95,6 +139,28 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
         self_view.set_lamports(0);
         self_view.close()?;
         Ok(())
+    }
+
+    /// Obtain a shared CPI handle for this account.
+    ///
+    /// The handle borrows `self`, preventing mutable typed access while
+    /// it is alive. Use for accounts that are read-only in the CPI.
+    #[inline(always)]
+    fn cpi_handle(&self) -> CpiHandle<'_> {
+        CpiHandle {
+            view: self.account(),
+        }
+    }
+
+    /// Obtain an exclusive CPI handle for this account.
+    ///
+    /// The handle borrows `self` mutably, preventing any typed access
+    /// while it is alive. Use for accounts that are writable in the CPI.
+    #[inline(always)]
+    fn cpi_handle_mut(&mut self) -> CpiHandle<'_> {
+        CpiHandle {
+            view: self.account(),
+        }
     }
 }
 

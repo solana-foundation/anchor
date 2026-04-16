@@ -8,7 +8,8 @@ extern crate alloc;
 
 pub mod accounts;
 mod context;
-mod cpi;
+pub mod cpi;
+mod context_cpi;
 pub mod cursor;
 mod dispatch;
 pub mod event;
@@ -97,6 +98,7 @@ pub use {
         find_and_verify_program_address, find_and_verify_program_address_skip_curve,
         find_program_address, verify_program_address,
     },
+    context_cpi::CpiContext,
     cursor::{AccountBitvec, AccountCursor},
     dispatch::{run_handler, TryAccounts},
     event::{sol_log_data, Event},
