@@ -206,7 +206,12 @@ fn build(
                 "--- IDL begin const ---" => state = State::Constants(vec![]),
                 "--- IDL begin event ---" => state = State::Events(vec![]),
                 "--- IDL begin errors ---" if errors.is_some() => {
-                    return Err(anyhow!("Multiple error definitions are not allowed."));
+                    return Err(anyhow!(
+                        "multiple #[error_code] enums detected — Anchor allows only \
+                         one per program. Consolidate your variants into a single \
+                         enum. If you need a non-default starting code, set it with \
+                         `#[error_code(offset = N)]`.",
+                    ));
                 }
                 "--- IDL begin errors ---" => state = State::Errors(vec![]),
                 "--- IDL begin program ---" => state = State::Program(vec![]),
