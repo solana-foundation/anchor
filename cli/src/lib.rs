@@ -3551,7 +3551,7 @@ fn run_test_suite(
                 .map_err(std::env::VarError::NotUnicode)?,
             None => "".to_owned(),
         },
-        get_node_dns_option()?,
+        get_node_dns_option(),
     );
 
     // Setup log reader - kept alive until end of scope
@@ -5090,11 +5090,17 @@ fn get_node_version() -> Result<Version> {
         .stderr(Stdio::inherit())
         .output()
         .map_err(|e| anyhow::format_err!("node failed: {}", e))?;
-    let output = std::str::from_utf8(&node_version.stdout)?
-        .strip_prefix('v')
-        .unwrap()
-        .trim();
-    Version::parse(output).map_err(Into::into)
+    parse_node_version(std::str::from_utf8(&node_version.stdout)?)
+}
+
+/// Parse the stdout of `node --version` into a `Version`. Tolerates both the
+/// canonical `v20.10.0\n` shape and a bare `20.10.0` — the latter shows up in
+/// corporate wrappers / volta shims that strip the `v` prefix. Malformed
+/// output still errors.
+fn parse_node_version(output: &str) -> Result<Version> {
+    let trimmed = output.trim();
+    let without_v = trimmed.strip_prefix('v').unwrap_or(trimmed);
+    Version::parse(without_v).map_err(Into::into)
 }
 
 fn add_recommended_deployment_solana_args(
@@ -5137,14 +5143,25 @@ fn add_recommended_deployment_solana_args(
     Ok(augmented_args)
 }
 
-fn get_node_dns_option() -> Result<&'static str> {
-    let version = get_node_version()?;
-    let req = VersionReq::parse(">=16.4.0").unwrap();
-    let option = match req.matches(&version) {
-        true => "--dns-result-order=ipv4first",
-        false => "",
+/// Returns the `NODE_OPTIONS` flag that tells Node to prefer IPv4 in DNS
+/// resolution (needed to avoid a localhost connect-timeout bug on Node 16+).
+///
+/// Returns `""` when `node` is missing or its `--version` output is unparsable.
+/// This lets `anchor test` run on Rust-only test templates (litesvm / mollusk
+/// / rust) without requiring `node` on `PATH` — the env var still gets set,
+/// but `cargo test` ignores it. For JS/TS projects that actually invoke node,
+/// any real node problem will surface cleanly at the point the test script
+/// runs.
+fn get_node_dns_option() -> &'static str {
+    let Ok(version) = get_node_version() else {
+        return "";
     };
-    Ok(option)
+    let req = VersionReq::parse(">=16.4.0").unwrap();
+    if req.matches(&version) {
+        "--dns-result-order=ipv4first"
+    } else {
+        ""
+    }
 }
 
 // Remove the current workspace directory if it prefixes a string.
@@ -5482,5 +5499,32 @@ mod tests {
             true,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn parse_node_version_with_v_prefix() {
+        let v = parse_node_version("v20.10.0\n").unwrap();
+        assert_eq!(v.major, 20);
+        assert_eq!(v.minor, 10);
+        assert_eq!(v.patch, 0);
+    }
+
+    #[test]
+    fn parse_node_version_without_v_prefix() {
+        let v = parse_node_version("20.10.0").unwrap();
+        assert_eq!(v.major, 20);
+    }
+
+    #[test]
+    fn parse_node_version_ignores_surrounding_whitespace() {
+        let v = parse_node_version("  v18.17.1  \n").unwrap();
+        assert_eq!(v.major, 18);
+        assert_eq!(v.minor, 17);
+    }
+
+    #[test]
+    fn parse_node_version_errors_on_garbage() {
+        assert!(parse_node_version("not a version").is_err());
+        assert!(parse_node_version("").is_err());
     }
 }
