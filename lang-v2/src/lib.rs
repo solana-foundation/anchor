@@ -115,6 +115,11 @@ pub use {
 
 #[cfg(feature = "idl-build")]
 pub use idl_build::IdlAccountType;
+/// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
+/// array. Gated behind `idl-build` because the emitted impl references
+/// `IdlAccountType`, which is itself gated.
+#[cfg(feature = "idl-build")]
+pub use anchor_derive_accounts_v2::IdlType;
 
 // ---------------------------------------------------------------------------
 // Client-side types — for building instructions off-chain (tests, CPI, SDK)

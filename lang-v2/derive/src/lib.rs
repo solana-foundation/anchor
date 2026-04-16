@@ -610,6 +610,114 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     })
 }
 
+// ---------------------------------------------------------------------------
+// #[derive(IdlType)]
+// ---------------------------------------------------------------------------
+
+/// Register a plain (non-`#[account]`, non-`#[event]`) struct in the IDL's
+/// `types[]` array.
+///
+/// V1 had `#[derive(IdlBuild)]` for the same purpose. Without this, a nested
+/// user-defined struct referenced by an `#[event]` / `#[account]` field
+/// appears in the outer type's JSON as `{"defined":{"name":"Inner"}}` but
+/// has no corresponding entry in `types[]` — TS clients then fail to decode
+/// the nested field.
+///
+/// Unlike `#[account]`, this derive carries **none** of the account-kind
+/// baggage: no discriminator, no `Owner`, no `Discriminator` trait, no
+/// forced `#[repr(C)]`, no Pod/Zeroable derives. It only emits the
+/// `IdlAccountType` impl so the struct gets picked up by the transitive
+/// walker.
+///
+/// # Example
+///
+/// ```ignore
+/// #[repr(C)]
+/// #[derive(Clone, Copy, Pod, Zeroable, IdlType)]
+/// pub struct Inner { pub a: u64, pub b: u64 }
+///
+/// #[event]
+/// pub struct NestedEvent {
+///     pub outer_id: u64,
+///     pub inner: Inner, // <- pulls `Inner` into the IDL's types[]
+/// }
+/// ```
+#[proc_macro_derive(IdlType)]
+pub fn derive_idl_type(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+    let name_str = name.to_string();
+
+    let fields = match &input.data {
+        Data::Struct(data) => &data.fields,
+        _ => {
+            return syn::Error::new(
+                name.span(),
+                "`#[derive(IdlType)]` only supports structs",
+            )
+            .to_compile_error()
+            .into()
+        }
+    };
+
+    let struct_docs = idl::extract_doc_lines(&input.attrs);
+    // `IdlType` structs have no discriminator — they're just plain type
+    // definitions referenced from other structs. `build_type_json` still
+    // expects a discriminator for shape uniformity with `#[account]` /
+    // `#[event]`; we pass an empty slice and strip the discriminator field
+    // downstream when splitting accounts vs types entries. The spec's
+    // `IdlTypeDef` doesn't carry `discriminator`, so the program-level
+    // assembly already elides it when reconstructing types entries.
+    let empty_disc: [u8; 0] = [];
+    // Default to `Borsh` serialization (no `serialization` / `repr` fields).
+    // `IdlType` is layout-agnostic — users opt into Pod separately via
+    // their own `bytemuck::Pod` derive if they need zero-copy. Forcing a
+    // `"bytemuck"` tag here would lie in the IDL for non-Pod structs.
+    let idl_type_json = if let Fields::Named(named) = fields {
+        idl::build_type_json(
+            &name_str,
+            &empty_disc,
+            &struct_docs,
+            &named.named,
+            idl::TypeKind::Borsh,
+        )
+    } else {
+        idl::build_type_json(
+            &name_str,
+            &empty_disc,
+            &struct_docs,
+            &syn::punctuated::Punctuated::new(),
+            idl::TypeKind::Borsh,
+        )
+    };
+
+    // Walk named fields for the transitive dep registration. Unnamed /
+    // unit structs contribute nothing to the walker (no inner fields to
+    // recurse into) — the empty expansion is correct.
+    let field_tys: Vec<&Type> = match fields {
+        Fields::Named(named) => named.named.iter().map(|f| &f.ty).collect(),
+        Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(|f| &f.ty).collect(),
+        Fields::Unit => Vec::new(),
+    };
+
+    TokenStream::from(quote! {
+        #[cfg(feature = "idl-build")]
+        impl anchor_lang_v2::IdlAccountType for #name {
+            const __IDL_TYPE: Option<&'static str> = Some(#idl_type_json);
+            fn __register_idl_deps(
+                types: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
+            ) {
+                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE {
+                    types.push(t);
+                }
+                #(
+                    <#field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(types);
+                )*
+            }
+        }
+    })
+}
+
 /// Syntactic diagnosis for common non-Pod field types on `#[account]` structs.
 /// Produces a targeted, actionable error message when we can recognize the
 /// shape of the offending type (Vec, String, Option, Box, bool, etc.). Falls
