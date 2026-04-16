@@ -23,7 +23,6 @@ pub use crate::{
     find_program_address,
     // Msg
     msg,
-    parse_instruction,
     // Pod types
     pod::{PodBool, PodI128, PodI16, PodI32, PodI64, PodU128, PodU16, PodU32, PodU64, PodVec},
     program,

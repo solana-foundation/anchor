@@ -46,7 +46,7 @@ pub use {
         find_program_address, verify_program_address,
     },
     cursor::{AccountBitvec, AccountCursor},
-    dispatch::{parse_instruction, run_handler, TryAccounts},
+    dispatch::{run_handler, TryAccounts},
     event::{sol_log_data, Event},
     hash::sha256,
     loader::AccountLoader,

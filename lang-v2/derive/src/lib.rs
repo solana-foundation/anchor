@@ -776,11 +776,16 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         }
     } else {
         quote! {
-            let __data: &[u8] = ::core::slice::from_raw_parts(__ix_data_ptr, __ix_data_len);
-            let (__disc, __ix_data) = match anchor_lang_v2::parse_instruction(__data) {
-                Ok(__v) => __v,
-                Err(__e) => return __e.into(),
-            };
+            if __ix_data_len < 8 {
+                return anchor_lang_v2::Error::from(
+                    anchor_lang_v2::ErrorCode::InstructionFallbackNotFound,
+                ).into();
+            }
+            let __disc: u64 = u64::from_le_bytes(
+                *(__ix_data_ptr as *const [u8; 8])
+            );
+            let __ix_data: &[u8] =
+                ::core::slice::from_raw_parts(__ix_data_ptr.add(8), __ix_data_len - 8);
         }
     };
 

@@ -23,18 +23,6 @@ pub trait TryAccounts: Bumps + Sized {
     fn exit_accounts(&mut self) -> Result<(), ProgramError>;
 }
 
-/// Parse the 8-byte discriminator from instruction data.
-///
-/// Returns `(discriminator_u64, remaining_ix_data)`.
-#[inline(always)]
-pub fn parse_instruction(data: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
-    if data.len() < 8 {
-        return Err(crate::ErrorCode::InstructionFallbackNotFound.into());
-    }
-    let disc = u64::from_le_bytes(data[..8].try_into().unwrap());
-    Ok((disc, &data[8..]))
-}
-
 /// Run a handler inside a fully-constructed [`Context`].
 ///
 /// Common scaffold: walks declared accounts via `T::try_accounts`,
