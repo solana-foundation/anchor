@@ -77,8 +77,9 @@ pub use crate::{
     ToAccountMetas,
     TryAccounts,
 };
+pub use crate::IdlType;
 #[cfg(feature = "idl-build")]
-pub use crate::{IdlAccountType, IdlType};
+pub use crate::IdlAccountType;
 // Re-export pinocchio sysvar types and trait for use with Sysvar<T>
 pub use pinocchio::sysvars::Sysvar as PinocchioSysvar;
 pub use pinocchio::{
