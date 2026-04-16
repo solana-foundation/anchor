@@ -1250,9 +1250,37 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 }
 
                 let crate_name = env!("CARGO_CRATE_NAME").replace('-', "_");
+                // Pull `description` / `repository` from the program crate's
+                // Cargo.toml via `option_env!`. Cargo sets `CARGO_PKG_*` when
+                // it invokes the compiler; unset or empty strings get dropped
+                // from the JSON (the spec marks both fields
+                // `skip_serializing_if` in `IdlMetadata`). `dependencies` stays
+                // unimplemented — it needs a workspace traversal v1 handles
+                // via a separate tool.
+                let description = option_env!("CARGO_PKG_DESCRIPTION")
+                    .filter(|s| !s.is_empty());
+                let repository = option_env!("CARGO_PKG_REPOSITORY")
+                    .filter(|s| !s.is_empty());
+                let mut metadata_extras = anchor_lang_v2::__alloc::string::String::new();
+                if let Some(d) = description {
+                    // Escape embedded quotes/backslashes so the JSON stays valid.
+                    let escaped = d.replace('\\', "\\\\").replace('"', "\\\"");
+                    metadata_extras.push_str(&anchor_lang_v2::__alloc::format!(
+                        ",\"description\":\"{}\"",
+                        escaped,
+                    ));
+                }
+                if let Some(r) = repository {
+                    let escaped = r.replace('\\', "\\\\").replace('"', "\\\"");
+                    metadata_extras.push_str(&anchor_lang_v2::__alloc::format!(
+                        ",\"repository\":\"{}\"",
+                        escaped,
+                    ));
+                }
                 let idl = format!(
-                    "{{\"address\":\"\",\"metadata\":{{\"name\":\"{}\",\"version\":\"0.1.0\",\"spec\":\"0.1.0\"}},\"instructions\":[{}],\"accounts\":[{}],\"types\":[{}]}}",
+                    "{{\"address\":\"\",\"metadata\":{{\"name\":\"{}\",\"version\":\"0.1.0\",\"spec\":\"0.1.0\"{}}},\"instructions\":[{}],\"accounts\":[{}],\"types\":[{}]}}",
                     crate_name,
+                    metadata_extras,
                     instructions.join(","),
                     accounts_entries.join(","),
                     types_entries.join(","),
