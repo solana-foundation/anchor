@@ -385,6 +385,7 @@ dependencies = [
  "sha2",
  "solana-address 2.4.0",
  "solana-define-syscall 5.0.0",
+ "solana-instruction",
  "solana-program-error",
  "solana-program-log",
  "wincode",

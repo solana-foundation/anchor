@@ -40,6 +40,7 @@ anchor-derive-accounts-v2 = { path = "./derive", version = "0.1.0" }
 pinocchio = { workspace = true, features = ["copy"] }
 pinocchio-system = "0.6"
 solana-address = { version = "2.0", features = ["bytemuck", "borsh", "syscalls", "curve25519"] }
+solana-instruction = { version = "3", default-features = false }
 solana-program-error = { version = "3.0", features = ["borsh"] }
 solana-program-log = { version = "1.1", features = ["macro"] }
 borsh = "1.5.7"

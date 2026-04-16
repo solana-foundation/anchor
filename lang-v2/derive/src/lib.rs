@@ -310,7 +310,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             let field_ident = syn::Ident::new(fname, proc_macro2::Span::call_site());
             quote! {
                 anchor_lang_v2::AccountMeta {
-                    address: self.#field_ident,
+                    pubkey: self.#field_ident,
                     is_writable: #writable,
                     is_signer: #signer,
                 }

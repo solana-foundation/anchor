@@ -59,10 +59,20 @@ pub use {
 // ---------------------------------------------------------------------------
 
 /// Metadata for a single account in a transaction instruction.
-pub struct AccountMeta {
-    pub address: Address,
-    pub is_writable: bool,
-    pub is_signer: bool,
+///
+/// Re-exported from `solana-instruction` so tests and CPI builders can pass
+/// the output of `to_account_metas()` straight into `solana_instruction::
+/// Instruction::new_with_bytes` without a manual field rename.
+pub use solana_instruction::account_meta::AccountMeta;
+
+/// Re-export of the Solana SDK `Instruction` + `AccountMeta` types under a v1-
+/// compatible module path. Lets users write
+/// `use anchor_lang_v2::solana_program::instruction::{Instruction, AccountMeta}`
+/// without adding `solana-instruction` to their `Cargo.toml`.
+pub mod solana_program {
+    pub mod instruction {
+        pub use solana_instruction::*;
+    }
 }
 
 /// Converts a struct of account addresses into a list of [`AccountMeta`]s.
