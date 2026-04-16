@@ -123,8 +123,8 @@ pub struct Example {
     #[account(mut, seeds = [b"vault", user.address().as_ref()], bump)]
     pub vault: Account<Vault>,  // bump available at ctx.bumps.vault
 
-    #[account(constraint = vault.count > 0)]
-    pub vault: Account<Vault>,
+    #[account(constraint = config.enabled != 0 @ MyError::Disabled)]
+    pub config: Account<Config>,  // arbitrary predicate over already-loaded fields; `@` attaches a custom error
 
     #[account(close = rent_refund)]
     pub closeable: Account<Data>,
@@ -268,7 +268,7 @@ let bump = find_and_verify_program_address_skip_curve(
 
 ### Alignment-1 Pod wrappers
 
-Raw `u64`/`u128` in pod accounts can trip the no-padding check when target alignment differs (on x86_64 hosts `u128` is align-16; on SBF it's align-8). The `pod` module provides alignment-1 wrappers — `PodU64`, `PodU32`, `PodU16`, `PodU128`, `PodI*`, `PodBool`, `PodVec<T, N>` — that guarantee tight packing across targets. Use these when cross-target layout stability matters.
+Raw `u128` / `i128` in pod accounts can trip the no-padding check: on x86_64 hosts they're align-16, on SBF they're align-8. A struct that's perfectly packed on SBF can therefore fail the cross-target assertion. The `pod` module provides alignment-1 wrappers — `PodU64`, `PodU32`, `PodU16`, `PodU128`, `PodI*`, `PodBool`, `PodVec<T, N>` — that guarantee tight packing regardless of the native type's alignment. Reach for `PodU128` / `PodI128` when you need 128-bit fields, and for the narrower wrappers when a struct's overall layout needs alignment-1 anywhere it's embedded.
 
 ### Bitmap state tracking
 
@@ -371,7 +371,7 @@ Feature flags the **scaffold** emits in your program's `Cargo.toml` (`cpi`, `no-
 |---|---|---|
 | Runtime | `solana_program` | `pinocchio` |
 | Stdlib | `std` required | `#![no_std]`, `alloc` is a feature |
-| Binary size | baseline | ~40% smaller |
+| Binary size | baseline | −84% to −94% (see intro benchmarks) |
 | Lifetime on Accounts | `<'info>` required everywhere | removed |
 | Context in handlers | `Context<T>` | `&mut Context<T>` |
 | Field access | `.key()` | `.address()` |
