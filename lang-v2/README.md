@@ -68,7 +68,7 @@ The generated test lives in `tests/test_initialize.rs` and runs via [LiteSVM](ht
 
 **`#[derive(Accounts)]`** — declares accounts + constraints. All validation runs before your handler. Field order matches the account order in the instruction.
 
-**`#[account]`** — pod-mode data account by default: zero-copy memcpy, `repr(C)`, auto `bytemuck::Pod`/`Zeroable`, no-padding compile check. Add `(borsh)` for dynamic-size types.
+**`#[account]`** — pod-mode data account by default: zero-copy cast, `repr(C)`, auto `bytemuck::Pod`/`Zeroable`, no-padding compile check. Add `(borsh)` for dynamic-size types.
 
 **Discriminator** — first 8 bytes of every account/instruction/event data. Computed as `sha256("account:Name")[..8]` / `"global:Name"` / `"event:Name"` respectively, at macro-expansion time.
 
@@ -95,7 +95,7 @@ All types are bare — no `'info` lifetime.
 - **Field access is a pointer deref.** Cached typed pointer at load time, no per-field overhead.
 - **No (de)serialization pass.** Stored bytes already match the struct layout. Exit is a no-op for `Account<T>`; `BorshAccount<T>` has to serialize on exit.
 - **No heap.** Pod types sit in-place in the account's data buffer.
-- **Compile-time guards.** The `#[account]` macro enforces `T: Pod` per field (catches `Vec`/`String`/`Option`/`bool` even inside user structs) plus a no-padding assertion under `cfg(target_os = "solana")`. Fat pointers inside user types can't sneak through.
+- **Compile-time guards.** The `#[account]` macro enforces `T: Pod` per field (catches `Vec`/`String`/`Option`/`bool` even inside user structs) plus an unconditional no-padding assertion. Fat pointers inside user types can't sneak through. Because the padding check runs on every target, raw `u128`/`i128` fields need the alignment-1 `PodU128`/`PodI128` wrappers — see the Pod wrappers pattern below.
 
 Reach for `BorshAccount<T>` when data genuinely needs dynamic-size fields. Reach for `Slab<H, Item>` when the dynamic part is a homogeneous array (ledger entries, per-block events, etc.).
 
@@ -339,7 +339,7 @@ anchor-lang-v2 = { git = "...", branch = "anchor-next" }
 
 | Feature | Default | Purpose |
 |---|---|---|
-| `alloc` | ✅ | Enables `pinocchio/alloc`. Needed for `Vec`/`String` in host-side test builds. |
+| `alloc` | ✅ | Enables `pinocchio/alloc` — installs the on-chain bump allocator. Required for on-chain code that uses `Vec`/`String`/`Box`; host-side tests always have `std`'s allocator. |
 | `guardrails` | ✅ | Runtime safety: writable check, use-after-release panic, executable check. ~0–5 CU per instruction. |
 | `account-resize` | ✅ | Enables `realloc_account()`. Compile error if a program calls `realloc_account` without this feature. |
 | `const-rent` | ❌ | Bakes rent formula into the binary. Saves ~85 CU per `create_account`; locks you into redeploying when the runtime rent formula changes. Enable only for high-creation programs. |
@@ -379,6 +379,16 @@ Feature flags the **scaffold** emits in your program's `Cargo.toml` (`cpi`, `no-
 | `init` space | `space = 8 + T::INIT_SPACE` required | optional for pod `Account<T>` (defaults to `8 + size_of::<T>()`) |
 | Pubkey type | `Pubkey` | `Address` (current SDK aliases `Pubkey` to `Address`, so both resolve to the same struct) |
 | Dispatch | macro-generated match | trait-based direct calls |
+
+## Examples
+
+Worked examples live under [`bench/programs/`](../bench/programs/). The anchor-v2 variants are what the prototype benchmarks measure; the same directory also holds v1/quasar/steel ports for direct comparison.
+
+| Program | Description |
+|---|---|
+| [`helloworld/anchor-v2`](../bench/programs/helloworld/anchor-v2) | Single-instruction counter. Minimum viable `#[program]` + `#[account]`. |
+| [`vault/anchor-v2`](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault. Two handlers (`deposit`, `withdraw`), PDA with stored bump, signed CPI. |
+| [`multisig/anchor-v2`](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig. Multi-account state, PDA-signed transfers, `has_one` / `constraint` patterns. |
 
 ## Architecture
 
