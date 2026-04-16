@@ -1373,9 +1373,19 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                     let Some(close_offset) = ty[after_bracket..].find(']') else { continue; };
                     let disc_end = after_bracket + close_offset + 1; // include `]`
 
-                    // name + discriminator (e.g. `{"name":"X","discriminator":[...]`)
+                    // name + discriminator (e.g. `{"name":"X","discriminator":[...]`).
+                    // `IdlType`-registered plain structs carry an empty
+                    // discriminator (`[]`) and should NOT land in the
+                    // top-level `accounts[]` array — only in `types[]`.
+                    // `close_offset == 0` means the closing `]` sits
+                    // immediately after the opening `[`.
+                    let disc_is_empty = close_offset == 0;
                     let name_disc_prefix = &ty[..disc_end];
-                    accounts_entries.push(anchor_lang_v2::__alloc::format!("{}}}", name_disc_prefix));
+                    if !disc_is_empty {
+                        accounts_entries.push(anchor_lang_v2::__alloc::format!(
+                            "{}}}", name_disc_prefix
+                        ));
+                    }
 
                     // Extract the bare struct name so the types entry is
                     // a standalone `IdlTypeDef` with its own `name`.

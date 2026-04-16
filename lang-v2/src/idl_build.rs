@@ -119,3 +119,15 @@ impl<T: IdlAccountType, const N: usize> IdlAccountType for [T; N] {
         T::__register_idl_deps(types);
     }
 }
+
+// `PodVec<T, MAX>` — the zero-copy bounded-capacity analog of `Vec<T>`.
+// Forward `__register_idl_deps` so a `#[account]` zero-copy type holding
+// a `PodVec<Inner, 16>` still pulls `Inner` into the IDL's `types[]`.
+impl<T, const MAX: usize> IdlAccountType for crate::pod::PodVec<T, MAX>
+where
+    T: bytemuck::Pod + IdlAccountType,
+{
+    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
+        T::__register_idl_deps(types);
+    }
+}
