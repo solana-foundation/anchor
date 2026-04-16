@@ -16,6 +16,7 @@ use {
 #[derive(Clone, Copy)]
 pub struct CpiHandle<'a> {
     view: &'a AccountView,
+    writable: bool,
 }
 
 impl<'a> CpiHandle<'a> {
@@ -27,6 +28,18 @@ impl<'a> CpiHandle<'a> {
     #[inline(always)]
     pub fn address(&self) -> &'a Address {
         self.view.address()
+    }
+
+    /// Whether this handle was obtained via `cpi_handle_mut`.
+    #[inline(always)]
+    pub fn is_writable(&self) -> bool {
+        self.writable
+    }
+
+    /// Whether the underlying account is a signer on the transaction.
+    #[inline(always)]
+    pub fn is_signer(&self) -> bool {
+        self.view.is_signer()
     }
 
     /// Access the underlying `AccountView` for CPI account construction.
@@ -145,25 +158,27 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
         Ok(())
     }
 
-    /// Obtain a shared CPI handle for this account.
+    /// Obtain a read-only CPI handle for this account.
     ///
     /// The handle borrows `self`, preventing mutable typed access while
-    /// it is alive. Use for accounts that are read-only in the CPI.
+    /// it is alive. The handle's `is_writable` flag is `false`.
     #[inline(always)]
     fn cpi_handle(&self) -> CpiHandle<'_> {
         CpiHandle {
             view: self.account(),
+            writable: false,
         }
     }
 
-    /// Obtain an exclusive CPI handle for this account.
+    /// Obtain a writable CPI handle for this account.
     ///
     /// The handle borrows `self` mutably, preventing any typed access
-    /// while it is alive. Use for accounts that are writable in the CPI.
+    /// while it is alive. The handle's `is_writable` flag is `true`.
     #[inline(always)]
     fn cpi_handle_mut(&mut self) -> CpiHandle<'_> {
         CpiHandle {
             view: self.account(),
+            writable: true,
         }
     }
 }

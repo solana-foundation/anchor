@@ -79,13 +79,12 @@ impl<'a, T: ToCpiAccounts<'a>> CpiContext<'a, T> {
         let mut instruction_accounts = self.accounts.to_instruction_accounts();
         let mut handles = self.accounts.to_cpi_handles();
 
-        // Append remaining accounts.
+        // Append remaining accounts using the handle's flags.
         for handle in &self.remaining_accounts {
-            let view = handle.account_view();
             instruction_accounts.push(InstructionAccount::new(
-                view.address(),
-                view.is_writable(),
-                view.is_signer(),
+                handle.address(),
+                handle.is_writable(),
+                handle.is_signer(),
             ));
             handles.push(*handle);
         }

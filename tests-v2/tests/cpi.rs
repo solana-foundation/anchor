@@ -45,30 +45,55 @@ fn setup() -> (LiteSVM, solana_keypair::Keypair) {
     (svm, payer)
 }
 
-#[test]
-fn test_direct_set_data() {
-    let (mut svm, payer) = setup();
-    let (data_pda, _bump) = Pubkey::find_program_address(&[b"data"], &callee_id());
+/// Helper: initialize the callee's data account PDA.
+fn init_data_account(
+    svm: &mut LiteSVM,
+    payer: &solana_keypair::Keypair,
+    authority: &solana_keypair::Keypair,
+) -> Pubkey {
+    let (data_pda, _) = Pubkey::find_program_address(&[b"data"], &callee_id());
 
-    // Initialize.
     let init_data = callee::instruction::Initialize {}.data();
     let init_metas = vec![
         AccountMeta::new(payer.pubkey(), true),
         AccountMeta::new(data_pda, false),
+        AccountMeta::new_readonly(authority.pubkey(), true),
         AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
     ];
-    send_instruction(&mut svm, callee_id(), init_data, init_metas, &payer, &[])
-        .expect("initialize should succeed");
+    send_instruction(svm, callee_id(), init_data, init_metas, payer, &[authority])
+        .expect("callee::initialize should succeed");
 
-    // Set data directly.
+    data_pda
+}
+
+#[test]
+fn test_direct_set_data() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("authority");
+    svm.airdrop(&authority.pubkey(), 1_000_000_000).unwrap();
+    let data_pda = init_data_account(&mut svm, &payer, &authority);
+
+    // Set data directly via callee.
     let value: u64 = 99;
     let set_data = callee::instruction::SetData { value }.data();
-    let set_metas = vec![AccountMeta::new(data_pda, false)];
-    send_instruction(&mut svm, callee_id(), set_data, set_metas, &payer, &[])
-        .expect("set_data should succeed");
+    let set_metas = vec![
+        AccountMeta::new(data_pda, false),
+        AccountMeta::new_readonly(authority.pubkey(), true),
+    ];
+    send_instruction(
+        &mut svm,
+        callee_id(),
+        set_data,
+        set_metas,
+        &payer,
+        &[&authority],
+    )
+    .expect("set_data should succeed");
 
     // Verify.
-    let account = svm.get_account(&data_pda).expect("data account should exist");
+    let account = svm
+        .get_account(&data_pda)
+        .expect("data account should exist");
     let stored_value = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
     assert_eq!(stored_value, 99);
 }
@@ -76,30 +101,34 @@ fn test_direct_set_data() {
 #[test]
 fn test_cpi_set_data() {
     let (mut svm, payer) = setup();
-    let (data_pda, _bump) = Pubkey::find_program_address(&[b"data"], &callee_id());
+    let authority = keypair_for("authority");
+    svm.airdrop(&authority.pubkey(), 1_000_000_000).unwrap();
+    let data_pda = init_data_account(&mut svm, &payer, &authority);
 
-    // Step 1: Initialize the data account via callee.
-    let init_data = callee::instruction::Initialize {}.data();
-    let init_metas = vec![
-        AccountMeta::new(payer.pubkey(), true),
-        AccountMeta::new(data_pda, false),
-        AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
-    ];
-    send_instruction(&mut svm, callee_id(), init_data, init_metas, &payer, &[])
-        .expect("callee::initialize should succeed");
-
-    // Step 2: Call caller which CPIs into callee.
+    // Call caller::proxy_set_data which CPIs into callee::set_data.
+    // The caller passes both a mutable handle (data) and a read-only
+    // handle (authority) through the CpiContext.
     let value: u64 = 42;
     let proxy_data = caller::instruction::ProxySetData { value }.data();
     let proxy_metas = vec![
         AccountMeta::new(data_pda, false),
+        AccountMeta::new_readonly(authority.pubkey(), true),
         AccountMeta::new_readonly(callee_id(), false),
     ];
-    send_instruction(&mut svm, caller_id(), proxy_data, proxy_metas, &payer, &[])
-        .expect("caller::proxy_set_data should succeed");
+    send_instruction(
+        &mut svm,
+        caller_id(),
+        proxy_data,
+        proxy_metas,
+        &payer,
+        &[&authority],
+    )
+    .expect("caller::proxy_set_data should succeed");
 
-    // Step 3: Verify the CPI wrote the value.
-    let account = svm.get_account(&data_pda).expect("data account should exist");
+    // Verify the CPI wrote the value.
+    let account = svm
+        .get_account(&data_pda)
+        .expect("data account should exist");
     let stored_value = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
     assert_eq!(stored_value, 42, "CPI should have set value to 42");
 }
