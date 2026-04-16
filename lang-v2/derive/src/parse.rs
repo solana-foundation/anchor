@@ -1073,6 +1073,15 @@ pub fn parse_field(
             .map(|c| {
                 quote! {
                     if let Some(ref #field_name) = #field_name {
+                        // `#c` may not textually name `#field_name` (e.g. a
+                        // literal `constraint = false`, or the derive-
+                        // generated duplicate-mut guard that only touches
+                        // `__duplicates[..]`). Without this no-op reference
+                        // rustc flags the original field as unused. Narrow
+                        // silencer rather than a blanket
+                        // `#[allow(unused_variables)]` so real typos in
+                        // `#c` still surface.
+                        let _ = &#field_name;
                         #c
                     }
                 }
