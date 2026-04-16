@@ -334,7 +334,14 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         })
         .collect();
     let idl_accounts_fn = idl::build_accounts_emission(&accounts_fields);
-    let idl_field_tys: Vec<_> = fields.iter().map(|f| &f.idl_field_ty).collect();
+    // Only path-typed fields drive the IDL dep walk. `idl_field_ty` is
+    // already the post-Option-unwrap base type (see `parse::parse_field`),
+    // and is `None` for non-Path fields — filter those out so the emitted
+    // trait call has a concrete type to dispatch on.
+    let idl_field_tys: Vec<&syn::Type> = fields
+        .iter()
+        .filter_map(|f| f.idl_field_ty.as_ref())
+        .collect();
 
     let ix_deser = if ix_args.is_empty() {
         quote! {}
@@ -476,10 +483,16 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             // address trait consts, splices in compile-time flags.
             #idl_accounts_fn
 
-            pub fn __idl_types() -> Vec<Option<&'static str>> {
-                vec![#(
-                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__IDL_TYPE
-                ),*]
+            /// Walks each account field's `IdlAccountType::__register_idl_deps`
+            /// so nested user-defined types (plain `#[derive(IdlType)]`
+            /// structs, `#[account]` data types, `#[event]` payload types,
+            /// etc.) transitively register into the IDL's `types[]` array.
+            pub fn __idl_register_deps(
+                types: &mut anchor_lang_v2::__alloc::vec::Vec<&'static str>,
+            ) {
+                #(
+                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(types);
+                )*
             }
         }
     }
@@ -531,6 +544,17 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
             &syn::punctuated::Punctuated::new(),
             type_kind,
         )
+    };
+
+    // Named-field types for the transitive IDL dep walk. `__register_idl_deps`
+    // fans out through each field type so nested user structs land in the
+    // IDL's `types[]` array even when the user never wrote `#[account]` on
+    // them (e.g. a plain `#[derive(IdlType)] struct Inner` embedded in this
+    // account's body).
+    let idl_field_tys: Vec<&Type> = match fields {
+        Fields::Named(named) => named.named.iter().map(|f| &f.ty).collect(),
+        Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(|f| &f.ty).collect(),
+        Fields::Unit => Vec::new(),
     };
 
     let (struct_attrs, pod_impls) = if is_borsh {
@@ -606,6 +630,16 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[cfg(feature = "idl-build")]
         impl anchor_lang_v2::IdlAccountType for #name {
             const __IDL_TYPE: Option<&'static str> = Some(#idl_type_json);
+            fn __register_idl_deps(
+                types: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
+            ) {
+                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE {
+                    types.push(t);
+                }
+                #(
+                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(types);
+                )*
+            }
         }
     })
 }
@@ -1300,13 +1334,16 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                     ),*
                 ];
 
-                // Collect types from all accounts structs, dedup by content.
-                // `__idl_types()` now returns `Vec<Option<&str>>` — `None`
-                // for view-wrapper fields (Signer, Program<T>, Sysvar<T>, …)
-                // that don't contribute a user-defined type. Filter those
-                // out with `flatten()`.
+                // Collect types from all accounts structs via the transitive
+                // dep walker. `__register_idl_deps` on each field type pushes
+                // the field's `__IDL_TYPE` (if any) and recursively walks its
+                // own fields — so a plain `#[derive(IdlType)] struct Inner`
+                // embedded in an `#[account]` data type lands in `types[]`
+                // too. View wrappers (Signer, Program<T>, Sysvar<T>, …) use
+                // the trait's default no-op `__register_idl_deps`, so they
+                // contribute nothing.
                 let mut all_types: Vec<&str> = Vec::new();
-                #(all_types.extend(#idl_accounts_types::__idl_types().into_iter().flatten());)*
+                #(#idl_accounts_types::__idl_register_deps(&mut all_types);)*
                 all_types.sort();
                 all_types.dedup();
 
@@ -1496,21 +1533,69 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
         )
     };
     let event_disc_json = idl::disc_json(disc_bytes);
-    let event_payload_json = format!(
-        "{{\"event\":{{\"name\":\"{}\",\"discriminator\":{}}},\"types\":[{}]}}",
-        name_str, event_disc_json, type_def_json,
+    let event_header_json = format!(
+        "{{\"event\":{{\"name\":\"{}\",\"discriminator\":{}}},\"types\":[",
+        name_str, event_disc_json,
     );
+    // Field types for the transitive type walk. The event itself pushes
+    // `type_def_json` into the types accumulator via its `__IDL_TYPE`
+    // const; field-type deps fan out from there so plain user structs
+    // referenced by `pub inner: Inner` land in `types[]` too.
+    let idl_field_tys: Vec<&Type> = match fields {
+        Fields::Named(named) => named.named.iter().map(|f| &f.ty).collect(),
+        Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(|f| &f.ty).collect(),
+        Fields::Unit => Vec::new(),
+    };
     let idl_fn_name = quote::format_ident!(
         "__anchor_private_print_idl_event_{}",
         name_str.to_lowercase()
     );
+    // The event's own `IdlAccountType` impl (emitted further down) owns
+    // `__IDL_TYPE = Some(#type_def_json)` and a `__register_idl_deps` that
+    // pushes both self and every field-type dep. The test here just walks
+    // that deps list at runtime and assembles the `--- IDL begin event ---`
+    // payload — so `types[]` picks up nested user structs without the test
+    // having to know about them.
     let idl_event_print = quote! {
         #[cfg(all(test, feature = "idl-build"))]
         #[test]
         fn #idl_fn_name() {
+            let mut __types: anchor_lang_v2::__alloc::vec::Vec<&'static str> =
+                anchor_lang_v2::__alloc::vec::Vec::new();
+            <#name as anchor_lang_v2::IdlAccountType>::__register_idl_deps(&mut __types);
+            __types.sort();
+            __types.dedup();
+            let mut __payload = anchor_lang_v2::__alloc::string::String::from(#event_header_json);
+            let mut __first = true;
+            for __t in &__types {
+                if !__first { __payload.push(','); }
+                __first = false;
+                __payload.push_str(__t);
+            }
+            __payload.push_str("]}");
             println!("--- IDL begin event ---");
-            println!("{}", #event_payload_json);
+            println!("{}", __payload);
             println!("--- IDL end event ---");
+        }
+    };
+    // Emit the `IdlAccountType` impl for the event itself. Walks field
+    // types for transitive dep registration. Same shape as the `#[account]`
+    // impl — the only difference is that `#[event]` + `#[account]` both
+    // carry their own discriminator embedded in `type_def_json`.
+    let idl_account_type_impl = quote! {
+        #[cfg(feature = "idl-build")]
+        impl anchor_lang_v2::IdlAccountType for #name {
+            const __IDL_TYPE: Option<&'static str> = Some(#type_def_json);
+            fn __register_idl_deps(
+                types: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
+            ) {
+                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE {
+                    types.push(t);
+                }
+                #(
+                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(types);
+                )*
+            }
         }
     };
 
@@ -1648,6 +1733,8 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                     }
                 }
 
+                #idl_account_type_impl
+
                 #idl_event_print
             })
         }
@@ -1676,6 +1763,8 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                     buf
                 }
             }
+
+            #idl_account_type_impl
 
             #idl_event_print
         }),
