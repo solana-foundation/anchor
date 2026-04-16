@@ -1,8 +1,69 @@
 use {
     core::ops::Deref,
-    pinocchio::{account::AccountView, address::Address},
+    pinocchio::{account::AccountView, address::Address, instruction::InstructionAccount},
     solana_program_error::{ProgramError, ProgramResult},
 };
+
+/// Zero-cost CPI handle that borrows an anchor account at the Rust level.
+///
+/// Obtained via [`AnchorAccount::cpi_handle`] (shared borrow) or
+/// [`AnchorAccount::cpi_handle_mut`] (exclusive borrow). Pinocchio's
+/// `borrow_state` is never modified — CPI is routed through
+/// `invoke_signed_unchecked` by [`CpiContext::invoke`].
+///
+/// Deliberately does NOT implement `Deref<Target = AccountView>` to
+/// prevent accidental use with pinocchio's checked invoke builders.
+#[derive(Clone, Copy)]
+pub struct CpiHandle<'a> {
+    view: &'a AccountView,
+    writable: bool,
+}
+
+impl<'a> CpiHandle<'a> {
+    /// The account's on-chain address.
+    ///
+    /// Returns a reference with the inner `'a` lifetime so callers can
+    /// build `InstructionAccount<'a>` values without tying the result to
+    /// the borrow of `&self`.
+    #[inline(always)]
+    pub fn address(&self) -> &'a Address {
+        self.view.address()
+    }
+
+    /// Whether this handle was obtained via `cpi_handle_mut`.
+    #[inline(always)]
+    pub fn is_writable(&self) -> bool {
+        self.writable
+    }
+
+    /// Whether the underlying account is a signer on the transaction.
+    #[inline(always)]
+    pub fn is_signer(&self) -> bool {
+        self.view.is_signer()
+    }
+
+    /// Access the underlying `AccountView` for CPI account construction.
+    ///
+    /// Restricted to the crate so external code cannot extract the view
+    /// and pass it to pinocchio's checked invoke.
+    #[inline(always)]
+    pub(crate) fn account_view(&self) -> &'a AccountView {
+        self.view
+    }
+}
+
+/// Converts a CPI accounts struct into instruction metadata and handles.
+///
+/// Implemented by generated CPI accounts structs. Each field maps to an
+/// [`InstructionAccount`] (address + writable/signer flags) and a
+/// [`CpiHandle`] for the actual invocation.
+pub trait ToCpiAccounts<'a> {
+    /// Produce instruction account metadata for the CPI instruction.
+    fn to_instruction_accounts(&self) -> alloc::vec::Vec<InstructionAccount<'a>>;
+
+    /// Collect all CPI handles for the invocation.
+    fn to_cpi_handles(&self) -> alloc::vec::Vec<CpiHandle<'a>>;
+}
 
 pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     type Data;
@@ -95,6 +156,41 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
         self_view.set_lamports(0);
         self_view.close()?;
         Ok(())
+    }
+
+    /// Obtain a read-only CPI handle for this account.
+    ///
+    /// The handle borrows `self`, preventing mutable typed access while
+    /// it is alive. The handle's `is_writable` flag is `false`.
+    #[inline(always)]
+    fn cpi_handle(&self) -> CpiHandle<'_> {
+        CpiHandle {
+            view: self.account(),
+            writable: false,
+        }
+    }
+
+    /// Obtain a writable CPI handle for this account.
+    ///
+    /// The handle borrows `self` mutably, preventing any typed access
+    /// while it is alive. The handle's `is_writable` flag is `true`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying account is not marked writable in
+    /// the transaction.
+    #[inline(always)]
+    fn cpi_handle_mut(&mut self) -> CpiHandle<'_> {
+        // FIXME: This should perhaps be `cfg(guardrails)`, as it's a correctness
+        // rather than a safety invariant.
+        assert!(
+            self.account().is_writable(),
+            "cpi_handle_mut called on a read-only account"
+        );
+        CpiHandle {
+            view: self.account(),
+            writable: true,
+        }
     }
 }
 

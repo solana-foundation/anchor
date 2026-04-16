@@ -1,0 +1,73 @@
+//! Shared helpers for v2 integration tests.
+
+use {
+    anchor_lang::solana_program::instruction::{AccountMeta, Instruction},
+    litesvm::LiteSVM,
+    solana_keypair::Keypair,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
+/// Derives a deterministic keypair from a name string.
+pub fn keypair_for(name: &str) -> Keypair {
+    let mut seed = [0u8; 32];
+    for (index, byte) in name.bytes().enumerate() {
+        let position = index % seed.len();
+        seed[position] = seed[position]
+            .wrapping_mul(31)
+            .wrapping_add(byte)
+            .wrapping_add(index as u8);
+    }
+    Keypair::new_from_array(seed)
+}
+
+/// Build, sign, and send a transaction to the SVM.
+pub fn send_instruction(
+    svm: &mut LiteSVM,
+    program_id: solana_pubkey::Pubkey,
+    instruction_data: Vec<u8>,
+    account_metas: Vec<AccountMeta>,
+    payer: &Keypair,
+    extra_signers: &[&Keypair],
+) -> anyhow::Result<litesvm::types::TransactionMetadata> {
+    let instruction = Instruction::new_with_bytes(program_id, &instruction_data, account_metas);
+    let blockhash = svm.latest_blockhash();
+    let message = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+
+    let mut all_signers: Vec<&dyn solana_signer::Signer> = vec![payer];
+    for s in extra_signers {
+        all_signers.push(*s);
+    }
+    let transaction =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &all_signers)?;
+
+    svm.send_transaction(transaction).map_err(|failure| {
+        anyhow::anyhow!(
+            "transaction failed: {:?}\n{}",
+            failure.err,
+            failure.meta.pretty_logs()
+        )
+    })
+}
+
+/// Build the .so for a program by running cargo build-sbf.
+pub fn build_program(manifest_dir: &str, sbf_out_dir: &str) {
+    let status = std::process::Command::new("cargo")
+        .args([
+            "build-sbf",
+            "--tools-version",
+            "v1.52",
+            "--manifest-path",
+            &format!("{}/Cargo.toml", manifest_dir),
+            "--sbf-out-dir",
+            sbf_out_dir,
+        ])
+        .status()
+        .unwrap_or_else(|e| panic!("failed to run cargo build-sbf for {manifest_dir}: {e}"));
+
+    assert!(
+        status.success(),
+        "cargo build-sbf failed for {manifest_dir}"
+    );
+}
