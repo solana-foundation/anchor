@@ -1452,11 +1452,13 @@ fn init(
     if !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
 
-        if !package_manager_result.status.success() && package_manager_cmd != "npm" {
-            println!("Failed {package_manager_cmd} install will attempt to npm install");
-            install_node_modules("npm")?;
-        } else {
-            eprintln!("Failed to install node modules");
+        if !package_manager_result.status.success() {
+            if package_manager_cmd != "npm" {
+                println!("Failed {package_manager_cmd} install will attempt to npm install");
+                install_node_modules("npm")?;
+            } else {
+                eprintln!("Failed to install node modules");
+            }
         }
     }
 
