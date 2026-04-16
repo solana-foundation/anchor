@@ -10,6 +10,7 @@
 //!   the requested languages (`js`, `js-umi`, `rust`, `go`).
 
 use {
+    crate::AbsolutePath,
     anyhow::{anyhow, bail, Context, Result},
     clap::{Parser, ValueEnum},
     serde_json::{json, Map, Value as JsonValue},
@@ -27,7 +28,7 @@ use {
 /// so consumers that key off this field have a deterministic input.
 const CODAMA_VERSION: &str = "1.6.0";
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum CodamaCommand {
     /// Convert an Anchor IDL JSON file (post-0.30 spec) into a Codama IDL
     /// rooted at a `rootNode`.
@@ -66,7 +67,7 @@ pub enum CodamaCommand {
 }
 
 /// Languages with an officially-published `@codama/renderers-*` package.
-#[derive(Debug, Clone, Copy, ValueEnum, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, ValueEnum, Eq, Ord, PartialEq, PartialOrd, AbsolutePath)]
 #[clap(rename_all = "kebab-case")]
 pub enum Language {
     Js,

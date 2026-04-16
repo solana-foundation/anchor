@@ -255,6 +255,7 @@ name = "anchor-cli"
 version = "2.0.0"
 dependencies = [
  "addr2line",
+ "anchor-cli-macros",
  "anchor-client",
  "anchor-lang",
  "anchor-lang-idl",
@@ -316,6 +317,15 @@ dependencies = [
  "toml 0.7.8",
  "two-face",
  "walkdir",
+]
+
+[[package]]
+name = "anchor-cli-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
