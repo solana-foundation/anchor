@@ -413,8 +413,8 @@ pub fn package_json(jest: bool, license: String) -> String {
     "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
-    "jest": "^29.0.3",
-    "prettier": "^2.6.2"
+    "jest": "^30.3.0",
+    "prettier": "^3.8.3"
   }}
 }}
     "#
@@ -431,9 +431,9 @@ pub fn package_json(jest: bool, license: String) -> String {
     "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
-    "chai": "^4.3.4",
-    "mocha": "^9.0.3",
-    "prettier": "^2.6.2"
+    "chai": "^4.5.0",
+    "mocha": "^11.7.5",
+    "prettier": "^3.8.3"
   }}
 }}
 "#
@@ -454,12 +454,12 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
-    "@types/bn.js": "^5.1.0",
-    "@types/jest": "^29.0.3",
-    "jest": "^29.0.3",
-    "prettier": "^2.6.2",
-    "ts-jest": "^29.0.2",
-    "typescript": "^5.7.3"
+    "@types/bn.js": "^5.2.0",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.3.0",
+    "prettier": "^3.8.3",
+    "ts-jest": "^29.4.9",
+    "typescript": "^5.9.3"
   }}
 }}
 "#
@@ -476,14 +476,14 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
-    "chai": "^4.3.4",
-    "mocha": "^9.0.3",
-    "ts-mocha": "^10.0.0",
-    "@types/bn.js": "^5.1.0",
+    "chai": "^4.5.0",
+    "mocha": "^11.7.5",
+    "ts-mocha": "^11.1.0",
+    "@types/bn.js": "^5.2.0",
     "@types/chai": "^4.3.0",
-    "@types/mocha": "^9.0.0",
-    "typescript": "^5.7.3",
-    "prettier": "^2.6.2"
+    "@types/mocha": "^10.0.10",
+    "typescript": "^5.9.3",
+    "prettier": "^3.8.3"
   }}
 }}
 "#
