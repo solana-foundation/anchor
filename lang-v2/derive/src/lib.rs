@@ -1138,27 +1138,50 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
 /// Attribute macro that marks a struct as an event.
 ///
-/// Generates:
-/// - `#[repr(C)]` on the struct for deterministic layout
-/// - `impl Discriminator` with discriminator = `sha256("event:StructName")[..8]`
-/// - `impl Event` with zero-copy `write_data` via `copy_nonoverlapping`
+/// Two modes:
 ///
-/// Event structs must contain only fixed-size fields (no `Vec`, `String`, etc.)
-/// for the zero-copy serialization to work correctly.
+/// **Default (zero-copy, fixed-size).** Emits `#[repr(C)]` + a raw
+/// `copy_nonoverlapping` of the struct bytes. Fastest, but the struct must
+/// contain only fixed-size, non-fat-pointer fields (no `Vec`/`String`/`Box`/
+/// `Option`/enums/maps) and must have zero `repr(C)` padding. Both invariants
+/// are enforced at compile time — fat-pointer fields emit a spanned error,
+/// padding trips a `const` assertion that tells the author to reorder fields
+/// by descending alignment.
 ///
-/// # Example
+/// **`#[event(borsh)]`.** Emits a `borsh::BorshSerialize` derive and uses
+/// borsh to serialize. Matches v1 semantics — supports any borsh-serializable
+/// type. Slower, but correct for dynamic-size events and avoids the padding
+/// trap.
+///
+/// Both modes share the same discriminator and `Event::data()` contract, so
+/// `emit!` works identically.
+///
+/// # Examples
 ///
 /// ```ignore
+/// // Default: fastest, layout-constrained.
 /// #[event]
 /// pub struct DepositRecorded {
 ///     pub ledger: [u8; 32],
 ///     pub amount: u64,
 /// }
+///
+/// // Opt-in borsh: slower, unconstrained.
+/// #[event(borsh)]
+/// pub struct MetadataUpdated {
+///     pub uri: String,
+///     pub tags: Vec<[u8; 32]>,
+/// }
 /// ```
 #[proc_macro_attribute]
-pub fn event(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mode = match parse_event_mode(attr) {
+        Ok(mode) => mode,
+        Err(err) => return err.to_compile_error().into(),
+    };
+
     let input = parse_macro_input!(item as DeriveInput);
-    let name = &input.ident;
+    let name = input.ident.clone();
     let name_str = name.to_string();
     let vis = &input.vis;
     let attrs = &input.attrs;
@@ -1176,30 +1199,199 @@ pub fn event(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let disc_bytes = &hash[..8];
     let disc_literals: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
 
-    TokenStream::from(quote! {
-        #[repr(C)]
-        #(#attrs)*
-        #vis struct #name #fields
-
+    let discriminator_impl = quote! {
         impl anchor_lang_v2::Discriminator for #name {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
         }
+    };
 
-        impl anchor_lang_v2::Event for #name {
-            const DATA_SIZE: usize = core::mem::size_of::<#name>();
+    match mode {
+        EventMode::Pod => {
+            // Reject fat-pointer / heap-allocated field types up front. Without
+            // this the memcpy would silently emit pointer bits + length+cap,
+            // producing corrupted events that decode to garbage on the client.
+            if let Err(err) = reject_fat_pointer_fields(fields) {
+                return err.to_compile_error().into();
+            }
 
-            #[inline(always)]
-            fn write_data(&self, buf: &mut [u8]) {
-                unsafe {
-                    core::ptr::copy_nonoverlapping(
-                        self as *const Self as *const u8,
-                        buf.as_mut_ptr(),
-                        core::mem::size_of::<#name>(),
-                    );
+            let field_types: Vec<_> = fields.iter().map(|f| &f.ty).collect();
+
+            // Compile-time padding check. `repr(C)` inserts alignment padding
+            // between fields of differing alignment, and that padding is
+            // included verbatim by `copy_nonoverlapping` — but borsh on the
+            // client has no concept of padding, so the decode fails silently.
+            // Summing each field's `size_of` and comparing to the struct's
+            // `size_of` catches inter-field padding; if it fires, reordering
+            // fields by descending alignment fixes it.
+            let padding_assert = quote! {
+                const _: () = {
+                    const EXPECTED: usize = 0 #( + ::core::mem::size_of::<#field_types>() )*;
+                    if ::core::mem::size_of::<#name>() != EXPECTED {
+                        ::core::panic!(
+                            "`#[event]` struct has `repr(C)` alignment padding — \
+                             reorder fields by descending alignment (u64/i64/Pubkey \
+                             first, then u32/i32, then u16/i16, then u8/bool), or \
+                             switch to `#[event(borsh)]` for arbitrary layouts"
+                        );
+                    }
+                };
+            };
+
+            TokenStream::from(quote! {
+                #[repr(C)]
+                #(#attrs)*
+                #vis struct #name #fields
+
+                #discriminator_impl
+
+                #padding_assert
+
+                impl anchor_lang_v2::Event for #name {
+                    fn data(&self) -> anchor_lang_v2::__alloc::vec::Vec<u8> {
+                        const SIZE: usize = ::core::mem::size_of::<#name>();
+                        let disc = <Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
+                        let mut buf = anchor_lang_v2::__alloc::vec::Vec::with_capacity(
+                            disc.len() + SIZE,
+                        );
+                        buf.extend_from_slice(disc);
+                        let start = buf.len();
+                        buf.resize(start + SIZE, 0);
+                        unsafe {
+                            ::core::ptr::copy_nonoverlapping(
+                                self as *const Self as *const u8,
+                                buf.as_mut_ptr().add(start),
+                                SIZE,
+                            );
+                        }
+                        buf
+                    }
+                }
+            })
+        }
+        EventMode::Borsh => TokenStream::from(quote! {
+            // No `repr(C)` — borsh is layout-agnostic, and letting the compiler
+            // pick layout leaves room for future niche optimizations.
+            //
+            // `#[borsh(crate = "…")]` points borsh's derive at the re-export
+            // path so user crates don't need `borsh` as a direct dependency —
+            // `anchor-lang-v2` already pins the version.
+            #[derive(anchor_lang_v2::borsh::BorshSerialize)]
+            #[borsh(crate = "anchor_lang_v2::borsh")]
+            #(#attrs)*
+            #vis struct #name #fields
+
+            #discriminator_impl
+
+            impl anchor_lang_v2::Event for #name {
+                fn data(&self) -> anchor_lang_v2::__alloc::vec::Vec<u8> {
+                    let disc = <Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
+                    let mut buf = anchor_lang_v2::__alloc::vec::Vec::with_capacity(disc.len() + 64);
+                    buf.extend_from_slice(disc);
+                    <Self as anchor_lang_v2::borsh::BorshSerialize>::serialize(self, &mut buf)
+                        .expect("`#[event(borsh)]` serialization cannot fail for \
+                                 standard borsh types");
+                    buf
                 }
             }
+        }),
+    }
+}
+
+enum EventMode {
+    Pod,
+    Borsh,
+}
+
+fn parse_event_mode(attr: TokenStream) -> Result<EventMode, syn::Error> {
+    if attr.is_empty() {
+        return Ok(EventMode::Pod);
+    }
+    let attr2: proc_macro2::TokenStream = attr.into();
+    let ident: syn::Ident = syn::parse2(attr2.clone()).map_err(|_| {
+        syn::Error::new_spanned(
+            &attr2,
+            "expected `#[event]` or `#[event(borsh)]` — no other arguments are supported",
+        )
+    })?;
+    if ident == "borsh" {
+        Ok(EventMode::Borsh)
+    } else {
+        Err(syn::Error::new_spanned(
+            ident,
+            "unknown `#[event]` mode — only `borsh` is accepted",
+        ))
+    }
+}
+
+/// Reject field types that are fat pointers or heap-allocated — `Vec`,
+/// `String`, `Box`, `Rc`, `Arc`, maps, sets, `Option`, `Cow`, deque/list types.
+/// Memcpy'ing these emits the pointer bits and length/cap instead of the
+/// referenced data, silently producing corrupted events. The list catches the
+/// common std-lib offenders by terminal type name; opaque user-defined types
+/// are trusted (the macro can't see through them). The padding assertion then
+/// catches struct-level layout bugs those user types might introduce.
+fn reject_fat_pointer_fields(fields: &syn::Fields) -> Result<(), syn::Error> {
+    const BANNED: &[&str] = &[
+        "String",
+        "Vec",
+        "VecDeque",
+        "Box",
+        "Rc",
+        "Arc",
+        "Weak",
+        "HashMap",
+        "HashSet",
+        "BTreeMap",
+        "BTreeSet",
+        "LinkedList",
+        "BinaryHeap",
+        "Cow",
+        "Option",
+        "str",
+    ];
+
+    fn walk(ty: &syn::Type) -> Option<String> {
+        match ty {
+            syn::Type::Path(p) => {
+                let last = p.path.segments.last()?;
+                let name = last.ident.to_string();
+                if BANNED.contains(&name.as_str()) {
+                    return Some(name);
+                }
+                if let syn::PathArguments::AngleBracketed(args) = &last.arguments {
+                    for arg in &args.args {
+                        if let syn::GenericArgument::Type(inner) = arg {
+                            if let Some(hit) = walk(inner) {
+                                return Some(hit);
+                            }
+                        }
+                    }
+                }
+                None
+            }
+            syn::Type::Reference(r) => walk(&r.elem),
+            syn::Type::Paren(p) => walk(&p.elem),
+            syn::Type::Group(g) => walk(&g.elem),
+            _ => None,
         }
-    })
+    }
+
+    for field in fields {
+        if let Some(offender) = walk(&field.ty) {
+            return Err(syn::Error::new_spanned(
+                &field.ty,
+                format!(
+                    "field type `{offender}` cannot be used in a default `#[event]` — \
+                     fat-pointer and heap-allocated types would be silently corrupted \
+                     by the zero-copy memcpy serializer.\n\n\
+                     Options:\n  \
+                     - Use fixed-size types only (`[u8; N]`, `u64`, `Pubkey`, …)\n  \
+                     - Switch to `#[event(borsh)]` for dynamic or optional fields"
+                ),
+            ));
+        }
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

@@ -39,7 +39,10 @@ pub use solana_program_log::log as __log_impl;
 #[doc(hidden)]
 pub use solana_program_log::log as __log_str;
 
-#[cfg(feature = "compat")]
+// Publicly re-exported so generated macro code can reach `Vec` without
+// assuming std or requiring user crates to write `extern crate alloc;`
+// themselves. Ungated because multiple macros (`#[event]`, `debug!`, …) need
+// it; gating it behind `compat` would force every v2 user onto that feature.
 #[doc(hidden)]
 pub extern crate alloc as __alloc;
 

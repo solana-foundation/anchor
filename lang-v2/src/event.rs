@@ -1,23 +1,16 @@
 use {crate::Discriminator, alloc::vec::Vec};
 
 /// Trait for event structs. Implemented by the `#[event]` attribute macro.
+///
+/// Two serialization modes are emitted by the macro, both exposed via the
+/// single `data()` entry point:
+/// - default (`#[event]`) — zero-copy `copy_nonoverlapping` of a `repr(C)`
+///   struct with a compile-time padding assertion. Fastest, fixed layout only.
+/// - opt-in (`#[event(borsh)]`) — borsh serialization. Matches v1 semantics,
+///   supports `Vec`/`String`/`Option`/enums.
 pub trait Event: Discriminator {
-    /// Serialized size of the event data (excluding discriminator).
-    const DATA_SIZE: usize;
-
-    /// Write the event data into the buffer (wincode zero-copy for fixed-size structs).
-    fn write_data(&self, buf: &mut [u8]);
-
     /// Serialize the event: discriminator bytes followed by event data.
-    fn data(&self) -> Vec<u8> {
-        let disc = Self::DISCRIMINATOR;
-        let mut data = Vec::with_capacity(disc.len() + Self::DATA_SIZE);
-        data.extend_from_slice(disc);
-        let start = data.len();
-        data.resize(start + Self::DATA_SIZE, 0);
-        self.write_data(&mut data[start..]);
-        data
-    }
+    fn data(&self) -> Vec<u8>;
 }
 
 /// Log event data via the `sol_log_data` syscall.
