@@ -198,8 +198,13 @@ codegen-units = 1
 }
 
 fn cargo_toml(name: &str, test_template: Option<&TestTemplate>) -> String {
-    let test_sbf_feature = match test_template {
+    // Template-specific features carried into the emitted `[features]` block:
+    //   - Mollusk: `test-sbf` for host-mode integration tests.
+    //   - LiteSVM: `profile` forwards to `anchor-v2-testing/profile`, the
+    //     register-tracing hook that `anchor test --profile` activates.
+    let template_features = match test_template {
         Some(TestTemplate::Mollusk) => r#"test-sbf = []"#,
+        Some(TestTemplate::Litesvm) => r#"profile = ["anchor-v2-testing/profile"]"#,
         _ => "",
     };
     let dev_dependencies = match test_template {
@@ -258,7 +263,7 @@ unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_os, values("solana
 "#,
         name,
         name.to_snake_case(),
-        test_sbf_feature,
+        template_features,
         VERSION,
         dev_dependencies,
     )
