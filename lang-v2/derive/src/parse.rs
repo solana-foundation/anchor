@@ -1,5 +1,5 @@
 use {
-    proc_macro2::TokenStream as TokenStream2,
+    proc_macro2::{Span, TokenStream as TokenStream2},
     quote::quote,
     syn::{
         ext::IdentExt,
@@ -286,36 +286,6 @@ pub fn field_ty_str(ty: &Type) -> String {
     String::new()
 }
 
-/// Extract the inner `T` from `BorshAccount<T>` or `Account<T>`.
-///
-/// Skips well-known external types (TokenAccount, Mint) that don't have
-/// `__IDL_TYPE` since they aren't defined via `#[account]`.
-pub fn extract_inner_data_type(ty: &Type) -> Option<proc_macro2::TokenStream> {
-    use quote::quote;
-    if let Type::Path(tp) = ty {
-        if let Some(seg) = tp.path.segments.last() {
-            let name = seg.ident.to_string();
-            if name == "BorshAccount" || name == "Account" {
-                if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-                    if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
-                        // Skip external types that don't have #[account]-generated __IDL_TYPE
-                        if let Type::Path(inner_tp) = inner {
-                            if let Some(inner_seg) = inner_tp.path.segments.last() {
-                                let inner_name = inner_seg.ident.to_string();
-                                if matches!(inner_name.as_str(), "TokenAccount" | "Mint") {
-                                    return None;
-                                }
-                            }
-                        }
-                        return Some(quote! { #inner });
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
 /// Namespaced constraints whose impls are runtime-only and should NOT be
 /// threaded as init-time `Params` fields. External crates add their own
 /// runtime-only namespaces here (e.g. `dynamic_account` from
@@ -387,7 +357,7 @@ pub struct AccountField {
     pub idl_writable: bool,
     pub idl_signer: bool,
     pub idl_program_address: Option<String>,
-    pub idl_data_type: Option<TokenStream2>,
+    pub idl_data_type: Option<syn::Type>,
 }
 
 /// Rewrite a single seed expression so that a bare field-name identifier
@@ -636,7 +606,16 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     let program_address = extract_program_address(field_ty);
     let idl_writable = attrs.is_mut;
     let idl_signer = is_signer || is_init_signer;
-    let idl_data_type = extract_inner_data_type(field_ty);
+    let idl_data_type: Option<syn::Type> = {
+        let base_ty = option_inner.unwrap_or(field_ty);
+        if let Type::Path(_) = base_ty {
+            Some(syn::parse_quote!(
+                <#base_ty as anchor_lang_v2::AnchorAccount>::Data
+            ))
+        } else {
+            None
+        }
+    };
 
     let has_bump = attrs.seeds.is_some();
 

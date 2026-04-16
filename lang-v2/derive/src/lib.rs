@@ -287,10 +287,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         })
         .collect();
     let idl_json = idl::build_accounts_json(&idl_accounts);
-    let idl_data_types: Vec<_> = fields
-        .iter()
-        .filter_map(|f| f.idl_data_type.as_ref())
-        .collect();
+    let idl_data_types: Vec<_> = fields.iter().map(|f| &f.idl_data_type).collect();
 
     let ix_deser = if ix_args.is_empty() {
         quote! {}
