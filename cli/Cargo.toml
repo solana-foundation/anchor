@@ -64,5 +64,10 @@ solana-pubsub-client.workspace = true
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tempfile = "3"
 tiny-bip39 = "2.0"
+# PBKDF2-HMAC-SHA512 for `anchor keygen recover --skip-seed-phrase-validation`
+# seed derivation. Unifies on the same version already pulled in transitively
+# via `tiny-bip39`, so no new version in the lockfile.
+pbkdf2 = "0.12"
+sha2 = "0.10"
 toml = "0.7.6"
 walkdir = "2.3.2"
