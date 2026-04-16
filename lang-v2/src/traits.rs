@@ -20,8 +20,12 @@ pub struct CpiHandle<'a> {
 
 impl<'a> CpiHandle<'a> {
     /// The account's on-chain address.
+    ///
+    /// Returns a reference with the inner `'a` lifetime so callers can
+    /// build `InstructionAccount<'a>` values without tying the result to
+    /// the borrow of `&self`.
     #[inline(always)]
-    pub fn address(&self) -> &Address {
+    pub fn address(&self) -> &'a Address {
         self.view.address()
     }
 
