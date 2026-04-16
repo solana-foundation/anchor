@@ -4,6 +4,7 @@ pub use crate::{
     access_control,
     account,
     constant,
+    InitSpace,
     // Account types
     accounts::{
         Account, BorshAccount, Optional, Program, Signer, SlabValidate, SystemAccount, Sysvar,
@@ -69,6 +70,7 @@ pub use crate::{
     Owner,
     // Error
     Result,
+    Space,
     ToAccountMetas,
     TryAccounts,
 };

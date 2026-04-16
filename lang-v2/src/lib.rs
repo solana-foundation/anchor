@@ -35,7 +35,7 @@ pub use wincode;
 pub use {
     accounts::{AccountInitialize, SlabInit},
     anchor_derive_accounts_v2::{
-        access_control, account, constant, emit, event, program, Accounts,
+        access_control, account, constant, emit, event, program, Accounts, InitSpace,
     },
     borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
@@ -73,6 +73,24 @@ pub trait ToAccountMetas {
 /// Serializes instruction data: discriminator prefix + LE-encoded args.
 pub trait InstructionData: Discriminator {
     fn data(&self) -> alloc::vec::Vec<u8>;
+}
+
+/// Compile-time account-size calculation. Derived via `#[derive(InitSpace)]`.
+/// Typically used to size account rent: `space = 8 + MyAccount::INIT_SPACE`.
+///
+/// The derive handles Borsh-size accounting for variable-length fields via a
+/// `#[max_len(N)]` helper attribute on `String` / `Vec<T>` fields. POD accounts
+/// that use the default wincode backing should just use `core::mem::size_of`.
+pub trait Space {
+    const INIT_SPACE: usize;
+}
+
+#[doc(hidden)]
+pub mod __private {
+    /// Used by `#[derive(InitSpace)]` on enums to pick the largest variant size.
+    pub const fn max(a: usize, b: usize) -> usize {
+        [a, b][(a < b) as usize]
+    }
 }
 
 /// Result type.

@@ -3,6 +3,7 @@ extern crate proc_macro;
 mod access_control;
 mod constant;
 mod idl;
+mod init_space;
 mod parse;
 mod pda;
 
@@ -1094,6 +1095,32 @@ pub fn access_control(args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn constant(_attr: TokenStream, input: TokenStream) -> TokenStream {
     constant::expand(input)
+}
+
+// ---------------------------------------------------------------------------
+// #[derive(InitSpace)]
+// ---------------------------------------------------------------------------
+
+/// Implements [`anchor_lang_v2::Space`] on the decorated struct or enum so
+/// users can write `space = 8 + MyAccount::INIT_SPACE` in `#[account(init)]`.
+///
+/// Variable-size fields (`String`, `Vec<T>`) require a `#[max_len(N)]` helper
+/// attribute to specify the reserved capacity.
+///
+/// # Example
+///
+/// ```ignore
+/// #[account(borsh)]
+/// #[derive(InitSpace)]
+/// pub struct Profile {
+///     pub owner: Address,
+///     #[max_len(32)]
+///     pub name: String,
+/// }
+/// ```
+#[proc_macro_derive(InitSpace, attributes(max_len))]
+pub fn derive_init_space(item: TokenStream) -> TokenStream {
+    init_space::expand(item)
 }
 
 fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {
