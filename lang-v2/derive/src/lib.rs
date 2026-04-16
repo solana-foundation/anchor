@@ -800,7 +800,6 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         /// Matches Solana's transaction-wide account cap (u8 index space).
         /// The lookup array holds `[AccountView; 256]` = ~2 KiB of frame
         /// used for duplicate-account resolution during cursor walks.
-        #[cfg(not(feature = "no-entrypoint"))]
         const __ANCHOR_MAX_ACCOUNTS: usize = 256;
 
         /// Program entrypoint. The BPF loader jumps here with:
@@ -820,7 +819,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             __anchor_dispatch(__input, __ix_data_ptr)
         }
 
-        #[cfg(not(feature = "no-entrypoint"))]
+        // Always generate __anchor_dispatch so custom entrypoints can call it
         #[inline(always)]
         unsafe fn __anchor_dispatch(
             __input: *mut u8,
