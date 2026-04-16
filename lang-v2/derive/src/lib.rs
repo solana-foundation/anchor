@@ -1213,44 +1213,69 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     match mode {
         EventMode::Pod => {
-            // Reject fat-pointer / heap-allocated field types up front. Without
-            // this the memcpy would silently emit pointer bits + length+cap,
-            // producing corrupted events that decode to garbage on the client.
-            if let Err(err) = reject_fat_pointer_fields(fields) {
-                return err.to_compile_error().into();
-            }
-
             let field_types: Vec<_> = fields.iter().map(|f| &f.ty).collect();
 
-            // Compile-time padding check. `repr(C)` inserts alignment padding
-            // between fields of differing alignment, and that padding is
-            // included verbatim by `copy_nonoverlapping` — but borsh on the
-            // client has no concept of padding, so the decode fails silently.
-            // Summing each field's `size_of` and comparing to the struct's
-            // `size_of` catches inter-field padding; if it fires, reordering
-            // fields by descending alignment fixes it.
-            let padding_assert = quote! {
-                const _: () = {
-                    const EXPECTED: usize = 0 #( + ::core::mem::size_of::<#field_types>() )*;
-                    if ::core::mem::size_of::<#name>() != EXPECTED {
-                        ::core::panic!(
-                            "`#[event]` struct has `repr(C)` alignment padding — \
-                             reorder fields by descending alignment (u64/i64/Pubkey \
-                             first, then u32/i32, then u16/i16, then u8/bool), or \
-                             switch to `#[event(borsh)]` for arbitrary layouts"
-                        );
-                    }
-                };
-            };
+            // Targeted diagnostics for common non-Pod field types. Fires
+            // *before* the generic `assert_pod::<T>` bound so users hit a
+            // field-specific migration hint instead of the opaque
+            // `Vec<u8>: Pod is not satisfied` error. Mirrors the pattern in
+            // `#[account]` zero-copy codegen. Borsh mode is suggested here
+            // because (unlike `#[account]`) events have a correct dynamic
+            // fallback — see `diagnose_non_pod_event_field`.
+            let field_diagnostics: Vec<_> = fields
+                .iter()
+                .filter_map(|field| {
+                    let field_name =
+                        field.ident.as_ref().map(|i| i.to_string()).unwrap_or_default();
+                    let msg = diagnose_non_pod_event_field(&field.ty, &field_name)?;
+                    Some(quote! { ::core::compile_error!(#msg); })
+                })
+                .collect();
 
+            // Transitive Pod bound per field. Catches any fat-pointer or
+            // uninit-byte-containing type, including ones hidden inside user-
+            // defined structs — `bytemuck::Pod` is recursively checked at the
+            // bound site, so `struct User { v: Vec<u8> }` fails here even
+            // though the derive macro can't see through `User`.
+            //
+            // Padding check: `repr(C)` inserts alignment padding between
+            // fields of differing alignment. Padding bytes are uninitialized,
+            // which violates `Pod`'s all-bytes-initialized requirement and
+            // would also silently drift from a borsh-decoded client view.
+            // The assertion tells the author how to fix it.
+            //
+            // Finally, `unsafe impl Pod + Zeroable for Self` so consumers can
+            // `bytemuck::from_bytes` the logged payload directly — mirrors
+            // `#[account]`'s zero-copy output shape.
             TokenStream::from(quote! {
                 #[repr(C)]
+                #[derive(::core::clone::Clone, ::core::marker::Copy)]
                 #(#attrs)*
                 #vis struct #name #fields
 
-                #discriminator_impl
+                #(#field_diagnostics)*
 
-                #padding_assert
+                const _: fn() = || {
+                    fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
+                    #( assert_pod::<#field_types>(); )*
+                };
+
+                const _: () = ::core::assert!(
+                    ::core::mem::size_of::<#name>()
+                        == 0 #( + ::core::mem::size_of::<#field_types>() )*,
+                    "`#[event]` struct has `repr(C)` alignment padding — \
+                     reorder fields from largest to smallest alignment (u128/u64 \
+                     first, then u32, then u16, then u8/bool), or switch to \
+                     `#[event(borsh)]` for arbitrary layouts"
+                );
+
+                // Safety: all fields are Pod (checked above) and the struct
+                // has no padding (checked above), so every byte of
+                // `#name` is initialized and valid for all bit patterns.
+                unsafe impl anchor_lang_v2::bytemuck::Pod for #name {}
+                unsafe impl anchor_lang_v2::bytemuck::Zeroable for #name {}
+
+                #discriminator_impl
 
                 impl anchor_lang_v2::Event for #name {
                     fn data(&self) -> anchor_lang_v2::__alloc::vec::Vec<u8> {
@@ -1329,75 +1354,56 @@ fn parse_event_mode(attr: TokenStream) -> Result<EventMode, syn::Error> {
     }
 }
 
-/// Reject field types that are fat pointers or heap-allocated — `Vec`,
-/// `String`, `Box`, `Rc`, `Arc`, maps, sets, `Option`, `Cow`, deque/list types.
-/// Memcpy'ing these emits the pointer bits and length/cap instead of the
-/// referenced data, silently producing corrupted events. The list catches the
-/// common std-lib offenders by terminal type name; opaque user-defined types
-/// are trusted (the macro can't see through them). The padding assertion then
-/// catches struct-level layout bugs those user types might introduce.
-fn reject_fat_pointer_fields(fields: &syn::Fields) -> Result<(), syn::Error> {
-    const BANNED: &[&str] = &[
-        "String",
-        "Vec",
-        "VecDeque",
-        "Box",
-        "Rc",
-        "Arc",
-        "Weak",
-        "HashMap",
-        "HashSet",
-        "BTreeMap",
-        "BTreeSet",
-        "LinkedList",
-        "BinaryHeap",
-        "Cow",
-        "Option",
-        "str",
-    ];
-
-    fn walk(ty: &syn::Type) -> Option<String> {
-        match ty {
-            syn::Type::Path(p) => {
-                let last = p.path.segments.last()?;
-                let name = last.ident.to_string();
-                if BANNED.contains(&name.as_str()) {
-                    return Some(name);
-                }
-                if let syn::PathArguments::AngleBracketed(args) = &last.arguments {
-                    for arg in &args.args {
-                        if let syn::GenericArgument::Type(inner) = arg {
-                            if let Some(hit) = walk(inner) {
-                                return Some(hit);
-                            }
-                        }
-                    }
-                }
-                None
-            }
-            syn::Type::Reference(r) => walk(&r.elem),
-            syn::Type::Paren(p) => walk(&p.elem),
-            syn::Type::Group(g) => walk(&g.elem),
-            _ => None,
-        }
+/// Targeted diagnostics for common non-Pod field types on default
+/// `#[event]` structs. Same shape as `diagnose_non_pod_field` for
+/// `#[account]`, but suggests `#[event(borsh)]` as the dynamic-fields
+/// fallback (events have one; zero-copy accounts don't). Returns `None` for
+/// types we can't recognize by name — the emitted `assert_pod::<T>` bound
+/// catches those generically via `bytemuck::Pod`.
+fn diagnose_non_pod_event_field(ty: &Type, field_name: &str) -> Option<String> {
+    let Type::Path(tp) = ty else { return None };
+    let seg = tp.path.segments.last()?;
+    let ident = seg.ident.to_string();
+    match ident.as_str() {
+        "Vec" => Some(format!(
+            "event field `{field_name}` uses `Vec`, which is a fat pointer — the \
+             zero-copy memcpy serializer would emit the `(ptr, len, cap)` bits \
+             instead of the elements. Use `[T; N]` for a fixed-size array, or \
+             switch the event to `#[event(borsh)]` for dynamic payloads."
+        )),
+        "String" => Some(format!(
+            "event field `{field_name}` uses `String`, which is a fat pointer — \
+             the zero-copy memcpy serializer would emit the `(ptr, len, cap)` \
+             bits instead of the UTF-8 bytes. Use `[u8; N]` for a bounded \
+             buffer, or switch the event to `#[event(borsh)]` for dynamic \
+             strings."
+        )),
+        "Option" => Some(format!(
+            "event field `{field_name}` uses `Option`, whose niche-or-tag layout \
+             isn't guaranteed to match borsh's `(tag: u8, payload)` encoding on \
+             the client side. Use a sentinel value (e.g. an all-zero `[u8; 32]` \
+             for \"no address\"), or switch the event to `#[event(borsh)]`."
+        )),
+        "Box" | "Rc" | "Arc" | "Cow" | "Weak" => Some(format!(
+            "event field `{field_name}` uses `{ident}`, which is a heap/shared \
+             pointer — its bytes are a pointer, not the referenced data. Inline \
+             the value directly (`T` instead of `{ident}<T>`), or switch the \
+             event to `#[event(borsh)]`."
+        )),
+        "HashMap" | "HashSet" | "BTreeMap" | "BTreeSet" | "BinaryHeap"
+        | "LinkedList" | "VecDeque" => Some(format!(
+            "event field `{field_name}` uses `{ident}`, which allocates on the \
+             heap. Switch the event to `#[event(borsh)]` for dynamic \
+             collections."
+        )),
+        "bool" => Some(format!(
+            "event field `{field_name}` is `bool`. `bytemuck` disallows `bool` \
+             as Pod because only `0x00` and `0x01` are valid — any other byte \
+             is UB. Use a `u8` and treat `0` / non-zero as the boolean, or \
+             switch the event to `#[event(borsh)]`."
+        )),
+        _ => None,
     }
-
-    for field in fields {
-        if let Some(offender) = walk(&field.ty) {
-            return Err(syn::Error::new_spanned(
-                &field.ty,
-                format!(
-                    "field type `{offender}` cannot be used in a default `#[event]` — \
-                     fat-pointer and heap-allocated types would be silently corrupted \
-                     by the zero-copy memcpy serializer.\n\n\
-                     Options:\n  \
-                     - Use fixed-size types only (`[u8; N]`, `u64`, `Pubkey`, …)\n  \
-                     - Switch to `#[event(borsh)]` for dynamic or optional fields"
-                ),
-            ));
-        }
-    }
-    Ok(())
 }
 
 // ---------------------------------------------------------------------------
