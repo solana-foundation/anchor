@@ -92,7 +92,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             pub struct Return<T> {
                 phantom: std::marker::PhantomData<T>,
-                program_id: Pubkey,
+                program_id: anchor_lang::solana_program::pubkey::Pubkey,
             }
 
             impl<T: AnchorDeserialize> Return<T> {

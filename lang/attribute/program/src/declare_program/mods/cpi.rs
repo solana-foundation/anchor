@@ -106,7 +106,7 @@ fn gen_cpi_return_type() -> proc_macro2::TokenStream {
     quote! {
         pub struct Return<T> {
             phantom: std::marker::PhantomData<T>,
-            program_id: anchor_lang::prelude::Pubkey,
+            program_id: anchor_lang::solana_program::pubkey::Pubkey,
         }
 
         impl<T: AnchorDeserialize> Return<T> {
