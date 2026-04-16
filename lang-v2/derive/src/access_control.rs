@@ -1,16 +1,19 @@
 use {
-    proc_macro::TokenStream, proc_macro2::TokenStream as TokenStream2, quote::quote,
-    syn::parse_macro_input,
+    proc_macro::TokenStream,
+    proc_macro2::TokenStream as TokenStream2,
+    quote::quote,
+    syn::{parse::Parser, parse_macro_input, punctuated::Punctuated, Expr, Token},
 };
 
 pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
-    let mut args = args.to_string();
-    args.retain(|c| !c.is_whitespace());
-    let access_control: Vec<TokenStream2> = args
-        .split(')')
-        .filter(|ac| !ac.is_empty())
-        .map(|ac| format!("{ac})?;"))
-        .map(|ac| ac.parse().unwrap())
+    let parser = Punctuated::<Expr, Token![,]>::parse_terminated;
+    let exprs = match parser.parse(args) {
+        Ok(exprs) => exprs,
+        Err(err) => return err.to_compile_error().into(),
+    };
+    let access_control: Vec<TokenStream2> = exprs
+        .into_iter()
+        .map(|expr| quote! { #expr?; })
         .collect();
 
     let item_fn = parse_macro_input!(input as syn::ItemFn);
