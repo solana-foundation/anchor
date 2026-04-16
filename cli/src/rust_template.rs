@@ -897,6 +897,13 @@ use {{
 fn test_initialize() {{
     let program_id = {0}::id();
     let payer = Keypair::new();
+    // With `anchor test --profile` the `profile` feature is on and we use
+    // `anchor_v2_testing::svm()` to install the register-tracing callback
+    // that writes per-test SBF traces under `target/anchor-v2-profile/`.
+    // Without the feature we use plain `LiteSVM::new()` — zero overhead.
+    #[cfg(feature = "profile")]
+    let mut svm = anchor_v2_testing::svm();
+    #[cfg(not(feature = "profile"))]
     let mut svm = LiteSVM::new();
     let bytes = include_bytes!("../../../target/deploy/{0}.so");
     svm.add_program(program_id, bytes).unwrap();
