@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use object::{Object, ObjectSection, ObjectSymbol, SymbolKind};
 use rustc_demangle::demangle;
+use solana_compute_budget::compute_budget::ComputeBudget;
 use solana_sbpf::{
     ebpf,
     elf::Executable,
@@ -12,6 +13,50 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+
+/// Returns the base compute-unit cost agave charges for `syscall_name`.
+///
+/// Pulled directly from `ComputeBudget` constants so the numbers match
+/// what the runtime would actually meter (minus variable parts we can't
+/// infer from registers — big-buffer hash/log costs in particular).
+///
+/// Unknown syscalls fall back to `syscall_base_cost`, which is what
+/// agave itself uses as the floor for "any syscall at all" work.
+fn syscall_cost(budget: &ComputeBudget, syscall_name: &str) -> u64 {
+    match syscall_name {
+        "sol_log_64_" => budget.log_64_units,
+        "sol_log_pubkey" => budget.log_pubkey_units,
+        "sol_sha256" | "sol_keccak256" | "sol_blake3" => budget.sha256_base_cost,
+        "sol_secp256k1_recover" => budget.secp256k1_recover_cost,
+        "sol_invoke_signed_c" | "sol_invoke_signed_rust" => budget.invoke_units,
+        "sol_create_program_address" | "sol_try_find_program_address" => {
+            budget.create_program_address_units
+        }
+        "sol_memcpy_" | "sol_memmove_" | "sol_memset_" | "sol_memcmp_" => {
+            budget.mem_op_base_cost
+        }
+        "sol_get_clock_sysvar"
+        | "sol_get_epoch_schedule_sysvar"
+        | "sol_get_fees_sysvar"
+        | "sol_get_rent_sysvar"
+        | "sol_get_last_restart_slot"
+        | "sol_get_epoch_rewards_sysvar"
+        | "sol_get_sysvar" => budget.sysvar_base_cost,
+        "sol_curve_validate_point" => budget.curve25519_edwards_validate_point_cost,
+        "sol_curve_group_op" => budget.curve25519_edwards_add_cost,
+        "sol_big_mod_exp" => budget.big_modular_exponentiation_base_cost,
+        "sol_remaining_compute_units" => budget.get_remaining_compute_units_cost,
+        "sol_alt_bn128_compression" => budget.alt_bn128_g1_compress,
+        "sol_alt_bn128_group_op" => budget.alt_bn128_addition_cost,
+        "sol_poseidon" => budget.poseidon_cost_coefficient_c,
+        // Includes sol_log_, sol_log_data, sol_log_compute_units_, abort,
+        // sol_panic_, sol_set_return_data, sol_get_return_data,
+        // sol_get_stack_height, sol_get_epoch_stake,
+        // sol_get_processed_sibling_instruction, and anything agave added
+        // that we haven't mapped yet.
+        _ => budget.syscall_base_cost,
+    }
+}
 
 pub struct FlamegraphReport {
     pub program_name: String,
@@ -36,65 +81,6 @@ impl ContextObject for NoopContext {
     }
 }
 
-/// Builds a flamegraph report from LiteSVM register trace files and the program ELF.
-///
-/// The trace directory should contain `.regs` and `.insns` files produced by
-/// `DefaultRegisterTracingCallback`. The ELF is used to resolve PCs to function names.
-pub fn build_report_from_trace(
-    program_name: &str,
-    elf_path: &Path,
-    trace_dir: &Path,
-    manifest_dir: Option<&Path>,
-) -> Result<Option<FlamegraphReport>> {
-    let (symbol_map, syscall_names) = load_function_map(elf_path, manifest_dir)?;
-
-    // Find the trace files in the directory. There may be multiple sets (one per
-    // invocation); we combine them all.
-    let trace_files = find_trace_files(trace_dir)?;
-    if trace_files.is_empty() {
-        eprintln!(
-            "Warning: No trace files found in {} for `{program_name}`. Skipping flamegraph.",
-            trace_dir.display()
-        );
-        return Ok(None);
-    }
-
-    let mut folded_stacks: BTreeMap<Vec<String>, u64> = BTreeMap::new();
-    let mut total_cu: u64 = 0;
-
-    for (regs_path, insns_path) in &trace_files {
-        let regs_data = fs::read(regs_path)
-            .with_context(|| format!("Failed to read {}", regs_path.display()))?;
-        let insns_data = fs::read(insns_path)
-            .with_context(|| format!("Failed to read {}", insns_path.display()))?;
-
-        let entry_count = regs_data.len() / REGS_ENTRY_SIZE;
-        let insn_count = insns_data.len() / INSN_ENTRY_SIZE;
-        let count = entry_count.min(insn_count);
-
-        if count == 0 {
-            continue;
-        }
-
-        let (stacks, cu) =
-            process_trace(&regs_data, &insns_data, count, &symbol_map, &syscall_names, program_name);
-        for (stack, cost) in stacks {
-            *folded_stacks.entry(stack).or_default() += cost;
-        }
-        total_cu += cu;
-    }
-
-    if total_cu == 0 {
-        return Ok(None);
-    }
-
-    Ok(Some(FlamegraphReport {
-        program_name: program_name.to_owned(),
-        total_cu,
-        stacks: folded_stacks,
-    }))
-}
-
 /// Processes a single trace (regs + insns pair) and returns folded stacks + total CU.
 ///
 /// The algorithm is PC-driven rather than opcode-driven: for every traced
@@ -117,6 +103,7 @@ fn process_trace(
     symbol_map: &BTreeMap<u64, String>,
     syscall_names: &BTreeMap<u32, String>,
     program_name: &str,
+    budget: &ComputeBudget,
 ) -> (BTreeMap<Vec<String>, u64>, u64) {
     let mut folded_stacks: BTreeMap<Vec<String>, u64> = BTreeMap::new();
     let mut total_cu: u64 = 0;
@@ -174,10 +161,11 @@ fn process_trace(
                     .get(&imm)
                     .cloned()
                     .unwrap_or_else(|| format!("syscall_{imm:#x}"));
+                let cost = syscall_cost(budget, &syscall_name);
                 let mut syscall_stack = call_stack.clone();
                 syscall_stack.push(format!("[syscall] {syscall_name}"));
-                *folded_stacks.entry(syscall_stack).or_default() += 1;
-                total_cu += 1;
+                *folded_stacks.entry(syscall_stack).or_default() += cost;
+                total_cu += cost;
                 continue;
             }
         }
@@ -223,12 +211,24 @@ pub(super) fn lookup_function_with_pc(symbol_map: &BTreeMap<u64, String>, pc: u6
         .unwrap_or_else(|| (format!("unknown_{pc:#x}"), pc))
 }
 
-/// Finds all (*.regs, *.insns) file pairs in the trace directory.
-pub(super) fn find_trace_files(trace_dir: &Path) -> Result<Vec<(std::path::PathBuf, std::path::PathBuf)>> {
-    let mut pairs = Vec::new();
+/// One invocation's trace files + the program it ran.
+pub(super) struct InvocationFiles {
+    pub inv_seq: u32,
+    pub tx_seq: u32,
+    pub program_id: String,
+    pub regs_path: std::path::PathBuf,
+    pub insns_path: std::path::PathBuf,
+}
 
+/// Parses filenames like `0001__tx2.regs` (written by
+/// `anchor-v2-testing`'s `TestNameCallback`) and groups everything
+/// under a test directory into a stable, tx-ordered list of
+/// invocations. Ignores files that don't match the expected layout or
+/// are missing a sibling.
+pub(super) fn discover_invocations(trace_dir: &Path) -> Result<Vec<InvocationFiles>> {
+    let mut found = Vec::new();
     if !trace_dir.exists() {
-        return Ok(pairs);
+        return Ok(found);
     }
 
     let entries = fs::read_dir(trace_dir)
@@ -237,15 +237,165 @@ pub(super) fn find_trace_files(trace_dir: &Path) -> Result<Vec<(std::path::PathB
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) == Some("regs") {
-            let insns_path = path.with_extension("insns");
-            if insns_path.exists() {
-                pairs.push((path, insns_path));
-            }
+        if path.extension().and_then(|e| e.to_str()) != Some("regs") {
+            continue;
+        }
+        let stem = match path.file_stem().and_then(|s| s.to_str()) {
+            Some(s) => s,
+            None => continue,
+        };
+        // Expect `NNNN__txN`.
+        let Some((inv_part, tx_part)) = stem.split_once("__") else {
+            continue;
+        };
+        let Some(tx_digits) = tx_part.strip_prefix("tx") else {
+            continue;
+        };
+        let Ok(inv_seq) = inv_part.parse::<u32>() else {
+            continue;
+        };
+        let Ok(tx_seq) = tx_digits.parse::<u32>() else {
+            continue;
+        };
+
+        let insns_path = path.with_extension("insns");
+        let pid_path = path.with_extension("program_id");
+        if !insns_path.exists() || !pid_path.exists() {
+            continue;
+        }
+        let program_id = match fs::read_to_string(&pid_path) {
+            Ok(s) => s.trim().to_owned(),
+            Err(_) => continue,
+        };
+
+        found.push(InvocationFiles {
+            inv_seq,
+            tx_seq,
+            program_id,
+            regs_path: path,
+            insns_path,
+        });
+    }
+
+    // Deterministic: ascending by (tx, inv).
+    found.sort_by_key(|f| (f.tx_seq, f.inv_seq));
+    Ok(found)
+}
+
+/// Build one [`FlamegraphReport`] per outer transaction in the test.
+///
+/// Each tx's report folds together every invocation (top-level +
+/// CPIs) within that tx, symbolicating each invocation against its
+/// own program's ELF. Invocations whose `program_id` has no entry in
+/// `programs` contribute frames labeled `[unresolved <pid>]` so CUs
+/// aren't silently dropped.
+///
+/// Returns reports keyed by `tx_seq` (1-indexed, matching the
+/// `TestNameCallback`'s before-invocation counter). Empty map if the
+/// directory has no parseable traces.
+pub fn build_tx_reports(
+    test_name: &str,
+    test_dir: &Path,
+    programs: &std::collections::BTreeMap<String, std::path::PathBuf>,
+    manifest_dir: Option<&Path>,
+) -> Result<std::collections::BTreeMap<u32, FlamegraphReport>> {
+    let invocations = discover_invocations(test_dir)?;
+    if invocations.is_empty() {
+        return Ok(std::collections::BTreeMap::new());
+    }
+
+    // Cache symbol maps per program — loading an ELF is expensive.
+    let mut symbol_cache: std::collections::BTreeMap<
+        String,
+        (BTreeMap<u64, String>, BTreeMap<u32, String>),
+    > = std::collections::BTreeMap::new();
+    for (pid, elf) in programs {
+        if let Ok(maps) = load_function_map(elf, manifest_dir) {
+            symbol_cache.insert(pid.clone(), maps);
         }
     }
 
-    Ok(pairs)
+    // Fallback (empty) maps for invocations whose program we can't
+    // resolve. We still want their CU accounted for, just as flat
+    // `[unresolved]` stacks.
+    let empty_symbols: BTreeMap<u64, String> = BTreeMap::new();
+    let empty_syscalls: BTreeMap<u32, String> = BTreeMap::new();
+
+    let mut reports: std::collections::BTreeMap<u32, (BTreeMap<Vec<String>, u64>, u64)> =
+        std::collections::BTreeMap::new();
+    let budget = ComputeBudget::new_with_defaults(false, false);
+
+    for inv in &invocations {
+        let regs = fs::read(&inv.regs_path)
+            .with_context(|| format!("read {}", inv.regs_path.display()))?;
+        let insns = fs::read(&inv.insns_path)
+            .with_context(|| format!("read {}", inv.insns_path.display()))?;
+        let count = (regs.len() / REGS_ENTRY_SIZE).min(insns.len() / INSN_ENTRY_SIZE);
+        if count == 0 {
+            continue;
+        }
+
+        let (symbols, syscalls) = match symbol_cache.get(&inv.program_id) {
+            Some((s, c)) => (s, c),
+            None => (&empty_symbols, &empty_syscalls),
+        };
+
+        // Label the program frame by short program id (first 8 +
+        // last 4 chars) so it's identifiable but not taking half the
+        // SVG width. Resolved programs use a nicer name when the ELF
+        // filename is known.
+        let program_label = match programs.get(&inv.program_id) {
+            Some(elf_path) => {
+                let short_pid = short_pid(&inv.program_id);
+                elf_path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .map(|n| format!("[program {n} ({short_pid})]"))
+                    .unwrap_or_else(|| format!("[program {}]", inv.program_id))
+            }
+            None => format!("[unresolved {}]", short_pid(&inv.program_id)),
+        };
+
+        let (stacks, cu) = process_trace(
+            &regs,
+            &insns,
+            count,
+            symbols,
+            syscalls,
+            &program_label,
+            &budget,
+        );
+        let entry = reports
+            .entry(inv.tx_seq)
+            .or_insert_with(|| (BTreeMap::new(), 0));
+        for (stack, cost) in stacks {
+            *entry.0.entry(stack).or_default() += cost;
+        }
+        entry.1 += cu;
+    }
+
+    Ok(reports
+        .into_iter()
+        .filter(|(_, (_, cu))| *cu > 0)
+        .map(|(tx_seq, (stacks, cu))| {
+            (
+                tx_seq,
+                FlamegraphReport {
+                    program_name: format!("{test_name} · tx{tx_seq}"),
+                    total_cu: cu,
+                    stacks,
+                },
+            )
+        })
+        .collect())
+}
+
+fn short_pid(pid: &str) -> String {
+    if pid.len() <= 13 {
+        pid.to_owned()
+    } else {
+        format!("{}…{}", &pid[..8], &pid[pid.len() - 4..])
+    }
 }
 
 /// Loads function symbols from an ELF file using the SBPF loader.
@@ -316,32 +466,77 @@ pub(super) fn load_function_map(
         }
     }
 
-    // Syscall name map: Murmur3 hash → name.
-    // These are the standard Solana runtime syscalls.
-    let syscall_names: BTreeMap<u32, String> = [
-        (0xb6fc1a11, "abort"),
-        (0x207559bd, "sol_log_"),
-        (0x5c2a3178, "sol_log_64_"),
-        (0x52ba5096, "sol_log_compute_units_"),
-        (0x7317b434, "sol_log_data"),
-        (0x11f49d86, "sol_sha256"),
-        (0xd7793abb, "sol_keccak256"),
-        (0x174c5122, "sol_blake3"),
-        (0xaa2607ca, "sol_curve_validate_point"),
-        (0xdd1c41a6, "sol_curve_group_op"),
-        (0xa22b9c85, "sol_invoke_signed_c"),
-        (0xd7449092, "sol_invoke_signed_rust"),
-        (0xa226d3eb, "sol_set_return_data"),
-        (0x5d2245e4, "sol_get_return_data"),
-        (0x9377323c, "sol_create_program_address"),
-        (0x48504a38, "sol_try_find_program_address"),
-        (0x717cc4a3, "sol_memcpy_"),
-        (0x434371f8, "sol_memmove_"),
-        (0x3770fb22, "sol_memset_"),
-        (0x5fdcde31, "sol_memcmp_"),
-    ].into_iter().map(|(k, v)| (k, v.to_owned())).collect();
+    Ok((symbols, syscall_hash_map()))
+}
 
-    Ok((symbols, syscall_names))
+/// Known syscall names registered by `agave`/`solana-program-runtime`. Hashes
+/// are computed on the fly via `solana_sbpf::ebpf::hash_symbol_name` so we
+/// never have to keep a table of hex magic numbers in sync.
+///
+/// When a new syscall lands in agave-syscalls, add its name here and it'll
+/// automatically get symbolicated.
+fn syscall_hash_map() -> BTreeMap<u32, String> {
+    const KNOWN_SYSCALLS: &[&str] = &[
+        // Panics / aborts.
+        "abort",
+        // Logging.
+        "sol_log_",
+        "sol_log_64_",
+        "sol_log_compute_units_",
+        "sol_log_data",
+        "sol_log_pubkey",
+        // Hashing + crypto.
+        "sol_sha256",
+        "sol_keccak256",
+        "sol_blake3",
+        "sol_poseidon",
+        "sol_secp256k1_recover",
+        "sol_curve_validate_point",
+        "sol_curve_group_op",
+        "sol_curve_multiscalar_mul",
+        "sol_curve_pairing_map",
+        "sol_alt_bn128_group_op",
+        "sol_alt_bn128_compression",
+        "sol_big_mod_exp",
+        // CPIs.
+        "sol_invoke_signed_c",
+        "sol_invoke_signed_rust",
+        // Return data.
+        "sol_set_return_data",
+        "sol_get_return_data",
+        // PDAs.
+        "sol_create_program_address",
+        "sol_try_find_program_address",
+        // Memory ops.
+        "sol_memcpy_",
+        "sol_memmove_",
+        "sol_memset_",
+        "sol_memcmp_",
+        // Sysvars (individual fast paths + the generic dispatcher).
+        "sol_get_clock_sysvar",
+        "sol_get_epoch_schedule_sysvar",
+        "sol_get_fees_sysvar",
+        "sol_get_rent_sysvar",
+        "sol_get_last_restart_slot",
+        "sol_get_epoch_rewards_sysvar",
+        "sol_get_sysvar",
+        // Misc.
+        "sol_panic_",
+        "sol_get_processed_sibling_instruction",
+        "sol_get_stack_height",
+        "sol_remaining_compute_units",
+        "sol_get_epoch_stake",
+    ];
+
+    KNOWN_SYSCALLS
+        .iter()
+        .map(|name| {
+            (
+                solana_sbpf::ebpf::hash_symbol_name(name.as_bytes()),
+                (*name).to_owned(),
+            )
+        })
+        .collect()
 }
 
 /// Tries to locate the unstripped SBF binary for a deployed program.

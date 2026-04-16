@@ -38,7 +38,10 @@
 
 use {
     litesvm::{InvocationInspectCallback, LiteSVM},
-    solana_program_runtime::invoke_context::{Executable, InvokeContext, RegisterTrace},
+    solana_program_runtime::{
+        invoke_context::{Executable, InvokeContext, RegisterTrace},
+        solana_sbpf::ebpf,
+    },
     solana_transaction::sanitized::SanitizedTransaction,
     solana_transaction_context::{IndexOfAccount, InstructionContext},
     std::{
@@ -65,12 +68,17 @@ const DEFAULT_DIR: &str = "target/anchor-v2-profile";
 
 /// Construct a `LiteSVM` wired up for Anchor v2 testing.
 ///
-/// With the `profile` feature, installs [`TestNameCallback`] so each
-/// transaction writes an SBF register trace under
-/// `target/anchor-v2-profile/<test_name>/`. Without it, identical to
-/// [`LiteSVM::new()`].
+/// With the `profile` feature, enables register tracing at the VM level
+/// and installs [`TestNameCallback`] so each transaction writes an SBF
+/// register trace under `target/anchor-v2-profile/<test_name>/`.
+/// Without the feature, identical to [`LiteSVM::new()`].
 pub fn svm() -> LiteSVM {
-    let mut svm = LiteSVM::new();
+    // `new_debuggable(true)` is what actually turns on rbpf's
+    // instruction tracing — without it, `set_invocation_inspect_callback`
+    // fires but `iterate_vm_traces` is empty. litesvm alternatively
+    // reads `SBF_TRACE_DIR` at `new()` time, but hard-coding the flag
+    // is more robust than depending on ambient env state.
+    let mut svm = LiteSVM::new_debuggable(true);
     svm.set_invocation_inspect_callback(TestNameCallback::new());
     svm
 }
@@ -155,6 +163,14 @@ impl Default for TestNameCallback {
 }
 
 impl InvocationInspectCallback for TestNameCallback {
+    // `before_invocation` is a no-op. Bumping `tx_seq` here would
+    // double-count transactions that run through the callback but
+    // never hit rbpf — e.g. `LiteSVM::airdrop` internally fires a
+    // system-program transfer that triggers before/after_invocation
+    // but produces no VM trace because the system program is a native
+    // builtin. We lazily bump `tx_seq` in `after_invocation` only
+    // when `iterate_vm_traces` actually yields records, so `tx1` in
+    // filenames == the user's first real tx.
     fn before_invocation(
         &self,
         _: &LiteSVM,
@@ -162,8 +178,6 @@ impl InvocationInspectCallback for TestNameCallback {
         _: &[IndexOfAccount],
         _: &InvokeContext,
     ) {
-        let test = Self::test_name();
-        self.bump_tx_seq(&test);
     }
 
     fn after_invocation(
@@ -178,11 +192,17 @@ impl InvocationInspectCallback for TestNameCallback {
 
         let test = Self::test_name();
         let dir = self.test_dir(&test);
+        let bumped_tx = std::cell::Cell::new(false);
 
         invoke_context.iterate_vm_traces(
-            &|ictx: InstructionContext, _exec: &Executable, trace: RegisterTrace| {
+            &|ictx: InstructionContext, exec: &Executable, trace: RegisterTrace| {
                 if trace.is_empty() {
                     return;
+                }
+
+                if !bumped_tx.get() {
+                    bumped_tx.set(true);
+                    self.bump_tx_seq(&test);
                 }
 
                 let (inv_seq, tx_seq, should_clean) = self.bump_inv_seq(&test);
@@ -198,6 +218,19 @@ impl InvocationInspectCallback for TestNameCallback {
                 }
 
                 let stem = dir.join(format!("{inv_seq:04}__tx{tx_seq}"));
+                let (_, text) = exec.get_text_bytes();
+
+                // .insns — for each traced step, the raw 8-byte instruction
+                // at r11 (PC). The renderer needs this to detect syscall
+                // CALL_IMMs vs internal calls; without it, find_trace_files
+                // silently skips the entire trace.
+                if let Ok(mut f) = File::create(stem.with_extension("insns")) {
+                    for regs in trace.iter() {
+                        let pc = regs[11] as usize;
+                        let insn = ebpf::get_insn_unchecked(text, pc).to_array();
+                        let _ = f.write_all(&insn);
+                    }
+                }
 
                 // .regs — raw [u64; 12] register states. PC is r11.
                 if let Ok(mut f) = File::create(stem.with_extension("regs")) {

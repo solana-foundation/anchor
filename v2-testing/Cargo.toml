@@ -2,7 +2,7 @@
 name = "anchor-v2-testing"
 version = "0.1.0"
 edition = "2021"
-description = "Host-side test utilities for Anchor v2 programs: in-process SVM setup, flamegraph profiling, and per-instruction trace tooling."
+description = "Host-side test utilities for Anchor v2 programs: in-process SVM setup with per-test SBF register-trace capture for `anchor test --profile`."
 license = "Apache-2.0"
 publish = false
 
@@ -13,42 +13,20 @@ default = []
 # register-tracing feature and installs a callback that keys trace files
 # by test name. No-op when disabled — `svm()` reduces to `LiteSVM::new()`.
 profile = [
-    "dep:litesvm",
     "dep:solana-program-runtime",
     "dep:solana-transaction",
     "dep:solana-transaction-context",
-    "dep:solana-address",
-]
-
-# Host-side flamegraph + per-instruction trace rendering from LiteSVM
-# `.regs`/`.insns` trace files. Independent of `profile` so tooling
-# consumers (e.g. the anchor CLI) can depend only on the renderer.
-render = [
-    "dep:anyhow",
-    "dep:object",
-    "dep:rustc-demangle",
-    "dep:serde",
-    "dep:serde_json",
-    "dep:solana-sbpf",
+    "litesvm/register-tracing",
 ]
 
 [dependencies]
-# `profile` feature — in-process SVM wrapper that records per-test register traces.
-litesvm = { version = "0.11.0", features = ["register-tracing"], optional = true }
+litesvm = "0.11.0"
 solana-program-runtime = { version = "3.1.12", optional = true }
 solana-transaction = { version = "3.0.1", optional = true }
 solana-transaction-context = { version = "3.0", optional = true }
-solana-address = { version = "2.0", optional = true }
-
-# `render` feature — flamegraph + ix-trace rendering from trace files.
-anyhow = { version = "1.0", optional = true }
-object = { version = "0.37.3", features = ["read_core", "elf"], optional = true }
-rustc-demangle = { version = "0.1", optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0", optional = true }
-solana-sbpf = { version = "0.13.1", optional = true }
 
 # Nested workspace so dep resolution is independent of the outer anchor
-# workspace (which has its own tight constraints around `solana-faucet`
-# and `anchor-cli`). Matches `bench/Cargo.toml`'s approach.
+# workspace — litesvm's transitive `agave-*` pins conflict with
+# `anchor-cli`'s `solana-faucet` + `agave-unstable-api` requirement.
+# Matches `bench/Cargo.toml`'s approach.
 [workspace]

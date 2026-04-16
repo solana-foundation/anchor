@@ -51,8 +51,10 @@ use {
 mod account;
 mod checks;
 pub mod config;
+mod flamegraph;
 mod keygen;
 mod metadata;
+mod profile;
 mod program;
 pub mod rust_template;
 
@@ -231,6 +233,13 @@ pub enum Command {
         /// Validator type to use for local testing
         #[clap(value_enum, long, default_value = "surfpool")]
         validator: ValidatorType,
+        /// Profile each test: record per-test SBF register traces and
+        /// render a flamegraph SVG per test under
+        /// `target/anchor-v2-profile/`. Forces a debug build (DWARF is
+        /// required for symbolication) and activates the `profile`
+        /// cargo feature. Rust tests only.
+        #[clap(long)]
+        profile: bool,
         args: Vec<String>,
         /// Environment variables to pass into the docker container
         #[clap(short, long, required = false)]
@@ -1262,6 +1271,7 @@ fn process_command(opts: Opts) -> Result<()> {
             detach,
             run,
             validator,
+            profile,
             args,
             env,
             cargo_args,
@@ -1277,6 +1287,7 @@ fn process_command(opts: Opts) -> Result<()> {
             detach,
             run,
             validator,
+            profile,
             args,
             env,
             cargo_args,
@@ -3187,6 +3198,7 @@ fn test(
     detach: bool,
     tests_to_run: Vec<String>,
     validator_type: ValidatorType,
+    profile: bool,
     extra_args: Vec<String>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
@@ -3204,7 +3216,51 @@ fn test(
         // Set validator type based on CLI choice
         cfg.validator = Some(validator_type);
 
-        // Build if needed.
+        // --profile setup: clear stale traces + point `anchor-v2-testing`
+        // at our profile directory before the child `cargo test` runs.
+        let workspace_root = cfg.path().parent().unwrap().to_owned();
+        let profile_dir = workspace_root.join(crate::profile::DEFAULT_PROFILE_DIR);
+        if profile {
+            let _ = fs::remove_dir_all(&profile_dir);
+            std::env::set_var("ANCHOR_PROFILE_DIR", &profile_dir);
+
+            // Force DWARF into the release profile so the flamegraph
+            // symbolicator can resolve inline frames. `CARGO_PROFILE_*`
+            // is scoped to a specific cargo profile — only `cargo
+            // build-sbf` (release) sees this; the IDL build (test
+            // profile) and other cargo invocations are unaffected, so
+            // the flag can't leak into commands that don't accept it.
+            std::env::set_var("CARGO_PROFILE_RELEASE_DEBUG", "2");
+
+            // Rewrite `cargo test` → `cargo test --features profile` so the
+            // user's test project picks up `anchor_v2_testing`'s profile
+            // feature. We touch only the `test` script — BENCH_IX_TRACE and
+            // custom scripts are left alone.
+            if let Some(test_script) = cfg.scripts.get_mut("test") {
+                if test_script.contains("cargo test") {
+                    *test_script = test_script
+                        .replacen("cargo test", "cargo test --features profile", 1);
+                } else {
+                    eprintln!(
+                        "warning: --profile requires the `test` script in Anchor.toml to \
+                         invoke `cargo test`; got: {test_script:?}. Profiling will not activate."
+                    );
+                }
+            } else {
+                eprintln!(
+                    "warning: --profile requires a [scripts] test entry in Anchor.toml; \
+                     none found. Profiling will not activate."
+                );
+            }
+        }
+
+        // Build if needed. Note: we don't inject `--debug` for --profile
+        // because that flag leaks from `cargo_args` into other cargo
+        // invocations that don't accept it (IDL build). The flamegraph
+        // renderer falls back to the unstripped binary in
+        // `target/sbpf-solana-solana/release/` for symbolication, which
+        // works without debug info — users who want inline frames can
+        // add `cargo build-sbf --debug` via their own workflow.
         if !skip_build {
             build(
                 cfg_override,
@@ -3315,8 +3371,65 @@ fn test(
             }
         }
         cfg.run_hooks(HookType::PostTest)?;
+
+        if profile {
+            render_profile(cfg, &profile_dir)?;
+        }
+
         Ok(())
     })?
+}
+
+/// Walks the per-test trace directories left behind by
+/// `anchor-v2-testing`'s profile callback and renders one flamegraph
+/// SVG per transaction under `<profile_dir>/<test>__tx<N>.svg`.
+///
+/// CPIs are symbolicated against the right ELF per invocation — a
+/// tx that calls into spl-token shows spl-token's frames alongside
+/// the program under test, not dropped or lumped under `[unknown]`.
+fn render_profile(cfg: &WithPath<Config>, profile_dir: &Path) -> Result<()> {
+    if !profile_dir.exists() {
+        eprintln!(
+            "warning: no traces produced at {} — did your tests call \
+             `anchor_v2_testing::svm()` with the `profile` feature?",
+            profile_dir.display()
+        );
+        return Ok(());
+    }
+
+    // Build pubkey → deployed `.so` path map from Anchor.toml [programs.*].
+    // Every cluster mapped in the config is fair game; duplicates collapse.
+    let workspace_root = cfg.path().parent().unwrap().to_owned();
+    let deploy_dir = workspace_root.join("target").join("deploy");
+    let mut pubkey_to_so: BTreeMap<String, PathBuf> = BTreeMap::new();
+    for programs in cfg.programs.values() {
+        for (name, deployment) in programs {
+            let so = deploy_dir.join(format!("{name}.so"));
+            pubkey_to_so.insert(deployment.address.to_string(), so);
+        }
+    }
+
+    let rendered = profile::render_all_tests(profile_dir, Some(&workspace_root), &pubkey_to_so)
+        .context("failed to render flamegraphs from trace directory")?;
+
+    if rendered.is_empty() {
+        eprintln!(
+            "warning: no per-test trace directories found under {}. \
+             No flamegraphs produced.",
+            profile_dir.display()
+        );
+        return Ok(());
+    }
+
+    println!("\nFlamegraphs:");
+    for test in &rendered {
+        println!("  {}", test.test_name);
+        for svg in &test.svg_paths {
+            println!("    →  {}", svg.display());
+        }
+    }
+
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
