@@ -2,7 +2,7 @@
 name = "malicious"
 version = "0.1.0"
 description = "PoC: Malicious program that spoofs CPI return data"
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
