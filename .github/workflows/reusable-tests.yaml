@@ -393,7 +393,13 @@ jobs:
 
       - name: Run generated project tests
         working-directory: /tmp/hello-anchor-${{ matrix.template }}
+        if: ${{ matrix.template != 'rust' && matrix.template != 'mollusk' }}
         run: yarn link @anchor-lang/core && yarn && anchor test && yarn lint:fix
+
+      - name: Run generated project tests (Rust only)
+        working-directory: /tmp/hello-anchor-${{ matrix.template }}
+        if: ${{ matrix.template == 'rust' || matrix.template == 'mollusk' }}
+        run: anchor test
 
       - uses: ./.github/actions/git-diff/
 
