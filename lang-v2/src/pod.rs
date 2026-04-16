@@ -5,10 +5,9 @@
 //! account data without alignment concerns — critical for `#[repr(C)]`
 //! zero-copy structs on Solana.
 //!
-//! Arithmetic operators (`+`, `-`, `*`) use wrapping semantics in release
-//! Overflow-checked in debug builds, wrapping in release. Use
-//! `checked_add`, `checked_sub`, `checked_mul`, `checked_div` where overflow
-//! must be detected.
+//! Arithmetic operators (`+`, `-`, `*`) are overflow-checked in debug builds
+//! and wrapping in release. Use `checked_add`, `checked_sub`, `checked_mul`,
+//! `checked_div` where overflow must be detected.
 
 use core::fmt;
 

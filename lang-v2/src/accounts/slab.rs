@@ -14,7 +14,7 @@ use {
 };
 
 // SlabSchema / SlabInit (bytes-level hooks Slab invokes on `H`) live in
-// `accounts::view_wrapper_traits`. The forwards below tie them + the
+// `accounts::slab_hooks`. The forwards below tie them + the
 // wrapper-level `AccountInitialize` together.
 
 /// Disambiguation for failed owner checks: uninitialized placeholder vs.
@@ -102,7 +102,7 @@ where
 ///   - `[HEADER_END..HEADER_END+4]` — `u32 len` (current number of items)
 ///   - padding bytes until `ITEMS_OFFSET` is aligned to `align_of::<T>()`
 ///   - `[ITEMS_OFFSET..ITEMS_OFFSET + capacity * size_of::<T>()]` — raw items
-/// - when `T` is a ZST (the default `Account<T> = Slab<T, ()>` case):
+/// - when `T` is a ZST (the default `Account<T> = Slab<T, HeaderOnly>` case):
 ///   - nothing after the header; layout is byte-identical to pre-rewrite
 ///     `Account<T>`, no rent change, no migration.
 ///
@@ -124,10 +124,10 @@ where
 /// ## Tail-only methods
 ///
 /// `try_push`, `pop`, `clear`, `truncate`, `swap_remove`, and `Index<usize>`
-/// are compile errors when `T` is a ZST — they contain an inline `const`
-/// block that panics at monomorphization time if `size_of::<T>() == 0`.
-/// This means `Account<Ledger>::pop()` (which would be `Slab<Ledger, ()>::pop`)
-/// fails to compile rather than silently no-opping at runtime.
+/// live in an `impl<H, T> Slab<H, T> where T: Pod` block. `HeaderOnly`
+/// doesn't implement `Pod`, so calling them on `Account<T>` =
+/// `Slab<T, HeaderOnly>` is a plain "method not found" compile error rather
+/// than a runtime no-op.
 ///
 /// ## Internals
 ///

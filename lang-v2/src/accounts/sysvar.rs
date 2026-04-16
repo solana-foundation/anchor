@@ -37,8 +37,8 @@ impl SysvarId for pinocchio::sysvars::rent::Rent {
 /// Account wrapper for sysvars (Clock, Rent, etc.).
 ///
 /// Validates that the passed account address matches `T::SYSVAR_ID`,
-/// then deserializes the sysvar from account data via pinocchio's
-/// `Sysvar::get()`.
+/// then reads the sysvar directly from the runtime via pinocchio's
+/// `Sysvar::get()` syscall (account data is not deserialized).
 ///
 /// ## `#[account(address = X @ MyErr)]` does NOT surface `MyErr`
 ///

@@ -39,7 +39,7 @@ pub use {
 /// For accounts with a length-prefixed tail, use [`Slab<H, T>`] directly:
 /// ```ignore
 /// #[derive(Accounts)]
-/// pub struct Grow<'info> {
+/// pub struct Grow {
 ///     #[account(mut)]
 ///     pub ledger: Slab<Ledger, Entry>,  // tail of `Entry` items
 /// }

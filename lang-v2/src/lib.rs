@@ -1,6 +1,6 @@
 //! Anchor v2: Trait-based account system for Solana.
 //!
-//! `#![no_std]` compatible. Depends only on pinocchio, borsh, bytemuck.
+//! `#![no_std]` compatible.
 
 #![no_std]
 
@@ -383,7 +383,7 @@ macro_rules! require_neq {
 ///
 /// # Example
 /// ```rust,ignore
-/// require_keys_eq!(*ctx.accounts.data.authority(), ctx.accounts.authority.key());
+/// require_keys_eq!(*ctx.accounts.data.authority(), *ctx.accounts.authority.address());
 /// ```
 #[macro_export]
 macro_rules! require_keys_eq {
@@ -407,7 +407,7 @@ macro_rules! require_keys_eq {
 ///
 /// # Example
 /// ```rust,ignore
-/// require_keys_neq!(*ctx.accounts.data.authority(), ctx.accounts.other.key());
+/// require_keys_neq!(*ctx.accounts.data.authority(), *ctx.accounts.other.address());
 /// ```
 #[macro_export]
 macro_rules! require_keys_neq {

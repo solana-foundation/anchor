@@ -582,7 +582,7 @@ fn emit_init_body(
     };
 
     // Init params come from namespaced constraints that name init-time
-    // inputs (e.g. `mint::Authority = x`). Runtime-only constraints —
+    // inputs (e.g. `mint::authority = x`). Runtime-only constraints —
     // currently any constraint whose Params type has no matching field —
     // would fail to typecheck if threaded here. We filter out the ones
     // we know are runtime-only before collecting param assignments.

@@ -81,7 +81,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
         program_id: &Address,
     ) -> Result<T, ProgramError> {
         // Hot path: a single owner check. The "uninitialized placeholder"
-        // disambiguation lives in `cold_owner_error` (account.rs) — see
+        // disambiguation lives in `cold_owner_error` (slab.rs) — see
         // the comment there for why this is safe.
         if !view.owned_by(&T::owner(program_id)) {
             return Err(super::slab::cold_owner_error(&view));
@@ -201,7 +201,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AsRef<Account
 }
 
 /// Forward `Discriminator` from a `BorshAccount<T>` to its inner type. Lets
-/// the `#[account(zero)]` derive codegen look up the disc via the field type
+/// the `#[account(zeroed)]` derive codegen look up the disc via the field type
 /// directly (`<BorshAccount<Counter> as Discriminator>::DISCRIMINATOR`).
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> Discriminator
     for BorshAccount<T>

@@ -38,7 +38,7 @@ impl AnchorAccount for Signer {
     /// `agave/program-runtime/src/serialization.rs`) and is part of the
     /// stable SBF ABI: `[NON_DUP_MARKER, is_signer, is_writable, key...]`.
     ///
-    /// Returns `ConstraintSignerOrMut` if either flag is unset.
+    /// Returns `ConstraintSigner` if either flag is unset.
     #[inline(always)]
     unsafe fn load_mut(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
         // SAFETY: view.account_ptr() points at a valid RuntimeAccount header.
