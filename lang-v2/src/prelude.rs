@@ -1,6 +1,7 @@
 //! Prelude: import everything you need with `use anchor_lang_v2::prelude::*;`
 
 pub use crate::{
+    access_control,
     account,
     // Account types
     accounts::{

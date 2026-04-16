@@ -34,7 +34,7 @@ pub use solana_program_log::log as msg;
 pub use wincode;
 pub use {
     accounts::{AccountInitialize, SlabInit},
-    anchor_derive_accounts_v2::{account, emit, event, program, Accounts},
+    anchor_derive_accounts_v2::{access_control, account, emit, event, program, Accounts},
     borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
     context::{Bumps, Context},
@@ -214,7 +214,7 @@ macro_rules! require_eq {
     ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
         if $value1 != $value2 {
             $crate::msg!(
-                "require_eq violation: left = {:?}, right = {:?}",
+                "require_eq violation: left = {}, right = {}",
                 $value1,
                 $value2
             );
@@ -224,7 +224,7 @@ macro_rules! require_eq {
     ($value1:expr, $value2:expr $(,)?) => {
         if $value1 != $value2 {
             $crate::msg!(
-                "require_eq violation: left = {:?}, right = {:?}",
+                "require_eq violation: left = {}, right = {}",
                 $value1,
                 $value2
             );
@@ -247,7 +247,7 @@ macro_rules! require_neq {
     ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
         if $value1 == $value2 {
             $crate::msg!(
-                "require_neq violation: left = {:?}, right = {:?}",
+                "require_neq violation: left = {}, right = {}",
                 $value1,
                 $value2
             );
@@ -257,7 +257,7 @@ macro_rules! require_neq {
     ($value1:expr, $value2:expr $(,)?) => {
         if $value1 == $value2 {
             $crate::msg!(
-                "require_neq violation: left = {:?}, right = {:?}",
+                "require_neq violation: left = {}, right = {}",
                 $value1,
                 $value2
             );
@@ -326,7 +326,7 @@ macro_rules! require_gt {
     ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
         if $value1 <= $value2 {
             $crate::msg!(
-                "require_gt violation: left = {:?}, right = {:?}",
+                "require_gt violation: left = {}, right = {}",
                 $value1,
                 $value2
             );
@@ -336,7 +336,7 @@ macro_rules! require_gt {
     ($value1:expr, $value2:expr $(,)?) => {
         if $value1 <= $value2 {
             $crate::msg!(
-                "require_gt violation: left = {:?}, right = {:?}",
+                "require_gt violation: left = {}, right = {}",
                 $value1,
                 $value2
             );
@@ -357,7 +357,7 @@ macro_rules! require_gte {
     ($value1:expr, $value2:expr, $error_code:expr $(,)?) => {
         if $value1 < $value2 {
             $crate::msg!(
-                "require_gte violation: left = {:?}, right = {:?}",
+                "require_gte violation: left = {}, right = {}",
                 $value1,
                 $value2
             );
@@ -367,7 +367,7 @@ macro_rules! require_gte {
     ($value1:expr, $value2:expr $(,)?) => {
         if $value1 < $value2 {
             $crate::msg!(
-                "require_gte violation: left = {:?}, right = {:?}",
+                "require_gte violation: left = {}, right = {}",
                 $value1,
                 $value2
             );

@@ -1,5 +1,6 @@
 extern crate proc_macro;
 
+mod access_control;
 mod idl;
 mod parse;
 mod pda;
@@ -1048,6 +1049,31 @@ pub fn emit(input: TokenStream) -> TokenStream {
             anchor_lang_v2::sol_log_data(&[&anchor_lang_v2::Event::data(&#data)]);
         }
     })
+}
+
+// ---------------------------------------------------------------------------
+// #[access_control]
+// ---------------------------------------------------------------------------
+
+/// Executes the given access control method before running the decorated
+/// instruction handler. Any method in scope of the attribute can be invoked
+/// with any arguments from the associated instruction handler.
+///
+/// # Example
+///
+/// ```ignore
+/// #[access_control(Create::validate(&ctx, bump_seed))]
+/// pub fn create(ctx: &mut Context<'_, Create>, bump_seed: u8) -> Result<()> {
+///     // handler body
+///     Ok(())
+/// }
+/// ```
+///
+/// Expands to a call to `Create::validate(&ctx, bump_seed)?;` prepended to
+/// the handler body. Multiple calls can be specified, separated by `,`.
+#[proc_macro_attribute]
+pub fn access_control(args: TokenStream, input: TokenStream) -> TokenStream {
+    access_control::expand(args, input)
 }
 
 fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {
