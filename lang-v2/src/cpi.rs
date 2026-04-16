@@ -494,12 +494,32 @@ pub fn realloc_account(
     if new_space > old_space {
         let deficit = required.saturating_sub(current_lamports);
         if deficit > 0 {
-            pinocchio_system::instructions::Transfer {
-                from: payer,
-                to: account,
-                lamports: deficit,
+            // SAFETY: Transfer only modifies lamports, never account data.
+            // BorshAccount holds a RefMut that guards data bytes — using the
+            // unchecked path avoids a spurious AccountBorrowFailed from
+            // pinocchio's checked invoke. Slab (borrow_state == 0) is
+            // unaffected either way. Matches CpiContext::invoke's use of
+            // invoke_signed_unchecked (context_cpi.rs).
+            unsafe {
+                let cpi_accounts: [pinocchio::cpi::CpiAccount; 2] = [
+                    pinocchio::cpi::CpiAccount::from(payer),
+                    pinocchio::cpi::CpiAccount::from(&*account as &AccountView),
+                ];
+                let mut ix_data = [0u8; 12];
+                ix_data[0] = 2;
+                ix_data[4..12].copy_from_slice(&deficit.to_le_bytes());
+                let instruction = pinocchio::instruction::InstructionView {
+                    program_id: &pinocchio_system::ID,
+                    accounts: &[
+                        pinocchio::instruction::InstructionAccount::writable_signer(
+                            payer.address(),
+                        ),
+                        pinocchio::instruction::InstructionAccount::writable(account.address()),
+                    ],
+                    data: &ix_data,
+                };
+                pinocchio::cpi::invoke_unchecked(&instruction, &cpi_accounts);
             }
-            .invoke()?;
         }
     } else if new_space < old_space {
         let excess = current_lamports.saturating_sub(required);
@@ -518,10 +538,12 @@ pub fn realloc_account(
         }
     }
 
-    // SAFETY: realloc is called from derive-generated code on an AccountView
-    // whose backing Slab holds the conceptual borrow (borrow_state == 0).
-    // Using resize_unchecked bypasses pinocchio's check_borrow_mut() which
-    // would reject the operation due to the Slab's borrow flag.
+    // SAFETY: resize_unchecked bypasses pinocchio's check_borrow_mut().
+    // Slab sets borrow_state = 0 (exclusive without a guard), so the
+    // checked path would reject it. BorshAccount holds a RefMut whose
+    // borrow flag is still set, but the resize only writes the data_len
+    // field — no aliasing with the guarded data region. BorshAccount's
+    // exit() detects the stale guard length and reacquires a fresh one.
     unsafe { account.resize_unchecked(new_space)? };
 
     if zero && new_space > old_space {

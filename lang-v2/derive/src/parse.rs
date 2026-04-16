@@ -1011,36 +1011,18 @@ pub fn parse_field(
             .as_ref()
             .expect("realloc requires realloc_payer");
         let zero_fill = attrs.realloc_zero;
-        // BorshAccount holds a pinocchio RefMut that (a) blocks the system
-        // program Transfer CPI inside realloc_account and (b) captures a
-        // stale slice length after resize. Release before, reacquire after.
-        // Slab holds no pinocchio borrow so needs neither step.
-        let base_ty = option_inner.unwrap_or(field_ty);
-        let is_borsh_account = field_ty_str(base_ty) == "BorshAccount";
-        let pre_realloc = if is_borsh_account {
-            quote! { #field_name.release_borrow(); }
-        } else {
-            quote! {}
-        };
-        let post_realloc = if is_borsh_account {
-            quote! { #field_name.reacquire_borrow_mut()?; }
-        } else {
-            quote! {}
-        };
         constraints.push(quote! {
             {
                 let __new_space = #new_space;
                 let mut __view = *#field_name.account();
                 let __payer_view = *#realloc_payer.account();
                 if __new_space != __view.data_len() {
-                    #pre_realloc
                     anchor_lang_v2::realloc_account(
                         &mut __view,
                         __new_space,
                         &__payer_view,
                         #zero_fill,
                     )?;
-                    #post_realloc
                 }
             }
         });
@@ -1083,35 +1065,22 @@ pub fn parse_field(
     // so `#field_name.account()`, `#field_name.authority`, etc. resolve on the
     // inner `T` (via autoderef). The exit/close path regenerates against the
     // unwrapped `&mut T` so `AnchorAccount::exit/close` get the right type.
-    //
-    // Mutable fields use `ref mut` so constraint bodies that need `&mut self`
-    // (e.g. BorshAccount::release_borrow in the realloc path) can work.
-    // Read-only methods still resolve via auto-deref from `&mut T` to `&T`.
     let (constraints, exit) = if is_optional {
         let constraints = constraints
             .into_iter()
             .map(|c| {
-                if attrs.is_mut {
-                    quote! {
-                        if let Some(ref mut #field_name) = #field_name {
-                            let _ = &#field_name;
-                            #c
-                        }
-                    }
-                } else {
-                    quote! {
-                        if let Some(ref #field_name) = #field_name {
-                            // `#c` may not textually name `#field_name` (e.g. a
-                            // literal `constraint = false`, or the derive-
-                            // generated duplicate-mut guard that only touches
-                            // `__duplicates[..]`). Without this no-op reference
-                            // rustc flags the original field as unused. Narrow
-                            // silencer rather than a blanket
-                            // `#[allow(unused_variables)]` so real typos in
-                            // `#c` still surface.
-                            let _ = &#field_name;
-                            #c
-                        }
+                quote! {
+                    if let Some(ref #field_name) = #field_name {
+                        // `#c` may not textually name `#field_name` (e.g. a
+                        // literal `constraint = false`, or the derive-
+                        // generated duplicate-mut guard that only touches
+                        // `__duplicates[..]`). Without this no-op reference
+                        // rustc flags the original field as unused. Narrow
+                        // silencer rather than a blanket
+                        // `#[allow(unused_variables)]` so real typos in
+                        // `#c` still surface.
+                        let _ = &#field_name;
+                        #c
                     }
                 }
             })
