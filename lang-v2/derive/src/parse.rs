@@ -239,15 +239,32 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                             // or a literal/expression (value).
                             let is_field_ref = input.peek(syn::Ident);
                             let value: Expr = input.parse()?;
-                            // Capitalize key and append Constraint: "mint" → "MintConstraint"
+                            // snake_case → PascalCase + Constraint suffix:
+                            //   "mint"             → "MintConstraint"
+                            //   "freeze_authority" → "FreezeAuthorityConstraint"
+                            //   "min_stake"        → "MinStakeConstraint"
+                            // Previous behaviour only capitalised the first
+                            // char, which produced `Freeze_authorityConstraint`
+                            // — unusable as a Rust type name. External crates
+                            // following the spl-v2 pattern assume idiomatic
+                            // PascalCase, so snake-segment joining is the
+                            // correct resolution.
                             let key = {
                                 let s = key_ident.to_string();
-                                let mut c = s.chars();
-                                let capitalized = match c.next() {
-                                    Some(first) => first.to_uppercase().to_string() + c.as_str(),
-                                    None => String::new(),
-                                };
-                                format!("{capitalized}Constraint")
+                                let mut out = String::with_capacity(s.len() + "Constraint".len());
+                                let mut upper_next = true;
+                                for ch in s.chars() {
+                                    if ch == '_' {
+                                        upper_next = true;
+                                    } else if upper_next {
+                                        out.extend(ch.to_uppercase());
+                                        upper_next = false;
+                                    } else {
+                                        out.push(ch);
+                                    }
+                                }
+                                out.push_str("Constraint");
+                                out
                             };
                             let raw_key = key_ident.to_string();
                             result.namespaced.push(NamespacedConstraint {
