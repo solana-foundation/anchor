@@ -253,11 +253,6 @@ custom-panic = []
 [dependencies]
 # Once anchor-lang-v2 is published to crates.io, swap to: anchor-lang-v2 = "{3}"
 anchor-lang-v2 = {{ git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }}
-# `solana-program-log` and `wincode` are pulled in directly because their
-# proc macros emit absolute `::solana_program_log::…` / `::wincode::…` paths
-# at expansion time. Once both expose a re-export-aware entry point
-# (see `#[borsh(crate = …)]` for the established pattern) these can move
-# behind `anchor_lang_v2::…` and drop out of the scaffold.
 solana-program-log = {{ version = "1.1", features = ["macro"] }}
 wincode = {{ version = "0.4", features = ["derive"] }}
 {4}
