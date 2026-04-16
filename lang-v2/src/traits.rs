@@ -174,8 +174,19 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     ///
     /// The handle borrows `self` mutably, preventing any typed access
     /// while it is alive. The handle's `is_writable` flag is `true`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying account is not marked writable in
+    /// the transaction.
     #[inline(always)]
     fn cpi_handle_mut(&mut self) -> CpiHandle<'_> {
+        // FIXME: This should perhaps be `cfg(guardrails)`, as it's a correctness
+        // rather than a safety invariant.
+        assert!(
+            self.account().is_writable(),
+            "cpi_handle_mut called on a read-only account"
+        );
         CpiHandle {
             view: self.account(),
             writable: true,
