@@ -9,13 +9,24 @@ pub fn rust_type_to_idl(ty: &Type) -> String {
 
 /// Convert a stringified Rust type to IDL JSON.
 fn type_str_to_idl(s: &str) -> String {
+    // Strip lifetimes and leading `&` (reference) so `&'a [u64]` → `[u64]`.
+    let s = strip_ref_and_lifetime(s);
+    let s = s.as_str();
     match s {
         "u8" | "u16" | "u32" | "u64" | "u128" | "i8" | "i16" | "i32" | "i64" | "i128" | "bool" => {
             format!("\"{s}\"")
         }
-        "String" | "string" => "\"string\"".into(),
+        "String" | "string" | "str" => "\"string\"".into(),
         "Pubkey" | "Address" | "pubkey" => "\"pubkey\"".into(),
         "bytes" => "\"bytes\"".into(),
+        // `&[u8]` → bytes
+        "[u8]" => "\"bytes\"".into(),
+        // `&[T]` slice → vec<T>
+        _ if s.starts_with('[') && s.ends_with(']') && !s.contains(';') => {
+            let inner = &s[1..s.len() - 1];
+            format!("{{\"vec\":{}}}", type_str_to_idl(inner))
+        }
+        // `[T; N]` array
         _ if s.starts_with('[') && s.ends_with(']') && s.contains(';') => {
             let inner = &s[1..s.len() - 1];
             if let Some((ty_part, n_part)) = inner.split_once(';') {
@@ -24,7 +35,7 @@ fn type_str_to_idl(s: &str) -> String {
                 let size = n_part.trim().parse::<usize>().unwrap_or(0);
                 format!("{{\"array\":[{ty_json},{size}]}}")
             } else {
-                format!("{{\"defined\":\"{s}\"}}")
+                format!("{{\"defined\":{{\"name\":\"{s}\"}}}}")
             }
         }
         _ if s.starts_with("Vec<") => {
@@ -43,8 +54,27 @@ fn type_str_to_idl(s: &str) -> String {
             let inner = s.strip_prefix("Box<").unwrap().strip_suffix('>').unwrap();
             type_str_to_idl(inner)
         }
-        other => format!("{{\"defined\":\"{other}\"}}"),
+        other => format!("{{\"defined\":{{\"name\":\"{other}\"}}}}"),
     }
+}
+
+/// Strip a leading `&` reference and any `'lifetime` annotation from a type
+/// string, so `&'a [u64]` → `[u64]`. Leaves nested types alone.
+fn strip_ref_and_lifetime(s: &str) -> String {
+    let s = s.trim();
+    // Remove leading `&` and optional `mut`
+    let s = s.strip_prefix('&').unwrap_or(s).trim_start();
+    // Remove lifetime annotation like `'a` (stop at the next whitespace/'[')
+    let s = if let Some(rest) = s.strip_prefix('\'') {
+        // Drop up to the next whitespace
+        match rest.find(|c: char| c.is_whitespace() || c == '[' || c == ',') {
+            Some(pos) => rest[pos..].trim_start().to_owned(),
+            None => String::new(),
+        }
+    } else {
+        s.to_owned()
+    };
+    s.trim_start_matches("mut ").trim().to_owned()
 }
 
 /// Build IDL accounts JSON from parsed field metadata.
