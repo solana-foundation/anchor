@@ -456,7 +456,7 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let (struct_attrs, pod_impls) = if is_borsh {
         (
-            quote! { #[derive(borsh::BorshSerialize, borsh::BorshDeserialize, Default)] },
+            quote! { #[derive(anchor_lang_v2::borsh::BorshSerialize, anchor_lang_v2::borsh::BorshDeserialize, Default)] },
             quote! {},
         )
     } else {
@@ -980,9 +980,9 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
         // Custom 2-arg (r1, r2) entrypoint using SIMD-0321 convention.
         #[cfg(not(feature = "no-entrypoint"))]
-        pinocchio::default_allocator!();
+        anchor_lang_v2::pinocchio::default_allocator!();
         #[cfg(not(feature = "no-entrypoint"))]
-        pinocchio::default_panic_handler!();
+        anchor_lang_v2::pinocchio::default_panic_handler!();
 
         /// Matches Solana's transaction-wide account cap (u8 index space).
         /// The lookup array holds `[AccountView; 256]` = ~2 KiB of frame
