@@ -165,6 +165,16 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         if self.view.lamports() == 0 {
             return Ok(());
         }
+        // After a `realloc` constraint, the held RefMut has a stale slice
+        // length (captured at load_mut time, before the resize). Detect by
+        // comparing the guard's length against the current data_len and
+        // reacquire a fresh guard so serialization targets the correctly-
+        // sized buffer.
+        let stale = matches!(&self.borrow, BorshBorrow::Mutable { guard } if guard.len() != self.view.data_len());
+        if stale {
+            self.release_borrow();
+            self.reacquire_borrow_mut()?;
+        }
         // Write through the held RefMut — no need to re-acquire the borrow
         if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
             self.data
