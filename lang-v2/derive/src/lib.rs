@@ -1253,13 +1253,28 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #(#attrs)*
                 #vis struct #name #fields
 
+                // Targeted diagnostics fire first so users see a specific
+                // migration hint (e.g. "use `#[event(borsh)]` for dynamic
+                // strings") instead of bytemuck's opaque `Pod not satisfied`.
                 #(#field_diagnostics)*
 
+                // Transitive Pod bound per field — catches fat pointers even
+                // when hidden inside an opaque user-defined struct (the
+                // `Pod` trait propagates through nested types).
                 const _: fn() = || {
                     fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
                     #( assert_pod::<#field_types>(); )*
                 };
 
+                // `repr(C)` padding is target-dependent: on SBF `u128` is
+                // align-8, so a `{Address (align 1), u64, u128}` struct has
+                // no padding; on x86_64 hosts `u128` is align-16, inserting
+                // a phantom 8-byte gap before the `u128`. Gating on the
+                // Solana target means `cargo check` accepts the struct
+                // based on BPF layout (the only layout that actually
+                // ships) and `cargo build-sbf` still enforces the no-
+                // padding invariant.
+                #[cfg(target_os = "solana")]
                 const _: () = ::core::assert!(
                     ::core::mem::size_of::<#name>()
                         == 0 #( + ::core::mem::size_of::<#field_types>() )*,
@@ -1269,9 +1284,41 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                      `#[event(borsh)]` for arbitrary layouts"
                 );
 
-                // Safety: all fields are Pod (checked above) and the struct
-                // has no padding (checked above), so every byte of
-                // `#name` is initialized and valid for all bit patterns.
+                // SAFETY: `bytemuck::Pod` requires four invariants. Each is
+                // proven by a compile-time check earlier in this block:
+                //
+                //   (1) `#[repr(C)]`                     — enforced by the
+                //       `#[repr(C)]` attribute emitted above.
+                //   (2) Every field is `Pod`             — enforced by the
+                //       `assert_pod::<T>()` ghost fn. Failure is
+                //       `T: Pod is not satisfied`, which transitively
+                //       rejects fat pointers (`Vec`, `String`, `Box`, `&T`),
+                //       uninit-byte types (`bool`, enums, `Option`), and
+                //       any user struct that itself isn't `Pod`.
+                //   (3) No interior padding bytes        — enforced by the
+                //       `size_of::<Self>() == Σ size_of::<Field>()` assert
+                //       under `cfg(target_os = "solana")`. Padding bytes
+                //       are `MaybeUninit`, which would be read by
+                //       `bytemuck::bytes_of` / `bytemuck::from_bytes` and
+                //       constitute UB — the assert precludes the case.
+                //   (4) `Copy` + `'static`               — `Copy` is
+                //       derived above; `'static` is required by
+                //       `assert_pod::<T: 'static>` transitively.
+                //
+                // The cfg-gated padding assert deliberately only evaluates
+                // on the Solana target. `repr(C)` padding is target-
+                // dependent: on SBF `u128` is align-8, so `{Address (align
+                // 1), u64, u128}` is perfectly packed; on x86_64 hosts
+                // `u128` is align-16, so that same layout has a phantom
+                // 8-byte gap during `cargo check`. This is not a soundness
+                // hole — the event bytes only get memcpy'd into
+                // `sol_log_data` on the actual deployment target, where
+                // the assert does run.
+                //
+                // Not using `#[derive(Pod)]` because bytemuck's own
+                // padding check is unconditional (not target-gated) and
+                // would reject `u128`-carrying events on host compile even
+                // though their on-chain layout is sound.
                 unsafe impl anchor_lang_v2::bytemuck::Pod for #name {}
                 unsafe impl anchor_lang_v2::bytemuck::Zeroable for #name {}
 
