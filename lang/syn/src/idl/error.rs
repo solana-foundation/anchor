@@ -1,9 +1,10 @@
-use heck::SnakeCase;
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-
-use super::common::{gen_print_section, get_idl_module_path};
-use crate::Error;
+use {
+    super::common::{gen_print_section, get_idl_module_path},
+    crate::Error,
+    heck::SnakeCase,
+    proc_macro2::TokenStream,
+    quote::{format_ident, quote},
+};
 
 pub fn gen_idl_print_fn_error(error: &Error) -> TokenStream {
     let idl = get_idl_module_path();
@@ -12,6 +13,13 @@ pub fn gen_idl_print_fn_error(error: &Error) -> TokenStream {
         "__anchor_private_print_idl_error_{}",
         error.ident.to_string().to_snake_case()
     );
+    let offset = match &error.args {
+        Some(args) => {
+            let offset = &args.offset;
+            quote! { #offset }
+        }
+        None => quote! { ::anchor_lang::error::ERROR_CODE_OFFSET },
+    };
 
     let error_codes = error
         .codes
@@ -26,7 +34,7 @@ pub fn gen_idl_print_fn_error(error: &Error) -> TokenStream {
 
             quote! {
                 #idl::IdlErrorCode {
-                    code: anchor_lang::error::ERROR_CODE_OFFSET + #id,
+                    code: #offset + #id,
                     name: #name.into(),
                     msg: #msg,
                 }

@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { assert } from "chai";
 
 import { Events } from "../target/types/events";
@@ -69,7 +69,7 @@ describe("Events", () => {
       const txResult = await program.provider.connection.getTransaction(
         txHash,
         {
-          commitment: "confirmed",
+          ...confirmOptions,
           maxSupportedTransactionVersion: 0,
         }
       );

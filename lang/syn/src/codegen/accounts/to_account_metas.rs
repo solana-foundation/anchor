@@ -1,5 +1,7 @@
-use crate::{AccountField, AccountsStruct};
-use quote::quote;
+use {
+    crate::{AccountField, AccountsStruct},
+    quote::quote,
+};
 
 // Generates the `ToAccountMetas` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {

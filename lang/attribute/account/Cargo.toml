@@ -1,14 +1,22 @@
 [package]
 name = "anchor-attribute-account"
-version = "0.32.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
+repository = "https://github.com/solana-foundation/anchor"
 license = "Apache-2.0"
 description = "Anchor attribute macro for defining an account"
 edition = "2021"
 
 [lib]
 proc-macro = true
+
+[lints.clippy]
+unwrap-used = "deny"
+expect-used = "deny"
+panic = "deny"
+unimplemented = "deny"
+indexing-slicing = "deny"
 
 [features]
 anchor-debug = ["anchor-syn/anchor-debug"]
@@ -17,8 +25,7 @@ lazy-account = []
 event-cpi = []
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "0.32.1", features = ["hash"] }
-bs58 = "0.5"
+anchor-syn = { path = "../../syn", version = "1.0.0", features = ["hash"] }
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }

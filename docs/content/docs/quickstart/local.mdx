@@ -37,7 +37,7 @@ anchor --version
 Expected output:
 
 ```shell filename="Terminal"
-anchor-cli 0.32.1
+anchor-cli 1.0.0
 ```
 
 ## Getting Started
@@ -144,8 +144,8 @@ This file demonstrates how to invoke the default program's `initialize`
 instruction in Typescript.
 
 ```ts filename="my-project.ts"
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Program } from "@anchor-lang/core";
 import { MyProject } from "../target/types/my_project";
 
 describe("my-project", () => {
@@ -285,9 +285,6 @@ skip-lint = false
 [programs.localnet]
 my_program = "3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg"
 
-[registry]
-url = "https://api.apr.dev"
-
 [provider]
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
@@ -381,7 +378,7 @@ new program.
 
 Below is an overview of default file structure in an Anchor workspace:
 
-<!-- cspell:disable -->
+{/* cspell:disable */}
 
 <Files>
   <Folder name=".anchor">
@@ -425,7 +422,7 @@ Below is an overview of default file structure in an Anchor workspace:
   <File name="package.json" />
 </Files>
 
-<!-- cspell:enable -->
+{/* cspell:enable */}
 
 ### Programs Folder
 

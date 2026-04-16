@@ -9,15 +9,10 @@
 //! ```ignore
 //! use std::rc::Rc;
 //!
-//! use anchor_client::{
-//!     solana_sdk::{
-//!         signature::{read_keypair_file, Keypair},
-//!         signer::Signer,
-//!         system_program,
-//!     },
-//!     Client, Cluster,
-//! };
+//! use anchor_client::{Client, Cluster, Signer};
 //! use my_program::{accounts, instruction, MyAccount};
+//! use solana_keypair::{read_keypair_file, Keypair};
+//! use solana_system_interface::program as system_program;
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create client
@@ -50,7 +45,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/coral-xyz/anchor/tree/v0.32.1/client/example/src
+//! [here]: https://github.com/solana-foundation/anchor/tree/v1.0.0/client/example/src
 //!
 //! # Features
 //!
@@ -59,7 +54,7 @@
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
-//! anchor-client = { version = "0.32.1 ", features = ["async"] }
+//! anchor-client = { version = "1.0.0 ", features = ["async"] }
 //! ````
 //!
 //! ## `mock`
@@ -67,54 +62,69 @@
 //! This feature allows passing in a custom RPC client when creating program instances, which is
 //! useful for mocking RPC responses, e.g. via [`RpcClient::new_mock`].
 //!
-//! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/2.3.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
+//! [`RpcClient::new_mock`]: https://docs.rs/solana-rpc-client/3.0.0/solana_rpc_client/rpc_client/struct.RpcClient.html#method.new_mock
 
-use anchor_lang::solana_program::program_error::ProgramError;
-use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas};
-use futures::{Future, StreamExt};
-use regex::Regex;
-use solana_account_decoder::{UiAccount, UiAccountEncoding};
-use solana_commitment_config::CommitmentConfig;
-use solana_instruction::{AccountMeta, Instruction};
-use solana_program::hash::Hash;
-use solana_pubsub_client::nonblocking::pubsub_client::{PubsubClient, PubsubClientError};
-use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
-use solana_rpc_client_api::{
-    client_error::Error as SolanaClientError,
-    config::{
-        RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-        RpcTransactionLogsConfig, RpcTransactionLogsFilter,
-    },
-    filter::{Memcmp, RpcFilterType},
-    response::{Response as RpcResponse, RpcLogsResponse},
-};
-use solana_signature::Signature;
-use solana_signer::{Signer, SignerError};
-use solana_transaction::Transaction;
-use std::iter::Map;
-use std::marker::PhantomData;
-use std::ops::Deref;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::vec::IntoIter;
-use thiserror::Error;
-use tokio::{
-    runtime::Handle,
-    sync::{
-        mpsc::{unbounded_channel, UnboundedReceiver},
-        RwLock,
-    },
-    task::JoinHandle,
-};
-
-pub use anchor_lang;
-pub use cluster::Cluster;
 #[cfg(feature = "async")]
 pub use nonblocking::ThreadSafeSigner;
-pub use solana_account_decoder;
+pub use {
+    anchor_lang,
+    cluster::Cluster,
+    solana_commitment_config::CommitmentConfig,
+    solana_instruction::Instruction,
+    solana_message::AddressLookupTableAccount,
+    solana_program::hash::Hash,
+    solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError,
+    solana_rpc_client_api::{
+        client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,
+        filter::RpcFilterType,
+    },
+    solana_signer::{Signer, SignerError},
+    solana_transaction::{versioned::VersionedTransaction, Transaction},
+};
+use {
+    anchor_lang::{
+        solana_program::{program_error::ProgramError, pubkey::Pubkey},
+        AccountDeserialize, Discriminator, InstructionData, ToAccountMetas,
+    },
+    futures::{Future, StreamExt},
+    regex::Regex,
+    solana_account_decoder::{UiAccount, UiAccountEncoding},
+    solana_instruction::AccountMeta,
+    solana_message::v0,
+    solana_pubsub_client::nonblocking::pubsub_client::PubsubClient,
+    solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
+    solana_rpc_client_api::{
+        config::{
+            RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcTransactionLogsConfig,
+            RpcTransactionLogsFilter,
+        },
+        filter::Memcmp,
+        response::{Response as RpcResponse, RpcLogsResponse},
+    },
+    solana_signature::Signature,
+    std::{iter::Map, marker::PhantomData, ops::Deref, pin::Pin, sync::Arc, vec::IntoIter},
+    thiserror::Error,
+    tokio::{
+        runtime::Handle,
+        sync::{
+            mpsc::{unbounded_channel, UnboundedReceiver},
+            OnceCell,
+        },
+        task::JoinHandle,
+    },
+};
 
 mod cluster;
+
+/// Specifies which transaction version to use when building transactions.
+#[derive(Debug, Clone, Default)]
+pub enum TxVersion<'a> {
+    /// Legacy transaction format.
+    #[default]
+    Legacy,
+    /// Versioned transaction format (v0) with optional address lookup tables.
+    V0(&'a [AddressLookupTableAccount]),
+}
 
 #[cfg(not(feature = "async"))]
 mod blocking;
@@ -230,7 +240,7 @@ impl EventUnsubscriber<'_> {
 pub struct Program<C> {
     program_id: Pubkey,
     cfg: Config<C>,
-    sub_client: Arc<RwLock<Option<PubsubClient>>>,
+    sub_client: OnceCell<Arc<PubsubClient>>,
     #[cfg(not(feature = "async"))]
     rt: tokio::runtime::Runtime,
     internal_rpc_client: AsyncRpcClient,
@@ -297,23 +307,9 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         })
     }
 
-    async fn init_sub_client_if_needed(&self) -> Result<(), ClientError> {
-        let lock = &self.sub_client;
-        let mut client = lock.write().await;
-
-        if client.is_none() {
-            let sub_client = PubsubClient::new(self.cfg.cluster.ws_url())
-                .await
-                .map_err(Box::new)?;
-            *client = Some(sub_client);
-        }
-
-        Ok(())
-    }
-
     async fn on_internal<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        f: impl Fn(&EventContext, T) + Send + 'static,
+        mut f: impl FnMut(&EventContext, T) + Send + 'static,
     ) -> Result<
         (
             JoinHandle<Result<(), ClientError>>,
@@ -321,7 +317,17 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         ),
         ClientError,
     > {
-        self.init_sub_client_if_needed().await?;
+        let client = self
+            .sub_client
+            .get_or_try_init(|| async {
+                PubsubClient::new(self.cfg.cluster.ws_url())
+                    .await
+                    .map(Arc::new)
+                    .map_err(|e| ClientError::SolanaClientPubsubError(Box::new(e)))
+            })
+            .await?
+            .clone();
+
         let (tx, rx) = unbounded_channel::<_>();
         let config = RpcTransactionLogsConfig {
             commitment: self.cfg.options,
@@ -329,33 +335,27 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         let program_id_str = self.program_id.to_string();
         let filter = RpcTransactionLogsFilter::Mentions(vec![program_id_str.clone()]);
 
-        let lock = Arc::clone(&self.sub_client);
-
         let handle = tokio::spawn(async move {
-            if let Some(ref client) = *lock.read().await {
-                let (mut notifications, unsubscribe) = client
-                    .logs_subscribe(filter, config)
-                    .await
-                    .map_err(Box::new)?;
+            let (mut notifications, unsubscribe) = client
+                .logs_subscribe(filter, config)
+                .await
+                .map_err(Box::new)?;
 
-                tx.send(unsubscribe).map_err(|e| {
-                    ClientError::SolanaClientPubsubError(Box::new(
-                        PubsubClientError::RequestFailed {
-                            message: "Unsubscribe failed".to_string(),
-                            reason: e.to_string(),
-                        },
-                    ))
-                })?;
+            tx.send(unsubscribe).map_err(|e| {
+                ClientError::SolanaClientPubsubError(Box::new(PubsubClientError::RequestFailed {
+                    message: "Unsubscribe failed".to_string(),
+                    reason: e.to_string(),
+                }))
+            })?;
 
-                while let Some(logs) = notifications.next().await {
-                    let ctx = EventContext {
-                        signature: logs.value.signature.parse().unwrap(),
-                        slot: logs.context.slot,
-                    };
-                    let events = parse_logs_response(logs, &program_id_str)?;
-                    for e in events {
-                        f(&ctx, e);
-                    }
+            while let Some(logs) = notifications.next().await {
+                let ctx = EventContext {
+                    signature: logs.value.signature.parse().unwrap(),
+                    slot: logs.context.slot,
+                };
+                let events = parse_logs_response(logs, &program_id_str)?;
+                for e in events {
+                    f(&ctx, e);
                 }
             }
             Ok::<(), ClientError>(())
@@ -386,9 +386,10 @@ pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize
     self_program_str: &str,
     l: &str,
 ) -> Result<(Option<T>, Option<String>, bool), ClientError> {
-    use anchor_lang::__private::base64;
-    use base64::engine::general_purpose::STANDARD;
-    use base64::Engine;
+    use {
+        anchor_lang::__private::base64,
+        base64::{engine::general_purpose::STANDARD, Engine},
+    };
 
     // Log emitted from the current program.
     if let Some(log) = l
@@ -501,6 +502,10 @@ pub enum ClientError {
     IOError(#[from] std::io::Error),
     #[error("{0}")]
     SignerError(#[from] SignerError),
+    #[error("{0}")]
+    CompileError(#[from] solana_message::CompileError),
+    #[error("Expected a legacy transaction but got a versioned transaction")]
+    NotLegacyTransaction,
 }
 
 pub trait AsSigner {
@@ -618,43 +623,148 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         instructions
     }
 
-    fn signed_transaction_with_blockhash(
-        &self,
-        latest_hash: Hash,
-    ) -> Result<Transaction, ClientError> {
-        let signers: Vec<&dyn Signer> = self.signers.iter().map(|s| s.as_signer()).collect();
-        let mut all_signers = signers;
-        all_signers.push(&*self.payer);
-
-        let mut tx = self.transaction();
-        tx.try_sign(&all_signers, latest_hash)?;
-
-        Ok(tx)
-    }
-
+    /// Build the request into a transaction.
+    ///
+    /// Note: This will build a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use [`transaction_versioned`].
     pub fn transaction(&self) -> Transaction {
         let instructions = &self.instructions();
         Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()))
     }
 
-    async fn signed_transaction_internal(&self) -> Result<Transaction, ClientError> {
-        let latest_hash = self
-            .internal_rpc_client
-            .get_latest_blockhash()
-            .await
-            .map_err(Box::new)?;
+    /// Build an unsigned transaction.
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - The transaction version to use ([`TxVersion::Legacy`] or [`TxVersion::V0`]).
+    /// * `recent_blockhash` - A recent blockhash to include in the transaction message.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use anchor_client::{Client, Cluster, TxVersion};
+    /// use anchor_lang::prelude::Pubkey;
+    /// use solana_signer::null_signer::NullSigner;
+    /// use solana_message::AddressLookupTableAccount;
+    /// use solana_message::Hash;
+    ///
+    /// let payer = NullSigner::new(&Pubkey::default());
+    /// let client = Client::new(Cluster::Localnet, std::rc::Rc::new(payer));
+    ///
+    /// let program = client.program(Pubkey::default()).unwrap();
+    /// // Dummy blockhash
+    /// let blockhash = Hash::from([0; 32]);
+    /// let lookup_table = AddressLookupTableAccount { key: Pubkey::default(), addresses: vec![] };
+    ///
+    /// let request = program.request();
+    /// // Legacy transaction
+    /// let tx = request.transaction_versioned(TxVersion::Legacy, blockhash).unwrap();
+    ///
+    /// // V0 transaction with address lookup tables
+    /// let tx = request.transaction_versioned(TxVersion::V0(&[lookup_table]), blockhash).unwrap();
+    ///
+    /// // V0 transaction without lookup tables
+    /// let tx = request.transaction_versioned(TxVersion::V0(&[]), blockhash).unwrap();
+    //// ```
+    pub fn transaction_versioned(
+        &self,
+        version: TxVersion<'_>,
+        recent_blockhash: Hash,
+    ) -> Result<solana_transaction::versioned::VersionedTransaction, ClientError> {
+        let instructions = self.instructions();
+        let payer = self.payer.pubkey();
 
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+        match version {
+            TxVersion::Legacy => {
+                let message = solana_message::legacy::Message::new_with_blockhash(
+                    &instructions,
+                    Some(&payer),
+                    &recent_blockhash,
+                );
+                Ok(solana_transaction::versioned::VersionedTransaction {
+                    signatures: vec![
+                        solana_signature::Signature::default();
+                        message.header.num_required_signatures as usize
+                    ],
+                    message: solana_message::VersionedMessage::Legacy(message),
+                })
+            }
+            TxVersion::V0(address_lookup_table_accounts) => {
+                let message = v0::Message::try_compile(
+                    &payer,
+                    &instructions,
+                    address_lookup_table_accounts,
+                    recent_blockhash,
+                )?;
+                Ok(solana_transaction::versioned::VersionedTransaction {
+                    signatures: vec![
+                        solana_signature::Signature::default();
+                        message.header.num_required_signatures as usize
+                    ],
+                    message: solana_message::VersionedMessage::V0(message),
+                })
+            }
+        }
+    }
+
+    fn signed_transaction_with_blockhash_versioned(
+        &self,
+        version: TxVersion<'_>,
+        latest_hash: Hash,
+    ) -> Result<solana_transaction::versioned::VersionedTransaction, ClientError> {
+        let signers: Vec<&dyn Signer> = self.signers.iter().map(|s| s.as_signer()).collect();
+        let mut all_signers = signers;
+        all_signers.push(&*self.payer);
+
+        let instructions = self.instructions();
+        let payer = self.payer.pubkey();
+
+        let message = match version {
+            TxVersion::Legacy => {
+                let msg = solana_message::legacy::Message::new_with_blockhash(
+                    &instructions,
+                    Some(&payer),
+                    &latest_hash,
+                );
+                solana_message::VersionedMessage::Legacy(msg)
+            }
+            TxVersion::V0(address_lookup_table_accounts) => {
+                let msg = v0::Message::try_compile(
+                    &payer,
+                    &instructions,
+                    address_lookup_table_accounts,
+                    latest_hash,
+                )?;
+                solana_message::VersionedMessage::V0(msg)
+            }
+        };
+
+        let tx =
+            solana_transaction::versioned::VersionedTransaction::try_new(message, &all_signers)?;
+
         Ok(tx)
     }
 
-    async fn send_internal(&self) -> Result<Signature, ClientError> {
+    async fn signed_transaction_internal(
+        &self,
+        version: TxVersion<'_>,
+    ) -> Result<solana_transaction::versioned::VersionedTransaction, ClientError> {
         let latest_hash = self
             .internal_rpc_client
             .get_latest_blockhash()
             .await
             .map_err(Box::new)?;
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+
+        self.signed_transaction_with_blockhash_versioned(version, latest_hash)
+    }
+
+    async fn send_internal(&self, version: TxVersion<'_>) -> Result<Signature, ClientError> {
+        let latest_hash = self
+            .internal_rpc_client
+            .get_latest_blockhash()
+            .await
+            .map_err(Box::new)?;
+        let tx = self.signed_transaction_with_blockhash_versioned(version, latest_hash)?;
 
         self.internal_rpc_client
             .send_and_confirm_transaction(&tx)
@@ -664,6 +774,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
 
     async fn send_with_spinner_and_config_internal(
         &self,
+        version: TxVersion<'_>,
         config: RpcSendTransactionConfig,
     ) -> Result<Signature, ClientError> {
         let latest_hash = self
@@ -671,7 +782,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
             .get_latest_blockhash()
             .await
             .map_err(Box::new)?;
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+        let tx = self.signed_transaction_with_blockhash_versioned(version, latest_hash)?;
 
         self.internal_rpc_client
             .send_and_confirm_transaction_with_spinner_and_config(
@@ -744,11 +855,15 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
 
 #[cfg(test)]
 mod tests {
-    use solana_rpc_client_api::response::RpcResponseContext;
-
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`
-    use anchor_lang::prelude::*;
+    use {
+        anchor_lang::prelude::*,
+        futures::{SinkExt, StreamExt},
+        solana_rpc_client_api::response::RpcResponseContext,
+        std::sync::atomic::{AtomicU64, Ordering},
+        tokio_tungstenite::tungstenite::Message,
+    };
     #[derive(Debug, Clone, Copy)]
     #[event]
     pub struct MockEvent {}
@@ -785,81 +900,95 @@ mod tests {
     fn test_parse_logs_response() -> Result<()> {
         // Mock logs received within an `RpcResponse`. These are based on a Jupiter transaction.
         let logs = vec![
-          "Program VeryCoolProgram invoke [1]", // Outer instruction #1 starts
-          "Program log: Instruction: VeryCoolEvent",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 664387 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program VeryCoolProgram consumed 42417 of 700000 compute units",
-          "Program VeryCoolProgram success", // Outer instruction #1 ends
-          "Program EvenCoolerProgram invoke [1]", // Outer instruction #2 starts
-          "Program log: Instruction: EvenCoolerEvent",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: TransferChecked",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6200 of 630919 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program log: INVARIANT: SWAP",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 539321 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 531933 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 84670 of 610768 compute units",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 523272 compute units",
-          "Program EvenCoolerProgram success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program log: INVARIANT: SWAP",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 418618 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 411230 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 102212 of 507607 compute units",
-          "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 402569 compute units",
-          "Program EvenCoolerProgram success",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP invoke [2]",
-          "Program log: Instruction: Swap",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 371140 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: MintTo",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4492 of 341800 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
-          "Program log: Instruction: Transfer",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 334370 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP consumed 57610 of 386812 compute units",
-          "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP success",
-          "Program EvenCoolerProgram invoke [2]",
-          "Program EvenCoolerProgram consumed 2021 of 326438 compute units",
-          "Program EvenCoolerProgram success",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-          "Program log: Instruction: TransferChecked",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6173 of 319725 compute units",
-          "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-          "Program EvenCoolerProgram consumed 345969 of 657583 compute units",
-          "Program EvenCoolerProgram success", // Outer instruction #2 ends
-          "Program ComputeBudget111111111111111111111111111111 invoke [1]",
-          "Program ComputeBudget111111111111111111111111111111 success",
-          "Program ComputeBudget111111111111111111111111111111 invoke [1]",
-          "Program ComputeBudget111111111111111111111111111111 success"];
+            "Program VeryCoolProgram invoke [1]", // Outer instruction #1 starts
+            "Program log: Instruction: VeryCoolEvent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 664387 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program VeryCoolProgram consumed 42417 of 700000 compute units",
+            "Program VeryCoolProgram success", // Outer instruction #1 ends
+            "Program EvenCoolerProgram invoke [1]", // Outer instruction #2 starts
+            "Program log: Instruction: EvenCoolerEvent",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6200 of 630919 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program log: INVARIANT: SWAP",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 539321 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 531933 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 84670 of 610768 \
+             compute units",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 523272 compute units",
+            "Program EvenCoolerProgram success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program log: INVARIANT: SWAP",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 418618 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 411230 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt consumed 102212 of 507607 \
+             compute units",
+            "Program HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 402569 compute units",
+            "Program EvenCoolerProgram success",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP invoke [2]",
+            "Program log: Instruction: Swap",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 371140 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: MintTo",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4492 of 341800 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+            "Program log: Instruction: Transfer",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 334370 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP consumed 57610 of 386812 \
+             compute units",
+            "Program 9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP success",
+            "Program EvenCoolerProgram invoke [2]",
+            "Program EvenCoolerProgram consumed 2021 of 326438 compute units",
+            "Program EvenCoolerProgram success",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 6173 of 319725 compute \
+             units",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            "Program EvenCoolerProgram consumed 345969 of 657583 compute units",
+            "Program EvenCoolerProgram success", // Outer instruction #2 ends
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+        ];
 
         // Converting to Vec<String> as expected in `RpcLogsResponse`
         let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
@@ -890,9 +1019,10 @@ mod tests {
             "Program fake111111111111111111111111111111111111112 invoke [1]",
             "Program log: i logged success",
             "Program log: i logged success",
-            "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute units",
-            "Program fake111111111111111111111111111111111111112 success"
-          ];
+            "Program fake111111111111111111111111111111111111112 consumed 1411 of 200000 compute \
+             units",
+            "Program fake111111111111111111111111111111111111112 success",
+        ];
 
         // Converting to Vec<String> as expected in `RpcLogsResponse`
         let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
@@ -915,5 +1045,93 @@ mod tests {
         .unwrap();
 
         Ok(())
+    }
+
+    /// Regression test that registering multiple event listeners does not deadlock.
+    #[test]
+    fn multiple_listeners_no_deadlock() {
+        // Spin up a tiny mock websocket server that responds to `logsSubscribe`
+        // JSON-RPC requests with a valid subscription id.
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let (addr_tx, addr_rx) = std::sync::mpsc::channel();
+
+        rt.spawn(async move {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+            addr_tx.send(addr).unwrap();
+
+            static SUB_ID: AtomicU64 = AtomicU64::new(0);
+
+            loop {
+                let (stream, _) = listener.accept().await.unwrap();
+                tokio::spawn(async move {
+                    let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+                    while let Some(Ok(Message::Text(_))) = ws.next().await {
+                        let sub_id = SUB_ID.fetch_add(1, Ordering::Relaxed);
+                        // The PubsubClient sends sequential integer ids starting at 0.
+                        let resp =
+                            format!(r#"{{"jsonrpc":"2.0","result":{sub_id},"id":{sub_id}}}"#);
+                        ws.send(Message::Text(resp.into())).await.unwrap();
+                    }
+                });
+            }
+        });
+
+        let addr = addr_rx.recv().unwrap();
+        let ws_url = format!("ws://{}", addr);
+
+        let client = super::Client::new(
+            super::Cluster::Custom(ws_url.clone(), ws_url),
+            std::sync::Arc::new(solana_keypair::Keypair::new()),
+        );
+        let program = client.program(Pubkey::new_unique()).unwrap();
+
+        // With the old RwLock-based code, the second call would deadlock.
+        // Use a timeout to ensure the test fails instead of hanging forever.
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            #[cfg(not(feature = "async"))]
+            {
+                let _listener1 = program
+                    .on::<MockEvent>(|_ctx, _event| {})
+                    .expect("first listener");
+
+                let _listener2 = program
+                    .on::<MockEvent>(|_ctx, _event| {})
+                    .expect("second listener");
+            }
+
+            #[cfg(feature = "async")]
+            {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap();
+                rt.block_on(async {
+                    let _listener1 = program
+                        .on::<MockEvent>(|_ctx, _event| {})
+                        .await
+                        .expect("first listener");
+
+                    let _listener2 = program
+                        .on::<MockEvent>(|_ctx, _event| {})
+                        .await
+                        .expect("second listener");
+                });
+            }
+
+            let _ = done_tx.send(());
+        });
+
+        // If this times out, the deadlock is still present.
+        done_rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("registering two listeners should not deadlock");
+
+        handle.join().unwrap();
     }
 }

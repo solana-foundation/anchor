@@ -1,0 +1,40 @@
+addon "svm" {
+    rpc_api_url = "http://localhost:8899"
+    network_id = "localnet"
+}
+
+signer "authority" "svm::secret_key" {
+    keypair_json = "~/.config/solana/id.json"
+}
+output "pid" {
+    value = input.composite_pid
+}
+
+
+action "setup" "svm::setup_surfnet" {
+    deploy_program {
+        program_id = input.composite_pid
+        binary_path = "../../tests/composite/target/deploy/composite.so"
+        authority = signer.authority.public_key
+    }
+    deploy_program {
+        program_id = input.basic_2_pid
+        binary_path = "../../examples/tutorial/basic-2/target/deploy/basic_2.so"
+        authority = signer.authority.public_key
+    }
+    deploy_program {
+        program_id = input.basic_4_pid
+        binary_path = "../../examples/tutorial/basic-4/target/deploy/basic_4.so"
+        authority = signer.authority.public_key
+    }
+    deploy_program {
+        program_id = input.events_pid
+        binary_path = "../../tests/events/target/deploy/events.so"
+        authority = signer.authority.public_key
+    }
+    deploy_program {
+        program_id = input.optional_pid
+        binary_path = "../../tests/optional/target/deploy/optional.so"
+        authority = signer.authority.public_key
+    }
+}

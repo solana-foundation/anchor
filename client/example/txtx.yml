@@ -1,0 +1,9 @@
+---
+name: Test Setup
+id: test-setup
+runbooks:
+  - name: setup
+    description: Set up surfnet
+    location: setup.tx
+environments:
+

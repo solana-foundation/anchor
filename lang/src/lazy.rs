@@ -64,11 +64,15 @@ impl_sized!(f64);
 impl_sized!(Pubkey);
 
 impl<T: Lazy, const N: usize> Lazy for [T; N] {
-    const SIZED: bool = T::SIZED;
+    const SIZED: bool = N == 0 || T::SIZED;
 
     #[inline(always)]
     fn size_of(buf: &[u8]) -> usize {
-        N * T::size_of(buf)
+        if Self::SIZED {
+            N * T::size_of(buf)
+        } else {
+            (0..N).fold(0, |acc, _| acc + T::size_of(&buf[acc..]))
+        }
     }
 }
 
@@ -115,8 +119,7 @@ fn get_len(buf: &[u8]) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::AnchorSerialize;
+    use {super::*, crate::AnchorSerialize};
 
     macro_rules! len {
         ($val: expr) => {
@@ -196,6 +199,15 @@ mod tests {
             len!(MyEnum::Unnamed(1, 2))
         );
         assert!(!MyEnum::SIZED);
+
+        #[derive(AnchorSerialize, AnchorDeserialize)]
+        enum UnitEnum {
+            A,
+            B,
+        }
+        assert_eq!(UnitEnum::size_of(&[0]), len!(UnitEnum::A));
+        assert_eq!(UnitEnum::size_of(&[1]), len!(UnitEnum::B));
+        assert!(UnitEnum::SIZED);
     }
 
     #[test]
@@ -216,5 +228,34 @@ mod tests {
             len!(GenericStruct { t: vec![0u8; 8] })
         );
         assert!(!GenericStruct::<Vec<u8>>::SIZED);
+    }
+
+    #[test]
+    fn enum_variable() {
+        // Test that the size of variably-sized types in an enum is calculated correctly
+        #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+        enum State {
+            User(Vec<u8>),
+            Other(u8),
+        }
+        const VEC_LEN: usize = 32;
+        let state = State::User(vec![1; VEC_LEN]);
+
+        let state_bytes = borsh::to_vec(&state).unwrap();
+        let actual_state_size = state_bytes.len();
+        let lazy_state_size = <State as Lazy>::size_of(&state_bytes);
+        assert_eq!(actual_state_size, lazy_state_size);
+        // enum tag + vec length field + vec contents
+        assert_eq!(lazy_state_size, 1 + LEN + VEC_LEN);
+    }
+
+    #[test]
+    fn array_variable() {
+        // Test that the size of an array of variably sized types is calculated correctly
+        let messages: [Vec<u8>; 8] = std::array::from_fn(|i| vec![i as u8; i]);
+        let serialized = borsh::to_vec(&messages).unwrap();
+        let actual_size = serialized.len();
+        let lazy_size = <[Vec<u8>; 8] as Lazy>::size_of(&serialized);
+        assert_eq!(actual_size, lazy_size);
     }
 }

@@ -29,4 +29,25 @@ pub mod token_extensions {
     ) -> Result<()> {
         Ok(())
     }
+
+    pub fn create_group_pointer_mint(
+        _ctx: Context<CreateGroupPointerMint>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn update_group_pointer(
+        ctx: Context<UpdateGroupPointer>,
+        new_group_address: Option<Pubkey>,
+    ) -> Result<()> {
+        instructions::update_group_pointer_handler(ctx, new_group_address)
+    }
+
+    pub fn enable_cpi_guard(ctx: Context<EnableCpiGuard>) -> Result<()> {
+        instructions::enable_cpi_guard_handler(ctx)
+    }
+
+    pub fn disable_cpi_guard(ctx: Context<DisableCpiGuard>) -> Result<()> {
+        instructions::disable_cpi_guard_handler(ctx)
+    }
 }

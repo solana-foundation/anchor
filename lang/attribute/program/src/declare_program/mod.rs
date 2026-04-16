@@ -1,18 +1,18 @@
 mod common;
 mod mods;
 
-use std::{env, fs, path::PathBuf};
-
-use anchor_lang_idl::{convert::convert_idl, types::Idl};
-use anyhow::anyhow;
-use quote::{quote, ToTokens};
-use syn::parse::{Parse, ParseStream};
-
-use common::gen_docs;
-use mods::{
-    accounts::gen_accounts_mod, client::gen_client_mod, constants::gen_constants_mod,
-    cpi::gen_cpi_mod, errors::gen_errors_mod, events::gen_events_mod, internal::gen_internal_mod,
-    program::gen_program_mod, types::gen_types_mod, utils::gen_utils_mod,
+use {
+    anchor_lang_idl::{convert::convert_idl, types::Idl},
+    anyhow::anyhow,
+    common::gen_docs,
+    mods::{
+        accounts::gen_accounts_mod, client::gen_client_mod, constants::gen_constants_mod,
+        cpi::gen_cpi_mod, error::gen_error_mod, events::gen_events_mod, internal::gen_internal_mod,
+        parsers::gen_parsers_mod, program::gen_program_mod, types::gen_types_mod,
+    },
+    quote::{quote, ToTokens},
+    std::{env, fs, path::PathBuf},
+    syn::parse::{Parse, ParseStream},
 };
 
 pub struct DeclareProgram {
@@ -61,7 +61,7 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     let accounts_mod = gen_accounts_mod(idl);
     let events_mod = gen_events_mod(idl);
     let types_mod = gen_types_mod(idl);
-    let errors_mod = gen_errors_mod(idl);
+    let error_mod = gen_error_mod(idl);
 
     // Clients
     let cpi_mod = gen_cpi_mod(idl);
@@ -69,11 +69,16 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
     let internal_mod = gen_internal_mod(idl);
 
     // Utils
-    let utils_mod = gen_utils_mod(idl);
+    let parsers_mod = gen_parsers_mod(idl);
 
     quote! {
         #docs
         pub mod #name {
+            #[cfg(any(target_os = "solana", feature = "idl-build"))]
+            use ::anchor_lang;
+            #[cfg(all(not(target_os = "solana"), not(feature = "idl-build")))]
+            use super::anchor_lang;
+
             use anchor_lang::prelude::*;
             use accounts::*;
             use events::*;
@@ -86,13 +91,13 @@ fn gen_program(idl: &Idl, name: &syn::Ident) -> proc_macro2::TokenStream {
             #accounts_mod
             #events_mod
             #types_mod
-            #errors_mod
+            #error_mod
 
             #cpi_mod
             #client_mod
             #internal_mod
 
-            #utils_mod
+            #parsers_mod
         }
     }
 }
@@ -110,9 +115,7 @@ fn gen_program_docs(idl: &Idl) -> proc_macro2::TokenStream {
 }
 
 fn gen_id(idl: &Idl) -> proc_macro2::TokenStream {
-    let address_bytes = bs58::decode(&idl.address)
-        .into_vec()
-        .expect("Invalid `idl.address`");
+    let address = &idl.address;
     let doc = format!("Program ID of program `{}`.", idl.metadata.name);
 
     quote! {
@@ -124,7 +127,7 @@ fn gen_id(idl: &Idl) -> proc_macro2::TokenStream {
 
         /// The name is intentionally prefixed with `__` in order to reduce to possibility of name
         /// clashes with the crate's `ID`.
-        static __ID: Pubkey = Pubkey::new_from_array([#(#address_bytes,)*]);
-        const __ID_CONST : Pubkey = Pubkey::new_from_array([#(#address_bytes,)*]);
+        static __ID: Pubkey = Pubkey::from_str_const(#address);
+        const __ID_CONST : Pubkey = Pubkey::from_str_const(#address);
     }
 }
