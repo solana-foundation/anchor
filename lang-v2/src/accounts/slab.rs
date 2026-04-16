@@ -71,6 +71,15 @@ where
     const DISCRIMINATOR: &'static [u8] = H::DISCRIMINATOR;
 }
 
+// Forward `Space::INIT_SPACE` from the header type so `#[account(init)]` can
+// fall back to `<Account<T> as Space>::INIT_SPACE` when `space` is omitted.
+impl<H, T> crate::Space for Slab<H, T>
+where
+    H: crate::Space + Pod + Zeroable + SlabValidate,
+{
+    const INIT_SPACE: usize = H::INIT_SPACE;
+}
+
 // ---------------------------------------------------------------------------
 // Slab<H, T>
 // ---------------------------------------------------------------------------

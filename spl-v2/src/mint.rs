@@ -38,6 +38,12 @@ pub struct Mint {
 unsafe impl Pod for Mint {}
 unsafe impl Zeroable for Mint {}
 
+// On-chain size — SPL Token program requires 82 bytes. Used by
+// `#[account(init, mint::*)]` as the default when `space` is omitted.
+impl anchor_lang_v2::Space for Mint {
+    const INIT_SPACE: usize = core::mem::size_of::<Self>();
+}
+
 impl SlabValidate for Mint {
     // External types start at offset 0 — no Anchor discriminator.
     const DATA_OFFSET: usize = 0;

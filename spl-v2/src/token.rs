@@ -57,6 +57,12 @@ pub struct TokenAccount {
 unsafe impl Pod for TokenAccount {}
 unsafe impl Zeroable for TokenAccount {}
 
+// On-chain size — SPL Token program requires 165 bytes. Used by
+// `#[account(init, token::*)]` as the default when `space` is omitted.
+impl anchor_lang_v2::Space for TokenAccount {
+    const INIT_SPACE: usize = core::mem::size_of::<Self>();
+}
+
 impl SlabValidate for TokenAccount {
     // External types start at offset 0 — no Anchor discriminator.
     const DATA_OFFSET: usize = 0;

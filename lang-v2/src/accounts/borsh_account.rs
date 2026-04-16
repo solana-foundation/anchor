@@ -26,6 +26,16 @@ pub struct BorshAccount<T: BorshDeserialize + BorshSerialize + Owner + Discrimin
     borrow: BorshBorrow,
 }
 
+// Forward `Space::INIT_SPACE` from the inner type and add 8 for the
+// discriminator. Lets `#[account(init)]` default to the correct size
+// for Borsh-backed accounts when `space` is omitted.
+impl<T> crate::Space for BorshAccount<T>
+where
+    T: BorshDeserialize + BorshSerialize + Owner + Discriminator + crate::Space,
+{
+    const INIT_SPACE: usize = 8 + T::INIT_SPACE;
+}
+
 enum BorshBorrow {
     Immutable { _guard: Ref<'static, [u8]> },
     Mutable { guard: RefMut<'static, [u8]> },

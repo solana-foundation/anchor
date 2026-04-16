@@ -519,7 +519,14 @@ fn emit_init_body(
     field_names: &[String],
 ) -> TokenStream2 {
     let payer = attrs.payer.as_ref().expect("init requires payer");
-    let space = attrs.space.as_ref().expect("init requires space");
+    // Fall back to `<T as Space>::INIT_SPACE` when `space` is omitted.
+    // SPL types (Mint, TokenAccount) impl Space = size_of<Self>() so
+    // `#[account(init, token::mint = ..., token::authority = ...)]` works
+    // without hardcoding magic numbers like `space = 165`.
+    let space = match attrs.space.as_ref() {
+        Some(expr) => quote! { #expr },
+        None => quote! { <#field_ty as anchor_lang_v2::Space>::INIT_SPACE },
+    };
 
     // Init params come from namespaced constraints that name init-time
     // inputs (e.g. `mint::Authority = x`). Runtime-only constraints —
