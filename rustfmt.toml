@@ -1,0 +1,4 @@
+format_strings = true
+group_imports = "One"
+imports_granularity = "One"
+style_edition = "2021"

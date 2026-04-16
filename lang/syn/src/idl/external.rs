@@ -1,14 +1,14 @@
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
+use {
+    super::common::{find_path, get_program_path},
+    crate::parser::context::CrateContext,
+    anyhow::{anyhow, Result},
+    cargo_toml::Manifest,
+    quote::ToTokens,
+    std::{
+        env, fs,
+        path::{Path, PathBuf},
+    },
 };
-
-use anyhow::{anyhow, Result};
-use cargo_toml::Manifest;
-use quote::ToTokens;
-
-use super::common::{find_path, get_program_path};
-use crate::parser::context::CrateContext;
 
 pub fn get_external_type(name: &str, path: impl AsRef<Path>) -> Result<Option<syn::Type>> {
     let use_path = get_uses(path.as_ref())?

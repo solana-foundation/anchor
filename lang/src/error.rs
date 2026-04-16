@@ -1,8 +1,12 @@
-use crate::solana_program::{program_error::ProgramError, pubkey::Pubkey};
-use anchor_lang::error_code;
-use borsh::io::Error as BorshIoError;
-use std::fmt::{Debug, Display};
-use std::num::TryFromIntError;
+use {
+    crate::solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    anchor_lang::error_code,
+    borsh::io::Error as BorshIoError,
+    std::{
+        fmt::{Debug, Display},
+        num::TryFromIntError,
+    },
+};
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
@@ -172,31 +176,11 @@ pub enum ErrorCode {
     #[msg("A duplicate mutable account constraint was violated")]
     ConstraintDuplicateMutableAccount,
 
-    // Signature verification errors
-    /// 2040 - Invalid Ed25519 program id for signature verification
-    #[msg("Invalid Ed25519 program id for signature verification")]
-    Ed25519InvalidProgram,
-    /// 2041 - Invalid Secp256k1 program id for signature verification
-    #[msg("Invalid Secp256k1 program id for signature verification")]
-    Secp256k1InvalidProgram,
-    /// 2042 - Instruction unexpectedly had account metas
-    #[msg("Instruction unexpectedly had account metas")]
-    InstructionHasAccounts,
-    /// 2043 - Message length exceeds allowed maximum
-    #[msg("Message length exceeds allowed maximum")]
-    MessageTooLong,
-    /// 2045 - Invalid Secp256k1 recovery id (must be 0 or 1)
-    #[msg("Invalid Secp256k1 recovery id")]
-    InvalidRecoveryId,
-    /// 2047 - Signature verification failed
-    #[msg("Signature verification failed")]
-    SignatureVerificationFailed,
-
     // Migration errors
-    /// 2048 - Account is already migrated
+    /// 2041 - Account is already migrated
     #[msg("Account is already migrated")]
     AccountAlreadyMigrated,
-    /// 2049 - Account must be migrated before exiting
+    /// 2042 - Account must be migrated before exiting
     #[msg("Account must be migrated before exiting")]
     AccountNotMigrated,
 
@@ -348,6 +332,12 @@ impl From<TryFromIntError> for Error {
     }
 }
 
+impl From<std::convert::Infallible> for Error {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!("Infallible has no inhabitants")
+    }
+}
+
 impl Error {
     pub fn log(&self) {
         match self {
@@ -442,7 +432,8 @@ impl ProgramErrorWithOrigin {
             }
             Some(ErrorOrigin::Source(source)) => {
                 anchor_lang::solana_program::msg!(
-                    "ProgramError thrown in {}:{}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
+                    "ProgramError thrown in {}:{}. Error Code: {:?}. Error Number: {}. Error \
+                     Message: {}.",
                     source.filename,
                     source.line,
                     self.program_error,
@@ -453,7 +444,8 @@ impl ProgramErrorWithOrigin {
             Some(ErrorOrigin::AccountName(account_name)) => {
                 // using sol_log because msg! wrongly interprets 5 inputs as u64
                 anchor_lang::solana_program::log::sol_log(&format!(
-                    "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
+                    "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. \
+                     Error Message: {}.",
                     account_name,
                     self.program_error,
                     u64::from(self.program_error.clone()),
@@ -529,7 +521,8 @@ impl AnchorError {
             }
             Some(ErrorOrigin::Source(source)) => {
                 anchor_lang::solana_program::msg!(
-                    "AnchorError thrown in {}:{}. Error Code: {}. Error Number: {}. Error Message: {}.",
+                    "AnchorError thrown in {}:{}. Error Code: {}. Error Number: {}. Error \
+                     Message: {}.",
                     source.filename,
                     source.line,
                     self.error_name,
@@ -539,11 +532,9 @@ impl AnchorError {
             }
             Some(ErrorOrigin::AccountName(account_name)) => {
                 anchor_lang::solana_program::log::sol_log(&format!(
-                    "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error Message: {}.",
-                    account_name,
-                    self.error_name,
-                    self.error_code_number,
-                    self.error_msg
+                    "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error \
+                     Message: {}.",
+                    account_name, self.error_name, self.error_code_number, self.error_msg
                 ));
             }
         }

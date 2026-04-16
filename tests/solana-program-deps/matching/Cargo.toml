@@ -1,6 +1,7 @@
-
 [workspace]
-members = ["programs/signature-verification-test"]
+members = [
+    "programs/*"
+]
 resolver = "2"
 
 [profile.release]

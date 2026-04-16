@@ -1,21 +1,22 @@
-use crate::{
-    ClientError, Config, EventContext, EventUnsubscriber, Program, ProgramAccountsIterator,
-    RequestBuilder,
-};
-use anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator};
-use solana_commitment_config::CommitmentConfig;
-use solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
 #[cfg(not(feature = "mock"))]
 use solana_rpc_client::rpc_client::RpcClient;
-use solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType};
-use solana_signature::Signature;
-use solana_signer::Signer;
-use solana_transaction::Transaction;
-
-use std::{marker::PhantomData, ops::Deref, sync::Arc};
-use tokio::{
-    runtime::{Builder, Handle},
-    sync::RwLock,
+use {
+    crate::{
+        ClientError, Config, EventContext, EventUnsubscriber, Program, ProgramAccountsIterator,
+        RequestBuilder, TxVersion,
+    },
+    anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator},
+    solana_commitment_config::CommitmentConfig,
+    solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
+    solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType},
+    solana_signature::Signature,
+    solana_signer::Signer,
+    solana_transaction::Transaction,
+    std::{marker::PhantomData, ops::Deref},
+    tokio::{
+        runtime::{Builder, Handle},
+        sync::OnceCell,
+    },
 };
 
 impl EventUnsubscriber<'_> {
@@ -43,7 +44,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         Ok(Self {
             program_id,
             cfg,
-            sub_client: Arc::new(RwLock::new(None)),
+            sub_client: OnceCell::new(),
             internal_rpc_client: rpc_client,
             rt,
         })
@@ -99,7 +100,7 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
 
     pub fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         &self,
-        f: impl Fn(&EventContext, T) + Send + 'static,
+        f: impl FnMut(&EventContext, T) + Send + 'static,
     ) -> Result<EventUnsubscriber<'_>, ClientError> {
         let (handle, rx) = self.rt.block_on(self.on_internal(f))?;
 
@@ -142,19 +143,116 @@ impl<'a, C: Deref<Target = impl Signer> + Clone> RequestBuilder<'a, C, Box<dyn S
         self
     }
 
+    /// Build and sign a transaction.
+    ///
+    /// Note: This will use a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use [`signed_transaction_versioned`].
     pub fn signed_transaction(&self) -> Result<Transaction, ClientError> {
-        self.handle.block_on(self.signed_transaction_internal())
+        self.handle
+            .block_on(self.signed_transaction_internal(TxVersion::Legacy))
+            .and_then(|tx| {
+                tx.into_legacy_transaction()
+                    .ok_or(ClientError::NotLegacyTransaction)
+            })
     }
 
+    /// Sign and return a transaction with the specified version.
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - The transaction version to use ([`TxVersion::Legacy`] or [`TxVersion::V0`]).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use anchor_client::{Client, Cluster, TxVersion};
+    /// use anchor_lang::prelude::Pubkey;
+    /// use solana_signer::null_signer::NullSigner;
+    /// use solana_message::AddressLookupTableAccount;
+    ///
+    /// let payer = NullSigner::new(&Pubkey::default());
+    /// let client = Client::new(Cluster::Localnet, std::rc::Rc::new(payer));
+    ///
+    /// let program = client.program(Pubkey::default()).unwrap();
+    /// let lookup_table = AddressLookupTableAccount { key: Pubkey::default(), addresses: vec![] };
+    /// let request = program.request();
+    /// // Legacy transaction
+    /// let tx = request.signed_transaction_versioned(TxVersion::Legacy).unwrap();
+    ///
+    /// // V0 transaction
+    /// let tx = request.signed_transaction_versioned(TxVersion::V0(&[lookup_table])).unwrap();
+    /// ```
+    pub fn signed_transaction_versioned(
+        &self,
+        version: TxVersion<'_>,
+    ) -> Result<solana_transaction::versioned::VersionedTransaction, ClientError> {
+        self.handle
+            .block_on(self.signed_transaction_internal(version))
+    }
+
+    /// Send a transaction.
+    ///
+    /// Note: This will use a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use [`send_versioned`].
     pub fn send(&self) -> Result<Signature, ClientError> {
-        self.handle.block_on(self.send_internal())
+        self.handle.block_on(self.send_internal(TxVersion::Legacy))
     }
 
+    /// Send a transaction with the specified version.
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - The transaction version to use ([`TxVersion::Legacy`] or [`TxVersion::V0`]).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use anchor_client::{Client, Cluster, TxVersion};
+    /// use anchor_lang::prelude::Pubkey;
+    /// use solana_signer::null_signer::NullSigner;
+    /// use solana_message::AddressLookupTableAccount;
+    ///
+    /// let payer = NullSigner::new(&Pubkey::default());
+    /// let client = Client::new(Cluster::Localnet, std::rc::Rc::new(payer));
+    ///
+    /// let program = client.program(Pubkey::default()).unwrap();
+    /// let lookup_table = AddressLookupTableAccount { key: Pubkey::default(), addresses: vec![] };
+    ///
+    /// let request = program.request();
+    /// // Legacy transaction
+    /// let sig = request.send_versioned(TxVersion::Legacy).unwrap();
+    ///
+    /// // V0 transaction with lookup tables
+    /// let sig = request.send_versioned(TxVersion::V0(&[lookup_table])).unwrap();
+    /// ```
+    pub fn send_versioned(&self, version: TxVersion<'_>) -> Result<Signature, ClientError> {
+        self.handle.block_on(self.send_internal(version))
+    }
+
+    /// Send a transaction with spinner and config.
+    ///
+    /// Note: This will use a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use [`send_with_spinner_and_config_versioned`].
     pub fn send_with_spinner_and_config(
         &self,
         config: RpcSendTransactionConfig,
     ) -> Result<Signature, ClientError> {
         self.handle
-            .block_on(self.send_with_spinner_and_config_internal(config))
+            .block_on(self.send_with_spinner_and_config_internal(TxVersion::Legacy, config))
+    }
+
+    /// Send a transaction with the specified version, spinner and config.
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - The transaction version to use ([`TxVersion::Legacy`] or [`TxVersion::V0`]).
+    /// * `config` - RPC send transaction configuration.
+    pub fn send_with_spinner_and_config_versioned(
+        &self,
+        version: TxVersion<'_>,
+        config: RpcSendTransactionConfig,
+    ) -> Result<Signature, ClientError> {
+        self.handle
+            .block_on(self.send_with_spinner_and_config_internal(version, config))
     }
 }

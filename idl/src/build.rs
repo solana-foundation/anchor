@@ -1,15 +1,15 @@
-use std::{
-    collections::BTreeMap,
-    env, mem,
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
+use {
+    crate::types::{Idl, IdlEvent, IdlTypeDef},
+    anyhow::{anyhow, Result},
+    regex::Regex,
+    serde::Deserialize,
+    std::{
+        collections::BTreeMap,
+        env, mem,
+        path::{Path, PathBuf},
+        process::{Command, Stdio},
+    },
 };
-
-use anyhow::{anyhow, Result};
-use regex::Regex;
-use serde::Deserialize;
-
-use crate::types::{Idl, IdlEvent, IdlTypeDef};
 
 /// A trait that types must implement in order to include the type in the IDL definition.
 ///
@@ -47,8 +47,14 @@ pub trait IdlBuild {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```rust,no_run
+/// # use std::path::PathBuf;
+/// # use anchor_lang_idl::build::IdlBuilder;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let path = PathBuf::from("programs/my_program");
 /// let idl = IdlBuilder::new().program_path(path).skip_lint(true).build()?;
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Default)]
 pub struct IdlBuilder {
@@ -192,9 +198,9 @@ fn build(
     }
 
     let mut address = String::new();
-    let mut events = vec![];
-    let mut error_codes = vec![];
     let mut constants = vec![];
+    let mut events = vec![];
+    let mut errors = None;
     let mut types = BTreeMap::new();
     let mut idl: Option<Idl> = None;
 
@@ -205,6 +211,9 @@ fn build(
                 "--- IDL begin address ---" => state = State::Address,
                 "--- IDL begin const ---" => state = State::Constants(vec![]),
                 "--- IDL begin event ---" => state = State::Events(vec![]),
+                "--- IDL begin errors ---" if errors.is_some() => {
+                    return Err(anyhow!("Multiple error definitions are not allowed."));
+                }
                 "--- IDL begin errors ---" => state = State::Errors(vec![]),
                 "--- IDL begin program ---" => state = State::Program(vec![]),
                 _ => {
@@ -215,7 +224,7 @@ fn build(
                             idl.address = mem::take(&mut address);
                             idl.constants = mem::take(&mut constants);
                             idl.events = mem::take(&mut events);
-                            idl.errors = mem::take(&mut error_codes);
+                            idl.errors = mem::take(&mut errors).unwrap_or_default();
                             idl.types = {
                                 let prog_ty = mem::take(&mut idl.types);
                                 let mut types = mem::take(&mut types);
@@ -260,7 +269,7 @@ fn build(
             }
             State::Errors(lines) => {
                 if line == "--- IDL end errors ---" {
-                    error_codes = serde_json::from_str(&lines.join("\n"))?;
+                    errors = Some(serde_json::from_str(&lines.join("\n"))?);
                     state = State::Pass;
                     continue;
                 }
@@ -339,19 +348,6 @@ fn sort(mut idl: Idl) -> Idl {
 
 /// Verify IDL is valid.
 fn verify(idl: &Idl) -> Result<()> {
-    // Check full path accounts
-    if let Some(account) = idl
-        .accounts
-        .iter()
-        .find(|account| account.name.contains("::"))
-    {
-        return Err(anyhow!(
-            "Conflicting accounts names are not allowed.\nProgram: `{}`\nAccount: `{}`",
-            idl.metadata.name,
-            account.name
-        ));
-    }
-
     // Check empty discriminators
     macro_rules! check_empty_discriminators {
         ($field:ident) => {

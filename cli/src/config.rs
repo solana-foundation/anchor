@@ -1,32 +1,37 @@
-use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
-use anchor_client::Cluster;
-use anchor_lang_idl::types::Idl;
-use anyhow::{anyhow, bail, Context, Error, Result};
-use clap::{Parser, ValueEnum};
-use dirs::home_dir;
-use heck::ToSnakeCase;
-use reqwest::Url;
-use serde::de::{self, MapAccess, Visitor};
-use serde::ser::SerializeMap;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
-use solana_clock::Slot;
-use solana_commitment_config::CommitmentLevel;
-use solana_keypair::Keypair;
-use solana_pubkey::Pubkey;
-use solana_signer::Signer;
-use std::collections::{BTreeMap, HashMap};
-use std::convert::TryFrom;
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::marker::PhantomData;
-use std::ops::Deref;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Command;
-use std::str::FromStr;
-use std::{fmt, io};
-use walkdir::WalkDir;
+use {
+    crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT},
+    anchor_client::Cluster,
+    anchor_lang_idl::types::Idl,
+    anyhow::{anyhow, bail, Context, Error, Result},
+    clap::{Parser, ValueEnum},
+    dirs::home_dir,
+    heck::ToSnakeCase,
+    reqwest::Url,
+    serde::{
+        de::{self, MapAccess, Visitor},
+        ser::SerializeMap,
+        Deserialize, Deserializer, Serialize, Serializer,
+    },
+    solana_cli_config::{Config as SolanaConfig, CONFIG_FILE},
+    solana_clock::Slot,
+    solana_commitment_config::CommitmentLevel,
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    std::{
+        collections::{BTreeMap, HashMap},
+        convert::TryFrom,
+        fmt,
+        fs::{self, File},
+        io::{self, prelude::*},
+        marker::PhantomData,
+        ops::Deref,
+        path::{Path, PathBuf},
+        process::Command,
+        str::FromStr,
+    },
+    walkdir::WalkDir,
+};
 
 pub const SURFPOOL_HOST: &str = "127.0.0.1";
 /// Wrapper around CommitmentLevel to support case-insensitive parsing
@@ -320,7 +325,6 @@ impl<T> std::ops::DerefMut for WithPath<T> {
 pub struct Config {
     pub toolchain: ToolchainConfig,
     pub features: FeaturesConfig,
-    pub registry: RegistryConfig,
     pub provider: ProviderConfig,
     pub programs: ProgramsConfig,
     pub scripts: ScriptsConfig,
@@ -404,19 +408,6 @@ impl Default for FeaturesConfig {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RegistryConfig {
-    pub url: String,
-}
-
-impl Default for RegistryConfig {
-    fn default() -> Self {
-        Self {
-            url: "https://api.apr.dev".to_string(),
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct ProviderConfig {
     pub cluster: Cluster,
@@ -484,22 +475,6 @@ pub struct WorkspaceConfig {
 pub enum BootstrapMode {
     None,
     Debian,
-}
-
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
-pub enum ProgramArch {
-    Bpf,
-    Sbf,
-}
-
-impl ProgramArch {
-    /// Subcommand and any arguments to be passed to cargo
-    pub fn build_subcommand(&self) -> &[&'static str] {
-        match self {
-            Self::Bpf => &["build-bpf"],
-            Self::Sbf => &["build-sbf", "--tools-version", "v1.52"],
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -622,7 +597,6 @@ struct _Config {
     toolchain: Option<ToolchainConfig>,
     features: Option<FeaturesConfig>,
     programs: Option<BTreeMap<String, BTreeMap<String, serde_json::Value>>>,
-    registry: Option<RegistryConfig>,
     provider: Provider,
     workspace: Option<WorkspaceConfig>,
     scripts: Option<ScriptsConfig>,
@@ -716,7 +690,6 @@ impl fmt::Display for Config {
         let cfg = _Config {
             toolchain: Some(self.toolchain.clone()),
             features: Some(self.features.clone()),
-            registry: Some(self.registry.clone()),
             provider: Provider {
                 cluster: self.provider.cluster.clone(),
                 wallet: self.provider.wallet.stringify_with_tilde(),
@@ -747,7 +720,6 @@ impl FromStr for Config {
         Ok(Config {
             toolchain: cfg.toolchain.unwrap_or_default(),
             features: cfg.features.unwrap_or_default(),
-            registry: cfg.registry.unwrap_or_default(),
             provider: ProviderConfig {
                 cluster: cfg.provider.cluster,
                 wallet: shellexpand::tilde(&cfg.provider.wallet).parse()?,
@@ -1067,7 +1039,8 @@ fn canonicalize_filepath_from_origin(
     let result = fs::canonicalize(&file_path)
         .with_context(|| {
             format!(
-                "Error reading (possibly relative) path: {}. If relative, this is the path that was used as the current path: {}",
+                "Error reading (possibly relative) path: {}. If relative, this is the path that \
+                 was used as the current path: {}",
                 &file_path.as_ref().display(),
                 &origin.as_ref().display()
             )
@@ -1207,7 +1180,7 @@ pub struct _Validator {
     // Load all the accounts from the JSON files found in the specified DIRECTORY
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_dir: Option<Vec<AccountDirEntry>>,
-    // IP address to bind the validator ports. [default: 0.0.0.0]
+    // IP address to bind the validator ports. [default: 127.0.0.1]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bind_address: Option<String>,
     // Copy an account from the cluster referenced by the url argument.
@@ -1352,7 +1325,7 @@ pub fn get_default_ledger_path() -> PathBuf {
     Path::new(".anchor").join("test-ledger")
 }
 
-const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
+const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
 
 impl Merge for _Validator {
     fn merge(&mut self, other: Self) {

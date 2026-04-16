@@ -1467,6 +1467,11 @@ ts-mocha@^10.0.0:
   optionalDependencies:
     tsconfig-paths "^3.5.0"
 
+ts-mocha@^11.1.0:
+  version "11.1.0"
+  resolved "https://registry.yarnpkg.com/ts-mocha/-/ts-mocha-11.1.0.tgz#d8336ec0146bd6f36cca2555f4cfc7df85bd1586"
+  integrity sha512-yT7FfzNRCu8ZKkYvAOiH01xNma/vLq6Vit7yINKYFNVP8e5UyrYXSOMIipERTpzVKJQ4Qcos5bQo1tNERNZevQ==
+
 ts-node@7.0.1:
   version "7.0.1"
   resolved "https://registry.yarnpkg.com/ts-node/-/ts-node-7.0.1.tgz#9562dc2d1e6d248d24bc55f773e3f614337d9baf"

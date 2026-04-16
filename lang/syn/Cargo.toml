@@ -1,8 +1,9 @@
 [package]
 name = "anchor-syn"
-version = "0.32.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
+repository = "https://github.com/solana-foundation/anchor"
 license = "Apache-2.0"
 description = "Anchor syntax parsing and code generation tools"
 edition = "2021"
@@ -10,6 +11,13 @@ edition = "2021"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[lints.clippy]
+unwrap-used = "deny"
+expect-used = "deny"
+panic = "deny"
+unimplemented = "deny"
+indexing-slicing = "deny"
 
 [features]
 allow-missing-optionals = []
@@ -30,7 +38,6 @@ heck = "0.3"
 proc-macro2 = { version = "1.0.100", features = ["span-locations"] }
 quote = "1"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 syn = { version = "1", features = ["full", "extra-traits", "parsing"] }
 thiserror = "1"
