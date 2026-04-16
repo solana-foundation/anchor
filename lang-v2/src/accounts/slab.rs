@@ -1,5 +1,5 @@
 use {
-    super::slab_hooks::{SlabInit, SlabValidate},
+    super::slab_hooks::{SlabInit, SlabSchema},
     crate::{AccountInitialize, AnchorAccount, Discriminator, Id},
     bytemuck::{Pod, Zeroable},
     core::{
@@ -13,12 +13,12 @@ use {
     solana_program_error::ProgramError,
 };
 
-// SlabValidate / SlabInit (bytes-level hooks Slab invokes on `H`) live in
+// SlabSchema / SlabInit (bytes-level hooks Slab invokes on `H`) live in
 // `accounts::view_wrapper_traits`. The forwards below tie them + the
 // wrapper-level `AccountInitialize` together.
 
 /// Disambiguation for failed owner checks: uninitialized placeholder vs.
-/// genuine wrong owner. Used by `SlabValidate`'s blanket impl (via `super::`).
+/// genuine wrong owner. Used by `SlabSchema`'s blanket impl (via `super::`).
 #[inline(always)]
 pub(super) fn cold_owner_error(view: &AccountView) -> ProgramError {
     if view.lamports() == 0 && view.owned_by(&crate::programs::System::id()) {
@@ -39,7 +39,7 @@ pub(super) fn cold_not_writable() -> ProgramError {
 /// running `H::SlabInit::create_and_initialize(...)` and then loading.
 impl<H, T> AccountInitialize for Slab<H, T>
 where
-    H: SlabInit + Pod + Zeroable + SlabValidate,
+    H: SlabInit + Pod + Zeroable + SlabSchema,
     Self: AnchorAccount,
 {
     type Params<'a> = H::Params<'a>;
@@ -66,7 +66,7 @@ where
 /// instead of extracting an inner type by string-matching on "Account".
 impl<H, T> Discriminator for Slab<H, T>
 where
-    H: Discriminator + Pod + Zeroable + SlabValidate,
+    H: Discriminator + Pod + Zeroable + SlabSchema,
 {
     const DISCRIMINATOR: &'static [u8] = H::DISCRIMINATOR;
 }
@@ -75,7 +75,7 @@ where
 // fall back to `<Account<T> as Space>::INIT_SPACE` when `space` is omitted.
 impl<H, T> crate::Space for Slab<H, T>
 where
-    H: crate::Space + Pod + Zeroable + SlabValidate,
+    H: crate::Space + Pod + Zeroable + SlabSchema,
 {
     const INIT_SPACE: usize = H::INIT_SPACE;
 }
@@ -134,7 +134,7 @@ where
 /// `DerefMut` panics on a read-only `Slab` (missing `#[account(mut)]`).
 pub struct Slab<H, T = HeaderOnly>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
 {
     view: AccountView,
     /// Cached pointer to the header (at `HEADER_OFFSET`). Valid for the
@@ -168,7 +168,7 @@ pub struct HeaderOnly {
 
 impl<H, T> Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
 {
     /// Whether `T` is a non-zero-sized type. Folds to a const at
     /// monomorphization time.
@@ -363,7 +363,7 @@ where
 
 impl<H, T> Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
     T: Pod,
 {
     // -----------------------------------------------------------------------
@@ -612,7 +612,7 @@ where
 
 impl<H, T> AnchorAccount for Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
 {
     type Data = H;
     const MIN_DATA_LEN: usize = 8;
@@ -693,7 +693,7 @@ where
 
 impl<H, T> Deref for Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
 {
     type Target = H;
 
@@ -708,7 +708,7 @@ where
 
 impl<H, T> DerefMut for Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
 {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut H {
@@ -730,7 +730,7 @@ where
 // `Slab<H, T>` where `T` is a real pod type, not `HeaderOnly`.
 impl<H, T> Index<usize> for Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
     T: Pod,
 {
     type Output = T;
@@ -743,7 +743,7 @@ where
 
 impl<H, T> IndexMut<usize> for Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
     T: Pod,
 {
     #[inline(always)]
@@ -754,7 +754,7 @@ where
 
 impl<H, T> AsRef<AccountView> for Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
 {
     #[inline(always)]
     fn as_ref(&self) -> &AccountView {
@@ -764,7 +764,7 @@ where
 
 impl<H, T> AsRef<Address> for Slab<H, T>
 where
-    H: Pod + Zeroable + SlabValidate,
+    H: Pod + Zeroable + SlabSchema,
 {
     #[inline(always)]
     fn as_ref(&self) -> &Address {

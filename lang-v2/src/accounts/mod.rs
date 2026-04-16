@@ -16,7 +16,7 @@ pub use {
     program::Program,
     signer::Signer,
     slab::{HeaderOnly, Slab},
-    slab_hooks::{SlabInit, SlabValidate},
+    slab_hooks::{SlabInit, SlabSchema},
     system_account::SystemAccount,
     sysvar::{Sysvar, SysvarId},
     unchecked_account::UncheckedAccount,

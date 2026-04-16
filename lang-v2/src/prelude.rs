@@ -8,7 +8,7 @@ pub use crate::{
     InitSpace,
     // Account types
     accounts::{
-        Account, BorshAccount, Optional, Program, Signer, SlabValidate, SystemAccount, Sysvar,
+        Account, BorshAccount, Optional, Program, Signer, SlabSchema, SystemAccount, Sysvar,
         SysvarId, UncheckedAccount,
     },
     // CPI

@@ -1,4 +1,4 @@
-//! SPL Token mint type with `SlabValidate` impl for use with `Account<T>`.
+//! SPL Token mint type with `SlabSchema` impl for use with `Account<T>`.
 //!
 //! Layout mirrors `pinocchio-token` — all fields are alignment-1 to support
 //! zerocopy mapping from the account data buffer.
@@ -6,7 +6,7 @@
 use {
     crate::token::create_token_account,
     anchor_lang_v2::{
-        accounts::{Account, SlabInit, SlabValidate},
+        accounts::{Account, SlabInit, SlabSchema},
         programs::Token,
         Constrain, Id,
     },
@@ -44,7 +44,7 @@ impl anchor_lang_v2::Space for Mint {
     const INIT_SPACE: usize = core::mem::size_of::<Self>();
 }
 
-impl SlabValidate for Mint {
+impl SlabSchema for Mint {
     // External types start at offset 0 — no Anchor discriminator.
     const DATA_OFFSET: usize = 0;
 

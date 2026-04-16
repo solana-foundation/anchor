@@ -2,7 +2,7 @@
 //! of `slab.rs` so the Slab machinery itself stays focused on the wrapper
 //! logic (load/validate/deref/close).
 //!
-//! - [`SlabValidate`] — bytes-level validation (owner, discriminator, size).
+//! - [`SlabSchema`] — bytes-level layout + validation (offset, owner, discriminator, size).
 //!   Every `#[account]` type gets a default via the `Owner + Discriminator`
 //!   blanket; SPL `Mint` / `TokenAccount` override directly.
 //! - [`SlabInit`] — bytes-level init (create + disc write by default, SPL
@@ -15,26 +15,23 @@ use {
     solana_program_error::ProgramError,
 };
 
-/// Validation hook Slab runs on its header type's bytes before mapping.
+/// Byte-level schema for a type stored inside a `Slab`: where the header
+/// sits in the account buffer (`DATA_OFFSET`) and how to verify the bytes
+/// at that offset are a valid `Self` (`validate`).
 ///
-/// Types marked with `#[account]` get the blanket impl below. External
-/// types (SPL `Mint` / `TokenAccount`) implement this directly with custom
-/// validation (exact-length checks, no discriminator).
-pub trait SlabValidate {
+/// Types marked with `#[account]` get the blanket impl below (offset 8 +
+/// owner/discriminator check). External types (SPL `Mint` / `TokenAccount`)
+/// implement this directly with `DATA_OFFSET = 0` and custom validation.
+pub trait SlabSchema {
     /// Byte offset where `Self`'s data starts in the account buffer.
     /// - Anchor native types (`#[account]`): 8 (discriminator length)
     /// - External types (SPL `Mint` / `TokenAccount`): 0
     const DATA_OFFSET: usize;
 
     fn validate(view: &AccountView, data: &[u8], program_id: &Address) -> Result<(), ProgramError>;
-
-    #[inline(always)]
-    fn data_offset() -> usize {
-        Self::DATA_OFFSET
-    }
 }
 
-impl<T: Owner + Discriminator> SlabValidate for T {
+impl<T: Owner + Discriminator> SlabSchema for T {
     const DATA_OFFSET: usize = 8;
 
     #[inline(always)]
