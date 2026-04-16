@@ -1405,6 +1405,15 @@ fn init(
     let test_script = test_template.get_test_script(javascript, &package_manager);
     cfg.scripts.insert("test".to_owned(), test_script);
 
+    // In-process test templates (currently just litesvm) drive the Solana VM
+    // inside the `cargo test` process, so auto-starting a validator at
+    // `anchor test` time is pure overhead. Mark the workspace so the test
+    // command knows to skip validator startup without the user having to pass
+    // `--skip-local-validator` every run.
+    if matches!(test_template, TestTemplate::Litesvm) {
+        cfg.skip_local_validator = Some(true);
+    }
+
     let package_manager_cmd = package_manager.to_string();
     cfg.toolchain.package_manager = Some(package_manager);
 
@@ -3261,6 +3270,12 @@ fn test(
     with_workspace(cfg_override, |cfg| -> Result<()> {
         // Set validator type based on CLI choice
         cfg.validator = Some(validator_type);
+
+        // Honor the persistent `skip_local_validator` flag from Anchor.toml
+        // (emitted by `anchor init` for in-process templates) in addition to
+        // the ad-hoc CLI flag.
+        let skip_local_validator =
+            skip_local_validator || cfg.skip_local_validator.unwrap_or(false);
 
         // --profile setup: clear stale traces + point `anchor-v2-testing`
         // at our profile directory before the child `cargo test` runs.
