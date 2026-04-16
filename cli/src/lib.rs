@@ -1439,11 +1439,12 @@ fn init(
 
     // Remove the default program if `--force` is passed
     if force {
-        fs::remove_dir_all(
-            std::env::current_dir()?
-                .join("programs")
-                .join(&project_name),
-        )?;
+        let default_program_dir = std::env::current_dir()?
+            .join("programs")
+            .join(&project_name);
+        if default_program_dir.exists() {
+            fs::remove_dir_all(default_program_dir)?;
+        }
     }
 
     // Build the program.
