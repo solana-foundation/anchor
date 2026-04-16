@@ -1,11 +1,16 @@
 # anchor-lang-v2
 
-Next-generation [Anchor](https://www.anchor-lang.com/) runtime for Solana programs. Built on [pinocchio](https://github.com/anza-xyz/pinocchio), `#![no_std]` by default, trait-based account system. Cuts program binary size ~40% versus v1 and removes the `'info` lifetime from user-facing code.
+Next-generation [Anchor](https://www.anchor-lang.com/) runtime for Solana programs. Built on [pinocchio](https://github.com/anza-xyz/pinocchio), `#![no_std]` by default, trait-based account system. Drops the `'info` lifetime from user-facing code.
+
+Order-of-magnitude smaller binaries and ~70–86% fewer CU per instruction versus v1 in the prototype benchmarks ([#4393](https://github.com/solana-foundation/anchor/pull/4393)): a single-instruction counter drops 122 KB → 6.9 KB (−94%); a four-instruction multisig drops 178 KB → 28 KB (−84%).
 
 > [!WARNING]
 > **Alpha — do not use in production.** Not audited. APIs may break between commits. Programs written against today's `anchor-lang-v2` are not guaranteed an upgrade path. Not published to crates.io; depend via git on the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch.
 
 ## Quick start
+
+> [!NOTE]
+> The install below overwrites the `anchor` binary on your `PATH` — including one installed by [`avm`](https://www.anchor-lang.com/docs/installation#anchor-version-manager-avm). To keep an `avm`-managed install alongside, clone the repo and run v2 out of `./target/debug/anchor` directly.
 
 ```bash
 cargo install --git https://github.com/solana-foundation/anchor.git \
@@ -406,11 +411,6 @@ my_program/
 | Pod alignment-1 wrappers | `src/pod.rs` |
 | Program ID markers (`System`, `Token`, `Token2022`, `AssociatedToken`, `Memo`) | `src/programs.rs` |
 | SPL wrappers | `../spl-v2/src/` |
-
-## References
-
-- **Coverage programs:** [`anchor-v2-testing/programs/`](https://github.com/solana-foundation/anchor/tree/anchor-next) — one crate per feature area (`events`, `pda`, `init_space`, `errors`, `option_coverage`, `zerocopy`, …).
-- **Top-level Anchor repo:** [solana-foundation/anchor](https://github.com/solana-foundation/anchor).
 
 ## Contributing
 
