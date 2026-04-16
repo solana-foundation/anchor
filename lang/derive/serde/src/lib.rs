@@ -30,7 +30,6 @@ fn extract_borsh_attrs(input: &mut DeriveInput) -> Vec<NestedMeta> {
                 None
             }
         })
-        .filter(|list| list.path.is_ident("borsh"))
         .flat_map(|list| list.nested)
         .collect()
 }
