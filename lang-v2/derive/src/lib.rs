@@ -288,6 +288,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             name: &field_names_str[i],
             writable: f.idl_writable,
             init_signer: f.idl_init_signer,
+            is_optional: f.is_optional,
             field_ty: &f.idl_field_ty,
         })
         .collect();
