@@ -1,7 +1,7 @@
 use {
     crate::{
-        config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
-        VERSION,
+        config::ProgramWorkspace, create_files, override_or_create_files, AbsolutePath, Files,
+        PackageManager, VERSION,
     },
     anyhow::Result,
     clap::{Parser, ValueEnum},
@@ -21,7 +21,7 @@ use {
 const ANCHOR_MSRV: &str = "1.89.0";
 
 /// Program initialization template
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, AbsolutePath)]
 pub enum ProgramTemplate {
     /// Program with a single `lib.rs` file (not recommended for production)
     Single,
@@ -38,7 +38,7 @@ pub fn create_program(
 ) -> Result<()> {
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
-        ("Cargo.toml".into(), workspace_manifest().into()),
+        ("Cargo.toml".into(), workspace_manifest()),
         ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
@@ -180,12 +180,17 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     ]
 }
 
-const fn workspace_manifest() -> &'static str {
-    r#"[workspace]
+fn workspace_manifest() -> String {
+    format!(
+        r#"[workspace]
 members = [
     "programs/*"
 ]
 resolver = "2"
+
+[workspace.package]
+edition = "2021"
+rust-version = "{ANCHOR_MSRV}"
 
 [profile.release]
 overflow-checks = true
@@ -196,6 +201,7 @@ opt-level = 3
 incremental = false
 codegen-units = 1
 "#
+    )
 }
 
 fn cargo_toml(name: &str, test_template: Option<&TestTemplate>) -> String {
@@ -228,7 +234,8 @@ solana-keypair = "3.0.1"
 name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -643,7 +650,7 @@ anchor.workspace.{} = new anchor.Program({}, provider);
 }
 
 /// Test initialization template
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, AbsolutePath)]
 pub enum TestTemplate {
     /// Generate template for Mocha unit-test
     Mocha,

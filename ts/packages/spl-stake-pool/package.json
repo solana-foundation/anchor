@@ -16,7 +16,7 @@
   "browser": "./dist/browser/index.js",
   "types": "./dist/cjs/index.d.ts",
   "scripts": {
-    "init:yarn": "yarn && yarn lint:fix && yarn build:yarn",
+    "init:yarn": "yarn --frozen-lockfile && yarn lint:fix && yarn build:yarn",
     "init:npm": "npm i && npm run lint:fix && npm run build:npm",
     "build:yarn": "rimraf dist/ && yarn build:node && yarn build:browser",
     "build:npm": "rimraf dist/ && npm run build:node && npm run build:browser",

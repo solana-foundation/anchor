@@ -83,18 +83,20 @@ sed "${sedi[@]}" -e \
     CHANGELOG.md
 
 # Update lock files
+# Cannot use --frozen-lockfile: package.json versions were just bumped, so refresh the lockfiles.
+# Only workspace versions changed above; if lockfile diffs look like broad third-party churn, investigate before tagging.
 pushd ts
-yarn
+yarn install
 popd
 
 pushd tests
-yarn
+yarn install
 popd
 
 pushd examples
-yarn
+yarn install
 pushd tutorial
-yarn
+yarn install
 popd
 popd
 

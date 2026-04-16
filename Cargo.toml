@@ -2,6 +2,7 @@
 members = [
     "avm",
     "cli",
+    "cli/cli-macros",
     "client",
     "idl",
     "lang",
