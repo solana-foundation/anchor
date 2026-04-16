@@ -312,6 +312,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 init_signer: f.idl_init_signer,
                 is_optional: f.is_optional,
                 relations,
+                docs: &f.idl_docs,
                 field_ty: &f.idl_field_ty,
             }
         })
@@ -494,10 +495,16 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     let disc_bytes = &hash[..8];
     let disc_literals: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
 
+    let struct_docs = idl::extract_doc_lines(attrs);
     let idl_type_json = if let Fields::Named(named) = fields {
-        idl::build_type_json(&name_str, disc_bytes, &named.named)
+        idl::build_type_json(&name_str, disc_bytes, &struct_docs, &named.named)
     } else {
-        idl::build_type_json(&name_str, disc_bytes, &syn::punctuated::Punctuated::new())
+        idl::build_type_json(
+            &name_str,
+            disc_bytes,
+            &struct_docs,
+            &syn::punctuated::Punctuated::new(),
+        )
     };
 
     let (struct_attrs, pod_impls) = if is_borsh {
@@ -646,6 +653,11 @@ struct HandlerCodegen {
     idl_name: String,
     idl_disc: String,
     idl_args: String,
+    /// Pre-rendered `,"docs":[...]` fragment (including the leading comma
+    /// separator) that gets spliced into the per-instruction IDL JSON
+    /// between `"name"` and `"discriminator"`. Empty string when the
+    /// handler carries no `///` doc comments.
+    idl_docs_json: String,
     idl_accounts_type: TokenStream2,
     /// Original (non-lifetime-transformed) arg types for min-length computation.
     arg_types: Vec<Type>,
@@ -672,6 +684,7 @@ impl HandlerCodegen {
             idl_name: fn_name.to_string(),
             idl_disc: "[]".to_string(),
             idl_args: "[]".to_string(),
+            idl_docs_json: String::new(),
             idl_accounts_type: quote! { () },
             arg_types: Vec::new(),
         }
@@ -805,6 +818,16 @@ fn process_handler(
         pub use super::#client_mod::#accounts_type;
     };
 
+    // Instruction-level docs come from `///` comments on the handler fn.
+    // Leading-comma format so the IDL instruction JSON splice site can
+    // hold a fixed `"{name}"{docs_or_empty},"discriminator":...` shape.
+    let handler_docs = idl::extract_doc_lines(&handler.attrs);
+    let idl_docs_json = if handler_docs.is_empty() {
+        String::new()
+    } else {
+        format!(",\"docs\":{}", idl::docs_to_json_array(&handler_docs))
+    };
+
     HandlerCodegen {
         dispatch_arm,
         wrapper,
@@ -814,6 +837,7 @@ fn process_handler(
         idl_name: fn_name_str,
         idl_disc: idl::disc_json(&disc_bytes_for_idl),
         idl_args: idl::build_args_json(&extra_args),
+        idl_docs_json,
         idl_accounts_type: accounts_type,
         arg_types: extra_args.iter().map(|(_, t)| (*t).clone()).collect(),
     }
@@ -916,6 +940,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     let idl_ix_names: Vec<_> = codegen.iter().map(|c| &c.idl_name).collect();
     let idl_ix_discs: Vec<_> = codegen.iter().map(|c| &c.idl_disc).collect();
     let idl_ix_args: Vec<_> = codegen.iter().map(|c| &c.idl_args).collect();
+    let idl_ix_docs: Vec<_> = codegen.iter().map(|c| &c.idl_docs_json).collect();
     let idl_accounts_types: Vec<_> = codegen.iter().map(|c| &c.idl_accounts_type).collect();
     let all_ix_arg_types: Vec<_> = codegen.iter().map(|c| &c.arg_types).collect();
 
@@ -1131,8 +1156,9 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 let instructions = vec![
                     #(
                         format!(
-                            "{{\"name\":\"{}\",\"discriminator\":{},\"accounts\":{},\"args\":{}}}",
+                            "{{\"name\":\"{}\"{},\"discriminator\":{},\"accounts\":{},\"args\":{}}}",
                             #idl_ix_names,
+                            #idl_ix_docs,
                             #idl_ix_discs,
                             #idl_accounts_types::__idl_accounts(),
                             #idl_ix_args,

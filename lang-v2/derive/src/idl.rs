@@ -3,7 +3,7 @@
 use {
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
-    syn::Type,
+    syn::{Expr, Lit, Type},
 };
 
 /// Convert a Rust type to its IDL JSON representation.
@@ -96,6 +96,9 @@ pub struct AccountsJsonField<'a> {
     /// live on the *target* account (the account being referenced), not
     /// the source — see `lang/syn/src/idl/accounts.rs::get_relations`.
     pub relations: Vec<&'a str>,
+    /// `#[doc = "..."]` lines on the field, in source order. Emitted as
+    /// `"docs":[...]`.
+    pub docs: &'a [String],
     /// The wrapper `Type` (post-`Option` unwrap) whose trait consts we
     /// dispatch on at runtime. Should match `AccountField::idl_field_ty`.
     pub field_ty: &'a Option<Type>,
@@ -133,6 +136,11 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                     f.relations.iter().map(|r| format!("\"{r}\"")).collect();
                 format!(",\"relations\":[{}]", list.join(","))
             };
+            let docs_json = if f.docs.is_empty() {
+                String::new()
+            } else {
+                format!(",\"docs\":{}", docs_to_json_array(f.docs))
+            };
             let init_signer = f.init_signer;
             if let Some(ty) = f.field_ty {
                 quote! {
@@ -149,13 +157,14 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                             None => anchor_lang_v2::__alloc::string::String::new(),
                         };
                         anchor_lang_v2::__alloc::format!(
-                            "{{\"name\":\"{}\"{}{}{}{}{}}}",
+                            "{{\"name\":\"{}\"{}{}{}{}{}{}}}",
                             #name,
                             #writable_json,
                             __signer_json,
                             __addr_json,
                             #optional_json,
                             #relations_json,
+                            #docs_json,
                         )
                     }
                 }
@@ -166,12 +175,13 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                 let signer_json = if init_signer { ",\"signer\":true" } else { "" };
                 quote! {
                     anchor_lang_v2::__alloc::format!(
-                        "{{\"name\":\"{}\"{}{}{}{}}}",
+                        "{{\"name\":\"{}\"{}{}{}{}{}}}",
                         #name,
                         #writable_json,
                         #signer_json,
                         #optional_json,
                         #relations_json,
+                        #docs_json,
                     )
                 }
             }
@@ -214,24 +224,96 @@ pub fn disc_json(disc_bytes: &[u8]) -> String {
     format!("[{}]", parts.join(","))
 }
 
-/// Build IDL type definition JSON from struct fields.
+/// Build IDL type definition JSON from struct fields. `docs` is the list of
+/// `#[doc = "..."]` lines scraped from the struct-level attrs; each named
+/// field also contributes its own `docs` array from its own attrs.
 pub fn build_type_json(
     name: &str,
     disc: &[u8],
+    docs: &[String],
     fields: &syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
 ) -> String {
     let disc_json = disc_json(disc);
+    let docs_json = if docs.is_empty() {
+        String::new()
+    } else {
+        format!(",\"docs\":{}", docs_to_json_array(docs))
+    };
     let field_jsons: Vec<String> = fields
         .iter()
         .map(|f| {
             let fname = f.ident.as_ref().unwrap().to_string();
             let ftype = rust_type_to_idl(&f.ty);
-            format!("{{\"name\":\"{fname}\",\"type\":{ftype}}}")
+            let field_docs = extract_doc_lines(&f.attrs);
+            let field_docs_json = if field_docs.is_empty() {
+                String::new()
+            } else {
+                format!(",\"docs\":{}", docs_to_json_array(&field_docs))
+            };
+            format!("{{\"name\":\"{fname}\"{field_docs_json},\"type\":{ftype}}}")
         })
         .collect();
     format!(
-        "{{\"name\":\"{name}\",\"discriminator\":{disc_json},\"type\":{{\"kind\":\"struct\",\"\
+        "{{\"name\":\"{name}\",\"discriminator\":{disc_json}{docs_json},\"type\":{{\"kind\":\"struct\",\"\
          fields\":[{}]}}}}",
         field_jsons.join(",")
     )
+}
+
+// ---------------------------------------------------------------------------
+// Docs extraction
+// ---------------------------------------------------------------------------
+
+/// Extract `#[doc = "..."]` lines from a list of attributes. `/// foo`
+/// desugars to `#[doc = " foo"]` — the compiler inserts a single leading
+/// space that we strip so IDL consumers don't see extra indentation.
+pub fn extract_doc_lines(attrs: &[syn::Attribute]) -> Vec<String> {
+    attrs
+        .iter()
+        .filter_map(|attr| {
+            if !attr.path().is_ident("doc") {
+                return None;
+            }
+            if let syn::Meta::NameValue(nv) = &attr.meta {
+                if let Expr::Lit(lit) = &nv.value {
+                    if let Lit::Str(s) = &lit.lit {
+                        let v = s.value();
+                        return Some(
+                            v.strip_prefix(' ').map(str::to_owned).unwrap_or(v),
+                        );
+                    }
+                }
+            }
+            None
+        })
+        .collect()
+}
+
+/// Serialize a list of doc lines into a JSON array. Pulling `serde_json`
+/// into a proc-macro crate is overkill for what amounts to a 7-byte escape
+/// table, so the escaping is inlined.
+pub fn docs_to_json_array(docs: &[String]) -> String {
+    let parts: Vec<String> = docs
+        .iter()
+        .map(|d| format!("\"{}\"", escape_json_string(d)))
+        .collect();
+    format!("[{}]", parts.join(","))
+}
+
+fn escape_json_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\x08' => out.push_str("\\b"),
+            '\x0c' => out.push_str("\\f"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out
 }

@@ -383,6 +383,10 @@ pub struct AccountField {
     /// *another* field, so we need to keep them addressable per-source to
     /// build the inverse mapping (matches v1's `get_relations`).
     pub idl_has_one: Vec<String>,
+    /// Extracted `#[doc = "..."]` lines on the field, in source order.
+    /// Emitted as `"docs":[...]` in the accounts JSON. Matches
+    /// `IdlInstructionAccount.docs` (`idl/spec/src/lib.rs:83`).
+    pub idl_docs: Vec<String>,
     /// The raw field type, post-`Option<T>` unwrap. Used by the generated
     /// `__idl_types()` function to dispatch `<Ty as IdlAccountType>::__IDL_TYPE`
     /// on the wrapper type (`Program<T>`, `Account<T>`, …) rather than on its
@@ -639,6 +643,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     let idl_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
     let idl_writable = attrs.is_mut;
     let idl_has_one: Vec<String> = attrs.has_one.iter().map(|(i, _)| i.to_string()).collect();
+    let idl_docs = crate::idl::extract_doc_lines(&field.attrs);
     let idl_field_ty: Option<syn::Type> = {
         let base_ty = option_inner.unwrap_or(field_ty);
         if let Type::Path(_) = base_ty {
@@ -1089,6 +1094,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         idl_writable,
         idl_init_signer,
         idl_has_one,
+        idl_docs,
         idl_field_ty,
     }
 }
