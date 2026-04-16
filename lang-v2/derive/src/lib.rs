@@ -431,9 +431,34 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
         } else {
             vec![]
         };
+
+        // Targeted diagnostics for common non-Pod field types. Emits a
+        // `compile_error!` with a concrete suggestion instead of letting the
+        // user hit an opaque `the trait bound Vec<u8>: Pod is not satisfied`.
+        // Intentionally avoids recommending `#[account(borsh)]` — borsh is a
+        // per-instruction serialization cost, rarely what the user actually
+        // wants. The fix is almost always a Pod-compatible alternative.
+        let field_diagnostics: Vec<proc_macro2::TokenStream> = if let Fields::Named(named) = fields
+        {
+            named
+                .named
+                .iter()
+                .filter_map(|f| {
+                    let fname = f.ident.as_ref()?.to_string();
+                    let msg = diagnose_non_pod_field(&f.ty, &fname, &name_str)?;
+                    let span = f.ty.span();
+                    Some(quote::quote_spanned!(span=> const _: () = { compile_error!(#msg); };))
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
         (
             quote! { #[derive(Clone, Copy)] #[repr(C)] },
             quote! {
+                #(#field_diagnostics)*
+
                 const _: fn() = || {
                     fn assert_pod<T: anchor_lang_v2::bytemuck::Pod>() {}
                     #( assert_pod::<#field_types>(); )*
@@ -444,7 +469,7 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
                 // are uninitialized, violating Pod's all-bytes-initialized requirement.
                 const _: () = assert!(
                     core::mem::size_of::<#name>() == 0 #(+ core::mem::size_of::<#field_types>())*,
-                    "account struct has padding bytes — reorder fields to eliminate padding, or use #[account(borsh)]"
+                    "account struct has padding bytes — reorder fields from largest to smallest alignment to eliminate padding (e.g. u64 before u32 before u8)"
                 );
                 unsafe impl anchor_lang_v2::bytemuck::Pod for #name {}
                 unsafe impl anchor_lang_v2::bytemuck::Zeroable for #name {}
@@ -470,6 +495,54 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub const __IDL_TYPE: &'static str = #idl_type_json;
         }
     })
+}
+
+/// Syntactic diagnosis for common non-Pod field types on `#[account]` structs.
+/// Produces a targeted, actionable error message when we can recognize the
+/// shape of the offending type (Vec, String, Option, Box, bool, etc.). Falls
+/// through to `None` for types we can't identify by name — the surrounding
+/// `assert_pod::<T>` check in the macro output catches those generically.
+///
+/// Intentionally never suggests `#[account(borsh)]`: borsh accounts incur a
+/// per-instruction (de)serialization cost that's rarely what a user actually
+/// wants. The fix for "this field isn't Pod" is almost always a Pod-
+/// compatible alternative (fixed-size array, sentinel value, `PodBool`, a
+/// `Slab<H, T>` tail, etc.).
+fn diagnose_non_pod_field(ty: &Type, field_name: &str, struct_name: &str) -> Option<String> {
+    let Type::Path(tp) = ty else { return None };
+    let seg = tp.path.segments.last()?;
+    let ident = seg.ident.to_string();
+    match ident.as_str() {
+        "Vec" => Some(format!(
+            "field `{field_name}` on `#[account] struct {struct_name}` uses `Vec`, \
+             which allocates on the heap and isn't Pod. Zero-copy accounts need \
+             fixed-size fields. Use `[T; N]` for a bounded array, or restructure \
+             `{struct_name}` as `Slab<Header, T>` if you need a dynamic tail."
+        )),
+        "String" => Some(format!(
+            "field `{field_name}` on `#[account] struct {struct_name}` uses \
+             `String`, which allocates on the heap and isn't Pod. Use a fixed-size \
+             `[u8; N]` buffer to store string data in a zero-copy account."
+        )),
+        "Option" => Some(format!(
+            "field `{field_name}` on `#[account] struct {struct_name}` uses \
+             `Option`, which carries a discriminant byte that breaks the zero-copy \
+             layout contract. Use a sentinel value (e.g. an all-zero `[u8; 32]` \
+             for \"no address\") or a `PodBool` flag stored alongside the value."
+        )),
+        "Box" | "Rc" | "Arc" => Some(format!(
+            "field `{field_name}` on `#[account] struct {struct_name}` uses \
+             `{ident}`, which heap-allocates and isn't valid in a zero-copy \
+             account. Store the inner type directly."
+        )),
+        "bool" => Some(format!(
+            "field `{field_name}` on `#[account] struct {struct_name}` uses \
+             `bool`. `bytemuck` disallows `bool` as Pod because only `0x00` and \
+             `0x01` are valid bit-patterns (any other byte read as `bool` is UB). \
+             Use `anchor_lang_v2::PodBool` instead."
+        )),
+        _ => None,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -909,7 +982,6 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             let __program_id: &anchor_lang_v2::Address =
                 &*(__ix_data_ptr.add(__ix_data_len) as *const anchor_lang_v2::Address);
 
-            #[cfg(feature = "guardrails")]
             if let Err(__e) = anchor_lang_v2::check_program_id(__program_id, &crate::ID) {
                 return __e.into();
             }
@@ -918,11 +990,8 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             #disc_parse
 
             let __num = *(__input as *const u64) as usize;
-            #[cfg(feature = "guardrails")]
-            if __num > __ANCHOR_MAX_ACCOUNTS {
-                return anchor_lang_v2::Error::from(
-                    anchor_lang_v2::ErrorCode::AccountNotEnoughKeys,
-                ).into();
+            if let Err(__e) = anchor_lang_v2::check_max_accounts(__num, __ANCHOR_MAX_ACCOUNTS) {
+                return __e.into();
             }
 
             let mut __lookup: [::core::mem::MaybeUninit<anchor_lang_v2::AccountView>;

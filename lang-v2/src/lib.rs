@@ -28,8 +28,21 @@ pub use cpi::realloc_account;
 pub use pinocchio::address::address_eq;
 /// Re-export declare_id from solana-address.
 pub use solana_address::declare_id;
-/// Re-export log macro for generated code.
-pub use solana_program_log::log as msg;
+#[doc(hidden)]
+pub use solana_program_log::log as __log_impl;
+
+/// Logs a message via `solana_program_log`.
+///
+/// Thin wrapper around `solana_program_log::log!` that always evaluates to
+/// `()`, so it's usable in expression position (match arms, closures, tuples,
+/// etc.) where the underlying macro's trailing-semicolon emission would
+/// otherwise produce a parse error.
+#[macro_export]
+macro_rules! msg {
+    ($($arg:tt)*) => {{
+        $crate::__log_impl!($($arg)*);
+    }};
+}
 // Re-export wincode for instruction data serialization
 pub use wincode;
 pub use {
@@ -199,6 +212,21 @@ pub fn check_program_id(
     #[cfg(feature = "guardrails")]
     if _program_id != _declared {
         return Err(ErrorCode::DeclaredProgramIdMismatch.into());
+    }
+    Ok(())
+}
+
+/// Guardrail: verify the runtime-supplied account count doesn't exceed
+/// `__ANCHOR_MAX_ACCOUNTS` (256). Gated behind the `guardrails` feature —
+/// when disabled, compiles away entirely.
+#[inline(always)]
+pub fn check_max_accounts(
+    _num: usize,
+    _max: usize,
+) -> core::result::Result<(), solana_program_error::ProgramError> {
+    #[cfg(feature = "guardrails")]
+    if _num > _max {
+        return Err(ErrorCode::AccountNotEnoughKeys.into());
     }
     Ok(())
 }
