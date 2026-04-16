@@ -85,7 +85,7 @@ declare_id!("{}");
 pub mod {} {{
     use super::*;
 
-    pub fn initialize(_ctx: &mut Context<'_, Initialize>) -> Result<()> {{
+    pub fn initialize(_ctx: &mut Context<Initialize>) -> Result<()> {{
         msg!("Initialized");
         Ok(())
     }}
@@ -123,7 +123,7 @@ declare_id!("{}");
 pub mod {} {{
     use super::*;
 
-    pub fn initialize(ctx: &mut Context<'_, Initialize>) -> Result<()> {{
+    pub fn initialize(ctx: &mut Context<Initialize>) -> Result<()> {{
         initialize::handler(ctx)
     }}
 }}
@@ -168,7 +168,7 @@ pub use initialize::*;
 #[derive(Accounts)]
 pub struct Initialize {}
 
-pub fn handler(_ctx: &mut Context<'_, Initialize>) -> Result<()> {
+pub fn handler(_ctx: &mut Context<Initialize>) -> Result<()> {
     msg!("Initialized");
     Ok(())
 }

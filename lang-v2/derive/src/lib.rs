@@ -671,7 +671,7 @@ fn process_handler(
                 handler,
                 syn::Error::new(
                     handler.sig.ident.span(),
-                    "handler must have a `ctx: &mut Context<'_, T>` parameter",
+                    "handler must have a `ctx: &mut Context<T>` parameter",
                 ),
             )
         }
@@ -1244,14 +1244,14 @@ pub fn emit(input: TokenStream) -> TokenStream {
 ///     use super::*;
 ///
 ///     #[access_control(Create::validate(&ctx, bump_seed))]
-///     pub fn create(ctx: &mut Context<'_, Create>, bump_seed: u8) -> Result<()> {
+///     pub fn create(ctx: &mut Context<Create>, bump_seed: u8) -> Result<()> {
 ///         ctx.accounts.my_account.bump_seed = bump_seed;
 ///         Ok(())
 ///     }
 /// }
 ///
 /// impl Create {
-///     pub fn validate(ctx: &Context<'_, Create>, bump_seed: u8) -> Result<()> {
+///     pub fn validate(ctx: &Context<Create>, bump_seed: u8) -> Result<()> {
 ///         // ... custom validation ...
 ///         Ok(())
 ///     }
@@ -1376,7 +1376,7 @@ fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {
         _ => {
             return syn::Error::new(
                 arg.span(),
-                "first parameter must be `ctx: &mut Context<'_, T>`",
+                "first parameter must be `ctx: &mut Context<T>`",
             )
             .to_compile_error()
         }
@@ -1401,7 +1401,7 @@ fn extract_generic_arg(ty: &Type) -> TokenStream2 {
     }
     syn::Error::new(
         ty.span(),
-        "could not extract generic type from `Context<'_, T>` — expected `Context<'_, YourAccountsStruct>`",
+        "could not extract generic type from `Context<T>` - expected `Context<YourAccountsStruct>`",
     )
     .to_compile_error()
 }

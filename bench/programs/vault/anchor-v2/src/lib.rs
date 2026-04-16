@@ -17,7 +17,7 @@ pub mod vault_v2 {
     use super::*;
 
     #[discrim = 0]
-    pub fn deposit(ctx: &mut Context<'_, Deposit>, amount: u64) -> Result<()> {
+    pub fn deposit(ctx: &mut Context<Deposit>, amount: u64) -> Result<()> {
         pinocchio_system::instructions::Transfer {
             from: ctx.accounts.user.account(),
             to: ctx.accounts.vault.account(),
@@ -28,7 +28,7 @@ pub mod vault_v2 {
     }
 
     #[discrim = 1]
-    pub fn withdraw(ctx: &mut Context<'_, Withdraw>, amount: u64) -> Result<()> {
+    pub fn withdraw(ctx: &mut Context<Withdraw>, amount: u64) -> Result<()> {
         let mut vault_view = *ctx.accounts.vault.account();
         let mut user_view = *ctx.accounts.user.account();
         vault_view.set_lamports(vault_view.lamports() - amount);
