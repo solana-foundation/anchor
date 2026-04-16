@@ -1,6 +1,5 @@
 mod borsh_account;
 mod boxed;
-mod option;
 mod program;
 mod signer;
 mod slab;
@@ -12,7 +11,6 @@ mod unchecked_account;
 pub use {
     crate::AccountInitialize,
     borsh_account::BorshAccount,
-    option::Optional,
     program::Program,
     signer::Signer,
     slab::{HeaderOnly, Slab},

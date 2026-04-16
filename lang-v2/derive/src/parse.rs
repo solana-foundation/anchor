@@ -352,6 +352,25 @@ pub fn extract_nested_inner_type(ty: &Type) -> Option<&Type> {
     None
 }
 
+/// Extracts the inner `T` from `Option<T>` for optional-account field detection.
+/// Users write `pub foo: Option<Account<Bar>>` in their Accounts struct; the
+/// derive constructs `None` when the client passes the program's own address
+/// as the sentinel, otherwise `Some(Bar::load(view)?)`.
+pub fn extract_option_inner(ty: &Type) -> Option<&Type> {
+    if let Type::Path(tp) = ty {
+        if let Some(seg) = tp.path.segments.last() {
+            if seg.ident == "Option" {
+                if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
+                    if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
+                        return Some(inner);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub struct AccountField {
     pub name: Ident,
     /// The field's original `syn::Type` — used by `impl_accounts` to build
@@ -362,6 +381,8 @@ pub struct AccountField {
     pub constraints: Vec<TokenStream2>,
     pub exit: Option<TokenStream2>,
     pub has_bump: bool,
+    /// True when the field type is `Option<T>` (optional account).
+    pub is_optional: bool,
     // IDL metadata
     pub idl_writable: bool,
     pub idl_signer: bool,
@@ -427,7 +448,18 @@ fn emit_seeds_check(
     field_ty: Option<&Type>,
     for_init: bool,
     using_our_program_id: bool,
+    is_optional: bool,
 ) -> TokenStream2 {
+    // For optional fields the bumps struct field is `Option<u8>`, so the
+    // assignment wraps in `Some(...)`. Non-optional fields assign the bump
+    // directly.
+    let wrap_bump = |b: TokenStream2| -> TokenStream2 {
+        if is_optional {
+            quote! { Some(#b) }
+        } else {
+            b
+        }
+    };
     // Try to precompute the bump and PDA at expansion time.
     if using_our_program_id {
         if let Some(literal_seeds) = crate::pda::seeds_as_byte_literals(seeds) {
@@ -444,6 +476,7 @@ fn emit_seeds_check(
                     let pda_const = Ident::new(&format!("__{}_PDA", upper), field_name.span());
                     // Emit the 32-byte PDA as an `Address` const.
                     let pda_bytes_tokens = pda_bytes.iter().map(|b| quote! { #b });
+                    let bump_assign = wrap_bump(quote! { #bump_const });
                     let check = quote! {
                         const #bump_const: u8 = #bump;
                         const #pda_const: anchor_lang_v2::Address =
@@ -451,7 +484,7 @@ fn emit_seeds_check(
                         if !anchor_lang_v2::address_eq(#target_addr_ref, &#pda_const) {
                             return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
                         }
-                        __bumps.#field_name = #bump_const;
+                        __bumps.#field_name = #bump_assign;
                     };
                     return if for_init {
                         quote! {
@@ -487,6 +520,7 @@ fn emit_seeds_check(
     } else {
         quote! { false }
     };
+    let bump_assign = wrap_bump(quote! { __bump });
     let find = quote! {
         let __bump = if #skip_curve {
             anchor_lang_v2::find_and_verify_program_address_skip_curve(
@@ -497,7 +531,7 @@ fn emit_seeds_check(
                 &[#(#seed_exprs),*], #pda_program, #target_addr_ref,
             ).map_err(|_| anchor_lang_v2::ErrorCode::ConstraintSeeds)?
         };
-        __bumps.#field_name = __bump;
+        __bumps.#field_name = #bump_assign;
     };
     if for_init {
         quote! {
@@ -517,6 +551,7 @@ fn emit_init_body(
     field_ty: &Type,
     attrs: &AccountAttrs,
     field_names: &[String],
+    is_optional: bool,
 ) -> TokenStream2 {
     let payer = attrs.payer.as_ref().expect("init requires payer");
     // Fall back to `<T as Space>::INIT_SPACE` when `space` is omitted.
@@ -567,6 +602,7 @@ fn emit_init_body(
             None,
             true,
             using_our_program_id,
+            is_optional,
         )
     } else {
         quote! { let __seeds: Option<&[&[u8]]> = None; }
@@ -594,7 +630,8 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     let attrs = parse_account_attrs(&field.attrs);
 
     let is_signer = field_ty_str(field_ty) == "Signer";
-    let is_optional = field_ty_str(field_ty) == "Optional";
+    let option_inner = extract_option_inner(field_ty);
+    let is_optional = option_inner.is_some();
     let is_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
     let program_address = extract_program_address(field_ty);
     let idl_writable = attrs.is_mut;
@@ -606,8 +643,89 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     // --- Load ---
     let load = if is_nested_type(field_ty) {
         quote! { compile_error!("Nested<T> codegen not yet implemented"); }
+    } else if let Some(inner_ty) = option_inner {
+        // `Option<T>` field: client-side sentinel of "account address ==
+        // program_id" is interpreted as `None`. Otherwise we run the same
+        // load / init / init_if_needed / zeroed logic we would for a
+        // non-optional `T`, but against `inner_ty` (so the v2 trait-based
+        // `AccountInitialize` / `AnchorAccount` impls dispatch on `T`, not
+        // `Option<T>`), and wrap the result in `Some`.
+        let inner_action = if attrs.is_init {
+            // Init body emitted against inner_ty so the trait call lands on T.
+            let init_body = emit_init_body(field_name, inner_ty, &attrs, field_names, true);
+            quote! { Some({ #init_body }) }
+        } else if attrs.is_init_if_needed {
+            let init_body = emit_init_body(field_name, inner_ty, &attrs, field_names, true);
+            quote! {
+                if __target.data_len() > 0
+                    && !__target.owned_by(&anchor_lang_v2::programs::System::id())
+                {
+                    // SAFETY: the bitvec duplicate-account check below ensures
+                    // no other mutable reference to this account's data exists.
+                    Some(unsafe {
+                        <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut(
+                            __target, __program_id,
+                        )?
+                    })
+                } else {
+                    Some({ #init_body })
+                }
+            }
+        } else if attrs.is_zeroed {
+            quote! {
+                {
+                    let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
+                    {
+                        let __data = __target.try_borrow()?;
+                        if __data.len() < __disc.len()
+                            || __data[..__disc.len()].iter().any(|b| *b != 0)
+                        {
+                            return Err(anchor_lang_v2::ErrorCode::ConstraintZero.into());
+                        }
+                    }
+                    unsafe {
+                        let mut __view = __target;
+                        let __data = __view.borrow_unchecked_mut();
+                        __data[..__disc.len()].copy_from_slice(__disc);
+                    }
+                    // SAFETY: the bitvec duplicate-account check below ensures
+                    // no other mutable reference to this account's data exists.
+                    Some(unsafe {
+                        <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut(
+                            __target, __program_id,
+                        )?
+                    })
+                }
+            }
+        } else if attrs.is_mut {
+            quote! {
+                // SAFETY: the bitvec duplicate-account check below ensures
+                // no other mutable reference to this account's data exists.
+                Some(unsafe {
+                    <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut(
+                        __target, __program_id,
+                    )?
+                })
+            }
+        } else {
+            quote! {
+                Some(<#inner_ty as anchor_lang_v2::AnchorAccount>::load(
+                    __target, __program_id,
+                )?)
+            }
+        };
+        quote! {
+            let mut #field_name: #field_ty = {
+                let __target = __views[#field_index_usize];
+                if anchor_lang_v2::address_eq(__target.address(), __program_id) {
+                    None
+                } else {
+                    #inner_action
+                }
+            };
+        }
     } else if attrs.is_init {
-        let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
+        let init_body = emit_init_body(field_name, field_ty, &attrs, field_names, false);
         quote! {
             let mut #field_name: #field_ty = {
                 let __target = __views[#field_index_usize];
@@ -615,7 +733,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
             };
         }
     } else if attrs.is_init_if_needed {
-        let init_body = emit_init_body(field_name, field_ty, &attrs, field_names);
+        let init_body = emit_init_body(field_name, field_ty, &attrs, field_names, false);
         quote! {
             let mut #field_name: #field_ty = {
                 let __target = __views[#field_index_usize];
@@ -722,6 +840,11 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
             if let Some(Some(ref bump_expr)) = attrs.bump {
                 // User-supplied bump (e.g. stored in account data). Always
                 // User-supplied bump — verify directly.
+                let bump_assign = if is_optional {
+                    quote! { Some(__bump_val) }
+                } else {
+                    quote! { __bump_val }
+                };
                 constraints.push(quote! {
                     {
                         let __bump_val: u8 = #bump_expr;
@@ -730,7 +853,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
                             #pda_program,
                             #field_name.account().address(),
                         )?;
-                        __bumps.#field_name = __bump_val;
+                        __bumps.#field_name = #bump_assign;
                     }
                 });
             } else {
@@ -744,6 +867,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
                     Some(field_ty),
                     /* for_init */ false,
                     using_our_program_id,
+                    is_optional,
                 ));
             }
         }
@@ -896,19 +1020,48 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         });
     }
 
-    // For Optional<T> fields, wrap all constraints and exit in is_some()
-    // guards. When the account is None (client passed the program ID
-    // sentinel), code that calls .account() would panic. Skipping is
-    // correct: a None optional has no account to validate or close.
+    // For `Option<T>` fields, each constraint body was generated against the
+    // unwrapped inner — we wrap it in `if let Some(#field_name) = #field_name`
+    // so `#field_name.account()`, `#field_name.authority`, etc. resolve on the
+    // inner `T` (via autoderef). The exit/close path regenerates against the
+    // unwrapped `&mut T` so `AnchorAccount::exit/close` get the right type.
     let (constraints, exit) = if is_optional {
         let constraints = constraints
             .into_iter()
             .map(|c| {
-                quote! { if #field_name.is_some() { #c } }
+                quote! {
+                    if let Some(ref #field_name) = #field_name {
+                        #c
+                    }
+                }
             })
             .collect();
         let exit = exit.map(|e| {
-            quote! { if self.#field_name.is_some() { #e } }
+            // `e` was built against `self.#field_name` (e.g.
+            // `AnchorAccount::exit(&mut self.#field_name)`). For optional
+            // fields we rebuild with the unwrapped inner so the trait call
+            // dispatches on `T`, not `Option<T>`.
+            //
+            // The content of `e` is a fixed shape (either `close(...)?;` or
+            // `exit(...)?;`), so we don't need to parse/rewrite — we just
+            // regenerate from scratch based on which attr set it.
+            let _ = e; // silence unused (shape decided below)
+            if let Some(ref close_target) = attrs.close {
+                quote! {
+                    if let Some(__inner) = self.#field_name.as_mut() {
+                        anchor_lang_v2::AnchorAccount::close(
+                            __inner,
+                            *self.#close_target.account(),
+                        )?;
+                    }
+                }
+            } else {
+                quote! {
+                    if let Some(__inner) = self.#field_name.as_mut() {
+                        anchor_lang_v2::AnchorAccount::exit(__inner)?;
+                    }
+                }
+            }
         });
         (constraints, exit)
     } else {
@@ -922,6 +1075,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         constraints,
         exit,
         has_bump,
+        is_optional,
         idl_writable,
         idl_signer,
         idl_program_address: program_address,

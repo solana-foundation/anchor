@@ -8,8 +8,8 @@ pub use crate::{
     InitSpace,
     // Account types
     accounts::{
-        Account, BorshAccount, Optional, Program, Signer, SlabSchema, SystemAccount, Sysvar,
-        SysvarId, UncheckedAccount,
+        Account, BorshAccount, Program, Signer, SlabSchema, SystemAccount, Sysvar, SysvarId,
+        UncheckedAccount,
     },
     // CPI
     create_account,

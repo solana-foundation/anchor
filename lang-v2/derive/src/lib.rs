@@ -235,10 +235,21 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let loads: Vec<_> = fields.iter().map(|f| &f.load).collect();
     let constraints: Vec<_> = fields.iter().flat_map(|f| &f.constraints).collect();
     let exits: Vec<_> = fields.iter().filter_map(|f| f.exit.as_ref()).collect();
-    let bump_fields: Vec<_> = fields
+    // Bumps fields. Optional accounts get `Option<u8>` so the default
+    // (`None`) maps cleanly to the sentinel-`None` load path; the seeds
+    // check assigns `Some(bump)` only when the inner is `Some`. Mirrors
+    // v1's `bumps.rs:36` Optional handling.
+    let bump_fields: Vec<proc_macro2::TokenStream> = fields
         .iter()
         .filter(|f| f.has_bump)
-        .map(|f| &f.name)
+        .map(|f| {
+            let n = &f.name;
+            if f.is_optional {
+                quote! { #n: Option<u8> }
+            } else {
+                quote! { #n: u8 }
+            }
+        })
         .collect();
 
     // Compile-time sum for `<T as TryAccounts>::HEADER_SIZE`:
@@ -293,7 +304,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let bumps_def = if has_bumps {
         quote! {
             #[derive(Default, Clone)]
-            pub struct #bumps_name { #(pub #bump_fields: u8,)* }
+            pub struct #bumps_name { #(pub #bump_fields,)* }
         }
     } else {
         quote! { pub type #bumps_name = (); }
@@ -309,21 +320,47 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         &format!("__client_accounts_{}", name.to_string().to_lowercase()),
         name.span(),
     );
-    let client_fields: Vec<_> = field_names
+    let client_fields: Vec<_> = fields
         .iter()
         .map(|f| {
-            quote! { pub #f: anchor_lang_v2::Address }
+            let fname = &f.name;
+            if f.is_optional {
+                quote! { pub #fname: Option<anchor_lang_v2::Address> }
+            } else {
+                quote! { pub #fname: anchor_lang_v2::Address }
+            }
         })
         .collect();
-    let client_meta_entries: Vec<_> = idl_accounts
+    let client_meta_entries: Vec<_> = fields
         .iter()
-        .map(|(fname, writable, signer, _)| {
-            let field_ident = syn::Ident::new(fname, proc_macro2::Span::call_site());
-            quote! {
-                anchor_lang_v2::AccountMeta {
-                    pubkey: self.#field_ident,
-                    is_writable: #writable,
-                    is_signer: #signer,
+        .zip(idl_accounts.iter())
+        .map(|(field, (_fname, writable, signer, _))| {
+            let field_ident = &field.name;
+            if field.is_optional {
+                // None-sentinel: matches v1's to_account_metas behavior —
+                // emit `crate::ID` with no flags so the on-chain side reads it
+                // back as the program-id sentinel and treats the slot as None.
+                quote! {
+                    match self.#field_ident {
+                        Some(__addr) => anchor_lang_v2::AccountMeta {
+                            pubkey: __addr,
+                            is_writable: #writable,
+                            is_signer: #signer,
+                        },
+                        None => anchor_lang_v2::AccountMeta {
+                            pubkey: crate::ID,
+                            is_writable: false,
+                            is_signer: false,
+                        },
+                    }
+                }
+            } else {
+                quote! {
+                    anchor_lang_v2::AccountMeta {
+                        pubkey: self.#field_ident,
+                        is_writable: #writable,
+                        is_signer: #signer,
+                    }
                 }
             }
         })
