@@ -1428,11 +1428,11 @@ fn init(
     // Build the program.
     rust_template::create_program(&project_name, template, Some(&test_template))?;
 
-    // Build the migrations directory.
-    let migrations_path = Path::new("migrations");
-    fs::create_dir_all(migrations_path)?;
-
     if !skip_node {
+        // Build the migrations directory.
+        let migrations_path = Path::new("migrations");
+        fs::create_dir_all(migrations_path)?;
+
         let license = get_npm_init_license()?;
         let jest = TestTemplate::Jest == test_template;
         if javascript {
