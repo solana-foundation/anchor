@@ -46,3 +46,8 @@ impl<T: AnchorAccount> AnchorAccount for Box<T> {
         (**self).close(destination)
     }
 }
+
+#[cfg(feature = "idl-build")]
+impl<T: crate::IdlAccountType> crate::IdlAccountType for Box<T> {
+    const __IDL_TYPE: Option<&'static str> = T::__IDL_TYPE;
+}

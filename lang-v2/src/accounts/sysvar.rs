@@ -76,3 +76,6 @@ impl<T: PinocchioSysvar + SysvarId + Copy> AsRef<AccountView> for Sysvar<T> {
         &self.view
     }
 }
+
+#[cfg(feature = "idl-build")]
+impl<T: PinocchioSysvar + SysvarId + Copy> crate::IdlAccountType for Sysvar<T> {}

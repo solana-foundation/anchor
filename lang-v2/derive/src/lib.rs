@@ -287,7 +287,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         })
         .collect();
     let idl_json = idl::build_accounts_json(&idl_accounts);
-    let idl_data_types: Vec<_> = fields.iter().map(|f| &f.idl_data_type).collect();
+    let idl_field_tys: Vec<_> = fields.iter().map(|f| &f.idl_field_ty).collect();
 
     let ix_deser = if ix_args.is_empty() {
         quote! {}
@@ -415,8 +415,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         impl #name {
             pub const __IDL_ACCOUNTS: &'static str = #idl_json;
 
-            pub fn __idl_types() -> Vec<&'static str> {
-                vec![#(#idl_data_types::__IDL_TYPE),*]
+            pub fn __idl_types() -> Vec<Option<&'static str>> {
+                vec![#(
+                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__IDL_TYPE
+                ),*]
             }
         }
     }
@@ -525,8 +527,8 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
         }
         #[cfg(feature = "idl-build")]
-        impl #name {
-            pub const __IDL_TYPE: &'static str = #idl_type_json;
+        impl anchor_lang_v2::IdlAccountType for #name {
+            const __IDL_TYPE: Option<&'static str> = Some(#idl_type_json);
         }
     })
 }
@@ -1094,9 +1096,13 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                     ),*
                 ];
 
-                // Collect types from all accounts structs, dedup by content
+                // Collect types from all accounts structs, dedup by content.
+                // `__idl_types()` now returns `Vec<Option<&str>>` — `None`
+                // for view-wrapper fields (Signer, Program<T>, Sysvar<T>, …)
+                // that don't contribute a user-defined type. Filter those
+                // out with `flatten()`.
                 let mut all_types: Vec<&str> = Vec::new();
-                #(all_types.extend(#idl_accounts_types::__idl_types());)*
+                #(all_types.extend(#idl_accounts_types::__idl_types().into_iter().flatten());)*
                 all_types.sort();
                 all_types.dedup();
 

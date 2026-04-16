@@ -69,3 +69,6 @@ impl<T: Id> AsRef<Address> for Program<T> {
         self.view.address()
     }
 }
+
+#[cfg(feature = "idl-build")]
+impl<T: Id> crate::IdlAccountType for Program<T> {}

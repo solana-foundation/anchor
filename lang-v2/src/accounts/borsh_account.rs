@@ -209,6 +209,14 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> Discriminator
     const DISCRIMINATOR: &'static [u8] = T::DISCRIMINATOR;
 }
 
+#[cfg(feature = "idl-build")]
+impl<T> crate::IdlAccountType for BorshAccount<T>
+where
+    T: BorshDeserialize + BorshSerialize + Owner + Discriminator + crate::IdlAccountType,
+{
+    const __IDL_TYPE: Option<&'static str> = T::__IDL_TYPE;
+}
+
 /// Wrapper-level init for `BorshAccount<T>`: creates the underlying account
 /// (CPI to system program), writes the 8-byte discriminator, then borsh-
 /// deserializes `T` from the zero-filled tail so the in-memory state matches

@@ -62,3 +62,6 @@ impl AnchorAccount for Signer {
 }
 
 view_wrapper_traits!(Signer);
+
+#[cfg(feature = "idl-build")]
+impl crate::IdlAccountType for Signer {}

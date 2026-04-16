@@ -13,6 +13,8 @@ pub mod cursor;
 mod dispatch;
 pub mod event;
 pub mod hash;
+#[cfg(feature = "idl-build")]
+pub mod idl_build;
 pub mod loader;
 pub mod pod;
 pub mod prelude;
@@ -108,6 +110,9 @@ pub use {
     pinocchio::{self, account::AccountView, address::Address},
     traits::*,
 };
+
+#[cfg(feature = "idl-build")]
+pub use idl_build::IdlAccountType;
 
 // ---------------------------------------------------------------------------
 // Client-side types — for building instructions off-chain (tests, CPI, SDK)

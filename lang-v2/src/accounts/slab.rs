@@ -771,3 +771,11 @@ where
         self.view.address()
     }
 }
+
+#[cfg(feature = "idl-build")]
+impl<H, T> crate::IdlAccountType for Slab<H, T>
+where
+    H: Pod + Zeroable + SlabSchema + crate::IdlAccountType,
+{
+    const __IDL_TYPE: Option<&'static str> = H::__IDL_TYPE;
+}

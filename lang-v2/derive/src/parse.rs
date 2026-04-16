@@ -374,7 +374,13 @@ pub struct AccountField {
     pub idl_writable: bool,
     pub idl_signer: bool,
     pub idl_program_address: Option<String>,
-    pub idl_data_type: Option<syn::Type>,
+    /// The raw field type, post-`Option<T>` unwrap. Used by the generated
+    /// `__idl_types()` function to dispatch `<Ty as IdlAccountType>::__IDL_TYPE`
+    /// on the wrapper type (`Program<T>`, `Account<T>`, …) rather than on its
+    /// `::Data` associated type. `None` only for non-`Type::Path` fields that
+    /// can't appear as accounts (defensive — this path shouldn't trigger in
+    /// practice).
+    pub idl_field_ty: Option<syn::Type>,
 }
 
 /// Rewrite a single seed expression so that a bare field-name identifier
@@ -623,12 +629,10 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     let program_address = extract_program_address(field_ty);
     let idl_writable = attrs.is_mut;
     let idl_signer = is_signer || is_init_signer;
-    let idl_data_type: Option<syn::Type> = {
+    let idl_field_ty: Option<syn::Type> = {
         let base_ty = option_inner.unwrap_or(field_ty);
         if let Type::Path(_) = base_ty {
-            Some(syn::parse_quote!(
-                <#base_ty as anchor_lang_v2::AnchorAccount>::Data
-            ))
+            Some(base_ty.clone())
         } else {
             None
         }
@@ -1075,7 +1079,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         idl_writable,
         idl_signer,
         idl_program_address: program_address,
-        idl_data_type,
+        idl_field_ty,
     }
 }
 
