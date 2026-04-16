@@ -1,7 +1,7 @@
 extern crate alloc;
 
 use {
-    crate::AnchorAccount,
+    crate::{AccountInitialize, AnchorAccount, Constrain, Discriminator, Space},
     alloc::boxed::Box,
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
@@ -50,4 +50,47 @@ impl<T: AnchorAccount> AnchorAccount for Box<T> {
 #[cfg(feature = "idl-build")]
 impl<T: crate::IdlAccountType> crate::IdlAccountType for Box<T> {
     const __IDL_TYPE: Option<&'static str> = T::__IDL_TYPE;
+}
+
+// ---------------------------------------------------------------------------
+// Forward the init-time trait surface so `Box<Account<T>>` and
+// `Box<BorshAccount<T>>` work with `#[account(init, …)]`, `#[account(zeroed)]`,
+// `space = …` omitted, and namespaced constraints (`token::mint = …`, etc.).
+//
+// The derive reaches for these traits via UFCS on the field type — e.g.
+// `<Box<Account<T>> as AccountInitialize>::create_and_initialize(…)` — so
+// auto-deref on the receiver isn't sufficient; explicit forwards are required.
+// ---------------------------------------------------------------------------
+
+impl<T: AccountInitialize> AccountInitialize for Box<T> {
+    type Params<'a> = T::Params<'a>;
+
+    fn create_and_initialize<'a>(
+        payer: &AccountView,
+        account: &AccountView,
+        space: usize,
+        program_id: &Address,
+        params: &Self::Params<'a>,
+        signer_seeds: Option<&[&[u8]]>,
+    ) -> Result<Self, ProgramError> {
+        T::create_and_initialize(payer, account, space, program_id, params, signer_seeds)
+            .map(Box::new)
+    }
+}
+
+impl<T: Space> Space for Box<T> {
+    const INIT_SPACE: usize = T::INIT_SPACE;
+}
+
+impl<T: Discriminator> Discriminator for Box<T> {
+    const DISCRIMINATOR: &'static [u8] = T::DISCRIMINATOR;
+}
+
+impl<T, C, V> Constrain<C, V> for Box<T>
+where
+    T: Constrain<C, V>,
+{
+    fn constrain(&mut self, expected: &V) -> Result<(), ProgramError> {
+        (**self).constrain(expected)
+    }
 }
