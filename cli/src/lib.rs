@@ -97,7 +97,7 @@ pub enum Command {
         #[clap(long)]
         no_install: bool,
         /// Package Manager to use
-        #[clap(value_enum, long, default_value = "yarn")]
+        #[clap(value_enum, long, default_value = "pnpm")]
         package_manager: PackageManager,
         /// Don't initialize git
         #[clap(long)]
@@ -1450,15 +1450,24 @@ fn init(
     test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
     if !no_install {
-        let package_manager_result = install_node_modules(&package_manager_cmd)?;
-
-        if !package_manager_result.status.success() {
-            if package_manager_cmd != "npm" {
-                println!("Failed {package_manager_cmd} install will attempt to npm install");
-                install_node_modules("npm")?;
-            } else {
-                eprintln!("Failed to install node modules");
-            }
+        // Fall back to npm only when the selected package manager isn't
+        // on PATH — that's the "user doesn't have pnpm installed" case,
+        // recoverable because npm ships with Node. If pnpm runs and exits
+        // non-zero (lockfile corruption, network error, missing package),
+        // surface the real failure instead of silently switching tools.
+        let cmd_to_use = if package_manager_cmd != "npm"
+            && !package_manager_available(&package_manager_cmd)
+        {
+            println!(
+                "`{package_manager_cmd}` not found on PATH, falling back to `npm install`"
+            );
+            "npm".to_string()
+        } else {
+            package_manager_cmd.clone()
+        };
+        let output = install_node_modules(&cmd_to_use)?;
+        if !output.status.success() {
+            eprintln!("`{cmd_to_use} install` failed (exit code {:?})", output.status.code());
         }
     }
 
@@ -1529,6 +1538,29 @@ fn install_solana_skill() {
                  skills add {SKILL_REPO}"
             );
         }
+    }
+}
+
+/// Check whether a package manager binary (`pnpm`, `yarn`, `npm`, `bun`) is
+/// available on `PATH` without actually installing anything. Used to pick
+/// between the user's chosen PM and the `npm` fallback.
+fn package_manager_available(cmd: &str) -> bool {
+    if cfg!(target_os = "windows") {
+        std::process::Command::new("cmd")
+            .arg(format!("/C {cmd} --version"))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    } else {
+        std::process::Command::new(cmd)
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
     }
 }
 
