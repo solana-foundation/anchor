@@ -14,15 +14,19 @@ default = []
 # by test name. No-op when disabled — `svm()` reduces to `LiteSVM::new()`.
 profile = [
     "dep:solana-program-runtime",
-    "dep:solana-transaction",
     "dep:solana-transaction-context",
     "litesvm/register-tracing",
 ]
 
 [dependencies]
 litesvm = "0.11.0"
+# Re-exported so scaffold tests import `Keypair` / `Signer` / `Message` / ...
+# via `anchor_v2_testing` and don't need direct deps on each.
+solana-keypair = "3.0.1"
+solana-message = "3.0.1"
+solana-signer = "3.0.0"
+solana-transaction = "3.0.2"
 solana-program-runtime = { version = "3.1.12", optional = true }
-solana-transaction = { version = "3.0.1", optional = true }
 solana-transaction-context = { version = "3.0", optional = true }
 
 # Nested workspace so dep resolution is independent of the outer anchor

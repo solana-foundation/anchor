@@ -130,7 +130,10 @@ name = "anchor-v2-testing"
 version = "0.1.0"
 dependencies = [
  "litesvm",
+ "solana-keypair",
+ "solana-message",
  "solana-program-runtime",
+ "solana-signer",
  "solana-transaction",
  "solana-transaction-context",
 ]

@@ -218,11 +218,6 @@ mollusk-svm = "~0.10"
             r#"
 [dev-dependencies]
 anchor-v2-testing = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
-litesvm = "0.11.0"
-solana-message = "3.0.1"
-solana-transaction = "3.0.2"
-solana-signer = "3.0.0"
-solana-keypair = "3.0.1"
 "#
         }
         _ => "",
@@ -243,11 +238,8 @@ name = "{1}"
 default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
-no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang-v2/idl-build"]
-custom-heap = []
-custom-panic = []
 {2}
 
 [dependencies]
@@ -885,11 +877,7 @@ fn create_program_template_litesvm_test(name: &str, tests_path: &Path) -> Files 
             r#"
 use {{
     anchor_lang_v2::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
-    litesvm::LiteSVM,
-    solana_message::{{Message, VersionedMessage}},
-    solana_signer::Signer,
-    solana_keypair::Keypair,
-    solana_transaction::versioned::VersionedTransaction,
+    anchor_v2_testing::{{Keypair, LiteSVM, Message, Signer, VersionedMessage, VersionedTransaction}},
 }};
 
 #[test]

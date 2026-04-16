@@ -9,6 +9,16 @@
 
 pub use litesvm::LiteSVM;
 
+// Re-exports so scaffold test files can `use anchor_v2_testing::{Keypair,
+// Signer, Message, VersionedMessage, VersionedTransaction}` without each
+// scaffold carrying direct deps on the individual `solana-*` crates.
+pub use {
+    solana_keypair::Keypair,
+    solana_message::{Message, VersionedMessage},
+    solana_signer::Signer,
+    solana_transaction::versioned::VersionedTransaction,
+};
+
 #[cfg(feature = "profile")]
 mod profile;
 
