@@ -7,7 +7,7 @@ Minimal reference examples for Anchor account
 [constraints](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html).
 
 See the account constraints
-[source code](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/syn/src/codegen/accounts/constraints.rs)
+[source code](https://github.com/solana-foundation/anchor/blob/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/lang/syn/src/codegen/accounts/constraints.rs)
 for implementation details.
 
 ## Normal Constraints
@@ -233,7 +233,7 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 ### `#[account(realloc)]`
 
 Description: Used to realloc program account space at the beginning of an
-instruction.  
+instruction.
 Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/realloc)
 |
 [Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/realloc)
@@ -244,6 +244,20 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
     realloc::payer = <target>,
     realloc::zero = <bool>
 )]
+```
+
+### `#[account(discriminator = discrim)]`
+
+Description: Used to override the discriminator for an account. All constant expressions are supported,
+but [all-zero](/docs/footguns#zeroed-discriminators) discriminators are not.
+
+In versions of Anchor before 1.0, program-owned accounts with zeroed discriminators (for example, by manually
+initializing an `AccountInfo`, or as preparation for `#[zero]` initialization) can be taken over via IDL instructions.
+
+```rust title="attribute"
+#[account(discriminator = 12)]
+#[account(discriminator = [1, 2, 3, 4])]
+#[account(discriminator = MY_CONST_DISCRIMINATOR)]
 ```
 
 ## SPL Constraints
@@ -271,7 +285,7 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 
 ### `#[account(mint::*)]`
 
-Description: Create or validate mint accounts with specified parameters.  
+Description: Create or validate mint accounts with specified parameters.
 Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/mint)
 |
 [Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/mint)

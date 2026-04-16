@@ -1,14 +1,22 @@
 [package]
 name = "anchor-derive-accounts"
-version = "0.32.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
-repository = "https://github.com/coral-xyz/anchor"
+repository = "https://github.com/solana-foundation/anchor"
 license = "Apache-2.0"
 description = "Anchor Derive macro for accounts"
 edition = "2021"
 
 [lib]
 proc-macro = true
+
+[lints.clippy]
+unwrap-used = "deny"
+expect-used = "deny"
+panic = "deny"
+unimplemented = "deny"
+indexing-slicing = "deny"
 
 [features]
 allow-missing-optionals = ["anchor-syn/allow-missing-optionals"]
@@ -17,6 +25,6 @@ idl-build = ["anchor-syn/idl-build"]
 init-if-needed = ["anchor-syn/init-if-needed"]
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "0.32.1" }
+anchor-syn = { path = "../../syn", version = "1.0.0" }
 quote = "1"
 syn = { version = "1", features = ["full"] }

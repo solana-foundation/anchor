@@ -1,8 +1,14 @@
-use anyhow::{anyhow, Result};
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use syn::parse::{Error as ParseError, Result as ParseResult};
-use syn::{Ident, ImplItem, ImplItemConst, Type, TypePath};
+use {
+    anyhow::{anyhow, Result},
+    std::{
+        collections::BTreeMap,
+        path::{Path, PathBuf},
+    },
+    syn::{
+        parse::{Error as ParseError, Result as ParseResult},
+        Ident, ImplItem, ImplItemConst, Type, TypePath,
+    },
+};
 
 /// Crate parse context
 ///
@@ -43,9 +49,12 @@ impl CrateContext {
     }
 
     pub fn root_module(&self) -> ModuleContext<'_> {
-        ModuleContext {
-            detail: self.modules.get("crate").unwrap(),
-        }
+        #[allow(
+            clippy::unwrap_used,
+            reason = "\"crate\" module is always inserted during parsing"
+        )]
+        let detail = self.modules.get("crate").unwrap();
+        ModuleContext { detail }
     }
 
     // Perform Anchor safety checks on the parsed create
@@ -62,9 +71,18 @@ impl CrateContext {
                     })
                 });
                 if !is_documented {
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "unsafe fields always have idents (named fields only)"
+                    )]
                     let ident = unsafe_field.ident.as_ref().unwrap();
                     let span = ident.span();
                     // Error if undocumented.
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "file paths are always valid during compilation"
+                    )]
+                    let canonical = ctx.file.canonicalize().unwrap();
                     return Err(anyhow!(
                         r#"
         {}:{}:{}
@@ -74,7 +92,7 @@ impl CrateContext {
         by using the `skip-lint` option.
         See https://www.anchor-lang.com/docs/basics/program-structure#account-validation for more information.
                     "#,
-                        ctx.file.canonicalize().unwrap().display(),
+                        canonical.display(),
                         span.start().line,
                         span.start().column,
                         ident
@@ -158,7 +176,15 @@ impl ParsedModule {
             None => {
                 // The module is referencing some other file, so we need to load that
                 // to parse the items it has.
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "file paths always have parent directories during compilation"
+                )]
                 let parent_dir = parent_file.parent().unwrap();
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "file stems are always valid UTF-8 Rust identifiers"
+                )]
                 let parent_filename = parent_file.file_stem().unwrap().to_str().unwrap();
                 let parent_mod_dir = parent_dir.join(parent_filename);
 

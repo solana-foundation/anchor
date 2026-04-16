@@ -1,15 +1,16 @@
-use anchor_lang_idl::types::{Idl, IdlInstructionAccountItem};
-use anchor_syn::{
-    codegen::accounts::{__client_accounts, __cpi_client_accounts},
-    parser::accounts,
-    AccountsStruct,
-};
-use heck::CamelCase;
-use quote::{format_ident, quote};
-
-use super::common::{
-    convert_idl_type_to_syn_type, gen_discriminator, get_all_instruction_accounts,
-    get_canonical_program_id,
+use {
+    super::common::{
+        convert_idl_type_to_syn_type, gen_discriminator, get_all_instruction_accounts,
+        get_canonical_program_id,
+    },
+    anchor_lang_idl::types::{Idl, IdlInstructionAccountItem},
+    anchor_syn::{
+        codegen::accounts::{__client_accounts, __cpi_client_accounts},
+        parser::accounts,
+        AccountsStruct,
+    },
+    heck::CamelCase,
+    quote::{format_ident, quote},
 };
 
 pub fn gen_internal_mod(idl: &Idl) -> proc_macro2::TokenStream {
@@ -147,6 +148,10 @@ fn gen_internal_accounts_common(
                 }
                 IdlInstructionAccountItem::Composite(accs) => {
                     let name = format_ident!("{}", accs.name);
+                    #[allow(
+                        clippy::expect_used,
+                        reason = "accounts are guaranteed to exist by prior deduplication pass"
+                    )]
                     let ty_name = all_ix_accs
                         .iter()
                         .find(|a| a.accounts == accs.accounts)
@@ -167,7 +172,15 @@ fn gen_internal_accounts_common(
             }
         })
         .map(|accs_struct| {
+            #[allow(
+                clippy::expect_used,
+                reason = "quote-generated tokens always produce valid syn::ItemStruct"
+            )]
             let accs_struct = syn::parse2(accs_struct).expect("Failed to parse as syn::ItemStruct");
+            #[allow(
+                clippy::expect_used,
+                reason = "quote-generated struct is always valid accounts syntax"
+            )]
             let accs_struct =
                 accounts::parse(&accs_struct).expect("Failed to parse accounts struct");
             gen_accounts(&accs_struct, get_canonical_program_id())

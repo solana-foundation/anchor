@@ -1,0 +1,12 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+matching_solana_program = "E9GKQ5qAkB6N4eGK1Bu3R1a6hNFW2W2Kz6fTn6zkRgZN"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"

@@ -1,7 +1,7 @@
-use crate::codegen::program::common::*;
-use crate::parser::accounts as accounts_parser;
-use crate::Program;
-use quote::{quote, ToTokens};
+use {
+    crate::{codegen::program::common::*, parser::accounts as accounts_parser, Program},
+    quote::{quote, ToTokens},
+};
 
 // Generate non-inlined wrappers for each instruction handler, since Solana's
 // BPF max stack size can't handle reasonable sized dispatch trees without doing
@@ -34,7 +34,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
             };
 
             let ix_name_log = format!("Instruction: {ix_name}");
-            let anchor = &ix.anchor_ident;
+            let accounts_struct_name = &ix.anchor_ident;
+            let anchor = accounts_struct_name;
             let ret_type = &ix.returns.ty.to_token_stream();
             let cfgs = &ix.cfgs;
             let maybe_set_return_data = match ret_type.to_string().as_str() {
@@ -263,9 +264,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             // Build clear error messages
             let count_error_msg = format!(
-                "{}'s expects more args than ix function `{}` provides.",
-                accounts_type_str,
-                ix_method_name_str
+                "#[instruction(...)] on Account `{}<'_>` expects MORE args, the ix `{}(...)` has only {} args.",
+                accounts_struct_name,
+                ix_method_name_str,
+                actual_param_count,
             );
 
             // Type validation
@@ -286,7 +288,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             #[allow(unreachable_code)]
                             if false {
                                 let __type_check_arg: #ty = panic!();
-                                #anchor::#method(&__type_check_arg);
+                                #accounts_struct_name::#method(&__type_check_arg);
                             }
                         })
                     }).collect()
@@ -298,11 +300,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             proc_macro2::Span::call_site(),
                         );
                         quote! {
-                            #[allow(unreachable_code)]
-                            if false {
-                                let __type_check_arg: #ty = panic!();
-                                #anchor::#method(&__type_check_arg);
-                            }
+                            const _: fn() = || {
+                                let _: fn(&#ty) = #accounts_struct_name::#method;
+                            };
                         }
                     }).collect()
                 }
@@ -356,7 +356,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             let param_validation = quote! {
                 const _: () = {
-                    const EXPECTED_COUNT: usize = #anchor::__ANCHOR_IX_PARAM_COUNT;
+                    const EXPECTED_COUNT: usize = #accounts_struct_name::__ANCHOR_IX_PARAM_COUNT;
                     const HANDLER_PARAM_COUNT: usize = #actual_param_count;
                     if EXPECTED_COUNT > HANDLER_PARAM_COUNT {
                         panic!(#count_error_msg);
@@ -370,9 +370,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 #(#cfgs)*
                 #[inline(never)]
                 pub fn #ix_method_name<'info>(
-                    __program_id: &Pubkey,
-                    __accounts: &'info[AccountInfo<'info>],
-                    __ix_data: &[u8],
+                    __program_id: &'info Pubkey,
+                    __accounts: &'info [AccountInfo<'info>],
+                    __ix_data: &'info [u8],
                 ) -> anchor_lang::Result<()> {
                     #[cfg(not(feature = "no-log-ix-name"))]
                     anchor_lang::prelude::msg!(#ix_name_log);
@@ -386,13 +386,13 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     let instruction::#variant_arm = ix;
 
                     // Bump collector.
-                    let mut __bumps = <#anchor as anchor_lang::Bumps>::Bumps::default();
+                    let mut __bumps = <#accounts_struct_name as anchor_lang::Bumps>::Bumps::default();
 
                     let mut __reallocs = std::collections::BTreeSet::new();
 
-                    // Deserialize accounts
-                    let mut __remaining_accounts: &[AccountInfo] = __accounts;
-                    let mut __accounts = #anchor::try_accounts(
+                    // Deserialize accounts.
+                    let mut __remaining_accounts = __accounts;
+                    let mut __accounts = #accounts_struct_name::try_accounts(
                         __program_id,
                         &mut __remaining_accounts,
                         #use_skipped_data,
@@ -400,11 +400,34 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         &mut __reallocs,
                     )?;
 
+                    unsafe fn __shrink_lifetime<'from, 'to, T>(value: &'from mut T) -> &'to mut T {
+                        unsafe { ::core::mem::transmute(value) }
+                    }
+
                     // Invoke user defined handler.
                     let result = #program_name::#ix_method_name(
                         anchor_lang::context::Context::new(
                             __program_id,
-                            &mut __accounts,
+                            // SAFETY: `__shrink_lifetime` is used to *shrink* the lifetime of
+                            // the inner `AccountInfo` from `'info` to the local function lifetime.
+                            // No lifetime is extended by this operation.
+                            // The lifetime is not shrunk automatically as `RefCell` causes `AccountInfo`
+                            // to be invariant.
+                            // This is sound provided the following invariants hold:
+                            // (1) The `'info` lifetime strictly outlives the local function
+                            //     lifetime; therefore, the transmuted references cannot outlive
+                            //     their backing data.
+                            // (2) `AccountInfo` does not implement custom `Drop` logic and does not
+                            //     rely on its lifetime parameter during destruction.
+                            // (3) The `Context` value is dropped before the `__accounts` reference
+                            //     is dropped or otherwise accessed, preventing any use-after-scope.
+                            //
+                            // This lifetime narrowing is required to conform to the `Context`
+                            // struct’s single-lifetime parameterization, which uses a single
+                            // lifetime to keep the API simple and ergonomic.
+                            unsafe {
+                                __shrink_lifetime(&mut __accounts)
+                            },
                             __remaining_accounts,
                             __bumps,
                         ),

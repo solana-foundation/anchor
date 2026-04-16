@@ -1,8 +1,20 @@
 import * as anchor from "@anchor-lang/core";
 import { Program } from "@anchor-lang/core";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import {
+  PublicKey,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
 import { TokenExtensions } from "../target/types/token_extensions";
 import { ASSOCIATED_PROGRAM_ID } from "@anchor-lang/core/dist/cjs/utils/token";
+import {
+  createInitializeAccountInstruction,
+  createMint,
+  ExtensionType,
+  getAccountLen,
+} from "@solana/spl-token";
 import { it } from "node:test";
 
 const TOKEN_2022_PROGRAM_ID = new anchor.web3.PublicKey(
@@ -80,5 +92,127 @@ describe("token extensions", () => {
       })
       .signers([payer])
       .rpc();
+  });
+
+  describe("group_pointer_update", () => {
+    let groupPointerMint = new Keypair();
+
+    it("Create mint with group pointer extension", async () => {
+      await program.methods
+        .createGroupPointerMint()
+        .accountsStrict({
+          payer: payer.publicKey,
+          authority: payer.publicKey,
+          mint: groupPointerMint.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer, groupPointerMint])
+        .rpc();
+    });
+
+    it("Update group pointer via CPI succeeds", async () => {
+      const newGroupAddress = Keypair.generate().publicKey;
+      await program.methods
+        .updateGroupPointer(newGroupAddress)
+        .accountsStrict({
+          authority: payer.publicKey,
+          mint: groupPointerMint.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer])
+        .rpc();
+    });
+
+    it("Update group pointer to None via CPI succeeds", async () => {
+      await program.methods
+        .updateGroupPointer(null)
+        .accountsStrict({
+          authority: payer.publicKey,
+          mint: groupPointerMint.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer])
+        .rpc();
+    });
+  });
+
+  describe("cpi_guard", () => {
+    let cpiGuardMint: PublicKey;
+    let enableAccount = Keypair.generate();
+    let disableAccount = Keypair.generate();
+
+    async function createCpiGuardTokenAccount(
+      tokenAccountKeypair: Keypair
+    ): Promise<void> {
+      const accountLen = getAccountLen([ExtensionType.CpiGuard]);
+      const lamports =
+        await provider.connection.getMinimumBalanceForRentExemption(accountLen);
+
+      const tx = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: tokenAccountKeypair.publicKey,
+          space: accountLen,
+          lamports,
+          programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeAccountInstruction(
+          tokenAccountKeypair.publicKey,
+          cpiGuardMint,
+          payer.publicKey,
+          TOKEN_2022_PROGRAM_ID
+        )
+      );
+
+      await sendAndConfirmTransaction(
+        provider.connection,
+        tx,
+        [payer, tokenAccountKeypair],
+        { commitment: "confirmed" }
+      );
+    }
+
+    it("Create mint and token accounts with CPI Guard extension", async () => {
+      cpiGuardMint = await createMint(
+        provider.connection,
+        payer,
+        payer.publicKey,
+        null,
+        9,
+        Keypair.generate(),
+        { commitment: "confirmed" },
+        TOKEN_2022_PROGRAM_ID
+      );
+
+      await createCpiGuardTokenAccount(enableAccount);
+      await createCpiGuardTokenAccount(disableAccount);
+    });
+
+    it("Enable CPI Guard via CPI succeeds", async () => {
+      await program.methods
+        .enableCpiGuard()
+        .accountsStrict({
+          authority: payer.publicKey,
+          tokenAccount: enableAccount.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer])
+        .rpc();
+    });
+
+    it("Disable CPI Guard via CPI succeeds", async () => {
+      // Uses a separate account where guard is not active,
+      // since an active CPI Guard blocks disable via CPI
+      await program.methods
+        .disableCpiGuard()
+        .accountsStrict({
+          authority: payer.publicKey,
+          tokenAccount: disableAccount.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer])
+        .rpc();
+    });
   });
 });

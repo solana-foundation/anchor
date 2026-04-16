@@ -1,7 +1,11 @@
-use crate::codegen::accounts::{bumps, constraints, generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct, Ty};
-use quote::{quote, quote_spanned};
-use syn::Expr;
+use {
+    crate::{
+        codegen::accounts::{bumps, constraints, generics, ParsedGenerics},
+        AccountField, AccountsStruct, Ty,
+    },
+    quote::{quote, quote_spanned},
+    syn::Expr,
+};
 
 // Generates the `Accounts` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
@@ -107,6 +111,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             #field
                         }
                     }
+                    #[allow(
+                        clippy::panic,
+                        reason = "invariant: ix_api expressions are Expr::Type, validated by the \
+                                  parser before codegen"
+                    )]
                     _ => panic!("Invalid instruction declaration"),
                 })
                 .collect();
@@ -175,7 +184,14 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             {}
                         }
                     } else {
-                        panic!("Invalid instruction declaration");
+                        #[allow(
+                            clippy::panic,
+                            reason = "invariant: ix_api expressions are Expr::Type, validated by \
+                                      the parser before codegen"
+                        )]
+                        {
+                            panic!("Invalid instruction declaration");
+                        }
                     }
                 })
                 .collect();

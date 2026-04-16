@@ -11,25 +11,22 @@ pub mod hash;
 #[cfg(not(feature = "hash"))]
 pub(crate) mod hash;
 
-use codegen::accounts as accounts_codegen;
-use codegen::program as program_codegen;
-use parser::accounts as accounts_parser;
-use parser::program as program_parser;
-use proc_macro2::{Span, TokenStream};
-use quote::quote;
-use quote::ToTokens;
-use std::collections::HashMap;
-use std::ops::Deref;
-use syn::ext::IdentExt;
-use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::token::Comma;
-use syn::Attribute;
-use syn::Lit;
-use syn::{
-    Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
-    TypePath,
+use {
+    codegen::{accounts as accounts_codegen, program as program_codegen},
+    parser::{accounts as accounts_parser, program as program_parser},
+    proc_macro2::{Span, TokenStream},
+    quote::{quote, ToTokens},
+    std::{collections::HashMap, ops::Deref},
+    syn::{
+        ext::IdentExt,
+        parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult},
+        parse_quote,
+        punctuated::Punctuated,
+        spanned::Spanned,
+        token::Comma,
+        Attribute, Expr, ExprLit, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit,
+        LitInt, PatType, Token, Type, TypePath,
+    },
 };
 
 #[derive(Debug)]
@@ -78,7 +75,8 @@ pub struct Ix {
 #[derive(Debug, Default)]
 pub struct Overrides {
     /// Override the default 8-byte discriminator
-    pub discriminator: Option<TokenStream>,
+    // `Box` is used to avoid large memory use in the common case as `Expr` is a large type
+    pub discriminator: Option<Box<Expr>>,
 }
 
 impl Parse for Overrides {
@@ -88,16 +86,31 @@ impl Parse for Overrides {
         for arg in args {
             match arg.name.to_string().as_str() {
                 "discriminator" => {
-                    let value = match &arg.value {
+                    let value = match arg.value {
                         // Allow `discriminator = 42`
-                        Expr::Lit(lit) if matches!(lit.lit, Lit::Int(_)) => quote! { &[#lit] },
+                        Expr::Lit(ExprLit {
+                            lit: lit @ Lit::Int(_),
+                            ..
+                        }) => {
+                            parse_quote!(&[#lit])
+                        }
                         // Allow `discriminator = [0, 1, 2, 3]`
-                        Expr::Array(arr) => quote! { &#arr },
-                        expr => expr.to_token_stream(),
+                        Expr::Array(arr) => {
+                            parse_quote!(&#arr)
+                        }
+                        expr => expr,
                     };
-                    attr.discriminator.replace(value)
+                    attr.discriminator.replace(Box::new(value))
                 }
-                _ => return Err(ParseError::new(arg.name.span(), "Invalid argument")),
+                name => {
+                    return Err(ParseError::new(
+                        arg.name.span(),
+                        format!(
+                            "Invalid argument `{}`. Expected one of: `discriminator`",
+                            name
+                        ),
+                    ));
+                }
             };
         }
 
@@ -197,7 +210,12 @@ impl AccountsStruct {
                     let arg = parser::tts_to_string(expr);
                     let components: Vec<&str> = arg.split(" : ").collect();
                     assert!(components.len() == 2);
-                    (components[0].to_string(), components[1].to_string())
+                    #[allow(
+                        clippy::indexing_slicing,
+                        reason = "len == 2 asserted immediately above"
+                    )]
+                    let result = (components[0].to_string(), components[1].to_string());
+                    result
                 })
                 .collect()
         })

@@ -1,6 +1,4 @@
-use core::str::FromStr;
-
-use anchor_lang::solana_program::pubkey::Pubkey;
+use {anchor_lang::solana_program::pubkey::Pubkey, core::str::FromStr};
 
 mod id {
     anchor_lang::declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");

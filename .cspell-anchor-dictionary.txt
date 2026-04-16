@@ -84,6 +84,8 @@ Solang
 solpg
 Solpg
 stdsimd
+surfpool
+Surfpool
 syscall
 syscalls
 sysvar
