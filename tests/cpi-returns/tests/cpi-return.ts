@@ -271,8 +271,16 @@ describe("CPI return", () => {
 
     // Callee returned 10, but malicious program overwrote with 999.
     // get_unchecked() (old behavior) happily returns the spoofed value.
-    assert.notEqual(spoofedValue, 10, "Expected spoofed value, not the real callee value");
-    assert.equal(spoofedValue, 999, "Malicious program successfully spoofed return data");
+    assert.notEqual(
+      spoofedValue,
+      10,
+      "Expected spoofed value, not the real callee value"
+    );
+    assert.equal(
+      spoofedValue,
+      999,
+      "Malicious program successfully spoofed return data"
+    );
 
     console.log(`\n  VULNERABILITY CONFIRMED (get_unchecked / old behavior):`);
     console.log(`    Callee returned: 10`);
@@ -298,7 +306,17 @@ describe("CPI return", () => {
       // If we get here, the fix didn't work
       assert.fail("Expected transaction to fail due to program_id mismatch");
     } catch (e) {
-      // The transaction should fail because get() now validates program_id
+      // Verify the error is specifically from the program_id validation,
+      // not some unrelated failure.
+      const errStr = JSON.stringify(e);
+      assert(
+        errStr.includes("program_id mismatch") ||
+          errStr.includes("ProgramFailedToComplete"),
+        `Expected program_id mismatch error, got: ${e.message?.substring(
+          0,
+          200
+        )}`
+      );
       console.log(`\n  FIX CONFIRMED: get() rejected spoofed return data`);
       console.log(`    Error: ${e.message?.substring(0, 100)}...\n`);
     }
