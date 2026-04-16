@@ -1,5 +1,5 @@
 use {
-    crate::{AnchorAccount, Discriminator, Owner},
+    crate::{AccountInitialize, AnchorAccount, Discriminator, Owner},
     borsh::{BorshDeserialize, BorshSerialize},
     core::ops::{Deref, DerefMut},
     pinocchio::{
@@ -173,5 +173,60 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AsRef<Account
 {
     fn as_ref(&self) -> &AccountView {
         &self.view
+    }
+}
+
+/// Forward `Discriminator` from a `BorshAccount<T>` to its inner type. Lets
+/// the `#[account(zero)]` derive codegen look up the disc via the field type
+/// directly (`<BorshAccount<Counter> as Discriminator>::DISCRIMINATOR`).
+impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> Discriminator
+    for BorshAccount<T>
+{
+    const DISCRIMINATOR: &'static [u8] = T::DISCRIMINATOR;
+}
+
+/// Wrapper-level init for `BorshAccount<T>`: creates the underlying account
+/// (CPI to system program), writes the 8-byte discriminator, then borsh-
+/// deserializes `T` from the zero-filled tail so the in-memory state matches
+/// exactly what a subsequent `load()` would observe. Any deserialization
+/// failure propagates — types whose borsh schema rejects all-zero encoding
+/// cannot be `init`-ed this way and must be constructed through a custom
+/// handler.
+impl<T> AccountInitialize for BorshAccount<T>
+where
+    T: BorshDeserialize + BorshSerialize + Owner + Discriminator,
+{
+    type Params<'a> = ();
+
+    #[inline(always)]
+    fn create_and_initialize<'a>(
+        payer: &AccountView,
+        account: &AccountView,
+        space: usize,
+        program_id: &Address,
+        _params: &(),
+        signer_seeds: Option<&[&[u8]]>,
+    ) -> Result<Self, ProgramError> {
+        let disc: &[u8; 8] = T::DISCRIMINATOR
+            .try_into()
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        match signer_seeds {
+            Some(seeds) => crate::create_account_signed(payer, account, space, program_id, seeds)?,
+            None => crate::create_account(payer, account, space, program_id)?,
+        }
+        let mut view_mut = *account;
+        let data_ref = view_mut.try_borrow_mut()?;
+        let mut guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        match guard.first_chunk_mut::<DISC_LEN>() {
+            Some(dst) => *dst = *disc,
+            None => return Err(ProgramError::AccountDataTooSmall),
+        }
+        let data = T::deserialize(&mut &guard[DISC_LEN..])
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        Ok(Self {
+            view: *account,
+            data,
+            borrow: BorshBorrow::Mutable { guard },
+        })
     }
 }
