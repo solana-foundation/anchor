@@ -99,6 +99,9 @@ pub struct AccountsJsonField<'a> {
     /// `#[doc = "..."]` lines on the field, in source order. Emitted as
     /// `"docs":[...]`.
     pub docs: &'a [String],
+    /// Pre-built `pda: {...}` object (JSON body, no leading comma). `None`
+    /// when the field has no `seeds = [...]` attr.
+    pub pda_json: Option<String>,
     /// The wrapper `Type` (post-`Option` unwrap) whose trait consts we
     /// dispatch on at runtime. Should match `AccountField::idl_field_ty`.
     pub field_ty: &'a Option<Type>,
@@ -141,6 +144,11 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
             } else {
                 format!(",\"docs\":{}", docs_to_json_array(f.docs))
             };
+            let pda_json = f
+                .pda_json
+                .as_ref()
+                .map(|p| format!(",\"pda\":{p}"))
+                .unwrap_or_default();
             let init_signer = f.init_signer;
             if let Some(ty) = f.field_ty {
                 quote! {
@@ -157,7 +165,7 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                             None => anchor_lang_v2::__alloc::string::String::new(),
                         };
                         anchor_lang_v2::__alloc::format!(
-                            "{{\"name\":\"{}\"{}{}{}{}{}{}}}",
+                            "{{\"name\":\"{}\"{}{}{}{}{}{}{}}}",
                             #name,
                             #writable_json,
                             __signer_json,
@@ -165,6 +173,7 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                             #optional_json,
                             #relations_json,
                             #docs_json,
+                            #pda_json,
                         )
                     }
                 }
@@ -175,13 +184,14 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                 let signer_json = if init_signer { ",\"signer\":true" } else { "" };
                 quote! {
                     anchor_lang_v2::__alloc::format!(
-                        "{{\"name\":\"{}\"{}{}{}{}{}}}",
+                        "{{\"name\":\"{}\"{}{}{}{}{}{}}}",
                         #name,
                         #writable_json,
                         #signer_json,
                         #optional_json,
                         #relations_json,
                         #docs_json,
+                        #pda_json,
                     )
                 }
             }
@@ -316,4 +326,170 @@ fn escape_json_string(s: &str) -> String {
         }
     }
     out
+}
+
+// ---------------------------------------------------------------------------
+// Seed classification (Part E — `pda: {...}` emission)
+// ---------------------------------------------------------------------------
+
+/// Classify a single seed expression into one of the `IdlSeed` variants
+/// (spec:111-134) and return a pre-built JSON object string ready to splice
+/// into a `seeds` array.
+///
+/// Recognized shapes:
+/// - byte literal (`b"counter"`)              → `{"kind":"const","value":[...]}`
+/// - byte-array literal (`[1, 2, 3]`)         → `{"kind":"const","value":[...]}`
+/// - string literal (`"counter"`)             → `{"kind":"const","value":[<bytes>]}`
+/// - `"literal".as_bytes()`                   → `{"kind":"const","value":[...]}`
+/// - account field ref (`user` bare ident,
+///   `user.key().as_ref()`, `user.address().as_ref()`,
+///   `user.as_ref()`) with `user` in `field_names`
+///                                            → `{"kind":"account","path":"user"}`
+/// - instruction arg ref (`nonce` bare ident,
+///   `nonce.to_le_bytes()`, `nonce.as_ref()`)
+///   with `nonce` in `ix_arg_names`
+///                                            → `{"kind":"arg","path":"nonce"}`
+/// - anything else (e.g. `Some::Path::call()`) → `const` with empty value
+///   + eprintln warning so the anchor build CLI surfaces it.
+pub fn classify_seed(
+    expr: &Expr,
+    field_names: &[String],
+    ix_arg_names: &[String],
+) -> String {
+    // Peel `&<inner>` wrappers — they're common in seed expressions and
+    // always transparent to classification.
+    let mut cur = expr;
+    while let Expr::Reference(r) = cur {
+        cur = &r.expr;
+    }
+
+    // Byte / string / byte-lit literal.
+    if let Expr::Lit(lit) = cur {
+        match &lit.lit {
+            Lit::ByteStr(bs) => return const_seed_json(&bs.value()),
+            Lit::Str(s) => return const_seed_json(s.value().as_bytes()),
+            Lit::Byte(b) => return const_seed_json(&[b.value()]),
+            _ => {}
+        }
+    }
+
+    // Array literal with fully-u8 elements: [1, 2, 3]
+    if let Expr::Array(arr) = cur {
+        let mut bytes: Option<Vec<u8>> = Some(Vec::with_capacity(arr.elems.len()));
+        for e in &arr.elems {
+            if let Expr::Lit(syn::ExprLit {
+                lit: Lit::Int(i), ..
+            }) = e
+            {
+                if let Ok(v) = i.base10_parse::<u8>() {
+                    bytes.as_mut().unwrap().push(v);
+                    continue;
+                }
+            }
+            bytes = None;
+            break;
+        }
+        if let Some(b) = bytes {
+            return const_seed_json(&b);
+        }
+    }
+
+    // Bare ident — field ref wins, then ix arg.
+    if let Expr::Path(ep) = cur {
+        if ep.qself.is_none() && ep.path.segments.len() == 1 && ep.path.leading_colon.is_none() {
+            let seg = &ep.path.segments[0];
+            if seg.arguments.is_empty() {
+                let name = seg.ident.to_string();
+                if field_names.contains(&name) {
+                    return account_seed_json(&name);
+                }
+                if ix_arg_names.contains(&name) {
+                    return arg_seed_json(&name);
+                }
+            }
+        }
+    }
+
+    // Method-call / field-access chains: walk to the receiver's bare
+    // ident. Handles `foo.bar()`, `foo.bar.baz`, `foo.key().as_ref()`,
+    // `foo.to_le_bytes()`, `foo[0]`, `(foo)`, etc.
+    if let Some(root) = receiver_root_ident(cur) {
+        if field_names.contains(&root) {
+            return account_seed_json(&root);
+        }
+        if ix_arg_names.contains(&root) {
+            return arg_seed_json(&root);
+        }
+    }
+
+    // `"literal".as_bytes()` — receiver is a string literal, not an
+    // ident, so the walk above missed it. Pick it up here.
+    if let Expr::MethodCall(mc) = cur {
+        if let Expr::Lit(syn::ExprLit {
+            lit: Lit::Str(s), ..
+        }) = &*mc.receiver
+        {
+            if mc.method == "as_bytes" {
+                return const_seed_json(s.value().as_bytes());
+            }
+        }
+    }
+
+    // Unknown — emit a warning (visible in `cargo build` output) and keep
+    // emission valid with an empty const so downstream tooling doesn't
+    // choke on malformed JSON.
+    eprintln!(
+        "anchor-v2 idl: unable to classify seed expression `{}`; emitting empty const",
+        quote!(#expr)
+    );
+    const_seed_json(&[])
+}
+
+/// Walk down a method-call / field-access / index chain and return the
+/// bare ident at its root, if any. `foo.key().as_ref()` → `foo`;
+/// `foo.bar.baz` → `foo`; `foo[0]` → `foo`; `(foo)` → `foo`.
+fn receiver_root_ident(expr: &Expr) -> Option<String> {
+    let mut cur = expr;
+    loop {
+        match cur {
+            Expr::MethodCall(mc) => cur = &mc.receiver,
+            Expr::Field(fa) => cur = &fa.base,
+            Expr::Index(ix) => cur = &ix.expr,
+            Expr::Paren(p) => cur = &p.expr,
+            Expr::Reference(r) => cur = &r.expr,
+            Expr::Path(ep)
+                if ep.qself.is_none()
+                    && ep.path.segments.len() == 1
+                    && ep.path.leading_colon.is_none()
+                    && ep.path.segments[0].arguments.is_empty() =>
+            {
+                return Some(ep.path.segments[0].ident.to_string());
+            }
+            _ => return None,
+        }
+    }
+}
+
+fn const_seed_json(bytes: &[u8]) -> String {
+    let values: Vec<String> = bytes.iter().map(|b| b.to_string()).collect();
+    format!("{{\"kind\":\"const\",\"value\":[{}]}}", values.join(","))
+}
+
+fn account_seed_json(path: &str) -> String {
+    format!("{{\"kind\":\"account\",\"path\":\"{path}\"}}")
+}
+
+fn arg_seed_json(path: &str) -> String {
+    format!("{{\"kind\":\"arg\",\"path\":\"{path}\"}}")
+}
+
+/// Assemble the `pda: {...}` object body from a field's classified seeds
+/// plus optional program override. Returns the JSON object (without the
+/// leading `,"pda":` — that's spliced by `build_accounts_emission`).
+pub fn pda_object_json(seeds: &[String], program: Option<&String>) -> String {
+    let seeds_arr = format!("[{}]", seeds.join(","));
+    match program {
+        Some(p) => format!("{{\"seeds\":{seeds_arr},\"program\":{p}}}"),
+        None => format!("{{\"seeds\":{seeds_arr}}}"),
+    }
 }

@@ -55,6 +55,15 @@ pub struct AccountAttrs {
     pub namespaced: Vec<NamespacedConstraint>,
 }
 
+/// PDA metadata produced by seed classification. Each entry is a pre-built
+/// JSON string matching the `IdlSeed` enum shape (`{"kind":"const"...}`
+/// etc.). `program` mirrors the optional `seeds::program = expr` override.
+#[derive(Clone, Debug)]
+pub struct IdlPdaMeta {
+    pub seeds: Vec<String>,
+    pub program: Option<String>,
+}
+
 pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
     let mut result = AccountAttrs {
         is_mut: false,
@@ -387,6 +396,9 @@ pub struct AccountField {
     /// Emitted as `"docs":[...]` in the accounts JSON. Matches
     /// `IdlInstructionAccount.docs` (`idl/spec/src/lib.rs:83`).
     pub idl_docs: Vec<String>,
+    /// Classified seed metadata for PDA emission. `None` when the field
+    /// has no `seeds = [...]` attr.
+    pub idl_pda: Option<IdlPdaMeta>,
     /// The raw field type, post-`Option<T>` unwrap. Used by the generated
     /// `__idl_types()` function to dispatch `<Ty as IdlAccountType>::__IDL_TYPE`
     /// on the wrapper type (`Program<T>`, `Account<T>`, …) rather than on its
@@ -629,7 +641,12 @@ fn emit_init_body(
     }
 }
 
-pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) -> AccountField {
+pub fn parse_field(
+    field: &syn::Field,
+    field_names: &[String],
+    field_index: u8,
+    ix_arg_names: &[String],
+) -> AccountField {
     let field_index_usize = field_index as usize;
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
@@ -644,6 +661,16 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     let idl_writable = attrs.is_mut;
     let idl_has_one: Vec<String> = attrs.has_one.iter().map(|(i, _)| i.to_string()).collect();
     let idl_docs = crate::idl::extract_doc_lines(&field.attrs);
+    let idl_pda = attrs.seeds.as_ref().map(|seeds| IdlPdaMeta {
+        seeds: seeds
+            .iter()
+            .map(|s| crate::idl::classify_seed(s, field_names, ix_arg_names))
+            .collect(),
+        program: attrs
+            .seeds_program
+            .as_ref()
+            .map(|p| crate::idl::classify_seed(p, field_names, ix_arg_names)),
+    });
     let idl_field_ty: Option<syn::Type> = {
         let base_ty = option_inner.unwrap_or(field_ty);
         if let Type::Path(_) = base_ty {
@@ -1095,6 +1122,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         idl_init_signer,
         idl_has_one,
         idl_docs,
+        idl_pda,
         idl_field_ty,
     }
 }

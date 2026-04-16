@@ -221,15 +221,19 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         )
         .to_compile_error();
     }
+
+    // Parse #[instruction(arg: Type, ...)] — consumed both for the
+    // runtime deser block AND for PDA seed classification: seeds that
+    // reference an ix arg resolve to `IdlSeed::Arg{path}`.
+    let ix_args = parse_instruction_attrs(&input.attrs);
+    let ix_arg_names: Vec<String> = ix_args.iter().map(|(n, _)| n.to_string()).collect();
+
     let fields: Vec<parse::AccountField> = named_fields
         .named
         .iter()
         .enumerate()
-        .map(|(i, f)| parse::parse_field(f, &raw_field_names, i as u8))
+        .map(|(i, f)| parse::parse_field(f, &raw_field_names, i as u8, &ix_arg_names))
         .collect();
-
-    // Parse #[instruction(arg: Type, ...)] for early deserialization
-    let ix_args = parse_instruction_attrs(&input.attrs);
 
     let field_names: Vec<_> = fields.iter().map(|f| &f.name).collect();
     let loads: Vec<_> = fields.iter().map(|f| &f.load).collect();
@@ -297,6 +301,17 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         m
     };
 
+    // Pre-build per-field pda JSON bodies so the emission site only has
+    // to splice strings. Saves duplicating the seed-classification logic.
+    let pda_jsons: Vec<Option<String>> = fields
+        .iter()
+        .map(|f| {
+            f.idl_pda
+                .as_ref()
+                .map(|p| idl::pda_object_json(&p.seeds, p.program.as_ref()))
+        })
+        .collect();
+
     let accounts_fields: Vec<idl::AccountsJsonField<'_>> = fields
         .iter()
         .enumerate()
@@ -313,6 +328,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 is_optional: f.is_optional,
                 relations,
                 docs: &f.idl_docs,
+                pda_json: pda_jsons[i].clone(),
                 field_ty: &f.idl_field_ty,
             }
         })
