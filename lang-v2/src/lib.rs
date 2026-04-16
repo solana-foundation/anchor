@@ -102,7 +102,7 @@ pub use {
     event::{sol_log_data, Event},
     hash::sha256,
     loader::AccountLoader,
-    pinocchio::{account::AccountView, address::Address},
+    pinocchio::{self, account::AccountView, address::Address},
     traits::*,
 };
 
