@@ -1165,13 +1165,15 @@ fn ensure_program_feature(
     }
 
     let mut message = format!(
-        "`{flag_name}` requires each program to define the `{feature}` feature in its Cargo.toml.\nMissing in:\n"
+        "`{flag_name}` requires each program to define the `{feature}` feature in its \
+         Cargo.toml.\nMissing in:\n"
     );
     for (name, path) in missing {
         message.push_str(&format!("  - {name} ({})\n", path.display()));
     }
     message.push_str(&format!(
-        "\nAdd to each program's Cargo.toml:\n\n[features]\n{feature} = []\n\nOr run without `{flag_name}`."
+        "\nAdd to each program's Cargo.toml:\n\n[features]\n{feature} = []\n\nOr run without \
+         `{flag_name}`."
     ));
 
     Err(anyhow!(message))
