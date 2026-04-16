@@ -215,6 +215,9 @@ where
     T: BorshDeserialize + BorshSerialize + Owner + Discriminator + crate::IdlAccountType,
 {
     const __IDL_TYPE: Option<&'static str> = T::__IDL_TYPE;
+    fn __register_idl_deps(types: &mut ::alloc::vec::Vec<&'static str>) {
+        T::__register_idl_deps(types);
+    }
 }
 
 /// Wrapper-level init for `BorshAccount<T>`: creates the underlying account

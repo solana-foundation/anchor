@@ -785,4 +785,7 @@ where
     H: Pod + Zeroable + SlabSchema + crate::IdlAccountType,
 {
     const __IDL_TYPE: Option<&'static str> = H::__IDL_TYPE;
+    fn __register_idl_deps(types: &mut ::alloc::vec::Vec<&'static str>) {
+        H::__register_idl_deps(types);
+    }
 }

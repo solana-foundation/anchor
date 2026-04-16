@@ -50,6 +50,9 @@ impl<T: AnchorAccount> AnchorAccount for Box<T> {
 #[cfg(feature = "idl-build")]
 impl<T: crate::IdlAccountType> crate::IdlAccountType for Box<T> {
     const __IDL_TYPE: Option<&'static str> = T::__IDL_TYPE;
+    fn __register_idl_deps(types: &mut ::alloc::vec::Vec<&'static str>) {
+        T::__register_idl_deps(types);
+    }
 }
 
 // ---------------------------------------------------------------------------

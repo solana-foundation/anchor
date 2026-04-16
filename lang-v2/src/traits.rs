@@ -273,4 +273,7 @@ impl<T> core::ops::DerefMut for Nested<T> {
 #[cfg(feature = "idl-build")]
 impl<T: crate::IdlAccountType> crate::IdlAccountType for Nested<T> {
     const __IDL_TYPE: Option<&'static str> = T::__IDL_TYPE;
+    fn __register_idl_deps(types: &mut ::alloc::vec::Vec<&'static str>) {
+        T::__register_idl_deps(types);
+    }
 }
