@@ -15,7 +15,6 @@ use {
         path::{Path, PathBuf},
         process::Command,
     },
-    tempfile::TempDir,
 };
 
 // Import history types only when building the binary (main.rs uses these functions).
@@ -224,24 +223,8 @@ impl BenchInstruction {
 impl BenchContext {
     /// Creates a fresh LiteSVM instance with the target program loaded and a funded payer.
     pub fn new(program_path: &Path, program_id: Pubkey) -> Result<Self> {
-        Self::new_inner(program_path, program_id, false)
-    }
-
-    /// Creates a fresh LiteSVM instance with register tracing enabled.
-    ///
-    /// Trace files will be written to the directory pointed to by `SBF_TRACE_DIR`
-    /// (the caller is responsible for setting that env var before calling this).
-    pub fn new_with_tracing(program_path: &Path, program_id: Pubkey) -> Result<Self> {
-        Self::new_inner(program_path, program_id, true)
-    }
-
-    fn new_inner(program_path: &Path, program_id: Pubkey, tracing: bool) -> Result<Self> {
         let payer = keypair_for_account("bench-payer");
-        let mut svm = if tracing {
-            LiteSVM::new_debuggable(true)
-        } else {
-            LiteSVM::new()
-        };
+        let mut svm = LiteSVM::new();
 
         svm.add_program_from_file(program_id, program_path)
             .with_context(|| format!("failed to load {}", program_path.display()))?;
@@ -372,34 +355,6 @@ pub fn execute_benchmark(
     let mut ctx = BenchContext::new(program_path, program_id)?;
     let instruction = case_builder(&mut ctx)?;
     ctx.execute(instruction)
-}
-
-/// Runs a benchmark transaction with register tracing enabled, returning the
-/// path to the temporary directory containing the trace files.
-///
-/// The caller should use the returned `TempDir` (kept alive by ownership) to
-/// read the trace files before it is dropped.
-pub fn execute_benchmark_with_tracing(
-    program_path: &Path,
-    program_id: Pubkey,
-    case_builder: CaseBuilder,
-) -> Result<TempDir> {
-    let trace_dir = TempDir::new().context("failed to create trace dir")?;
-    std::env::set_var("SBF_TRACE_DIR", trace_dir.path());
-
-    let mut ctx = BenchContext::new_with_tracing(program_path, program_id)?;
-    let instruction = case_builder(&mut ctx)?;
-
-    // Delete setup traces so only the benchmark transaction is captured.
-    for entry in fs::read_dir(trace_dir.path())? {
-        let path = entry?.path();
-        let _ = fs::remove_file(&path);
-    }
-
-    ctx.execute(instruction)?;
-    std::env::remove_var("SBF_TRACE_DIR");
-
-    Ok(trace_dir)
 }
 
 #[cfg(feature = "bin")]

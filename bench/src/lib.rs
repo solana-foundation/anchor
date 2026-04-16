@@ -9,18 +9,15 @@
 //! integration tests can drive the same flow.
 
 pub mod bench;
-pub mod flamegraph;
 pub mod programs;
 
 #[cfg(feature = "bin")]
 pub mod history;
 
 pub use bench::{
-    execute_benchmark, execute_benchmark_with_tracing, keypair_for_account, BenchContext,
-    BenchInstruction, CaseBuilder, InstructionSuite, ProgramSuite,
+    execute_benchmark, keypair_for_account, BenchContext, BenchInstruction, CaseBuilder,
+    InstructionSuite, ProgramSuite,
 };
-pub use flamegraph::generate_flamegraph_from_trace;
-pub use flamegraph::print_ix_trace_to;
 
 // ---------------------------------------------------------------------------
 // Program id helpers and suite table
@@ -302,8 +299,7 @@ fn format_with_commas(n: u64) -> String {
 mod run {
     use {
         super::{
-            bench::{build_programs, build_results, execute_benchmark_with_tracing, ProgramSuite},
-            flamegraph::generate_flamegraph_from_trace,
+            bench::{build_programs, build_results, ProgramSuite},
             history::BenchmarkResult,
         },
         anyhow::Result,
@@ -315,19 +311,14 @@ mod run {
     pub struct RunOptions {
         /// Skip the `cargo build-sbf` step and use pre-built `target/deploy/*.so`.
         pub skip_build: bool,
-        /// After measurement, regenerate per-instruction flamegraphs.
-        pub flamegraphs: bool,
     }
 
-    /// End-to-end benchmark driver. Builds the programs (unless skipped),
-    /// measures binary sizes and compute units, and optionally generates
-    /// flamegraphs. Returns the measured result for the caller to persist,
-    /// compare, or assert against.
+    /// End-to-end benchmark driver. Builds the programs (unless skipped) and
+    /// measures binary sizes and compute units. Returns the measured result
+    /// for the caller to persist, compare, or assert against.
     ///
-    /// Also honours `BENCH_IX_TRACE=<suite>/<instruction>` (e.g.
-    /// `hello_world_v2/init`) to dump a full per-instruction register
-    /// trace for one benchmark to `bench/ix_traces/<label>.trace`. Useful
-    /// for dynamic-CU analysis — see `flamegraph::print_ix_trace_to`.
+    /// Flamegraph + per-instruction-trace rendering lives in
+    /// `anchor-v2-testing` and is driven from `anchor test --profile`.
     pub fn run(
         bench_dir: &Path,
         suites: &[ProgramSuite],
@@ -336,129 +327,7 @@ mod run {
         if !options.skip_build {
             build_programs(bench_dir, suites)?;
         }
-        let result = build_results(bench_dir, suites)?;
-        if options.flamegraphs {
-            generate_flamegraphs(bench_dir, suites);
-        }
-        if let Ok(target) = std::env::var("BENCH_IX_TRACE") {
-            generate_ix_trace(bench_dir, suites, &target);
-        }
-        Ok(result)
-    }
-
-    /// Looks up a single `<suite>/<instruction>` target (as specified by
-    /// `BENCH_IX_TRACE`), runs that benchmark with register tracing enabled,
-    /// and dumps a per-instruction trace to
-    /// `bench/ix_traces/<suite>_<instruction>.trace`.
-    fn generate_ix_trace(bench_dir: &Path, suites: &[ProgramSuite], target: &str) {
-        let Some((suite_name, ix_name)) = target.split_once('/') else {
-            eprintln!(
-                "BENCH_IX_TRACE={target:?} is not in <suite>/<instruction> form; skipping"
-            );
-            return;
-        };
-        let Some(suite) = suites.iter().find(|s| s.name == suite_name) else {
-            eprintln!("BENCH_IX_TRACE: no suite named {suite_name:?}");
-            return;
-        };
-        let Some(instruction) = suite.instructions.iter().find(|i| i.name == ix_name) else {
-            eprintln!(
-                "BENCH_IX_TRACE: suite {suite_name:?} has no instruction {ix_name:?}"
-            );
-            return;
-        };
-
-        let so_path = bench_dir
-            .join("../target/deploy")
-            .join(format!("{}.so", suite.name));
-        if !so_path.exists() {
-            eprintln!(
-                "BENCH_IX_TRACE: deployed ELF missing at {}",
-                so_path.display()
-            );
-            return;
-        }
-
-        let label = format!("{}_{}", suite.name, instruction.name);
-        println!("Generating ix trace for {label}...");
-        let trace_dir = match execute_benchmark_with_tracing(
-            &so_path,
-            (instruction.program_id)(),
-            instruction.build,
-        ) {
-            Ok(dir) => dir,
-            Err(err) => {
-                eprintln!("Warning: tracing run for {label} failed: {err:#}");
-                return;
-            }
-        };
-
-        let out_dir = bench_dir.join("ix_traces");
-        if let Err(err) = std::fs::create_dir_all(&out_dir) {
-            eprintln!(
-                "Warning: could not create {}: {err:#}",
-                out_dir.display()
-            );
-            return;
-        }
-        let out_path = out_dir.join(format!("{label}.trace"));
-        let mut file = match std::fs::File::create(&out_path) {
-            Ok(f) => f,
-            Err(err) => {
-                eprintln!("Warning: could not open {}: {err:#}", out_path.display());
-                return;
-            }
-        };
-        let manifest_dir = bench_dir.join(suite.manifest_dir);
-        match super::flamegraph::print_ix_trace_to(
-            &mut file,
-            &label,
-            &so_path,
-            trace_dir.path(),
-            Some(&manifest_dir),
-        ) {
-            Ok(()) => println!("  Ix trace: {}", out_path.display()),
-            Err(err) => eprintln!("  Warning: ix trace for {label} failed: {err:#}"),
-        }
-    }
-
-    fn generate_flamegraphs(bench_dir: &Path, suites: &[ProgramSuite]) {
-        let flamegraph_dir = bench_dir.join("flamegraphs");
-        for suite in suites {
-            let so_path = bench_dir
-                .join("../target/deploy")
-                .join(format!("{}.so", suite.name));
-            if !so_path.exists() {
-                continue;
-            }
-            for instruction in suite.instructions {
-                let label = format!("{}_{}", suite.name, instruction.name);
-                println!("Generating flamegraph for {label}...");
-                let trace_dir = match execute_benchmark_with_tracing(
-                    &so_path,
-                    (instruction.program_id)(),
-                    instruction.build,
-                ) {
-                    Ok(dir) => dir,
-                    Err(err) => {
-                        eprintln!("Warning: tracing run for {label} failed: {err:#}");
-                        continue;
-                    }
-                };
-                let svg_path = flamegraph_dir.join(format!("{label}.svg"));
-                let manifest_dir = bench_dir.join(suite.manifest_dir);
-                match generate_flamegraph_from_trace(
-                    &label,
-                    &so_path,
-                    trace_dir.path(),
-                    &svg_path,
-                    Some(&manifest_dir),
-                ) {
-                    Ok(()) => println!("  Flamegraph: {}", svg_path.display()),
-                    Err(err) => eprintln!("  Warning: flamegraph for {label} failed: {err:#}"),
-                }
-            }
-        }
+        build_results(bench_dir, suites)
     }
 }
 

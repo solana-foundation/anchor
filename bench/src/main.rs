@@ -48,7 +48,6 @@ fn main() -> Result<()> {
         SUITES,
         RunOptions {
             skip_build: cli.skip_build,
-            flamegraphs: true,
         },
     )?;
 

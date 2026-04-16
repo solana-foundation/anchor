@@ -7,8 +7,9 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-/// Re-export the per-instruction trace printer so the top-level crate can
-/// invoke it from the bench harness.
+/// Prints a human-readable per-instruction trace of a transaction to
+/// `writer` by symbolicating the LiteSVM `.regs`/`.insns` files in
+/// `trace_dir` against the deployed ELF at `elf_path`.
 pub fn print_ix_trace_to<W: Write>(
     writer: &mut W,
     label: &str,
