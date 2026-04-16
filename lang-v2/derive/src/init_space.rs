@@ -68,7 +68,15 @@ pub fn expand(item: TokenStream) -> TokenStream {
                 }
             }
         }
-        _ => unimplemented!(),
+        // `syn::Data` has a third variant — `Union`. Unions are exotic in
+        // account data, but route the rejection through `compile_error!`
+        // anyway so the user gets a targeted diagnostic on the offending
+        // item instead of a proc-macro panic backtrace.
+        syn::Data::Union(_) => syn::Error::new_spanned(
+            &name,
+            "#[derive(InitSpace)] only supports structs and enums",
+        )
+        .to_compile_error(),
     };
 
     TokenStream::from(expanded)
@@ -141,7 +149,17 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
                 (0 #(+ #recurse)*)
             }
         }
-        _ => panic!("Type {ty:?} is not supported"),
+        // Reject unknown type shapes via `compile_error!` on the offending
+        // field so the user sees a spanned diagnostic instead of a
+        // proc-macro panic. The common v1→v2 mistakes are `&str` and
+        // `&[T]` — call those out explicitly in the message.
+        _ => syn::Error::new_spanned(
+            &ty,
+            "#[derive(InitSpace)] can't compute size for this type — \
+             use a fixed-size alternative (e.g. `[u8; N]`), or `String` / \
+             `Vec<T>` with `#[max_len(N)]` for dynamic fields",
+        )
+        .to_compile_error(),
     }
 }
 
