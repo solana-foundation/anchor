@@ -316,7 +316,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
     quote! {
         /// Client-side accounts struct with `Address` fields for off-chain use.
-        #[cfg(feature = "cpi")]
         pub mod #client_mod_name {
             extern crate alloc;
             use super::*;
@@ -469,6 +468,9 @@ struct HandlerCodegen {
     wrapper: TokenStream2,
     instruction_struct: TokenStream2,
     accounts_reexport: TokenStream2,
+    /// Name of the Accounts struct (e.g. `MutateItemList`). Used to dedupe
+    /// `accounts::*` re-exports when multiple handlers share the same Accounts.
+    accounts_type_name: String,
     idl_name: String,
     idl_disc: String,
     idl_args: String,
@@ -600,6 +602,7 @@ fn process_handler(
         wrapper,
         instruction_struct,
         accounts_reexport,
+        accounts_type_name: accounts_type.to_string(),
         idl_name: fn_name_str,
         idl_disc: idl::disc_json(&disc_bytes_for_idl),
         idl_args: idl::build_args_json(&extra_args),
@@ -684,7 +687,16 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     let dispatch_arms: Vec<_> = codegen.iter().map(|c| &c.dispatch_arm).collect();
     let handler_wrappers: Vec<_> = codegen.iter().map(|c| &c.wrapper).collect();
     let instruction_structs: Vec<_> = codegen.iter().map(|c| &c.instruction_struct).collect();
-    let accounts_reexports: Vec<_> = codegen.iter().map(|c| &c.accounts_reexport).collect();
+    // Dedupe `accounts` re-exports: multiple handlers sharing the same
+    // Accounts struct would otherwise emit duplicate `pub use` statements.
+    let accounts_reexports: Vec<_> = {
+        let mut seen = std::collections::HashSet::new();
+        codegen
+            .iter()
+            .filter(|c| seen.insert(c.accounts_type_name.clone()))
+            .map(|c| &c.accounts_reexport)
+            .collect()
+    };
     let idl_ix_names: Vec<_> = codegen.iter().map(|c| &c.idl_name).collect();
     let idl_ix_discs: Vec<_> = codegen.iter().map(|c| &c.idl_disc).collect();
     let idl_ix_args: Vec<_> = codegen.iter().map(|c| &c.idl_args).collect();
@@ -869,15 +881,14 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         }
 
         /// Client-side instruction structs for off-chain use.
-        #[cfg(feature = "cpi")]
         pub mod instruction {
             extern crate alloc;
+            use super::*;
             use anchor_lang_v2::Discriminator as _;
             #(#instruction_structs)*
         }
 
         /// Client-side accounts structs (re-exports) for off-chain use.
-        #[cfg(feature = "cpi")]
         pub mod accounts {
             #(#accounts_reexports)*
         }
