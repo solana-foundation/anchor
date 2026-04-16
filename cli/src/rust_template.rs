@@ -114,7 +114,6 @@ pub mod state;
 
 use anchor_lang_v2::prelude::*;
 
-pub use constants::*;
 pub use instructions::*;
 
 declare_id!("{}");
@@ -165,17 +164,38 @@ pub use initialize::*;
             src_path.join("instructions").join("initialize.rs"),
             r#"use anchor_lang_v2::prelude::*;
 
-#[derive(Accounts)]
-pub struct Initialize {}
+use crate::state::Counter;
 
-pub fn handler(_ctx: &mut Context<Initialize>) -> Result<()> {
-    msg!("Initialized");
+#[derive(Accounts)]
+pub struct Initialize {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(init, payer = payer, space = 8 + core::mem::size_of::<Counter>())]
+    pub counter: Account<Counter>,
+    pub system_program: Program<System>,
+}
+
+pub fn handler(ctx: &mut Context<Initialize>) -> Result<()> {
+    ctx.accounts.counter.count = 0;
+    ctx.accounts.counter.authority = *ctx.accounts.payer.address();
+    msg!("Counter initialized");
     Ok(())
 }
 "#
             .into(),
         ),
-        (src_path.join("state.rs"), r#""#.into()),
+        (
+            src_path.join("state.rs"),
+            r#"use anchor_lang_v2::prelude::*;
+
+#[account]
+pub struct Counter {
+    pub count: u64,
+    pub authority: Address,
+}
+"#
+            .into(),
+        ),
     ]
 }
 
@@ -876,7 +896,10 @@ fn create_program_template_litesvm_test(name: &str, tests_path: &Path) -> Files 
         format!(
             r#"
 use {{
-    anchor_lang_v2::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    anchor_lang_v2::{{
+        solana_program::instruction::Instruction, programs::System, Id, InstructionData,
+        ToAccountMetas,
+    }},
     anchor_v2_testing::{{Keypair, LiteSVM, Message, Signer, VersionedMessage, VersionedTransaction}},
 }};
 
@@ -884,6 +907,8 @@ use {{
 fn test_initialize() {{
     let program_id = {0}::id();
     let payer = Keypair::new();
+    let counter = Keypair::new();
+
     // With `anchor test --profile` the `profile` feature is on and we use
     // `anchor_v2_testing::svm()` to install the register-tracing callback
     // that writes per-test SBF traces under `target/anchor-v2-profile/`.
@@ -895,19 +920,36 @@ fn test_initialize() {{
     let bytes = include_bytes!("../../../target/deploy/{0}.so");
     svm.add_program(program_id, bytes).unwrap();
     svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
-    
+
     let instruction = Instruction::new_with_bytes(
         program_id,
         &{0}::instruction::Initialize {{}}.data(),
-        {0}::accounts::Initialize {{}}.to_account_metas(None),
+        {0}::accounts::Initialize {{
+            payer: payer.pubkey().to_bytes().into(),
+            counter: counter.pubkey().to_bytes().into(),
+            system_program: System::id(),
+        }}
+        .to_account_metas(None),
     );
 
     let blockhash = svm.latest_blockhash();
     let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
-    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
+    let tx = VersionedTransaction::try_new(
+        VersionedMessage::Legacy(msg),
+        &[&payer, &counter],
+    )
+    .unwrap();
 
     let res = svm.send_transaction(tx);
-    assert!(res.is_ok());
+    assert!(res.is_ok(), "send_transaction failed: {{:?}}", res);
+
+    // Verify the counter account was initialized: 8-byte disc + 8-byte count
+    // + 32-byte authority = 48 bytes. Count is LE at offset 8.
+    let account = svm.get_account(&counter.pubkey()).expect("counter account");
+    assert_eq!(account.data.len(), 8 + 8 + 32);
+    let count = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
+    assert_eq!(count, 0);
+    assert_eq!(&account.data[16..48], &payer.pubkey().to_bytes());
 }}
 "#,
             name.to_snake_case(),
