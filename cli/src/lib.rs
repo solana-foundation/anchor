@@ -61,11 +61,6 @@ pub mod rust_template;
 // Version of the docker image.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const DOCKER_BUILDER_VERSION: &str = VERSION;
-
-/// `{cargo_version}` or `{cargo_version} ({git_hash})` depending on whether
-/// the build was from a git checkout. Composed by `cli/build.rs` so we avoid
-/// const-eval gymnastics at this call site.
-const VERSION_WITH_GIT: &str = env!("ANCHOR_VERSION");
 /// Default RPC port
 pub const DEFAULT_RPC_PORT: u16 = 8899;
 
@@ -83,7 +78,7 @@ pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
 });
 
 #[derive(Debug, Parser)]
-#[clap(version = VERSION_WITH_GIT)]
+#[clap(version = VERSION)]
 pub struct Opts {
     #[clap(flatten)]
     pub cfg_override: ConfigOverride,
