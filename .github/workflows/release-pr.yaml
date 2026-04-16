@@ -2,15 +2,13 @@ name: Release Dry-run
 
 on:
   pull_request:
-    branches:
-      - master
-
     paths:
       - VERSION
       - .github/workflows/release-pr.yaml
       - .github/workflows/build-cli.yaml
       - .github/workflows/publish-crates.yaml
       - .github/workflows/publish-npmjs.yaml
+      - .github/scripts/publish-npmjs.sh
 
   workflow_dispatch:
 
