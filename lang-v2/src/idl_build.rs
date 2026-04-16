@@ -20,11 +20,21 @@
 
 /// Contributes (or elides) a user-defined type to the generated IDL.
 ///
-/// Returning `None` means "this field's Rust type is a framework wrapper
-/// around a foreign / view-only type; don't add anything to the IDL's
-/// `types` section for it." Returning `Some(json)` means "this field's
-/// Rust type (or its inner `#[account]` type, after transparent wrapper
-/// delegation) should contribute `json` as a types entry."
+/// Returning `None` for `__IDL_TYPE` means "this field's Rust type is a
+/// framework wrapper around a foreign / view-only type; don't add anything
+/// to the IDL's `types` section for it." Returning `Some(json)` means
+/// "this field's Rust type (or its inner `#[account]` type, after
+/// transparent wrapper delegation) should contribute `json` as a types
+/// entry."
+///
+/// `__IDL_IS_SIGNER` and `__IDL_ADDRESS` capture per-wrapper metadata that
+/// surfaces in the emitted `instructions[i].accounts[j]` JSON: `Signer`
+/// sets `__IDL_IS_SIGNER = true`; `Program<T: Id>` and `Sysvar<T>` forward
+/// well-known addresses through their respective `IDL_ADDRESS` const paths.
+/// Replaces the old string-match + hardcoded address table in
+/// `derive/src/parse.rs`.
 pub trait IdlAccountType {
     const __IDL_TYPE: Option<&'static str> = None;
+    const __IDL_IS_SIGNER: bool = false;
+    const __IDL_ADDRESS: Option<&'static str> = None;
 }

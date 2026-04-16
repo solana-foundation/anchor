@@ -274,19 +274,24 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
     };
 
-    // IDL collection
-    let idl_accounts: Vec<_> = fields
+    // IDL collection — the accounts-JSON emission is a runtime function
+    // (not a `&'static str` const) so it can read
+    // `<FieldTy as IdlAccountType>::__IDL_IS_SIGNER / __IDL_ADDRESS` off
+    // the wrapper type. Compile-time flags (writable, init_signer) are
+    // baked directly into the format strings, so the runtime only pays
+    // for trait dispatch + concatenation.
+    let field_names_str: Vec<String> = fields.iter().map(|f| f.name.to_string()).collect();
+    let accounts_fields: Vec<idl::AccountsJsonField<'_>> = fields
         .iter()
-        .map(|f| {
-            (
-                f.name.to_string(),
-                f.idl_writable,
-                f.idl_signer,
-                f.idl_program_address.clone(),
-            )
+        .enumerate()
+        .map(|(i, f)| idl::AccountsJsonField {
+            name: &field_names_str[i],
+            writable: f.idl_writable,
+            init_signer: f.idl_init_signer,
+            field_ty: &f.idl_field_ty,
         })
         .collect();
-    let idl_json = idl::build_accounts_json(&idl_accounts);
+    let idl_accounts_fn = idl::build_accounts_emission(&accounts_fields);
     let idl_field_tys: Vec<_> = fields.iter().map(|f| &f.idl_field_ty).collect();
 
     let ix_deser = if ix_args.is_empty() {
@@ -328,10 +333,22 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             }
         })
         .collect();
+    // Client-side `AccountMeta` is compile-time-built and only needs to
+    // reflect the `is_signer` flag for `Signer`-typed fields plus any
+    // `init`-without-seeds site (fresh keypair must sign). For the IDL
+    // emission path we route signer-ness through
+    // `IdlAccountType::__IDL_IS_SIGNER`, which isn't a regular compile-time
+    // path — so we keep a local string-match here. Only `Signer` matters
+    // client-side; other wrappers are always non-signing.
     let client_meta_entries: Vec<_> = fields
         .iter()
-        .zip(idl_accounts.iter())
-        .map(|(field, (_fname, writable, signer, _))| {
+        .map(|field| {
+            let writable = field.idl_writable;
+            let is_signer_ty = parse::field_ty_str(match parse::extract_option_inner(&field.ty) {
+                Some(inner) => inner,
+                None => &field.ty,
+            }) == "Signer";
+            let signer = is_signer_ty || field.idl_init_signer;
             let field_ident = &field.name;
             if field.is_optional {
                 // None-sentinel: matches v1's to_account_metas behavior —
@@ -413,7 +430,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
         #[cfg(feature = "idl-build")]
         impl #name {
-            pub const __IDL_ACCOUNTS: &'static str = #idl_json;
+            // Runtime-assembled accounts JSON: reads per-wrapper signer /
+            // address trait consts, splices in compile-time flags.
+            #idl_accounts_fn
 
             pub fn __idl_types() -> Vec<Option<&'static str>> {
                 vec![#(
@@ -1090,7 +1109,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                             "{{\"name\":\"{}\",\"discriminator\":{},\"accounts\":{},\"args\":{}}}",
                             #idl_ix_names,
                             #idl_ix_discs,
-                            #idl_accounts_types::__IDL_ACCOUNTS,
+                            #idl_accounts_types::__idl_accounts(),
                             #idl_ix_args,
                         )
                     ),*

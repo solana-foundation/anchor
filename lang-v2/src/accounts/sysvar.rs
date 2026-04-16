@@ -8,17 +8,30 @@ use {
 /// Trait that connects a pinocchio sysvar type to its well-known address.
 ///
 /// Implemented for Clock, Rent, etc.
+///
+/// `IDL_ADDRESS` is the base58 string surfaced through
+/// `IdlAccountType::__IDL_ADDRESS` at IDL emission time. Defaults to an
+/// empty string — sysvars without a well-known address (or ones whose
+/// address isn't meaningful in the IDL) elide the field.
 pub trait SysvarId {
     /// The sysvar's well-known account address.
     const SYSVAR_ID: Address;
+    /// Well-known base58 address for IDL emission. Empty string → no
+    /// `address` emission at the `Program<T>` / `Sysvar<T>` IDL site.
+    #[cfg(feature = "idl-build")]
+    const IDL_ADDRESS: &'static str = "";
 }
 
 impl SysvarId for pinocchio::sysvars::clock::Clock {
     const SYSVAR_ID: Address = pinocchio::sysvars::clock::CLOCK_ID;
+    #[cfg(feature = "idl-build")]
+    const IDL_ADDRESS: &'static str = "SysvarC1ock11111111111111111111111111111111";
 }
 
 impl SysvarId for pinocchio::sysvars::rent::Rent {
     const SYSVAR_ID: Address = pinocchio::sysvars::rent::RENT_ID;
+    #[cfg(feature = "idl-build")]
+    const IDL_ADDRESS: &'static str = "SysvarRent111111111111111111111111111111111";
 }
 
 /// Account wrapper for sysvars (Clock, Rent, etc.).
@@ -78,4 +91,10 @@ impl<T: PinocchioSysvar + SysvarId + Copy> AsRef<AccountView> for Sysvar<T> {
 }
 
 #[cfg(feature = "idl-build")]
-impl<T: PinocchioSysvar + SysvarId + Copy> crate::IdlAccountType for Sysvar<T> {}
+impl<T: PinocchioSysvar + SysvarId + Copy> crate::IdlAccountType for Sysvar<T> {
+    const __IDL_ADDRESS: Option<&'static str> = if T::IDL_ADDRESS.is_empty() {
+        None
+    } else {
+        Some(T::IDL_ADDRESS)
+    };
+}

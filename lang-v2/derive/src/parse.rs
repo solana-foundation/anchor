@@ -372,8 +372,12 @@ pub struct AccountField {
     pub is_optional: bool,
     // IDL metadata
     pub idl_writable: bool,
-    pub idl_signer: bool,
-    pub idl_program_address: Option<String>,
+    /// True when this is a fresh-keypair init site (attrs: `init` or
+    /// `init_if_needed` without `seeds`). The caller must sign the tx with
+    /// the new account's keypair, so it surfaces as `signer: true` in the
+    /// IDL. Orthogonal to the `Signer` field type — those contribute via
+    /// `<Ty as IdlAccountType>::__IDL_IS_SIGNER` at runtime.
+    pub idl_init_signer: bool,
     /// The raw field type, post-`Option<T>` unwrap. Used by the generated
     /// `__idl_types()` function to dispatch `<Ty as IdlAccountType>::__IDL_TYPE`
     /// on the wrapper type (`Program<T>`, `Account<T>`, …) rather than on its
@@ -622,13 +626,13 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
     let field_ty = &field.ty;
     let attrs = parse_account_attrs(&field.attrs);
 
-    let is_signer = field_ty_str(field_ty) == "Signer";
     let option_inner = extract_option_inner(field_ty);
     let is_optional = option_inner.is_some();
-    let is_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
-    let program_address = extract_program_address(field_ty);
+    // Fresh-keypair init (no seeds) — caller signs the tx. Distinct from
+    // `Signer`-type fields, which the IDL picks up through
+    // `IdlAccountType::__IDL_IS_SIGNER` at runtime.
+    let idl_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
     let idl_writable = attrs.is_mut;
-    let idl_signer = is_signer || is_init_signer;
     let idl_field_ty: Option<syn::Type> = {
         let base_ty = option_inner.unwrap_or(field_ty);
         if let Type::Path(_) = base_ty {
@@ -1077,44 +1081,7 @@ pub fn parse_field(field: &syn::Field, field_names: &[String], field_index: u8) 
         has_bump,
         is_optional,
         idl_writable,
-        idl_signer,
-        idl_program_address: program_address,
+        idl_init_signer,
         idl_field_ty,
     }
-}
-
-/// Extract the well-known address from `Program<T>` types.
-/// Returns the base58 address string for known program types (System, Token, etc.).
-pub fn extract_program_address(ty: &Type) -> Option<String> {
-    if let Type::Path(tp) = ty {
-        if let Some(seg) = tp.path.segments.last() {
-            if seg.ident == "Program" {
-                if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-                    if let Some(syn::GenericArgument::Type(Type::Path(inner_tp))) =
-                        args.args.first()
-                    {
-                        if let Some(inner_seg) = inner_tp.path.segments.last() {
-                            return match inner_seg.ident.to_string().as_str() {
-                                "System" => Some("11111111111111111111111111111111".to_string()),
-                                "Token" => {
-                                    Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".to_string())
-                                }
-                                "Token2022" => {
-                                    Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".to_string())
-                                }
-                                "AssociatedToken" => {
-                                    Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".to_string())
-                                }
-                                "Memo" => {
-                                    Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr".to_string())
-                                }
-                                _ => None,
-                            };
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
 }

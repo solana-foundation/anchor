@@ -71,4 +71,13 @@ impl<T: Id> AsRef<Address> for Program<T> {
 }
 
 #[cfg(feature = "idl-build")]
-impl<T: Id> crate::IdlAccountType for Program<T> {}
+impl<T: Id> crate::IdlAccountType for Program<T> {
+    // `Id::IDL_ADDRESS` defaults to `""`; convert empty → None so unknown
+    // program markers elide the `address` field instead of emitting a bogus
+    // blank string.
+    const __IDL_ADDRESS: Option<&'static str> = if T::IDL_ADDRESS.is_empty() {
+        None
+    } else {
+        Some(T::IDL_ADDRESS)
+    };
+}

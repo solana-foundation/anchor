@@ -115,6 +115,12 @@ pub trait Owner {
 
 pub trait Id {
     fn id() -> Address;
+    /// Well-known base58 program address for IDL emission. Empty string
+    /// signals "no address to advertise in the IDL" — consumed by
+    /// `IdlAccountType::__IDL_ADDRESS` on `Program<T>` and converted to
+    /// `None` there.
+    #[cfg(feature = "idl-build")]
+    const IDL_ADDRESS: &'static str = "";
 }
 
 pub trait Discriminator {

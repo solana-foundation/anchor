@@ -1,6 +1,10 @@
 //! IDL generation helpers.
 
-use {quote::quote, syn::Type};
+use {
+    proc_macro2::TokenStream as TokenStream2,
+    quote::quote,
+    syn::Type,
+};
 
 /// Convert a Rust type to its IDL JSON representation.
 pub fn rust_type_to_idl(ty: &Type) -> String {
@@ -77,26 +81,94 @@ fn strip_ref_and_lifetime(s: &str) -> String {
     s.trim_start_matches("mut ").trim().to_owned()
 }
 
-/// Build IDL accounts JSON from parsed field metadata.
-pub fn build_accounts_json(accounts: &[(String, bool, bool, Option<String>)]) -> String {
-    let parts: Vec<String> = accounts
+/// Per-field input to the runtime `__idl_accounts()` emission. See
+/// [`build_accounts_emission`].
+pub struct AccountsJsonField<'a> {
+    pub name: &'a str,
+    pub writable: bool,
+    pub init_signer: bool,
+    /// The wrapper `Type` (post-`Option` unwrap) whose trait consts we
+    /// dispatch on at runtime. Should match `AccountField::idl_field_ty`.
+    pub field_ty: &'a Option<Type>,
+}
+
+/// Build a `fn __idl_accounts() -> alloc::string::String` body that assembles
+/// the accounts JSON at runtime by reading `<Ty as IdlAccountType>::
+/// __IDL_IS_SIGNER / __IDL_ADDRESS`. Compile-time-known flags (writable,
+/// init-signer) are baked into the format literals so no runtime work is
+/// done for them.
+///
+/// Runtime assembly (rather than a `&'static str` baked at macro time) is
+/// the one concession needed to let the wrapper type's trait const drive
+/// per-field signer / address — the const values aren't visible to the
+/// macro. Cost is paid once when `anchor idl build` invokes the test.
+pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2 {
+    let parts: Vec<TokenStream2> = fields
         .iter()
-        .map(|(name, writable, signer, address)| {
-            let mut obj = format!("{{\"name\":\"{name}\"");
-            if *writable {
-                obj.push_str(",\"writable\":true");
+        .map(|f| {
+            let name = f.name;
+            let writable_json = if f.writable {
+                ",\"writable\":true"
+            } else {
+                ""
+            };
+            let init_signer = f.init_signer;
+            if let Some(ty) = f.field_ty {
+                quote! {
+                    {
+                        // Trait-const OR compile-time init_signer flag.
+                        // Kept separate so a Signer + init-without-seeds
+                        // combo still renders exactly one `"signer":true`.
+                        let __signer = <#ty as anchor_lang_v2::IdlAccountType>::__IDL_IS_SIGNER
+                            || #init_signer;
+                        let __addr = <#ty as anchor_lang_v2::IdlAccountType>::__IDL_ADDRESS;
+                        let __signer_json: &str = if __signer { ",\"signer\":true" } else { "" };
+                        let __addr_json: anchor_lang_v2::__alloc::string::String = match __addr {
+                            Some(a) => anchor_lang_v2::__alloc::format!(",\"address\":\"{}\"", a),
+                            None => anchor_lang_v2::__alloc::string::String::new(),
+                        };
+                        anchor_lang_v2::__alloc::format!(
+                            "{{\"name\":\"{}\"{}{}{}}}",
+                            #name,
+                            #writable_json,
+                            __signer_json,
+                            __addr_json,
+                        )
+                    }
+                }
+            } else {
+                // Defensive fallback for non-`Type::Path` field types —
+                // can't resolve the trait, so we emit only compile-time
+                // flags. Never triggers for valid Accounts structs.
+                let signer_json = if init_signer { ",\"signer\":true" } else { "" };
+                quote! {
+                    anchor_lang_v2::__alloc::format!(
+                        "{{\"name\":\"{}\"{}{}}}",
+                        #name,
+                        #writable_json,
+                        #signer_json,
+                    )
+                }
             }
-            if *signer {
-                obj.push_str(",\"signer\":true");
-            }
-            if let Some(addr) = address {
-                obj.push_str(&format!(",\"address\":\"{addr}\""));
-            }
-            obj.push('}');
-            obj
         })
         .collect();
-    format!("[{}]", parts.join(","))
+
+    quote! {
+        pub fn __idl_accounts() -> anchor_lang_v2::__alloc::string::String {
+            let __parts: anchor_lang_v2::__alloc::vec::Vec<
+                anchor_lang_v2::__alloc::string::String
+            > = anchor_lang_v2::__alloc::vec![#(#parts),*];
+            let mut __s = anchor_lang_v2::__alloc::string::String::from("[");
+            let mut __first = true;
+            for __p in &__parts {
+                if !__first { __s.push(','); }
+                __first = false;
+                __s.push_str(__p);
+            }
+            __s.push(']');
+            __s
+        }
+    }
 }
 
 /// Build IDL instruction args JSON from handler parameters.
