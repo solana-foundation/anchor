@@ -170,7 +170,7 @@ use crate::state::Counter;
 pub struct Initialize {
     #[account(mut)]
     pub payer: Signer,
-    #[account(init, payer = payer, space = 8 + core::mem::size_of::<Counter>())]
+    #[account(init, payer = payer)]
     pub counter: Account<Counter>,
     pub system_program: Program<System>,
 }

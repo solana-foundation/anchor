@@ -71,13 +71,20 @@ where
     const DISCRIMINATOR: &'static [u8] = H::DISCRIMINATOR;
 }
 
-// Forward `Space::INIT_SPACE` from the header type so `#[account(init)]` can
-// fall back to `<Account<T> as Space>::INIT_SPACE` when `space` is omitted.
+// Compute `Space::INIT_SPACE` directly from `size_of::<H>()` so the
+// `#[account(init)]` macro can fall back to `<Account<T> as Space>::INIT_SPACE`
+// without requiring users to derive `InitSpace` on the header type. Safe
+// because `H: Pod` guarantees a fully-defined layout with no uninit bytes —
+// `size_of::<H>()` equals the exact byte count the zero-copy serializer
+// writes. The `+ 8` accounts for the discriminator at `[0..8]`, matching
+// `BorshAccount`'s impl. `Account<T>` uses `HeaderOnly` as its ZST tail,
+// so this gives the full on-wire size; item-carrying Slabs pay capacity at
+// runtime and should specify `space` explicitly.
 impl<H, T> crate::Space for Slab<H, T>
 where
-    H: crate::Space + Pod + Zeroable + SlabSchema,
+    H: Pod + Zeroable + SlabSchema,
 {
-    const INIT_SPACE: usize = H::INIT_SPACE;
+    const INIT_SPACE: usize = 8 + core::mem::size_of::<H>();
 }
 
 // ---------------------------------------------------------------------------
