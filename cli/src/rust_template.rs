@@ -212,6 +212,7 @@ mollusk-svm = "~0.10"
         Some(TestTemplate::Litesvm) => {
             r#"
 [dev-dependencies]
+anchor-v2-testing = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
 litesvm = "0.11.0"
 solana-message = "3.0.1"
 solana-transaction = "3.0.2"
