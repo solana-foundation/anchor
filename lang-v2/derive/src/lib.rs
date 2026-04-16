@@ -1233,7 +1233,12 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         /// used for duplicate-account resolution during cursor walks.
         const __ANCHOR_MAX_ACCOUNTS: usize = 256;
 
-        /// Program entrypoint. The BPF loader jumps here with:
+        /// Core dispatch: program-id check, discriminator parse, account
+        /// cursor setup, handler dispatch. Exported as the `entrypoint`
+        /// symbol unless `no-entrypoint` is active. Custom entrypoints
+        /// can call this directly via its Rust path.
+        ///
+        /// The BPF loader passes:
         ///   r1 = MM_INPUT_START (first byte of the serialized parameter region)
         ///   r2 = VM address of the instruction data bytes (SIMD-0321)
         ///
@@ -1241,18 +1246,8 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         /// 32 bytes at `[r2 + len .. +32]` hold the program_id, per agave's
         /// aligned serialization layout (see `solana-program-runtime
         /// ::serialization::serialize_parameters_aligned`).
-        #[cfg(not(feature = "no-entrypoint"))]
-        #[no_mangle]
-        pub unsafe extern "C" fn entrypoint(
-            __input: *mut u8,
-            __ix_data_ptr: *const u8,
-        ) -> u64 {
-            __anchor_dispatch(__input, __ix_data_ptr)
-        }
-
-        // Always generate __anchor_dispatch so custom entrypoints can call it
-        #[inline(always)]
-        unsafe fn __anchor_dispatch(
+        #[cfg_attr(not(feature = "no-entrypoint"), export_name = "entrypoint")]
+        pub unsafe extern "C" fn __anchor_dispatch(
             __input: *mut u8,
             __ix_data_ptr: *const u8,
         ) -> u64 {
@@ -1531,10 +1526,13 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
     // `types: Vec<IdlTypeDef>` (the full struct definition). Pod-mode events
     // carry `serialization:"bytemuck",repr:{"kind":"c"}`; borsh-mode events
     // fall back to the spec default (both fields skipped on serialize).
-    let type_kind = match mode {
-        EventMode::Pod => idl::TypeKind::BytemuckRepr,
-        EventMode::Borsh => idl::TypeKind::Borsh,
-    };
+    // Both event modes produce a borsh-compatible wire format. The Pod mode's
+    // serializer below writes fields one-by-one (no `repr(C)` padding on the
+    // wire), which is byte-identical to borsh for fixed-size structs — so
+    // clients decode either mode through the same borsh path.
+    let type_kind = idl::TypeKind::Borsh;
+    let _ = mode_unused_marker(&mode); // keep `mode` live for the match below
+    fn mode_unused_marker(_: &EventMode) {}
     let struct_docs = idl::extract_doc_lines(attrs);
     let type_def_json = if let Fields::Named(named) = fields {
         idl::build_type_json(&name_str, disc_bytes, &struct_docs, &named.named, type_kind)
