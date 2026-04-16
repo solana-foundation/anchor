@@ -5084,6 +5084,65 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
         .unwrap_or(false)
 }
 
+/// Build the WebSocket URL for `anchor logs` from the cluster URL.
+///
+/// - Non-local clusters (devnet, mainnet, custom hosts): swap scheme only
+///   (`http(s)://…` → `ws(s)://…`).
+/// - Local clusters (`127.0.0.1` / `localhost`): pick the WS port from config
+///   when `[test.surfpool] ws_port` is set explicitly; otherwise default to
+///   the URL's RPC port + 1 (the solana-test-validator convention, which
+///   surfpool also follows when `ws_port` is unset).
+///
+/// Returns a best-effort string — never errors. Malformed URLs fall back to
+/// `DEFAULT_RPC_PORT + 1` for the local path.
+fn logs_websocket_url(cfg_override: &ConfigOverride, cluster_url: &str) -> String {
+    let ws_scheme_url = cluster_url
+        .replace("https://", "wss://")
+        .replace("http://", "ws://");
+
+    let is_local = cluster_url.contains("localhost") || cluster_url.contains("127.0.0.1");
+    if !is_local {
+        return ws_scheme_url;
+    }
+
+    let default_ws_port = extract_url_port(cluster_url)
+        .map(|p| p.saturating_add(1))
+        .unwrap_or(DEFAULT_RPC_PORT + 1);
+    let ws_port = Config::discover(cfg_override)
+        .ok()
+        .flatten()
+        .and_then(|cfg| cfg.surfpool_config.as_ref().and_then(|s| s.ws_port))
+        .unwrap_or(default_ws_port);
+
+    replace_url_port(&ws_scheme_url, ws_port)
+}
+
+/// Extract the explicit port from `scheme://host:port[/...]`. Returns `None`
+/// when no port is present or it isn't a valid `u16`.
+fn extract_url_port(url: &str) -> Option<u16> {
+    let (_, after_scheme) = url.split_once("://")?;
+    let host_port_end = after_scheme.find('/').unwrap_or(after_scheme.len());
+    let (_, port_str) = after_scheme[..host_port_end].rsplit_once(':')?;
+    port_str.parse().ok()
+}
+
+/// Replace (or insert) the port in `scheme://host[:port][/path]`. Preserves
+/// the path/query tail.
+fn replace_url_port(url: &str, new_port: u16) -> String {
+    let Some((scheme, rest)) = url.split_once("://") else {
+        return url.to_string();
+    };
+    let (host_port_part, tail) = match rest.find('/') {
+        Some(i) => (&rest[..i], &rest[i..]),
+        None => (rest, ""),
+    };
+    let host = host_port_part
+        .rsplit_once(':')
+        .map(|(h, _)| h)
+        .unwrap_or(host_port_part);
+    format!("{scheme}://{host}:{new_port}{tail}")
+}
+
 fn get_node_version() -> Result<Version> {
     let node_version = std::process::Command::new("node")
         .arg("--version")
@@ -5370,19 +5429,7 @@ fn logs_subscribe(
     address: Option<Vec<Pubkey>>,
 ) -> Result<()> {
     let (cluster_url, _wallet_path) = get_cluster_and_wallet(cfg_override)?;
-
-    // Convert HTTP(S) URL to WebSocket URL
-    let ws_url = if cluster_url.contains("localhost") || cluster_url.contains("127.0.0.1") {
-        // Parse the URL to extract and increment the port
-        cluster_url
-            .replace("https://", "wss://")
-            .replace("http://", "ws://")
-            .replace(":8899", ":8900") // Default test validator ports
-    } else {
-        cluster_url
-            .replace("https://", "wss://")
-            .replace("http://", "ws://")
-    };
+    let ws_url = logs_websocket_url(cfg_override, &cluster_url);
 
     println!("Connecting to {}", ws_url);
 
@@ -5526,5 +5573,32 @@ mod tests {
     fn parse_node_version_errors_on_garbage() {
         assert!(parse_node_version("not a version").is_err());
         assert!(parse_node_version("").is_err());
+    }
+
+    #[test]
+    fn extract_url_port_common_shapes() {
+        assert_eq!(extract_url_port("http://127.0.0.1:8899"), Some(8899));
+        assert_eq!(extract_url_port("http://127.0.0.1:8899/"), Some(8899));
+        assert_eq!(extract_url_port("ws://localhost:8900/path?q=1"), Some(8900));
+        assert_eq!(extract_url_port("https://api.mainnet-beta.solana.com"), None);
+        assert_eq!(extract_url_port("http://127.0.0.1"), None);
+        assert_eq!(extract_url_port("not a url"), None);
+    }
+
+    #[test]
+    fn replace_url_port_preserves_structure() {
+        assert_eq!(
+            replace_url_port("http://127.0.0.1:8899", 9001),
+            "http://127.0.0.1:9001"
+        );
+        assert_eq!(
+            replace_url_port("ws://127.0.0.1:8899/path?q=1", 9050),
+            "ws://127.0.0.1:9050/path?q=1"
+        );
+        // No original port — the helper still injects one.
+        assert_eq!(
+            replace_url_port("http://127.0.0.1", 8900),
+            "http://127.0.0.1:8900"
+        );
     }
 }
