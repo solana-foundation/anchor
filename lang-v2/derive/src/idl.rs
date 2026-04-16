@@ -466,6 +466,44 @@ pub fn classify_seed(
         }
     }
 
+    // Zero-arg path-call like `AssociatedToken::id()` or `System::id()`.
+    // These show up in `seeds::program = <Marker>::id()` overrides (ATA
+    // derivation is the canonical case). The `Id` trait's `IDL_ADDRESS`
+    // already declares each marker's pubkey at the type level; we mirror
+    // the mapping here and emit the base58-decoded bytes as a const seed
+    // so clients derive the PDA against the correct program override
+    // rather than the empty-bytes fallback.
+    //
+    // Only the five well-known markers ship in `lang-v2/src/programs.rs`;
+    // custom user markers still fall through to the warn path. That's
+    // acceptable — it matches the closed set `extract_program_address`
+    // covered before Part A's trait refactor.
+    if let Expr::Call(call) = cur {
+        if call.args.is_empty() {
+            if let Expr::Path(ep) = &*call.func {
+                let segs = &ep.path.segments;
+                if segs.len() >= 2 && segs[segs.len() - 1].ident == "id" {
+                    let marker = segs[segs.len() - 2].ident.to_string();
+                    let addr_b58: Option<&str> = match marker.as_str() {
+                        "System" => Some("11111111111111111111111111111111"),
+                        "Token" => Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+                        "Token2022" => Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
+                        "AssociatedToken" => {
+                            Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+                        }
+                        "Memo" => Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+                        _ => None,
+                    };
+                    if let Some(b58) = addr_b58 {
+                        if let Ok(bytes) = bs58::decode(b58).into_vec() {
+                            return const_seed_json(&bytes);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Unknown — emit a warning (visible in `cargo build` output) and keep
     // emission valid with an empty const so downstream tooling doesn't
     // choke on malformed JSON.
