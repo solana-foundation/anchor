@@ -110,10 +110,10 @@ impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
-    /// Constructs a new `Loader` without performing any account validation checks.
+    /// Constructs a new [`AccountLoader`] without performing any account validation checks.
     ///
-    /// This bypasses owner and discriminator validation. Prefer `try_from` or
-    /// `try_from_unchecked` when you want Anchor to enforce checks.
+    /// - [`Self::try_from`] to perform all checks, or
+    /// - [`Self::try_from_unchecked`] to check the owner but not the discriminator
     pub fn new_unchecked(acc_info: &'info AccountInfo<'info>) -> AccountLoader<'info, T> {
         Self {
             acc_info,
@@ -121,7 +121,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }
     }
 
-    /// Constructs a new `Loader` from a previously initialized account.
+    /// Constructs a new [`AccountLoader`] from a previously initialized account.
     #[inline(never)]
     pub fn try_from(acc_info: &'info AccountInfo<'info>) -> Result<AccountLoader<'info, T>> {
         if acc_info.owner != &T::owner() {
@@ -143,7 +143,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         Ok(AccountLoader::new_unchecked(acc_info))
     }
 
-    /// Constructs a new `Loader` from an uninitialized account.
+    /// Constructs a new [`AccountLoader`] from an uninitialized account.
     #[inline(never)]
     pub fn try_from_unchecked(
         _program_id: &Pubkey,
