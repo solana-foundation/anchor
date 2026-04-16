@@ -7,7 +7,6 @@ use {
     litesvm::{types::TransactionMetadata, LiteSVM},
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},
-    solana_rent::Rent,
     solana_signer::Signer,
     solana_transaction::versioned::VersionedTransaction,
     std::{
@@ -243,26 +242,6 @@ impl BenchContext {
         } else {
             LiteSVM::new()
         };
-
-        // Pinocchio 0.11's `Rent::get()` reads only the first 8 bytes of the
-        // sysvar and treats them as `lamports_per_byte` (post-SIMD-0436
-        // layout: effective rate already pre-multiplied). LiteSVM 0.10 ships
-        // with solana-rent 3.0 whose `Rent::default()` stores the legacy
-        // `lamports_per_byte_year = 3480` + `exemption_threshold = 2.0` pair,
-        // so pinocchio reads 3480 and computes half the real rent-exempt
-        // minimum. The post-tx runtime check (which still uses the legacy
-        // formula) then rejects the tx as `InsufficientFundsForRent`.
-        //
-        // Bridge: store the effective rate (6960) in byte 0-7 and drop the
-        // f64 multiplier to 1.0. Both pinocchio's (bytes 0-7 × space) and
-        // solana-rent's (bytes 0-7 × 1.0 × space) formulas now yield the
-        // same value, matching the current mainnet rent-exempt minimum.
-        #[allow(deprecated)]
-        svm.set_sysvar::<Rent>(&Rent {
-            lamports_per_byte_year: 6960,
-            exemption_threshold: 1.0,
-            burn_percent: 50,
-        });
 
         svm.add_program_from_file(program_id, program_path)
             .with_context(|| format!("failed to load {}", program_path.display()))?;

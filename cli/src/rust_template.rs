@@ -213,7 +213,7 @@ mollusk-svm = "~0.10"
         Some(TestTemplate::Litesvm) => {
             r#"
 [dev-dependencies]
-litesvm = "0.10.0"
+litesvm = "0.11.0"
 solana-message = "3.0.1"
 solana-transaction = "3.0.2"
 solana-signer = "3.0.0"

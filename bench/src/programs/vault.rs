@@ -95,8 +95,6 @@ pub mod quasar {
     fn vault_address(user: &Pubkey) -> (Pubkey, u8) {
         Pubkey::find_program_address(&[b"vault", user.as_ref()], &program_id())
     }
-    
-    // Quasar uses 1-byte discriminators + raw LE args (no borsh).
     fn make_ix_data(disc: u8, args: &[u8]) -> Vec<u8> {
         let mut data = Vec::with_capacity(1 + args.len());
         data.push(disc);
@@ -109,15 +107,11 @@ pub mod quasar {
         let (vault, _) = vault_address(&user.pubkey());
     
         ctx.airdrop(&user.pubkey(), 1_000_000_000)?;
-    
-        // Quasar Deposit accounts: user, vault, system_program.
         let metas = vec![
             AccountMeta::new(user.pubkey(), true),
             AccountMeta::new(vault, false),
             AccountMeta::new_readonly(system_program::ID, false),
         ];
-    
-        // disc=0, args: amount(u64 LE)
         Ok(
             BenchInstruction::new(make_ix_data(0, &1_000_000u64.to_le_bytes()), metas)
                 .with_signer(user),
@@ -147,15 +141,10 @@ pub mod quasar {
                 rent_epoch: 0,
             },
         ).map_err(|e| anyhow::anyhow!("set_account failed: {e:?}"))?;
-    
-        // Quasar Withdraw accounts: user, vault (no system_program — withdraw
-        // mutates lamports directly via arithmetic, no CPI).
         let metas = vec![
             AccountMeta::new(user.pubkey(), true),
             AccountMeta::new(vault, false),
         ];
-    
-        // disc=1, args: amount(u64 LE)
         Ok(
             BenchInstruction::new(make_ix_data(1, &1_000_000u64.to_le_bytes()), metas)
                 .with_signer(user),

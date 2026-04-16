@@ -14,7 +14,7 @@ anchor-lang = { path = "../lang" }
 anchor-lang-v2 = { path = "../lang-v2" }
 hello-world = { path = "programs/helloworld/anchor-v1", features = ["no-entrypoint"] }
 hello-world-v2 = { path = "programs/helloworld/anchor-v2", features = ["cpi"], package = "hello-world-v2" }
-litesvm = { version = "0.10.0", features = ["register-tracing"] }
+litesvm = { version = "0.11.0", features = ["register-tracing"] }
 tempfile = "3"
 object = { version = "0.37.3", features = ["read_core", "elf"] }
 rustc-demangle = "0.1"
