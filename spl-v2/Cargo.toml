@@ -9,7 +9,7 @@ license = "Apache-2.0"
 default = []
 
 [dependencies]
-anchor-lang-v2 = { path = "../lang-v2", version = "1.0.0" }
+anchor-lang-v2 = { path = "../lang-v2", version = "2.0.0" }
 pinocchio = { workspace = true }
 pinocchio-token = "0.6"
 bytemuck = { version = "1", features = ["derive"] }

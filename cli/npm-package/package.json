@@ -1,6 +1,6 @@
 {
   "name": "@anchor-lang/cli",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Anchor CLI tool",
   "homepage": "https://github.com/solana-foundation/anchor#readme",
   "bugs": {
@@ -15,7 +15,7 @@
     "anchor": "./anchor.js"
   },
   "scripts": {
-    "prepack": "[ \"$(uname -op)\" != \"x86_64 GNU/Linux\" ] && (echo Can be packed only on x86_64 GNU/Linux && exit 1) || ([ \"$(./anchor --version)\" != \"anchor-cli $(jq -r .version package.json)\" ] && (echo Check anchor binary version && exit 2) || exit 0)"
+    "prepack": "[ \"$(uname -op)\" != \"x86_64 GNU/Linux\" ] && (echo Can be packed only on x86_64 GNU/Linux && exit 1) || ([ \"$(./anchor --version | awk '{print $1, $2}')\" != \"anchor-cli $(jq -r .version package.json)\" ] && (echo Check anchor binary version && exit 2) || exit 0)"
   },
   "publishConfig": {
     "access": "public"
