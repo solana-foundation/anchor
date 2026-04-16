@@ -38,6 +38,13 @@ pub struct Mint {
 unsafe impl Pod for Mint {}
 unsafe impl Zeroable for Mint {}
 
+// Mint is defined by the SPL Token program, not by the user's program — its
+// layout is known to any SPL-aware client. Default `__IDL_TYPE = None` keeps
+// it out of the user's IDL `types[]` array (matches v1's `impl_idl_build!`
+// behavior for this type).
+#[cfg(feature = "idl-build")]
+impl anchor_lang_v2::IdlAccountType for Mint {}
+
 // On-chain size — SPL Token program requires 82 bytes. Used by
 // `#[account(init, mint::*)]` as the default when `space` is omitted.
 impl anchor_lang_v2::Space for Mint {

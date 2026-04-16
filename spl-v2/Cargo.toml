@@ -7,6 +7,7 @@ license = "Apache-2.0"
 
 [features]
 default = []
+idl-build = ["anchor-lang-v2/idl-build"]
 
 [dependencies]
 anchor-lang-v2 = { path = "../lang-v2", version = "2.0.0" }
