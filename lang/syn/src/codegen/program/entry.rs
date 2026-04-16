@@ -39,9 +39,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// The `entry` function here, defines the standard entry to a Solana
         /// program, where execution begins.
         pub fn entry<'info>(
-            program_id: &Pubkey,
+            program_id: &'info Pubkey,
             accounts: &'info [AccountInfo<'info>],
-            data: &[u8],
+            data: &'info [u8],
         ) -> anchor_lang::solana_program::entrypoint::ProgramResult {
             // Log compute units at program start. Note: This won't be exactly 200,000 because
             // the Solana runtime consumes CUs for tx deserialization, program loading,
@@ -59,9 +59,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         }
 
         fn try_entry<'info>(
-            program_id: &Pubkey,
+            program_id: &'info Pubkey,
             accounts: &'info [AccountInfo<'info>],
-            data: &[u8],
+            data: &'info [u8],
         ) -> anchor_lang::Result<()> {
             #[cfg(feature = "anchor-debug")]
             {
