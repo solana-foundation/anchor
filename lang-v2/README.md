@@ -386,9 +386,9 @@ Worked examples live under [`bench/programs/`](../bench/programs/). The anchor-v
 
 | Program | Description |
 |---|---|
-| [`helloworld/anchor-v2`](../bench/programs/helloworld/anchor-v2) | Single-instruction counter. Minimum viable `#[program]` + `#[account]`. |
-| [`vault/anchor-v2`](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault. Two handlers (`deposit`, `withdraw`), PDA with stored bump, signed CPI. |
-| [`multisig/anchor-v2`](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig. Multi-account state, PDA-signed transfers, `has_one` / `constraint` patterns. |
+| [`helloworld`](../bench/programs/helloworld/anchor-v2) | Single-instruction counter. Minimum viable `#[program]` + `#[account]`. |
+| [`vault`](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault. Two handlers (`deposit`, `withdraw`), PDA with stored bump, signed CPI. |
+| [`multisig`](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig. Multi-account state, PDA-signed transfers, `has_one` / `constraint` patterns. |
 
 ## Architecture
 
