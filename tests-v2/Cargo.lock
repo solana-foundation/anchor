@@ -211,6 +211,7 @@ dependencies = [
  "curve25519-dalek",
  "proc-macro2",
  "quote",
+ "serde_json",
  "sha2 0.10.9",
  "syn 2.0.117",
 ]
@@ -312,7 +313,7 @@ dependencies = [
  "solana-instruction",
  "solana-program-error",
  "solana-program-log",
- "wincode 0.4.9",
+ "wincode 0.5.2",
 ]
 
 [[package]]
