@@ -182,11 +182,11 @@ pub mod anchor_v2 {
     };
 
     fn multisig_v2_config_address(creator: &Address) -> (Address, u8) {
-        anchor_lang_v2::find_program_address(&[b"multisig", creator.as_ref()], &multisig_v2::id())
+        multisig_v2::accounts::Create::find_config_address(creator, &multisig_v2::id())
     }
 
     fn multisig_v2_vault_address(config: &Address) -> (Address, u8) {
-        anchor_lang_v2::find_program_address(&[b"vault", config.as_ref()], &multisig_v2::id())
+        multisig_v2::accounts::Deposit::find_vault_address(config, &multisig_v2::id())
     }
 
     pub fn build_create_case(ctx: &mut BenchContext) -> Result<BenchInstruction> {

@@ -65,6 +65,52 @@ fn try_discover_program_id() -> Option<[u8; 32]> {
     None
 }
 
+/// Try to extract a single seed expression as constant bytes. Handles
+/// `b"literal"`, `"literal"`, `[1, 2, 3]`, `"lit".as_bytes()`.
+pub(crate) fn seed_as_const_bytes(expr: &syn::Expr) -> Option<Vec<u8>> {
+    // Peel &ref wrappers
+    let mut cur = expr;
+    while let syn::Expr::Reference(r) = cur {
+        cur = &r.expr;
+    }
+    match cur {
+        syn::Expr::Lit(syn::ExprLit { lit, .. }) => match lit {
+            syn::Lit::ByteStr(b) => Some(b.value()),
+            syn::Lit::Str(s) => Some(s.value().into_bytes()),
+            syn::Lit::Byte(b) => Some(vec![b.value()]),
+            _ => None,
+        },
+        syn::Expr::Array(arr) => {
+            arr.elems
+                .iter()
+                .map(|e| {
+                    if let syn::Expr::Lit(syn::ExprLit {
+                        lit: syn::Lit::Int(i),
+                        ..
+                    }) = e
+                    {
+                        i.base10_parse::<u8>().ok()
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+        syn::Expr::MethodCall(mc) if mc.method == "as_bytes" && mc.args.is_empty() => {
+            if let syn::Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Str(s),
+                ..
+            }) = &*mc.receiver
+            {
+                Some(s.value().into_bytes())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
 /// If every element of `seeds` is a byte-string literal (`b"..."`), return
 /// their decoded contents in order. Any non-literal seed (a field ref, a
 /// method call, a path expression) returns `None`, signalling that the

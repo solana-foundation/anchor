@@ -681,6 +681,10 @@ fn classify_seed_value(
 /// Walk down a method-call / field-access / index chain and return the
 /// bare ident at its root, if any. `foo.key().as_ref()` → `foo`;
 /// `foo.bar.baz` → `foo`; `foo[0]` → `foo`; `(foo)` → `foo`.
+pub fn receiver_root_ident_str(expr: &Expr) -> Option<String> {
+    receiver_root_ident(expr)
+}
+
 fn receiver_root_ident(expr: &Expr) -> Option<String> {
     let mut cur = expr;
     loop {

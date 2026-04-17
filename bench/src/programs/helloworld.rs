@@ -36,7 +36,7 @@ pub mod anchor_v2 {
     pub fn build_init_case(ctx: &mut BenchContext) -> Result<BenchInstruction> {
         let program_id = ctx.program_id();
         let (counter_pda, _bump) =
-            anchor_lang_v2::find_program_address(&[b"counter"], &program_id);
+            hello_world_v2::accounts::Init::find_counter_address(&program_id);
 
         Ok(BenchInstruction::new(
             hello_world_v2::instruction::Init {}.data(),

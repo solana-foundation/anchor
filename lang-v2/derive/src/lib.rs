@@ -449,6 +449,75 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         })
         .collect();
 
+    // PDA finder functions for seed-bearing fields.
+    let pda_fns: Vec<TokenStream2> = fields
+        .iter()
+        .filter_map(|f| {
+            let attrs = parse::parse_account_attrs(
+                &named_fields
+                    .named
+                    .iter()
+                    .find(|nf| nf.ident.as_ref() == Some(&f.name))?
+                    .attrs,
+            );
+            let seeds = attrs.seeds.as_ref()?;
+
+            let field_name = &f.name;
+            let fn_name = syn::Ident::new(
+                &format!("find_{}_address", field_name),
+                field_name.span(),
+            );
+
+            // Classify each seed and build params + seed exprs.
+            let mut params: Vec<TokenStream2> = Vec::new();
+            let mut seed_exprs: Vec<TokenStream2> = Vec::new();
+            let mut seen_params = std::collections::HashSet::new();
+
+            for seed_expr in seeds {
+                let root = idl::receiver_root_ident_str(seed_expr);
+                if let Some(ref root_name) = root {
+                    if raw_field_names.contains(root_name) {
+                        // Account seed → &Address parameter.
+                        let param_ident = syn::Ident::new(root_name, proc_macro2::Span::call_site());
+                        if seen_params.insert(root_name.clone()) {
+                            params.push(quote! { #param_ident: &anchor_lang_v2::Address });
+                        }
+                        seed_exprs.push(quote! { #param_ident.as_ref() });
+                        continue;
+                    }
+                    if ix_arg_names.contains(root_name) {
+                        // Arg seed → &[u8] parameter.
+                        let param_ident = syn::Ident::new(root_name, proc_macro2::Span::call_site());
+                        if seen_params.insert(root_name.clone()) {
+                            params.push(quote! { #param_ident: &[u8] });
+                        }
+                        seed_exprs.push(quote! { #param_ident });
+                        continue;
+                    }
+                }
+                // Const seed — try to extract byte literal.
+                if let Some(bytes) = pda::seed_as_const_bytes(seed_expr) {
+                    let byte_lits: Vec<_> = bytes.iter().map(|b| quote! { #b }).collect();
+                    seed_exprs.push(quote! { &[#(#byte_lits),*] });
+                } else {
+                    // Unrecognized seed shape — can't generate a PDA helper.
+                    return None;
+                }
+            }
+
+            params.push(quote! { program_id: &anchor_lang_v2::Address });
+
+            Some(quote! {
+                pub fn #fn_name(#(#params),*) -> (anchor_lang_v2::Address, u8) {
+                    anchor_lang_v2::find_program_address(
+                        &[#(#seed_exprs),*],
+                        program_id,
+                    )
+                }
+            })
+        })
+        .collect();
+
     quote! {
         /// Client-side accounts struct with `Address` fields for off-chain use.
         pub mod #client_mod_name {
@@ -461,6 +530,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 fn to_account_metas(&self, _is_signer: Option<bool>) -> alloc::vec::Vec<anchor_lang_v2::AccountMeta> {
                     alloc::vec![#(#client_meta_entries),*]
                 }
+            }
+            impl #name {
+                #(#pda_fns)*
             }
         }
 
@@ -799,9 +871,16 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
         }
     };
 
+    // Thread any generic / lifetime params from the input type through
+    // the impl so `#[derive(IdlType)] struct Foo<'a>` lowers to
+    // `impl<'a> IdlAccountType for Foo<'a>`. Without this, borrowed ix-arg
+    // structs (e.g. `MixedArgs<'a> { values: &'a [u64] }`) wouldn't compile
+    // with the derive.
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
     TokenStream::from(quote! {
         #[cfg(feature = "idl-build")]
-        impl anchor_lang_v2::IdlAccountType for #name {
+        impl #impl_generics anchor_lang_v2::IdlAccountType for #name #ty_generics #where_clause {
             const __IDL_TYPE: Option<&'static str> = Some(#idl_type_json);
             fn __register_idl_deps(
                 types: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
