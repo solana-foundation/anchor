@@ -33,8 +33,7 @@ use quote::{format_ident, quote};
 use syn::{
     braced,
     parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    token, Expr, Fields, Ident, Item, Lit, LitStr, Meta, Token,
+    Expr, Fields, Ident, Item, Lit, Meta,
 };
 
 // ---------------------------------------------------------------------------

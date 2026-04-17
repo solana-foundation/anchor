@@ -180,7 +180,7 @@ fn pod_vec_layout(args: &syn::PathArguments) -> Option<(usize, usize)> {
     // Second arg: MAX capacity (const generic)
     let max = match iter.next()? {
         syn::GenericArgument::Const(expr) => const_expr_value(expr)?,
-        syn::GenericArgument::Type(syn::Type::Path(tp)) => {
+        syn::GenericArgument::Type(syn::Type::Path(_)) => {
             // Could be a const path like MAX_SIGNERS — can't resolve,
             // skip this struct.
             return None;
