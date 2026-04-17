@@ -49,7 +49,7 @@ Same codebase, but built from a local checkout — useful if you want to tweak v
 ```bash
 $ git clone https://github.com/solana-foundation/anchor.git && cd anchor && git checkout anchor-next
 $ cargo install --path cli --force   # prepend `CARGO_PROFILE_RELEASE_LTO=off` on macOS
-$ cd bench/programs/prop-amm          # or: vault, multisig, nested, helloworld
+$ cd bench/programs/prop-amm/anchor-v2   # or: vault, multisig, nested, helloworld
 $ anchor debugger
 ```
 
