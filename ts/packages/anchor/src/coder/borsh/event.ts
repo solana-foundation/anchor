@@ -31,6 +31,13 @@ function fieldInnerType(f: IdlField | IdlType): IdlType {
  * layout, but one containing a `Vec` or `String` (directly or transitively
  * through a defined struct) cannot.
  */
+export function typeDivergesBetweenWincodeAndBorsh(
+  ty: IdlType,
+  types: IdlTypeDef[],
+): boolean {
+  return wincodeDivergesFromBorsh(ty, types, new Set());
+}
+
 function wincodeDivergesFromBorsh(
   ty: IdlType,
   types: IdlTypeDef[],
