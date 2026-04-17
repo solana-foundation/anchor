@@ -1,89 +1,70 @@
 //! Build-time support for linking hand-written SBPF assembly into Anchor v2
 //! programs via `global_asm!`.
 //!
-//! # Usage
+//! Two usage modes:
+//!
+//! ## Simple mode — port existing assembly projects
+//!
+//! For projects that already have `.s` files with `.equ` constants (e.g.
+//! from an external injection system), just concatenate and link:
 //!
 //! ```toml
 //! # Cargo.toml
-//! [dependencies]
-//! anchor-asm = { path = "..." }
-//!
 //! [build-dependencies]
-//! anchor-asm = { path = "..." }
+//! anchor-asm-v2 = { path = "..." }
 //! ```
 //!
 //! ```rust,ignore
 //! // build.rs
 //! fn main() {
-//!     anchor_asm::build("src/asm");
+//!     anchor_asm_v2::build("src/asm");
 //! }
 //! ```
 //!
 //! ```rust,ignore
 //! // lib.rs
+//! #![no_std]
+//! #![no_main]
 //! #![feature(asm_experimental_arch)]
-//! use anchor_lang_v2::prelude::*;
 //!
-//! declare_id!("...");
+//! anchor_asm_v2::include_asm!();
 //!
-//! anchor_asm::include_asm!();
+//! #[panic_handler]
+//! fn panic(_: &core::panic::PanicInfo) -> ! { loop {} }
+//! ```
 //!
-//! #[account]
-//! pub struct MyState {
-//!     pub value: u64,
-//!     pub bump: u8,
+//! `build()` walks the assembly directory, expands `.include` directives,
+//! and writes a single `$OUT_DIR/combined.s`. `include_asm!()` wraps it
+//! in `global_asm!`.
+//!
+//! ## Full mode — new programs with compile-time constants
+//!
+//! For new assembly programs, use `asm_program!` from the companion
+//! `anchor-asm-v2-macros` crate to define types and generate `const`
+//! operands in one block:
+//!
+//! ```rust,ignore
+//! anchor_asm_v2_macros::asm_program! {
+//!     #[error_enum(prefix = "E")]
+//!     pub enum ErrorCode { InvalidDiscriminant, ... }
+//!
+//!     #[frame(prefix = "FM")]
+//!     #[repr(C)]
+//!     pub struct Frame { pub saved_r6: u64, pub bump: u8, ... }
+//!
+//!     asm { include_str!(concat!(env!("OUT_DIR"), "/combined.s")), }
 //! }
 //! ```
-//!
-//! Assembly files in `src/asm/` can reference generated constants:
-//!
-//! ```asm
-//! entrypoint:
-//!     ldxdw r3, [r1 + MyState__value]
-//!     ldxb  r4, [r1 + MyState__bump]
-//!     mov32 r5, MyState__SIZE
-//! ```
-//!
-//! # What it does
-//!
-//! 1. **`build("src/asm")`** (called from `build.rs`):
-//!    - Walks the assembly directory for `.s` files
-//!    - Parses `lib.rs` for `#[account]` structs
-//!    - Emits `.equ` constants for field offsets, struct sizes, and
-//!      discriminators
-//!    - Concatenates all `.s` files (expanding `.include` directives)
-//!    - Writes `$OUT_DIR/combined.s`
-//!
-//! 2. **`include_asm!()`** (called from `lib.rs`):
-//!    - Expands to `global_asm!(include_str!(...))` referencing the
-//!      combined output
-
-mod preamble;
-
-// Re-export the main proc macro.
-pub use anchor_asm_v2_macros::asm_program;
 
 use std::path::{Path, PathBuf};
 
-/// Terminal macro for the callback chain. Wraps accumulated tokens in
-/// `global_asm!`. Place this as the innermost call:
-///
-/// ```ignore
-/// ErrorCode_asm!(Discriminant_asm!(emit_asm!(
-///     include_str!("asm/entrypoint.s"),
-/// )));
-/// ```
-#[macro_export]
-macro_rules! emit_asm {
-    ($($all:tt)*) => {
-        core::arch::global_asm!($($all)*);
-    };
-}
+// ---------------------------------------------------------------------------
+// Simple mode: build() + include_asm!()
+// ---------------------------------------------------------------------------
 
-/// Emit `global_asm!` linking the combined assembly output from `build()`.
+/// Emit `global_asm!` linking the combined assembly from `build()`.
 ///
-/// Must be called at crate root scope. Requires
-/// `#![feature(asm_experimental_arch)]` on the crate.
+/// Call at crate root scope. Requires `#![feature(asm_experimental_arch)]`.
 #[macro_export]
 macro_rules! include_asm {
     () => {
@@ -94,9 +75,11 @@ macro_rules! include_asm {
 /// Build-time entry point. Call from `build.rs` with the path to the
 /// assembly source directory (relative to the crate root).
 ///
-/// Reads `src/lib.rs` for `#[account]` structs to generate offset
-/// constants, then collects and concatenates all `.s` files from
-/// `asm_dir` into `$OUT_DIR/combined.s`.
+/// Walks the directory for `.s` files, expands `.include` directives,
+/// and writes the concatenated result to `$OUT_DIR/combined.s`.
+///
+/// If `src/lib.rs` contains `#[repr(C)]` or `#[account]` structs,
+/// `.equ` constants for field offsets are prepended automatically.
 pub fn build(asm_dir: &str) {
     let manifest_dir = PathBuf::from(
         std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"),
@@ -107,63 +90,52 @@ pub fn build(asm_dir: &str) {
     let asm_path = manifest_dir.join(asm_dir);
     let lib_rs = manifest_dir.join("src").join("lib.rs");
 
-    // Generate .equ preamble from #[account] structs.
     let preamble = if lib_rs.exists() {
         preamble::generate(&lib_rs)
     } else {
         String::new()
     };
 
-    // Collect and concatenate assembly files.
     let combined = collect_asm(&asm_path);
 
-    let output = format!(
-        "# Auto-generated by anchor-asm. Do not edit.\n\
-         #\n\
-         # Struct field offsets and sizes from #[account] structs.\n\
-         # Assembly files from {asm_dir}/.\n\
-         \n\
-         {preamble}\n\
-         {combined}"
-    );
+    let output = if preamble.is_empty() {
+        combined
+    } else {
+        format!("{preamble}\n{combined}")
+    };
 
     std::fs::write(out_dir.join("combined.s"), output).expect("write combined.s");
 
-    // Rerun if any assembly file or lib.rs changes.
     println!("cargo:rerun-if-changed={asm_dir}");
-    println!("cargo:rerun-if-changed=src/lib.rs");
+    if lib_rs.exists() {
+        println!("cargo:rerun-if-changed=src/lib.rs");
+    }
 }
 
-/// Like `build()` but takes absolute paths for the assembly directory
-/// and output file. Skips the preamble generation — the caller handles
-/// any preprocessing.
+/// Like `build()` but takes absolute paths. Skips the preamble — the
+/// caller handles any preprocessing.
 pub fn build_to(asm_dir: &Path, output_path: &Path) {
     let combined = collect_asm(asm_dir);
-    let output = format!(
-        "# Auto-generated by anchor-asm. Do not edit.\n\n{combined}"
-    );
-    std::fs::write(output_path, output).expect("write combined assembly");
+    std::fs::write(output_path, combined).expect("write combined assembly");
     println!("cargo:rerun-if-changed={}", asm_dir.display());
 }
 
-/// Recursively collect all `.s` files from `dir`, concatenating their
-/// contents. Files are sorted by path for deterministic output.
-/// `.include` directives are expanded inline.
+// ---------------------------------------------------------------------------
+// Assembly collection and .include expansion
+// ---------------------------------------------------------------------------
+
+mod preamble;
+
 fn collect_asm(dir: &Path) -> String {
     let mut files: Vec<PathBuf> = Vec::new();
     walk_dir(dir, &mut files);
     files.sort();
 
-    // Check for a root entry file (e.g. `entrypoint.s` or a file matching
-    // the directory name). If present, process it first — it typically
-    // contains `.include` directives that set the ordering.
     let root_file = find_root_file(dir, &files);
 
     if let Some(root) = root_file {
-        // Process the root file, expanding .include directives.
         expand_includes(&root, dir)
     } else {
-        // No root file — concatenate all files in sorted order.
         let mut out = String::new();
         for file in &files {
             let content = std::fs::read_to_string(file)
@@ -179,15 +151,9 @@ fn collect_asm(dir: &Path) -> String {
     }
 }
 
-/// Find a root assembly file that should be processed first.
-///
-/// Priority: dir-name match (e.g. `dropset/dropset.s`) first — this is
-/// typically the manifest that orchestrates `.include` directives.
-/// Falls back to well-known names like `entrypoint.s` or `main.s`.
+/// Find the root assembly file. Priority: dir-name match (e.g.
+/// `dropset/dropset.s`) first, then well-known names.
 fn find_root_file(dir: &Path, files: &[PathBuf]) -> Option<PathBuf> {
-    // Check for dir-name.s (e.g. dropset/dropset.s) — highest priority
-    // because a file named after the directory is typically the root
-    // manifest that includes everything else.
     if let Some(dir_name) = dir.file_name().and_then(|n| n.to_str()) {
         let candidate = dir.join(format!("{dir_name}.s"));
         if files.contains(&candidate) {
@@ -195,9 +161,7 @@ fn find_root_file(dir: &Path, files: &[PathBuf]) -> Option<PathBuf> {
         }
     }
 
-    // Fall back to well-known names.
-    let candidates = ["entrypoint.s", "main.s"];
-    for name in &candidates {
+    for name in ["entrypoint.s", "main.s"] {
         let candidate = dir.join(name);
         if files.contains(&candidate) {
             return Some(candidate);
@@ -207,7 +171,6 @@ fn find_root_file(dir: &Path, files: &[PathBuf]) -> Option<PathBuf> {
     None
 }
 
-/// Recursively expand `.include` directives in an assembly file.
 fn expand_includes(path: &Path, base_dir: &Path) -> String {
     let content = std::fs::read_to_string(path)
         .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
@@ -224,12 +187,10 @@ fn expand_includes(path: &Path, base_dir: &Path) -> String {
             if include_path.exists() {
                 out.push_str(&expand_includes(&include_path, base_dir));
             } else {
-                // Try relative to base_dir.
                 let from_base = base_dir.join(file);
                 if from_base.exists() {
                     out.push_str(&expand_includes(&from_base, base_dir));
                 } else {
-                    // Keep the directive as-is — LLVM might resolve it.
                     out.push_str(line);
                     out.push('\n');
                 }
@@ -242,7 +203,6 @@ fn expand_includes(path: &Path, base_dir: &Path) -> String {
     out
 }
 
-/// Walk a directory recursively, collecting `.s` file paths.
 fn walk_dir(dir: &Path, out: &mut Vec<PathBuf>) {
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
