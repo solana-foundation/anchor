@@ -1,0 +1,13 @@
+[package]
+name = "anchor-asm-v2"
+version = "0.1.0"
+edition = "2021"
+description = "Build-time support for linking hand-written SBPF assembly into Anchor v2 programs"
+license = "Apache-2.0"
+publish = false
+
+[workspace]
+
+[dependencies]
+syn = { version = "2", features = ["full", "parsing", "visit"] }
+quote = "1"
