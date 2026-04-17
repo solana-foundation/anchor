@@ -536,13 +536,38 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         .filter_map(|&i| {
             let (f, kind) = &field_kinds[i];
             let ident = &f.name;
+            // When the field is `Option<Program<T>>` / `Option<...seeds...>`,
+            // the downstream `client_meta_entries` match expects the local
+            // binding to be `Option<Address>`, not a bare `Address`. Wrap
+            // the derived value in `Some(...)` in that case so the match
+            // arms type-check.
             match kind {
-                FieldKind::Program(expr) => Some(quote! { let #ident = #expr; }),
-                FieldKind::Pda { seed_exprs, .. } => Some(quote! {
-                    let (#ident, _) = anchor_lang_v2::find_program_address(
-                        &[#(#seed_exprs),*], &crate::ID,
-                    );
-                }),
+                FieldKind::Program(expr) => {
+                    let init = if f.is_optional {
+                        quote! { Some(#expr) }
+                    } else {
+                        quote! { #expr }
+                    };
+                    Some(quote! { let #ident = #init; })
+                }
+                FieldKind::Pda { seed_exprs, .. } => {
+                    if f.is_optional {
+                        Some(quote! {
+                            let #ident = {
+                                let (__addr, _) = anchor_lang_v2::find_program_address(
+                                    &[#(#seed_exprs),*], &crate::ID,
+                                );
+                                Some(__addr)
+                            };
+                        })
+                    } else {
+                        Some(quote! {
+                            let (#ident, _) = anchor_lang_v2::find_program_address(
+                                &[#(#seed_exprs),*], &crate::ID,
+                            );
+                        })
+                    }
+                }
                 _ => None,
             }
         })
