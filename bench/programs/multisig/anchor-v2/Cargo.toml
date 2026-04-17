@@ -26,7 +26,7 @@ anchor-lang-v2 = { path = "../../../../lang-v2", default-features = false, featu
 borsh = { version = "1", optional = true }
 pinocchio = { version = "0.11", default-features = false, features = ["copy"] }
 pinocchio-system = "0.6"
-wincode = { version = "0.4", features = ["derive"] }
+wincode = { version = "0.5", features = ["derive"] }
 
 [lints.rust.unexpected_cfgs]
 level = "allow"
