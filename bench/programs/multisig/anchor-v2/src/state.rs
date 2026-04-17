@@ -23,8 +23,6 @@ pub struct MultisigConfig {
     pub signers: PodVec<Address, MAX_SIGNERS>,
 }
 
-pub const MULTISIG_CONFIG_SPACE: usize = 8 + core::mem::size_of::<MultisigConfig>();
-
 impl MultisigConfig {
     pub fn label_str(&self) -> &str {
         // SAFETY: label is validated as UTF-8 during set_label/initialize.

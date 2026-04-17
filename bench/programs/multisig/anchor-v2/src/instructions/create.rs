@@ -2,19 +2,15 @@ use anchor_lang_v2::prelude::*;
 
 use crate::{
     errors::MultisigError,
-    state::{MultisigConfig, MULTISIG_CONFIG_SPACE, MAX_SIGNERS},
+    state::{MultisigConfig, MAX_SIGNERS},
 };
 
 #[derive(Accounts)]
 pub struct Create {
     #[account(mut)]
     pub creator: Signer,
-    #[account(
-        init,
-        payer = creator,
-        space = MULTISIG_CONFIG_SPACE,
-        seeds = [b"multisig", creator.account().address().as_ref()]
-    )]
+    // `space` omitted — defaults to `8 + size_of::<MultisigConfig>()` for pod accounts.
+    #[account(init, payer = creator, seeds = [b"multisig", creator.account().address().as_ref()])]
     pub config: Account<MultisigConfig>,
     pub system_program: Program<System>,
 }

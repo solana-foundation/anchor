@@ -18,13 +18,9 @@ pub mod hello_world_v2 {
 pub struct Init {
     #[account(mut)]
     pub payer: Signer,
-    #[account(
-        init,
-        payer = payer,
-        space = 8 + core::mem::size_of::<Counter>(),
-        seeds = [b"counter"],
-        bump,
-    )]
+    // `space` omitted — defaults to `<Account<Counter> as Space>::INIT_SPACE`
+    // which is `8 + size_of::<Counter>()` for pod accounts.
+    #[account(init, payer = payer, seeds = [b"counter"], bump)]
     pub counter: Account<Counter>,
     pub system_program: Program<System>,
 }

@@ -1,21 +1,15 @@
-use anchor_lang_v2::Error;
+use anchor_lang_v2::prelude::*;
 
+#[error_code]
 pub enum MultisigError {
+    #[msg("Threshold is zero or exceeds signer count")]
     InvalidThreshold,
+    #[msg("Signer list exceeds the maximum")]
     TooManySigners,
+    #[msg("Required signer did not sign the transaction")]
     MissingRequiredSignature,
+    #[msg("Label exceeds maximum length or is not valid UTF-8")]
     LabelTooLong,
+    #[msg("Only the original creator can perform this action")]
     UnauthorizedCreator,
-}
-
-impl From<MultisigError> for Error {
-    fn from(e: MultisigError) -> Self {
-        match e {
-            MultisigError::InvalidThreshold => Error::Custom(6000),
-            MultisigError::TooManySigners => Error::Custom(6001),
-            MultisigError::MissingRequiredSignature => Error::Custom(6002),
-            MultisigError::LabelTooLong => Error::Custom(6003),
-            MultisigError::UnauthorizedCreator => Error::Custom(6004),
-        }
-    }
 }
