@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "programs/callee", "programs/caller", "programs/borsh-realloc"]
+members = [".", "programs/callee", "programs/caller", "programs/borsh-realloc", "programs/dup-mut"]
 resolver = "2"
 
 [package]
@@ -17,6 +17,7 @@ anchor-lang-v2 = { path = "../lang-v2" }
 borsh-realloc = { path = "programs/borsh-realloc", features = ["cpi"] }
 callee = { path = "programs/callee", features = ["cpi"] }
 caller = { path = "programs/caller", features = ["cpi"] }
+dup-mut = { path = "programs/dup-mut" }
 litesvm = "0.11.0"
 solana-keypair = "3.0.1"
 solana-message = "3.0.1"

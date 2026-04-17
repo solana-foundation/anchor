@@ -1133,6 +1133,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dup-mut"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang-v2",
+ "bytemuck",
+ "pinocchio",
+ "pinocchio-system",
+ "solana-program-error",
+ "wincode",
+]
+
+[[package]]
 name = "eager"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3816,6 +3828,7 @@ dependencies = [
  "borsh-realloc",
  "callee",
  "caller",
+ "dup-mut",
  "litesvm",
  "solana-keypair",
  "solana-message",
