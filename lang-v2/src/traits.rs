@@ -223,29 +223,16 @@ pub trait AccountInitialize: Sized {
 /// Constraint check on an account. `V` defaults to `Address`; override
 /// for non-address checks (e.g. `mint::DecimalsConstraint` uses `u8`).
 /// Unknown keys produce a compile error.
+///
+/// There is deliberately **no blanket `impl<T: Constrain<C, V>> Constrain<C, V>
+/// for Option<T>`** mirroring the `Box<T>` forwarder in `accounts/boxed.rs`.
+/// Constraint checks on `Option<Field>` are emitted by the derive inline as
+/// `if let Some(ref inner) = self.maybe_x { … inline check … }` — they never
+/// dispatch through this trait — so adding the blanket impl would only paper
+/// over problems users don't actually hit, while giving the appearance of
+/// adding behavior that already works.
 pub trait Constrain<C, V = Address> {
     fn constrain(&mut self, expected: &V) -> core::result::Result<(), ProgramError>;
-}
-
-/// Forward constraint checks through `Option<T>`: if the field is
-/// `Some(inner)`, delegate; if `None`, the constraint is vacuously
-/// satisfied. This matches the runtime semantics the derive already
-/// emits for optional accounts (the absent-slot sentinel path skips
-/// all per-account checks).
-///
-/// Mirrors the `Box<T>` forwarder in `accounts/boxed.rs` — both let
-/// wrapped account types compose with constraint codegen without
-/// requiring a manual impl per wrapper.
-impl<T, C, V> Constrain<C, V> for Option<T>
-where
-    T: Constrain<C, V>,
-{
-    fn constrain(&mut self, expected: &V) -> core::result::Result<(), ProgramError> {
-        match self {
-            Some(inner) => inner.constrain(expected),
-            None => Ok(()),
-        }
-    }
 }
 
 pub struct Nested<T>(pub T);
