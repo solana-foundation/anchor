@@ -148,27 +148,63 @@ export class AnchorProvider implements Provider {
       if (signers) {
         tx.sign(signers);
       }
-    } else {
-      tx.feePayer = tx.feePayer ?? this.wallet.publicKey;
+      tx = await this.wallet.signTransaction(tx);
+      return await this._sendWithConfirmErrorHandling(tx, opts);
+    }
 
-      if (
-        !tx.recentBlockhash ||
-        tx.recentBlockhash === "11111111111111111111111111111111"
-      ) {
+    tx.feePayer = tx.feePayer ?? this.wallet.publicKey;
+
+    // Retry loop: on fast local validators (e.g. surfpool with 400ms slot
+    // time), repeat calls to `getLatestBlockhash` can return the same
+    // blockhash, producing byte-identical txs with identical signatures and
+    // tripping "already processed". On that specific error, wait past one
+    // slot, refresh the blockhash, and retry.
+    const ALREADY_PROCESSED_MAX_ATTEMPTS = 3;
+    const ALREADY_PROCESSED_RETRY_DELAY_MS = 500;
+    const callerSetBlockhash =
+      !!tx.recentBlockhash &&
+      tx.recentBlockhash !== "11111111111111111111111111111111";
+
+    for (let attempt = 0; attempt < ALREADY_PROCESSED_MAX_ATTEMPTS; attempt++) {
+      if (!callerSetBlockhash || attempt > 0) {
         tx.recentBlockhash = (
           await this.connection.getLatestBlockhash(opts.preflightCommitment)
         ).blockhash;
       }
-
+      tx.signatures = [];
       if (signers) {
         for (const signer of signers) {
           tx.partialSign(signer);
         }
       }
-    }
-    tx = await this.wallet.signTransaction(tx);
-    const rawTx = tx.serialize();
+      const signed = await this.wallet.signTransaction(tx);
 
+      try {
+        return await this._sendWithConfirmErrorHandling(signed, opts);
+      } catch (err) {
+        const isAlreadyProcessed =
+          err instanceof Error &&
+          err.message.includes("already been processed");
+        const canRetry =
+          isAlreadyProcessed &&
+          !callerSetBlockhash &&
+          attempt < ALREADY_PROCESSED_MAX_ATTEMPTS - 1;
+        if (!canRetry) {
+          throw err;
+        }
+        await new Promise((r) =>
+          setTimeout(r, ALREADY_PROCESSED_RETRY_DELAY_MS)
+        );
+      }
+    }
+    throw new Error("unreachable: sendAndConfirm retry loop fell through");
+  }
+
+  private async _sendWithConfirmErrorHandling(
+    tx: Transaction | VersionedTransaction,
+    opts: ConfirmOptionsWithBlockhash
+  ): Promise<TransactionSignature> {
+    const rawTx = tx.serialize();
     try {
       return await sendAndConfirmRawTransaction(this.connection, rawTx, opts);
     } catch (err) {
