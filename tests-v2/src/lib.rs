@@ -7,6 +7,10 @@ use {
     solana_message::{Message, VersionedMessage},
     solana_signer::Signer,
     solana_transaction::versioned::VersionedTransaction,
+    std::{
+        collections::HashMap,
+        sync::{Mutex, Once, OnceLock},
+    },
 };
 
 /// Derives a deterministic keypair from a name string.
@@ -52,22 +56,42 @@ pub fn send_instruction(
 }
 
 /// Build the .so for a program by running cargo build-sbf.
+///
+/// Memoized by `manifest_dir`: within a single test-binary process each
+/// program is built at most once, even when multiple `#[test]`s invoke
+/// this concurrently from their `setup()`. Parallel callers for the same
+/// path block on a per-path `Once` until the first build finishes; the
+/// table of `Once`s itself lives behind a short `Mutex` used only for
+/// lookup/insert.
 pub fn build_program(manifest_dir: &str, sbf_out_dir: &str) {
-    let status = std::process::Command::new("cargo")
-        .args([
-            "build-sbf",
-            "--tools-version",
-            "v1.52",
-            "--manifest-path",
-            &format!("{}/Cargo.toml", manifest_dir),
-            "--sbf-out-dir",
-            sbf_out_dir,
-        ])
-        .status()
-        .unwrap_or_else(|e| panic!("failed to run cargo build-sbf for {manifest_dir}: {e}"));
+    static ONCES: OnceLock<Mutex<HashMap<String, &'static Once>>> = OnceLock::new();
+    let once: &'static Once = {
+        let mut table = ONCES
+            .get_or_init(|| Mutex::new(HashMap::new()))
+            .lock()
+            .unwrap();
+        *table
+            .entry(manifest_dir.to_string())
+            .or_insert_with(|| Box::leak(Box::new(Once::new())))
+    };
 
-    assert!(
-        status.success(),
-        "cargo build-sbf failed for {manifest_dir}"
-    );
+    once.call_once(|| {
+        let status = std::process::Command::new("cargo")
+            .args([
+                "build-sbf",
+                "--tools-version",
+                "v1.52",
+                "--manifest-path",
+                &format!("{}/Cargo.toml", manifest_dir),
+                "--sbf-out-dir",
+                sbf_out_dir,
+            ])
+            .status()
+            .unwrap_or_else(|e| panic!("failed to run cargo build-sbf for {manifest_dir}: {e}"));
+
+        assert!(
+            status.success(),
+            "cargo build-sbf failed for {manifest_dir}"
+        );
+    });
 }

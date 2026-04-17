@@ -38,6 +38,13 @@ jobs:
           path: ${{ env.CARGO_CACHE_PATH }}
           key: cargo-${{ runner.os }}-v2-${{ hashFiles('**/Cargo.lock') }}
 
+      # Install platform-tools up front so the concurrent `cargo build-sbf`
+      # invocations fired by parallel test threads don't race on the
+      # one-time extract-then-rename of `~/.cache/solana/v1.52/platform-tools`
+      # (surfaces in CI as `Unable to rename: No such file or directory`).
+      # Version must match `tests-v2/src/lib.rs::build_program`.
+      - run: cargo build-sbf --tools-version v1.52 --install-only
+
       # v2 runtime + derive crates.
       - run: cargo test -p anchor-lang-v2
       - run: cargo test -p anchor-spl-v2
