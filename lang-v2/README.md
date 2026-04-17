@@ -97,20 +97,20 @@ Here are some examples of optimizations present in Anchor v2.
 
 None of these carry an `'info` lifetime — pinocchio's account model is static-scoped, so you can pass them around without the v1 lifetime gymnastics.
 
-| Type | Use | Notes |
-|---|---|---|
-| `Account<T>` | **Default for your program's data.** | Zero-copy. Requires `T: Pod` (enforced by `#[account]`). Field access is a single deref on a cached typed pointer. Layout: `[8-byte disc][repr(C) T]`. |
-| `BorshAccount<T>` | Data with `Vec` / `String` / enums. | Deserializes on load, serializes on exit. |
-| `Signer` | Must be `is_signer`. | Cheap. |
-| `Program<T>` | CPI targets (`Program<System>`, `Program<Token>`, …). | Validates executable + program ID via `T: Id`. |
-| `SystemAccount` | System-owned payload. | Owner check only. |
-| `UncheckedAccount` | Escape hatch. | No validation. |
-| `Sysvar<T>` | `Sysvar<Clock>`, `Sysvar<Rent>`. | Prefer `Clock::get()` / `Rent::get()` syscalls where possible. |
-| `Slab<H, Item>` | Header + dynamic item tail. | Zero-copy ledger / event-log accounts. `Account<T>` is `Slab<T, HeaderOnly>` under the hood. |
-| `Option<Account<T>>` | Optional slot. | Client sends program-ID as sentinel when absent; bumps become `Option<u8>`. |
-| `Nested<T>` | Compose `#[derive(Accounts)]` structs. | Inline expansion. Access via `ctx.accounts.inner.field`. |
+| Type | Usage |
+|---|---|
+| `Account<T>` | **Default for your program's data.** Zero-copy, requires `T: Pod` (enforced by `#[account]`). Layout: `[8-byte disc][repr(C) T]`. |
+| `BorshAccount<T>` | Data with `Vec` / `String` / enums. Deserializes on load, serializes on exit. |
+| `Slab<H, Item>` | Header + dynamic item tail. Zero-copy ledger / event-log accounts. `Account<T>` is `Slab<T, HeaderOnly>` under the hood. |
+| `Option<Account<T>>` | Optional account slot. Client sends program-ID as sentinel when absent; bumps become `Option<u8>`. |
+| `Nested<T>` | Compose `#[derive(Accounts)]` structs. Inline expansion, access via `ctx.accounts.inner.field`. |
+| `Signer` | Transaction signer. Validates `is_signer`. (v1 compat) |
+| `Program<T>` | CPI targets (`Program<System>`, `Program<Token>`, …). Validates executable + program ID via `T: Id`. (v1 compat) |
+| `SystemAccount` | System-owned account. Owner check only. (v1 compat) |
+| `UncheckedAccount` | Escape hatch. No validation. (v1 compat) |
+| `Sysvar<T>` | `Sysvar<Clock>`, `Sysvar<Rent>`. Prefer `Clock::get()` / `Rent::get()` syscalls where possible. (v1 compat) |
 
-## CPI and ix construction
+## CPI Semantics
 
 Same `CpiContext` shape as v1. The big caller-side win is the generated **`Resolved`** struct: alongside the full accounts struct for each handler, the derive emits a variant with only the fields a caller actually has to provide. The standard system and token programs auto-fill when you build the instruction metas, and PDAs derive in topological order so dependent seeds still work.
 
