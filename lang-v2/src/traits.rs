@@ -227,6 +227,27 @@ pub trait Constrain<C, V = Address> {
     fn constrain(&mut self, expected: &V) -> core::result::Result<(), ProgramError>;
 }
 
+/// Forward constraint checks through `Option<T>`: if the field is
+/// `Some(inner)`, delegate; if `None`, the constraint is vacuously
+/// satisfied. This matches the runtime semantics the derive already
+/// emits for optional accounts (the absent-slot sentinel path skips
+/// all per-account checks).
+///
+/// Mirrors the `Box<T>` forwarder in `accounts/boxed.rs` — both let
+/// wrapped account types compose with constraint codegen without
+/// requiring a manual impl per wrapper.
+impl<T, C, V> Constrain<C, V> for Option<T>
+where
+    T: Constrain<C, V>,
+{
+    fn constrain(&mut self, expected: &V) -> core::result::Result<(), ProgramError> {
+        match self {
+            Some(inner) => inner.constrain(expected),
+            None => Ok(()),
+        }
+    }
+}
+
 pub struct Nested<T>(pub T);
 
 impl<T> Deref for Nested<T> {
