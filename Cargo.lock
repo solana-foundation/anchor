@@ -215,7 +215,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.10.9",
  "shellexpand",
  "solana-cli-config",
  "solana-client",
