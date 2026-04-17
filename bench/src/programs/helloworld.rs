@@ -33,12 +33,8 @@ pub mod anchor_v2 {
     };
 
     pub fn build_init_case(ctx: &mut BenchContext) -> Result<BenchInstruction> {
-        // counter + system_program auto-filled by Default (const-seed PDA + Program<System>)
         let ix = hello_world_v2::instruction::Init {}.to_instruction(
-            hello_world_v2::accounts::Init {
-                payer: ctx.payer_pubkey(),
-                ..Default::default()
-            },
+            hello_world_v2::accounts::InitResolved { payer: ctx.payer_pubkey() },
         );
         Ok(BenchInstruction::from_instruction(ix))
     }

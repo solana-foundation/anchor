@@ -212,8 +212,11 @@ dependencies = [
  "litesvm",
  "multisig-v1",
  "multisig-v2",
+ "nested-v1",
+ "nested-v2",
  "paste",
  "plotters",
+ "prop-amm-v1",
  "prop-amm-v2",
  "serde",
  "serde_json",
@@ -225,6 +228,7 @@ dependencies = [
  "solana-rent 3.1.0",
  "solana-signer",
  "solana-transaction",
+ "vault-v1",
  "vault-v2",
 ]
 
@@ -245,6 +249,7 @@ dependencies = [
  "curve25519-dalek",
  "proc-macro2",
  "quote",
+ "serde_json",
  "sha2 0.10.9",
  "syn 2.0.117",
 ]
@@ -342,6 +347,7 @@ dependencies = [
  "bytemuck",
  "pinocchio",
  "pinocchio-system",
+ "serde_json",
  "sha2 0.10.9",
  "solana-address 2.6.0",
  "solana-define-syscall 5.0.0",
@@ -1679,6 +1685,10 @@ name = "hello-world"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "anchor-v2-testing",
+ "litesvm",
+ "solana-account",
+ "solana-pubkey 3.0.0",
 ]
 
 [[package]]
@@ -1686,8 +1696,10 @@ name = "hello-world-v2"
 version = "0.1.0"
 dependencies = [
  "anchor-lang-v2",
+ "anchor-v2-testing",
  "borsh",
  "bytemuck",
+ "litesvm",
  "pinocchio",
  "pinocchio-system",
  "wincode",
@@ -2082,6 +2094,10 @@ name = "multisig-v1"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "anchor-v2-testing",
+ "litesvm",
+ "solana-account",
+ "solana-pubkey 3.0.0",
 ]
 
 [[package]]
@@ -2089,9 +2105,34 @@ name = "multisig-v2"
 version = "0.1.0"
 dependencies = [
  "anchor-lang-v2",
+ "anchor-v2-testing",
  "borsh",
+ "litesvm",
  "pinocchio",
  "pinocchio-system",
+ "wincode",
+]
+
+[[package]]
+name = "nested-v1"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-v2-testing",
+ "litesvm",
+ "solana-pubkey 3.0.0",
+]
+
+[[package]]
+name = "nested-v2"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang-v2",
+ "anchor-v2-testing",
+ "borsh",
+ "bytemuck",
+ "litesvm",
+ "pinocchio",
  "wincode",
 ]
 
@@ -2423,6 +2464,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "prop-amm-v1"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-v2-testing",
+ "litesvm",
+ "solana-account",
 ]
 
 [[package]]
@@ -4498,14 +4549,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "vault-v1"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-v2-testing",
+ "litesvm",
+ "solana-account",
+ "solana-pubkey 3.0.0",
+]
+
+[[package]]
 name = "vault-v2"
 version = "0.1.0"
 dependencies = [
  "anchor-lang-v2",
+ "anchor-v2-testing",
  "borsh",
  "bytemuck",
+ "litesvm",
  "pinocchio",
  "pinocchio-system",
+ "solana-account",
  "wincode",
 ]
 

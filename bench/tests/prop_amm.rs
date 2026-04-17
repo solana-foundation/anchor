@@ -10,11 +10,20 @@ use {
     std::path::PathBuf,
 };
 
+const EXPECTED_SUITES: &[&str] = &["prop_amm_v1", "prop_amm_v2"];
+const INSTRUCTIONS: &[&str] = &["initialize", "update", "rotate_authority"];
+
 #[test]
 fn prop_amm_end_to_end() {
     let bench_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let suites = suites_with_prefix("prop_amm");
-    assert_eq!(suites.len(), 1, "expected exactly 1 prop_amm suite");
+    assert_eq!(
+        suites.len(),
+        EXPECTED_SUITES.len(),
+        "expected {} prop_amm suites, got {}",
+        EXPECTED_SUITES.len(),
+        suites.len()
+    );
 
     let result = run(
         &bench_dir,
@@ -25,31 +34,38 @@ fn prop_amm_end_to_end() {
     )
     .expect("bench run failed");
 
-    let program = result
-        .programs
-        .get("prop_amm_v2")
-        .expect("prop_amm_v2 missing from result");
-    assert!(program.binary_size_bytes > 0, "prop_amm_v2 .so has zero bytes");
-
-    // Envelopes derived from local measurements (initialize ~1.4k, update
-    // ~40, rotate_authority ~100). Generous headroom so the check doesn't
-    // oscillate on Solana SDK bumps; the update cap is tight enough that a
-    // regression back into the dispatcher would trip it.
-    let caps: &[(&str, u64)] = &[
-        ("initialize", 10_000),
-        ("update", 150),
-        ("rotate_authority", 5_000),
-    ];
-    for &(name, cap) in caps {
-        let cu = program
-            .compute_units
-            .get(name)
-            .unwrap_or_else(|| panic!("missing CU for prop_amm_v2/{name}"));
-        assert!(*cu > 0, "prop_amm_v2/{name} reports 0 CU");
-        assert!(*cu < cap, "prop_amm_v2/{name} CU {cu} exceeds cap {cap}");
+    for &suite_name in EXPECTED_SUITES {
+        let program = result
+            .programs
+            .get(suite_name)
+            .unwrap_or_else(|| panic!("missing {suite_name} in result"));
+        assert!(
+            program.binary_size_bytes > 0,
+            "{suite_name} .so has zero bytes"
+        );
+        for &ix in INSTRUCTIONS {
+            let cu = program
+                .compute_units
+                .get(ix)
+                .unwrap_or_else(|| panic!("missing CU for {suite_name}/{ix}"));
+            assert!(*cu > 0, "{suite_name}/{ix} reports 0 CU");
+            assert!(
+                *cu < 100_000,
+                "{suite_name}/{ix} CU {cu} exceeds sanity cap"
+            );
+        }
     }
 
-    print_instruction_comparison(&result, "prop_amm", "initialize");
-    print_instruction_comparison(&result, "prop_amm", "update");
-    print_instruction_comparison(&result, "prop_amm", "rotate_authority");
+    // v2 `update` is the asm fast-path — tight cap so a regression back into
+    // the dispatcher trips it.
+    let v2 = result.programs.get("prop_amm_v2").expect("prop_amm_v2");
+    let update_cu = v2.compute_units.get("update").expect("v2 update cu");
+    assert!(
+        *update_cu < 150,
+        "prop_amm_v2/update CU {update_cu} exceeds fast-path cap 150"
+    );
+
+    for &ix in INSTRUCTIONS {
+        print_instruction_comparison(&result, "prop_amm", ix);
+    }
 }

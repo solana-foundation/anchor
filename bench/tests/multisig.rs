@@ -1,23 +1,11 @@
-//! End-to-end benchmark test for all five multisig program variants
-//! (Anchor v1, Anchor v2, Quasar, Pinocchio, Steel).
-//!
-//! Builds each BPF program, runs every instruction, asserts the compute-unit
-//! measurement produced a sane result, and prints a sorted comparison table
-//! per instruction across all variants. Set `BENCH_FLAMEGRAPHS=1` to also
-//! regenerate flamegraphs, `BENCH_SKIP_BUILD=1` to reuse prebuilt .so.
+//! End-to-end benchmark test for the multisig family (v1 + v2).
 
 use {
     anchor_bench::{print_instruction_comparison, run, suites_with_prefix, RunOptions},
     std::path::PathBuf,
 };
 
-const EXPECTED_SUITES: &[&str] = &[
-    "multisig_v1",
-    "multisig_v2",
-    "multisig_quasar",
-    "multisig_pinocchio",
-    "multisig_steel",
-];
+const EXPECTED_SUITES: &[&str] = &["multisig_v1", "multisig_v2"];
 const EXPECTED_INSTRUCTIONS: &[&str] =
     &["create", "deposit", "set_label", "execute_transfer"];
 

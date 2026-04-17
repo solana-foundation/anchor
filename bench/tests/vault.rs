@@ -1,18 +1,19 @@
-//! End-to-end benchmark test for the vault family (2 framework variants).
-//!
-//! The quasar variant is an **exact copy** of
-//! `the quasar vault example source` so the comparison measures the
-//! hand-tuned quasar-lang implementation; the v2 variant is a shape-
-//! matched port using anchor-lang-v2. Both expose two instructions:
-//! `deposit` (SOL via system::Transfer CPI) and `withdraw` (direct
-//! lamport arithmetic).
+//! End-to-end benchmark test for the vault family (5 framework variants):
+//! anchor v1, anchor v2, quasar, pinocchio, steel. All share the same
+//! program id so the `[b"vault", user]` PDA derives identically.
 
 use {
     anchor_bench::{print_instruction_comparison, run, suites_with_prefix, RunOptions},
     std::path::PathBuf,
 };
 
-const EXPECTED_SUITES: &[&str] = &["vault_v2", "vault_quasar"];
+const EXPECTED_SUITES: &[&str] = &[
+    "vault_v1",
+    "vault_v2",
+    "vault_quasar",
+    "vault_pinocchio",
+    "vault_steel",
+];
 const INSTRUCTIONS: &[&str] = &["deposit", "withdraw"];
 
 #[test]

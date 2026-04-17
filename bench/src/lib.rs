@@ -30,13 +30,14 @@ use {
             pinocchio as helloworld_pinocchio, quasar as helloworld_quasar,
             steel as helloworld_steel,
         },
-        multisig::{
-            anchor_v1, anchor_v2, pinocchio as multisig_pinocchio, quasar,
-            steel as multisig_steel,
+        multisig::{anchor_v1 as multisig_anchor_v1, anchor_v2 as multisig_anchor_v2},
+        nested::{anchor_v1 as nested_anchor_v1, anchor_v2 as nested_anchor_v2},
+        prop_amm::{
+            anchor_v1 as prop_amm_anchor_v1, anchor_v2 as prop_amm_anchor_v2,
         },
-        prop_amm::anchor_v2 as prop_amm_anchor_v2,
         vault::{
-            anchor_v2 as vault_anchor_v2, quasar as vault_quasar,
+            anchor_v1 as vault_anchor_v1, anchor_v2 as vault_anchor_v2,
+            pinocchio as vault_pinocchio, quasar as vault_quasar, steel as vault_steel,
         },
     },
     solana_pubkey::Pubkey,
@@ -48,24 +49,27 @@ use {
 const HELLO_WORLD_ID_STR: &str = "B7ihZyoXZ1fwAY3TugkiFJ6SXkzJwMuQrxrekBaSmn32";
 fn hello_world_id() -> Pubkey { HELLO_WORLD_ID_STR.parse().unwrap() }
 
-// multisig: all five variants (v1, v2, quasar, pinocchio, steel) share the
-// same program id (`4444...4444`) so `find_program_address` returns the same
-// bumps across variants, eliminating a confounding variable from the CU
-// comparison.
+// multisig: v1 + v2 share `4444...4444` so `find_program_address` returns
+// the same bumps across variants, eliminating a confounding variable from
+// the CU comparison.
 fn multisig_shared_id() -> Pubkey {
     "44444444444444444444444444444444444444444444".parse().unwrap()
 }
 
-// vault: two variants (v2, quasar) sharing `3333...3333` — the same
-// declare_id as the quasar-vault example we're copying verbatim.
+// vault: all five variants (v1, v2, quasar, pinocchio, steel) share
+// `3333...3333` so the `[b"vault", user]` PDA derives identically.
 fn vault_shared_id() -> Pubkey {
     "33333333333333333333333333333333333333333333".parse().unwrap()
 }
 
-// prop-amm: asm-fastpath oracle demo, anchor v2 only. ID matches
-// `declare_id!` in the program crate so on-chain writable checks pass.
+// prop-amm: v1 + v2 share `5555...5555`.
 fn prop_amm_id() -> Pubkey {
     "55555555555555555555555555555555555555555555".parse().unwrap()
+}
+
+// nested: v1 + v2 share `6666...6666`.
+fn nested_id() -> Pubkey {
+    "66666666666666666666666666666666666666666666".parse().unwrap()
 }
 
 /// Single source of truth for every benchmarked program and instruction.
@@ -127,10 +131,10 @@ pub const SUITES: &[ProgramSuite] = &[
         variant: "anchor v1",
         manifest_dir: "programs/multisig/anchor-v1",
         instructions: &[
-            InstructionSuite { name: "create",           program_id: multisig_shared_id, build: anchor_v1::build_create_case },
-            InstructionSuite { name: "deposit",          program_id: multisig_shared_id, build: anchor_v1::build_deposit_case },
-            InstructionSuite { name: "set_label",        program_id: multisig_shared_id, build: anchor_v1::build_set_label_case },
-            InstructionSuite { name: "execute_transfer", program_id: multisig_shared_id, build: anchor_v1::build_execute_transfer_case },
+            InstructionSuite { name: "create",           program_id: multisig_shared_id, build: multisig_anchor_v1::build_create_case },
+            InstructionSuite { name: "deposit",          program_id: multisig_shared_id, build: multisig_anchor_v1::build_deposit_case },
+            InstructionSuite { name: "set_label",        program_id: multisig_shared_id, build: multisig_anchor_v1::build_set_label_case },
+            InstructionSuite { name: "execute_transfer", program_id: multisig_shared_id, build: multisig_anchor_v1::build_execute_transfer_case },
         ],
     },
     ProgramSuite {
@@ -139,54 +143,26 @@ pub const SUITES: &[ProgramSuite] = &[
         variant: "anchor v2",
         manifest_dir: "programs/multisig/anchor-v2",
         instructions: &[
-            InstructionSuite { name: "create",           program_id: multisig_shared_id, build: anchor_v2::build_create_case },
-            InstructionSuite { name: "deposit",          program_id: multisig_shared_id, build: anchor_v2::build_deposit_case },
-            InstructionSuite { name: "set_label",        program_id: multisig_shared_id, build: anchor_v2::build_set_label_case },
-            InstructionSuite { name: "execute_transfer", program_id: multisig_shared_id, build: anchor_v2::build_execute_transfer_case },
+            InstructionSuite { name: "create",           program_id: multisig_shared_id, build: multisig_anchor_v2::build_create_case },
+            InstructionSuite { name: "deposit",          program_id: multisig_shared_id, build: multisig_anchor_v2::build_deposit_case },
+            InstructionSuite { name: "set_label",        program_id: multisig_shared_id, build: multisig_anchor_v2::build_set_label_case },
+            InstructionSuite { name: "execute_transfer", program_id: multisig_shared_id, build: multisig_anchor_v2::build_execute_transfer_case },
         ],
     },
+    // 5-way vault benchmark: deposit (system::Transfer CPI) + withdraw
+    // (direct lamport arithmetic). All variants share the same program id
+    // so the vault PDA derived from `[b"vault", user.key.as_ref()]` resolves
+    // identically across frameworks.
     ProgramSuite {
-        name: "multisig_quasar",
-        family: "multisig",
-        variant: "quasar",
-        manifest_dir: "programs/multisig/quasar",
+        name: "vault_v1",
+        family: "vault",
+        variant: "anchor v1",
+        manifest_dir: "programs/vault/anchor-v1",
         instructions: &[
-            InstructionSuite { name: "create",           program_id: multisig_shared_id, build: quasar::build_create_case },
-            InstructionSuite { name: "deposit",          program_id: multisig_shared_id, build: quasar::build_deposit_case },
-            InstructionSuite { name: "set_label",        program_id: multisig_shared_id, build: quasar::build_set_label_case },
-            InstructionSuite { name: "execute_transfer", program_id: multisig_shared_id, build: quasar::build_execute_transfer_case },
+            InstructionSuite { name: "deposit",  program_id: vault_shared_id, build: vault_anchor_v1::build_deposit_case },
+            InstructionSuite { name: "withdraw", program_id: vault_shared_id, build: vault_anchor_v1::build_withdraw_case },
         ],
     },
-    ProgramSuite {
-        name: "multisig_pinocchio",
-        family: "multisig",
-        variant: "pinocchio",
-        manifest_dir: "programs/multisig/pinocchio",
-        instructions: &[
-            InstructionSuite { name: "create",           program_id: multisig_shared_id, build: multisig_pinocchio::build_create_case },
-            InstructionSuite { name: "deposit",          program_id: multisig_shared_id, build: multisig_pinocchio::build_deposit_case },
-            InstructionSuite { name: "set_label",        program_id: multisig_shared_id, build: multisig_pinocchio::build_set_label_case },
-            InstructionSuite { name: "execute_transfer", program_id: multisig_shared_id, build: multisig_pinocchio::build_execute_transfer_case },
-        ],
-    },
-    ProgramSuite {
-        name: "multisig_steel",
-        family: "multisig",
-        variant: "steel",
-        manifest_dir: "programs/multisig/steel",
-        instructions: &[
-            InstructionSuite { name: "create",           program_id: multisig_shared_id, build: multisig_steel::build_create_case },
-            InstructionSuite { name: "deposit",          program_id: multisig_shared_id, build: multisig_steel::build_deposit_case },
-            InstructionSuite { name: "set_label",        program_id: multisig_shared_id, build: multisig_steel::build_set_label_case },
-            InstructionSuite { name: "execute_transfer", program_id: multisig_shared_id, build: multisig_steel::build_execute_transfer_case },
-        ],
-    },
-    // 2-way quasar-vault benchmark: a minimal SOL vault with deposit
-    // (system::transfer CPI) and withdraw (direct lamport arithmetic).
-    // The quasar variant is copied verbatim from
-    // `the quasar vault example`; the v2 variant is a shape-matched
-    // port. Only these two variants for now — v1 / pinocchio / steel
-    // can be added later if useful for direct comparison.
     ProgramSuite {
         name: "vault_v2",
         family: "vault",
@@ -207,11 +183,40 @@ pub const SUITES: &[ProgramSuite] = &[
             InstructionSuite { name: "withdraw", program_id: vault_shared_id, build: vault_quasar::build_withdraw_case },
         ],
     },
-    // Oracle fast-path demo. `update` (discrim = 0) is an asm entrypoint
-    // that bypasses the anchor dispatcher entirely — branch on discrim,
-    // hand-rolled 2-account walk, signer check against a hardcoded
-    // authority, one 8-byte store. `initialize` and `rotate_authority` go
-    // through the normal anchor path.
+    ProgramSuite {
+        name: "vault_pinocchio",
+        family: "vault",
+        variant: "pinocchio",
+        manifest_dir: "programs/vault/pinocchio",
+        instructions: &[
+            InstructionSuite { name: "deposit",  program_id: vault_shared_id, build: vault_pinocchio::build_deposit_case },
+            InstructionSuite { name: "withdraw", program_id: vault_shared_id, build: vault_pinocchio::build_withdraw_case },
+        ],
+    },
+    ProgramSuite {
+        name: "vault_steel",
+        family: "vault",
+        variant: "steel",
+        manifest_dir: "programs/vault/steel",
+        instructions: &[
+            InstructionSuite { name: "deposit",  program_id: vault_shared_id, build: vault_steel::build_deposit_case },
+            InstructionSuite { name: "withdraw", program_id: vault_shared_id, build: vault_steel::build_withdraw_case },
+        ],
+    },
+    // Oracle fast-path demo. v2's `update` (discrim = 0) is an asm
+    // entrypoint that bypasses the anchor dispatcher entirely; v1 is a
+    // plain Anchor implementation for head-to-head comparison.
+    ProgramSuite {
+        name: "prop_amm_v1",
+        family: "prop_amm",
+        variant: "anchor v1",
+        manifest_dir: "programs/prop-amm/anchor-v1",
+        instructions: &[
+            InstructionSuite { name: "initialize",       program_id: prop_amm_id, build: prop_amm_anchor_v1::build_initialize_case },
+            InstructionSuite { name: "update",           program_id: prop_amm_id, build: prop_amm_anchor_v1::build_update_case },
+            InstructionSuite { name: "rotate_authority", program_id: prop_amm_id, build: prop_amm_anchor_v1::build_rotate_authority_case },
+        ],
+    },
     ProgramSuite {
         name: "prop_amm_v2",
         family: "prop_amm",
@@ -221,6 +226,31 @@ pub const SUITES: &[ProgramSuite] = &[
             InstructionSuite { name: "initialize",       program_id: prop_amm_id, build: prop_amm_anchor_v2::build_initialize_case },
             InstructionSuite { name: "update",           program_id: prop_amm_id, build: prop_amm_anchor_v2::build_update_case },
             InstructionSuite { name: "rotate_authority", program_id: prop_amm_id, build: prop_amm_anchor_v2::build_rotate_authority_case },
+        ],
+    },
+    // Nested<T> account composition demo. v2 uses Nested<AdminConfig> to
+    // reuse admin+config validation across increment and reset. v1 must
+    // duplicate the admin + config fields in every instruction struct.
+    ProgramSuite {
+        name: "nested_v1",
+        family: "nested",
+        variant: "anchor v1",
+        manifest_dir: "programs/nested/anchor-v1",
+        instructions: &[
+            InstructionSuite { name: "initialize", program_id: nested_id, build: nested_anchor_v1::build_initialize_case },
+            InstructionSuite { name: "increment",  program_id: nested_id, build: nested_anchor_v1::build_increment_case },
+            InstructionSuite { name: "reset",      program_id: nested_id, build: nested_anchor_v1::build_reset_case },
+        ],
+    },
+    ProgramSuite {
+        name: "nested_v2",
+        family: "nested",
+        variant: "anchor v2",
+        manifest_dir: "programs/nested/anchor-v2",
+        instructions: &[
+            InstructionSuite { name: "initialize", program_id: nested_id, build: nested_anchor_v2::build_initialize_case },
+            InstructionSuite { name: "increment",  program_id: nested_id, build: nested_anchor_v2::build_increment_case },
+            InstructionSuite { name: "reset",      program_id: nested_id, build: nested_anchor_v2::build_reset_case },
         ],
     },
 ];

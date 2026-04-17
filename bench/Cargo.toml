@@ -20,8 +20,12 @@ solana-compute-budget = "3.1.12"
 solana-rent = "3.0"
 multisig-v1 = { path = "programs/multisig/anchor-v1", features = ["no-entrypoint"], package = "multisig-v1" }
 multisig-v2 = { path = "programs/multisig/anchor-v2", features = ["cpi"], package = "multisig-v2" }
+vault-v1 = { path = "programs/vault/anchor-v1", features = ["no-entrypoint"], package = "vault-v1" }
 vault-v2 = { path = "programs/vault/anchor-v2", features = ["cpi"], package = "vault-v2" }
+prop-amm-v1 = { path = "programs/prop-amm/anchor-v1", features = ["no-entrypoint"], package = "prop-amm-v1" }
 prop-amm-v2 = { path = "programs/prop-amm/anchor-v2", features = ["cpi"], package = "prop-amm-v2" }
+nested-v1 = { path = "programs/nested/anchor-v1", features = ["no-entrypoint"], package = "nested-v1" }
+nested-v2 = { path = "programs/nested/anchor-v2", features = ["cpi"], package = "nested-v2" }
 paste = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -34,10 +38,9 @@ plotters = "0.3.7"
 
 [workspace]
 exclude = [
-    "programs/multisig/quasar",
-    "programs/multisig/pinocchio",
-    "programs/multisig/steel",
     "programs/vault/quasar",
+    "programs/vault/pinocchio",
+    "programs/vault/steel",
 ]
 
 [profile.release]
