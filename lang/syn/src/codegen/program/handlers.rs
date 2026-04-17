@@ -93,77 +93,146 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 #(#type_validations)*
             };
 
-            quote! {
-                #(#cfgs)*
-                #[inline(never)]
-                pub fn #ix_method_name<'info>(
-                    __program_id: &'info Pubkey,
-                    __accounts: &'info [AccountInfo<'info>],
-                    __ix_data: &'info [u8],
-                ) -> anchor_lang::Result<()> {
-                    #[cfg(not(feature = "no-log-ix-name"))]
-                    anchor_lang::prelude::msg!(#ix_name_log);
+            if ix.is_raw {
+                // Raw instruction: pass byte slice directly without deserialization
+                quote! {
+                    #(#cfgs)*
+                    #[inline(never)]
+                    pub fn #ix_method_name<'info>(
+                        __program_id: &'info Pubkey,
+                        __accounts: &'info [AccountInfo<'info>],
+                        __ix_data: &'info [u8],
+                    ) -> anchor_lang::Result<()> {
+                        #[cfg(not(feature = "no-log-ix-name"))]
+                        anchor_lang::prelude::msg!(#ix_name_log);
 
-                    #param_validation
-                    // Deserialize data.
-                    let ix = instruction::#ix_name::deserialize(&mut &__ix_data[..])
-                        .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
-                    let instruction::#variant_arm = ix;
+                        // Bump collector.
+                        let mut __bumps =
+                            <#accounts_struct_name as anchor_lang::Bumps>::Bumps::default();
 
-                    // Bump collector.
-                    let mut __bumps = <#accounts_struct_name as anchor_lang::Bumps>::Bumps::default();
+                        let mut __reallocs = std::collections::BTreeSet::new();
 
-                    let mut __reallocs = std::collections::BTreeSet::new();
-
-                    // Deserialize accounts.
-                    let mut __remaining_accounts = __accounts;
-                    let mut __accounts = #accounts_struct_name::try_accounts(
-                        __program_id,
-                        &mut __remaining_accounts,
-                        __ix_data,
-                        &mut __bumps,
-                        &mut __reallocs,
-                    )?;
-
-                    unsafe fn __shrink_lifetime<'from, 'to, T>(value: &'from mut T) -> &'to mut T {
-                        unsafe { ::core::mem::transmute(value) }
-                    }
-
-                    // Invoke user defined handler.
-                    let result = #program_name::#ix_method_name(
-                        anchor_lang::context::Context::new(
+                        // Deserialize accounts (still needed for raw instructions).
+                        let mut __remaining_accounts = __accounts;
+                        let mut __accounts = #accounts_struct_name::try_accounts(
                             __program_id,
-                            // SAFETY: `__shrink_lifetime` is used to *shrink* the lifetime of
-                            // the inner `AccountInfo` from `'info` to the local function lifetime.
-                            // No lifetime is extended by this operation.
-                            // The lifetime is not shrunk automatically as `RefCell` causes `AccountInfo`
-                            // to be invariant.
-                            // This is sound provided the following invariants hold:
-                            // (1) The `'info` lifetime strictly outlives the local function
-                            //     lifetime; therefore, the transmuted references cannot outlive
-                            //     their backing data.
-                            // (2) `AccountInfo` does not implement custom `Drop` logic and does not
-                            //     rely on its lifetime parameter during destruction.
-                            // (3) The `Context` value is dropped before the `__accounts` reference
-                            //     is dropped or otherwise accessed, preventing any use-after-scope.
-                            //
-                            // This lifetime narrowing is required to conform to the `Context`
-                            // struct’s single-lifetime parameterization, which uses a single
-                            // lifetime to keep the API simple and ergonomic.
-                            unsafe {
-                                __shrink_lifetime(&mut __accounts)
-                            },
-                            __remaining_accounts,
-                            __bumps,
-                        ),
-                        #(#ix_arg_names),*
-                    )?;
+                            &mut __remaining_accounts,
+                            __ix_data,
+                            &mut __bumps,
+                            &mut __reallocs,
+                        )?;
 
-                    // Maybe set Solana return data.
-                    #maybe_set_return_data
+                        unsafe fn __shrink_lifetime<'from, 'to, T>(value: &'from mut T) -> &'to mut T {
+                            unsafe { ::core::mem::transmute(value) }
+                        }
 
-                    // Exit routine.
-                    __accounts.exit(__program_id)
+                        // Invoke user defined handler with raw byte slice.
+                        let result = #program_name::#ix_method_name(
+                            anchor_lang::context::Context::new(
+                                __program_id,
+                                // SAFETY: `__shrink_lifetime` is used to *shrink* the lifetime of
+                                // the inner `AccountInfo` from `'info` to the local function lifetime.
+                                // No lifetime is extended by this operation.
+                                // The lifetime is not shrunk automatically as `RefCell` causes `AccountInfo`
+                                // to be invariant.
+                                // This is sound provided the following invariants hold:
+                                // (1) The `'info` lifetime strictly outlives the local function
+                                //     lifetime; therefore, the transmuted references cannot outlive
+                                //     their backing data.
+                                // (2) `AccountInfo` does not implement custom `Drop` logic and does not
+                                //     rely on its lifetime parameter during destruction.
+                                // (3) The `Context` value is dropped before the `__accounts` reference
+                                //     is dropped or otherwise accessed, preventing any use-after-scope.
+                                //
+                                // This lifetime narrowing is required to conform to the `Context`
+                                // struct’s single-lifetime parameterization, which uses a single
+                                // lifetime to keep the API simple and ergonomic.
+                                unsafe { __shrink_lifetime(&mut __accounts) },
+                                __remaining_accounts,
+                                __bumps,
+                            ),
+                            __ix_data,
+                        )?;
+
+                        // Maybe set Solana return data.
+                        #maybe_set_return_data
+
+                        // Exit routine.
+                        __accounts.exit(__program_id)
+                    }
+                }
+            } else {
+                quote! {
+                    #(#cfgs)*
+                    #[inline(never)]
+                    pub fn #ix_method_name<'info>(
+                        __program_id: &'info Pubkey,
+                        __accounts: &'info [AccountInfo<'info>],
+                        __ix_data: &'info [u8],
+                    ) -> anchor_lang::Result<()> {
+                        #[cfg(not(feature = "no-log-ix-name"))]
+                        anchor_lang::prelude::msg!(#ix_name_log);
+
+                        #param_validation
+                        // Deserialize data.
+                        let ix = instruction::#ix_name::deserialize(&mut &__ix_data[..])
+                            .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotDeserialize)?;
+                        let instruction::#variant_arm = ix;
+
+                        // Bump collector.
+                        let mut __bumps =
+                            <#accounts_struct_name as anchor_lang::Bumps>::Bumps::default();
+
+                        let mut __reallocs = std::collections::BTreeSet::new();
+
+                        // Deserialize accounts.
+                        let mut __remaining_accounts = __accounts;
+                        let mut __accounts = #accounts_struct_name::try_accounts(
+                            __program_id,
+                            &mut __remaining_accounts,
+                            __ix_data,
+                            &mut __bumps,
+                            &mut __reallocs,
+                        )?;
+
+                        unsafe fn __shrink_lifetime<'from, 'to, T>(value: &'from mut T) -> &'to mut T {
+                            unsafe { ::core::mem::transmute(value) }
+                        }
+
+                        // Invoke user defined handler.
+                        let result = #program_name::#ix_method_name(
+                            anchor_lang::context::Context::new(
+                                __program_id,
+                                // SAFETY: `__shrink_lifetime` is used to *shrink* the lifetime of
+                                // the inner `AccountInfo` from `'info` to the local function lifetime.
+                                // No lifetime is extended by this operation.
+                                // The lifetime is not shrunk automatically as `RefCell` causes `AccountInfo`
+                                // to be invariant.
+                                // This is sound provided the following invariants hold:
+                                // (1) The `'info` lifetime strictly outlives the local function
+                                //     lifetime; therefore, the transmuted references cannot outlive
+                                //     their backing data.
+                                // (2) `AccountInfo` does not implement custom `Drop` logic and does not
+                                //     rely on its lifetime parameter during destruction.
+                                // (3) The `Context` value is dropped before the `__accounts` reference
+                                //     is dropped or otherwise accessed, preventing any use-after-scope.
+                                //
+                                // This lifetime narrowing is required to conform to the `Context`
+                                // struct’s single-lifetime parameterization, which uses a single
+                                // lifetime to keep the API simple and ergonomic.
+                                unsafe { __shrink_lifetime(&mut __accounts) },
+                                __remaining_accounts,
+                                __bumps,
+                            ),
+                            #(#ix_arg_names),*
+                        )?;
+
+                        // Maybe set Solana return data.
+                        #maybe_set_return_data
+
+                        // Exit routine.
+                        __accounts.exit(__program_id)
+                    }
                 }
             }
         })
