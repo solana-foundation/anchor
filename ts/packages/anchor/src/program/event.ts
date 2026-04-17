@@ -277,7 +277,15 @@ export class EventParser {
     if (log.startsWith(`Program ${this.programId.toString()} log:`)) {
       return [this.programId.toString(), false];
     } else if (log.includes("invoke") && !log.endsWith("[1]")) {
-      return ["cpi", false];
+      // Extract the invoked program ID from `Program <id> invoke [N]`
+      // and push IT onto the execution stack — not a literal "cpi"
+      // marker. If the CPI happens to land back in *this* program
+      // (self-CPI), the next log will correctly report the invoked
+      // program as equal to `this.programId` and get routed to
+      // `handleProgramLog`, which can then decode events emitted
+      // inside the CPI.
+      const cpiMatch = EventParser.INVOKE_RE.exec(log);
+      return [cpiMatch ? cpiMatch[1] : "cpi", false];
     } else {
       let regex = /^Program ([1-9A-HJ-NP-Za-km-z]+) success$/;
       if (regex.test(log)) {
