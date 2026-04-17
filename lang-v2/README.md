@@ -1,484 +1,226 @@
 # anchor-lang-v2
 
-Next-generation [Anchor](https://www.anchor-lang.com/) runtime for Solana programs. Built on [pinocchio](https://github.com/anza-xyz/pinocchio), `#![no_std]` by default, trait-based account system. Drops the `'info` lifetime from user-facing code.
+v2 is a drop-in speedup for Anchor v1. Same constraints DSL, same `#[derive(Accounts)]` — but up to **94% smaller** and **3–4× faster** per instruction (see the [Examples](#examples) table). v2 also comes with first-class tooling like `anchor debugger` to help you optimize your programs.
 
-Order-of-magnitude smaller binaries and fewer CU per instruction versus v1 ([bench results](../bench/)):
+**Compatibility is a priority.** Most v1 programs port with the renames in [Migrating from v1](#migrating-from-v1). A `compat` feature restores v1-shaped helpers to ease migrations for larger programs.
 
-| Program | v1 | v2 | Δ binary | Δ CU (median ix) |
-|---|---|---|---|---|
-| helloworld (1 ix) | 122 KB / 5,855 CU | 6.9 KB / 1,383 CU | **−94%** | **−76%** |
-| multisig (4 ix) | 166 KB / 4,324–12,031 CU | 31 KB / 476–2,360 CU | **−81%** | **−67%** |
-| vault (2 ix) | — | 5.9 KB / 403–1,910 CU | — | — |
-| prop-amm (3 ix) | — | 9.2 KB / 26–1,383 CU | — | — |
+**Built for extensibility.** As active contributors and auditors of Anchor v1, we've felt the struggles of working inside a large macro-based framework — v2 is our answer. The core derive is ~3,700 lines, down from ~11,400 in v1 (roughly a third the size), because most of the logic that used to live *inside* the macro now lives *behind traits*. An exciting implication is you can write your own `Account<T>`, `LazyAccount<T>`, or whatever your heart desires *without* touching the core audited framework (see [Extensibility](#extensibility)).
+
+**And most importantly, v2 is secure by default for users.** Safer APIs steer you away from common v1 footguns, promoting whole classes of runtime bugs into compile errors. [Fuzzing](https://github.com/asymmetric-research/crucible-harnesses), static analysis, and formal verification are builtin with first-class support.
 
 > [!WARNING]
-> **Alpha — do not use in production.** Not audited. APIs may break between commits. Programs written against today's `anchor-lang-v2` are not guaranteed an upgrade path. Not published to crates.io; depend via git on the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch.
+> **Alpha.** Not audited, not on crates.io. APIs may break between commits. Depend via git on the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch.
 
-## Quick start
+## Examples
 
-> [!NOTE]
-> The install below overwrites the `anchor` binary on your `PATH` — including one installed by [`avm`](https://www.anchor-lang.com/docs/installation#anchor-version-manager-avm). To keep an `avm`-managed install alongside, clone the repo and run v2 out of `./target/debug/anchor` directly.
+Worked programs live under [`bench/programs/`](../bench/programs/), paired with v1/quasar/steel ports for head-to-head comparison. Binary sizes and CU numbers are from the v2 variant.
+
+| Program | Description | Binary | CU (median ix) | vs v1 |
+|---|---|---|---|---|
+| [helloworld](../bench/programs/helloworld/anchor-v2) | Single-instruction counter | 6.9 KB | 1,383 | −94% bin / −76% CU |
+| [vault](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault | 5.9 KB | 403–1,910 | — |
+| [multisig](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig | 31 KB | 476–2,360 | −81% bin / −67% CU |
+| [prop-amm](../bench/programs/prop-amm/anchor-v2) | Oracle feed with asm fast-path | 9.2 KB | 26–1,383 | — |
+
+## Getting started
 
 ```bash
-cargo install --git https://github.com/solana-foundation/anchor.git \
-  --branch anchor-next anchor-cli
-anchor init counter
-cd counter
-anchor build
-anchor test
+$ cargo install --git https://github.com/solana-foundation/anchor.git --branch anchor-next anchor-cli --force
+$ anchor init --no-install counter && cd counter
+$ anchor build && anchor test
+$ anchor debugger                    # optional: step through the SBF trace in a TUI
 ```
 
 > [!NOTE]
-> The default test template is **LiteSVM** — tests run as pure Rust
-> (`cargo test`), so the usual v2 workflow never touches the TS client.
-> The scaffold still emits a `package.json` at init time, and the
-> `yarn install` it triggers pins `"@anchor-lang/core": "^<cli-version>"`
-> (e.g. `^2.0.0`), a version not yet on npm — the install step will fail
-> until `2.0.0-rc.N` ships. Workarounds for those who want to get past it:
-> - run `anchor init --no-install` and skip the TS deps entirely, or
-> - downgrade the pin to `^1.0.0` in `package.json` before running
->   `yarn install`, or
-> - link the local TS package:
->   `yarn add file:../../anchor/ts/packages/anchor`.
+> `cargo install` overwrites the `anchor` binary on your `PATH`, including one from [`avm`](https://www.anchor-lang.com/docs/installation#anchor-version-manager-avm). To keep v1 alongside, run the debug binary directly from a source checkout. `--no-install` skips the TS deps until `@anchor-lang/core@2.0.0-rc.N` ships — tests are pure Rust (LiteSVM), so the TS client isn't needed for the default workflow.
+
+> [!NOTE]
+> On macOS you may hit `ld: could not parse bitcode object file … Unknown attribute kind` during the final link. That's an LLVM-version skew between rustc's bitcode and Apple's system `libLTO`. Turn LTO off for the install:
 >
-> Tracked in `cli/src/rust_template.rs` above both `package_json` /
-> `ts_package_json` templates. The long-term fix is publishing an rc —
-> npm doesn't support subdirectory git deps, so pinning to the in-repo
-> TS package via a git URL isn't viable.
+> ```bash
+> $ CARGO_PROFILE_RELEASE_LTO=off cargo install --git https://github.com/solana-foundation/anchor.git --branch anchor-next anchor-cli --force
+> ```
 
-The scaffold generates a minimal program that initializes a single account:
+## Migrating from v1
 
-```rust
-use anchor_lang_v2::prelude::*;
+Most v1 programs port with the renames below. `#[derive(Accounts)]` constraints, `emit!`, `#[error_code]`, `require!`, `CpiContext`, and the TS `program.methods.foo(...).accounts(...).rpc()` entry point all still work as-is.
 
-declare_id!("...");
+| v1 | v2 |
+|---|---|
+| `solana_program` | `pinocchio` |
+| `std` required | `#![no_std]` (`alloc` is a default feature) |
+| `<'info>` everywhere | removed — pinocchio's account model is static-scoped |
+| `Context<T>` in handlers | `&mut Context<T>` (constraints + exit hooks mutate context state) |
+| `.key()` on accounts | `.address()` |
+| `Pubkey` | `Address` (drop-in replacement — same 32-byte type) |
+| `Account<T>` defaults to borsh | `Account<T>` defaults to pod; v1 semantics → `BorshAccount<T>` |
+| `space = 8 + T::INIT_SPACE` required on `init` | optional for pod `Account<T>` — defaults to `8 + size_of::<T>()` |
+| `Pubkey::find_program_address` | `find_program_address` re-exported from crate root |
 
-#[program]
-pub mod counter {
-    use super::*;
+### `compat` feature
 
-    pub fn initialize(ctx: &mut Context<Initialize>) -> Result<()> {
-        ctx.accounts.counter.count = 0;
-        ctx.accounts.counter.authority = *ctx.accounts.payer.address();
-        Ok(())
-    }
-}
+Off by default. Adds v1-shaped helpers that aren't `no_std`-friendly. Today that's `debug!` — a `msg!`-shaped macro that accepts any Rust format string (`{:?}`, `{:x}`, dynamic width) via `alloc::format!`. It heap-allocates, so prefer `msg!` on hot paths; `compat` exists for ports that rely on the wider formatting surface.
 
-#[derive(Accounts)]
-pub struct Initialize {
-    #[account(mut)]
-    pub payer: Signer,
-    #[account(init, payer = payer)]
-    pub counter: Account<Counter>,
-    pub system_program: Program<System>,
-}
-
-#[account]
-pub struct Counter {
-    pub count: u64,
-    pub authority: Address,
-}
+```toml
+[dependencies]
+anchor-lang-v2 = { git = "...", branch = "anchor-next", features = ["compat"] }
 ```
 
-Two things that trip v1 users:
+Other features, default-on and usually left alone: `alloc` (bump allocator), `guardrails` (runtime borrow-state checks, ~0–5 CU per ix), `account-resize` (`realloc_account`). Turn them off with `default-features = false` if you're chasing CUs. `const-rent` is opt-in: bakes the rent formula into the binary and saves ~85 CU per `create_account`.
 
-- **No `<'info>` lifetime** on the `Accounts` struct or its fields. Pinocchio's account model is static-scoped; the derive handles it.
-- **Handlers take `&mut Context<T>`.** Not `Context<T>`. The `&mut` is load-bearing — constraint validation and exit hooks need to mutate state on the context.
+## Optimizations
 
-The generated test lives in `tests/test_initialize.rs` and runs via [LiteSVM](https://github.com/LiteSVM/litesvm) in-process (`cargo test`, no validator).
+Concrete CU / binary wins v2 carries on top of pinocchio.
 
-## Core concepts
-
-**`#[program]`** — the instruction-dispatch module. Each `pub fn` is a handler taking `&mut Context<T>` plus deserialized args (wincode-encoded).
-
-**`#[derive(Accounts)]`** — declares accounts + constraints. All validation runs before your handler. Field order matches the account order in the instruction.
-
-**`#[account]`** — pod-mode data account by default: zero-copy cast, `repr(C)`, auto `bytemuck::Pod`/`Zeroable`, no-padding compile check. Add `(borsh)` for dynamic-size types.
-
-**Discriminator** — first 8 bytes of every account/instruction/event data. Computed as `sha256("account:Name")[..8]` / `"global:Name"` / `"event:Name"` respectively, at macro-expansion time.
-
-**`Context<T>`** — carries `accounts` (validated), `bumps` (PDA bump values from `seeds = ...`), `program_id`, and lazy `remaining_accounts()`.
+| Trick | Savings |
+|---|---|
+| **PDA bumps precomputed at macro time.** If your seeds are all literals, the derive runs the PDA search during compilation and bakes the canonical bump in as a `const` (`derive/src/pda.rs`). | Skips the ~255-iteration runtime PDA loop |
+| **Skip the on-curve check for program-owned PDAs.** If the program already owns the account, it had to be created via signed CPI — which did the curve check at the time. Verification can just hash-and-compare (`src/cpi.rs:220`). | ~1,000 CU per verify |
+| **Wincode events by default.** Much cheaper than borsh on SBF, and still handles `Vec` / `String` / `Option` / enums (`src/event.rs`). | 3–10× vs borsh |
+| **`#[event(bytemuck)]` for fixed-size events.** The struct's `repr(C)` Pod layout already matches the wire format, so emitting is just disc + one memcpy of the body (`src/event.rs`). | No per-field encoding |
+| **Alignment-1 Pod wrappers** (`PodU64`, `PodI128`, `PodBool`, ...). Integers stored as `[u8; N]` so the whole `#[account]` struct casts directly from the account's raw bytes (`src/pod.rs`). | Zero deserialization |
+| **`PodVec<T, MAX>`**: fixed-capacity vec with a `u16` length, stored inline in the account (`src/pod.rs:546`). | Variable length without heap |
+| **Typed `CpiHandle` lets us use pinocchio's unchecked CPI.** The unchecked path would be UB under stale-borrow aliasing, but the Rust borrow checker rules that out at compile time — so `CpiContext::invoke()` takes it (`src/context_cpi.rs:75`). | UB → compile error, one fewer runtime check per CPI |
+| **`const-rent` feature** bakes the rent formula into the binary so `create_account` skips the `Rent::get()` sysvar (`src/cpi.rs:14`). | ~85 CU per `create_account` |
+| **Guardrails compile away** when you drop the feature. `check_program_id` / `check_max_accounts` / the `is_writable` check in `load_mut` just aren't emitted (`src/lib.rs:257`). | ~0 CU + smaller binary in prod |
 
 ## Account types
 
-All types are bare — no `'info` lifetime.
+No `'info` lifetime on any of these.
 
 | Type | Use | Notes |
 |---|---|---|
-| `Account<T>` | **Default for your program's data.** | Zero-copy. Requires `T: Pod` (enforced by `#[account]`). Field access is a single dereference on a cached typed pointer. Layout: `[8-byte disc][repr(C) T]`. |
-| `BorshAccount<T>` | Your data with dynamic fields (`Vec`, `String`, enums). | Deserializes on load, serializes on exit. Real cost per-instruction. Use when `Pod` is impossible. |
-| `Signer` | Must have `is_signer = true`. | Cheap. |
-| `Program<T>` | CPI targets (`Program<System>`, `Program<Token>`, etc.). | Validates executable + program ID via `T: Id`. |
+| `Account<T>` | **Default for your program's data.** | Zero-copy. Requires `T: Pod` (enforced by `#[account]`). Field access is a single deref on a cached typed pointer. Layout: `[8-byte disc][repr(C) T]`. |
+| `BorshAccount<T>` | Data with `Vec` / `String` / enums. | Deserializes on load, serializes on exit. |
+| `Signer` | Must be `is_signer`. | Cheap. |
+| `Program<T>` | CPI targets (`Program<System>`, `Program<Token>`, …). | Validates executable + program ID via `T: Id`. |
 | `SystemAccount` | System-owned payload. | Owner check only. |
-| `UncheckedAccount` | Escape hatch. | No validation. Use only when other types can't express what you need. |
-| `Sysvar<T>` | `Sysvar<Clock>`, `Sysvar<Rent>`. | Address validated against the sysvar ID. Prefer `Clock::get()` / `Rent::get()` syscalls where possible. |
+| `UncheckedAccount` | Escape hatch. | No validation. |
+| `Sysvar<T>` | `Sysvar<Clock>`, `Sysvar<Rent>`. | Prefer `Clock::get()` / `Rent::get()` syscalls where possible. |
 | `Slab<H, Item>` | Header + dynamic item tail. | Zero-copy ledger / event-log accounts. `Account<T>` is `Slab<T, HeaderOnly>` under the hood. |
-| `Option<Account<T>>` | Optional account slot. | Client sends program-ID as sentinel when absent; constraints are skipped; bumps become `Option<u8>`. |
-| `Nested<T>` | Compose `#[derive(Accounts)]` structs. | Inline expansion — `Nested<Inner>` consumes Inner's accounts at that position in the flat list. Access nested fields via `ctx.accounts.inner.field` (auto-deref). |
+| `Option<Account<T>>` | Optional slot. | Client sends program-ID as sentinel when absent; bumps become `Option<u8>`. |
+| `Nested<T>` | Compose `#[derive(Accounts)]` structs. | Inline expansion. Access via `ctx.accounts.inner.field`. |
 
-### Why `Account<T>` is the default
+**Why `Account<T>` is pod by default.** Stored bytes match the struct layout, so load is a pointer cast and exit is a no-op — no (de)serialization, no heap. `#[account]` enforces `T: Pod` per field, so `Vec` / `String` / `Option` / `bool` fail at compile time. `u128` / `i128` fields need `PodU128` / `PodI128` (host is align-16, SBF is align-8; the wrappers guarantee align-1 on both).
 
-- **Field access is a pointer deref.** Cached typed pointer at load time, no per-field overhead.
-- **No (de)serialization pass.** Stored bytes already match the struct layout. Exit is a no-op for `Account<T>`; `BorshAccount<T>` has to serialize on exit.
-- **No heap.** Pod types sit in-place in the account's data buffer.
-- **Compile-time guards.** The `#[account]` macro enforces `T: Pod` per field (catches `Vec`/`String`/`Option`/`bool` even inside user structs) plus an unconditional no-padding assertion. Fat pointers inside user types can't sneak through. Because the padding check runs on every target, raw `u128`/`i128` fields need the alignment-1 `PodU128`/`PodI128` wrappers — see the Pod wrappers pattern below.
-
-Reach for `BorshAccount<T>` when data genuinely needs dynamic-size fields. Reach for `Slab<H, Item>` when the dynamic part is a homogeneous array (ledger entries, per-block events, etc.).
-
-## Constraints
-
-```rust
-#[derive(Accounts)]
-pub struct Example {
-    #[account(mut)]
-    pub data: Account<Data>,
-
-    // `space =` is optional for pod accounts — defaults to 8 + size_of::<Data>().
-    #[account(init, payer = payer)]
-    pub new_data: Account<Data>,
-
-    // BorshAccount: specify size explicitly, or derive InitSpace.
-    #[account(init, payer = payer, space = 8 + Profile::INIT_SPACE)]
-    pub profile: BorshAccount<Profile>,
-
-    #[account(has_one = authority)]
-    pub managed: Account<Managed>,
-    pub authority: Signer,
-
-    #[account(mut, seeds = [b"vault", payer.address().as_ref()], bump)]
-    pub vault: Account<Vault>,  // bump available at ctx.bumps.vault
-
-    #[account(constraint = config.enabled != 0 @ MyError::Disabled)]
-    pub config: Account<Config>,  // `@` attaches a custom error code
-
-    #[account(close = recipient)]
-    pub closeable: Account<Data>,
-    /// CHECK: receives rent from the closed account.
-    #[account(mut)]
-    pub recipient: UncheckedAccount,
-
-    #[account(mut)]
-    pub payer: Signer,
-
-    pub system_program: Program<System>,
-}
-```
+Use `BorshAccount<T>` when you need dynamic-size fields, or `Slab<H, Item>` when the dynamic part is a homogeneous array.
 
 ## Macros
 
-### `#[error_code]`
+- **`#[program]`** / **`#[derive(Accounts)]`** / **`#[account]`** / **`#[account(borsh)]`** — same surface as v1, with the delta that handlers take `&mut Context<T>` and `#[account]` defaults to pod.
+- **`#[error_code]`** / **`#[error_code(offset = N)]`** — per-program error enum, variants map to `ProgramError::Custom(n)`, `#[msg("...")]` attaches a human message. Multiple enums per program are supported.
+- **`#[constant]`** — marks a `pub const` as IDL-visible.
+- **`#[access_control(fn1(ctx), fn2(ctx))]`** — prepends `?`-propagating calls before the handler body.
+- **`#[derive(InitSpace)]`** — computes `Space::INIT_SPACE` for `BorshAccount` types. Handles primitives, `Address`, `String` + `#[max_len(N)]`, `Vec<T>` + `#[max_len(N)]`, `Option<T>`, arrays, tuples, nested derives. Pod `#[account]` doesn't need it — `Account<T>::INIT_SPACE` defaults to `8 + size_of::<T>()`.
+- **`#[event]` / `#[event(bytemuck)]` / `#[event(borsh)]`** — event emission via `emit!`. Default is wincode (3–10× cheaper than borsh on SBF, supports `Vec`/`String`/`Option<T>`/enums). `bytemuck` is a zero-copy memcpy for `repr(C)` Pod structs. `borsh` preserves wire compatibility with v1 off-chain consumers.
+- **`require!` family** — `require!` / `require_eq!` / `require_neq!` / `require_keys_eq!` / `require_keys_neq!` / `require_gt!` / `require_gte!` desugar to `return Err(err.into())`. `#[error_code]` enums `impl From<E> for Error`; raw `ProgramError::*` variants work too.
 
-Per-program error enum. Each variant maps to a `ProgramError::Custom(n)`; `#[msg("...")]` attaches a human message.
+## CPI and ix construction
 
-```rust
-#[error_code]
-pub enum MyError {
-    #[msg("Unauthorized")]
-    Unauthorized,
-    #[msg("Stale counter")]
-    Stale,
-}
+Same `CpiContext` shape as v1. Three structural improvements on top:
 
-// require!(ok, MyError::Unauthorized);
-```
-
-### `#[constant]`
-
-Marks a `pub const` as IDL-visible. Values must be const expressions.
+- **Typed `cpi_handle()` / `cpi_handle_mut()`.** Each handle is a Rust borrow of the account (shared or exclusive), so the borrow checker catches at compile time what v1 caught at runtime with an `AccountBorrowFailed` panic. This matters for more than error quality: `CpiContext::invoke()` uses pinocchio's `invoke_signed_unchecked` for the CU win, which skips the runtime borrow check — without the typed handle gating it, the same aliasing pattern would be UB.
+- **Generated `cpi::accounts::<Handler>` structs.** Fill accounts in by name, not by building `AccountMeta` vectors.
+- **Client-side `<Accounts>Resolved` structs.** Alongside the full `accounts::<Handler>` (every field an `Address`), the derive emits a `<Handler>Resolved` variant with only the fields the caller has to provide. `system_program` / `token_program` / PDAs get auto-filled in `to_account_metas()` — PDAs derive in topological order so dependent seeds work.
 
 ```rust
-#[constant]
-pub const SEED: &str = "anchor";
-```
+use anchor_spl_v2::{token, TokenAccount};
 
-### `#[access_control(fn1(a), fn2(b, c))]`
-
-Prepends `?`-propagating calls to the listed fns before your handler body. Authorization gates go here.
-
-```rust
-#[access_control(verify_epoch(ctx))]
-pub fn vote(ctx: &mut Context<Vote>) -> Result<()> { /* ... */ }
-```
-
-### `#[derive(InitSpace)]`
-
-Computes `Space::INIT_SPACE` from field types. Required on `BorshAccount` types when you want `space = 8 + T::INIT_SPACE`. Handles primitives, `Address`, `String`+`#[max_len(N)]`, `Vec<T>`+`#[max_len(N)]`, `Option<T>`, arrays, tuples, nested derives.
-
-```rust
-#[account(borsh)]
-#[derive(InitSpace)]
-pub struct Profile {
-    pub authority: Address,
-    #[max_len(32)]
-    pub name: String,
-    #[max_len(8)]
-    pub friends: Vec<Address>,
+pub fn transfer(ctx: &mut Context<Transfer>, amount: u64) -> Result<()> {
+    let cpi_accounts = token::cpi::accounts::Transfer {
+        from: ctx.accounts.from.cpi_handle_mut(),
+        to: ctx.accounts.to.cpi_handle_mut(),
+        authority: ctx.accounts.authority.cpi_handle(),
+    };
+    let cpi_ctx = CpiContext::new(
+        ctx.accounts.token_program.account().address(),
+        cpi_accounts,
+    );
+    token::cpi::transfer(cpi_ctx, amount)?;
+    Ok(())
 }
 ```
 
-Pod `#[account]` doesn't need `InitSpace` — the `Account<T>::INIT_SPACE` fallback computes `8 + size_of::<T>()` directly.
+Use `CpiContext::new_with_signer(program, accounts, seeds)` (or `.with_signer(seeds)`) for PDA-signed CPIs.
 
-### `#[event]` / `#[event(bytemuck)]` / `#[event(borsh)]`
-
-Event definitions emitted via `emit!`. Three serialization modes:
-
-- **Default `#[event]`**: wincode serialization. Supports `Vec`, `String`, `Option<T>`, enums — and is 3–10× cheaper than borsh on SBF.
-- **`#[event(bytemuck)]`**: zero-copy `copy_nonoverlapping` of a `repr(C)` Pod struct. Cheapest for fixed-size shapes, but rejects fat-pointer and non-Pod fields at compile time. No padding allowed.
-- **`#[event(borsh)]`**: borsh serialization. Retained for IDL-compatibility with v1 off-chain consumers that decode via borsh.
+`Resolved` cuts boilerplate in tests and SDK callers. In the multisig bench, `Create` takes `creator` (signer), `config` (PDA from `[b"multisig", creator]`), and `system_program`. The caller only passes `creator`:
 
 ```rust
-#[event]
-pub struct Deposited {
-    pub depositor: Address,
-    pub amount: u64,
-}
+// multisig_v2::accounts::Create { creator, config, system_program }   // full — all three
+// multisig_v2::accounts::CreateResolved { creator }                    // resolved — just the input
 
-#[event(bytemuck)]
-pub struct Tick {
-    pub slot: u64,
-    pub price: u64,
-}
-
-#[event(borsh)]
-pub struct MetadataUpdated {
-    pub uri: String,
-    pub tags: Vec<[u8; 32]>,
-    pub maybe_count: Option<u64>,
-}
-
-// emit!(Deposited { depositor, amount });
+let metas = multisig_v2::accounts::CreateResolved { creator: creator.pubkey() }
+    .to_account_metas(None);   // auto-derives `config` PDA, auto-fills `system_program`
 ```
 
-## Error handling
+If you need the PDA somewhere else, every seed-bearing field also gets a finder method on the full struct — `Create::find_config_address(&creator)`.
 
-`require!`-family macros desugar to `return Err(err.into())`:
-
-```rust
-require!(cond, MyError::Unauthorized);
-require_eq!(a, b);
-require_neq!(a, b);
-require_keys_eq!(addr_a, addr_b);
-require_keys_neq!(addr_a, addr_b);
-require_gt!(val, 0);
-require_gte!(val, 1);
-```
-
-`Error` is a type alias for `ProgramError`. `#[error_code]` enums provide `From` into `Error`; raw `ProgramError::*` variants work too.
-
-## CPI helpers
+Lower-level helpers if you're not using `CpiContext`:
 
 ```rust
-use anchor_lang_v2::prelude::*;
-
-// Simple account creation (payer signs)
 create_account(&payer, &new_account, space, &owner_program)?;
+create_account_signed(&payer, &new_account, space, &owner_program,
+    &[b"vault", user.address().as_ref(), &[bump]])?;
 
-// PDA-signed creation — seed slice must include the bump as final element
-create_account_signed(
-    &payer,
-    &new_account,
-    space,
-    &owner_program,
-    &[b"vault", user.address().as_ref(), &[bump]],
-)?;
-
-// Static PDA derivation
-let (address, bump) = find_program_address(
-    &[b"vault", user.address().as_ref()],
-    program_id,
-);
-
-// Verify an untrusted bump is canonical (includes curve check)
+let (address, bump) = find_program_address(&[b"vault", user.address().as_ref()], program_id);
 let bump = verify_program_address(&[b"vault", ...], program_id, &expected_addr)?;
-
-// Skip curve check when the account already has data
-let bump = find_and_verify_program_address_skip_curve(
-    &[b"vault", ...], program_id, &expected_addr,
-)?;
+let bump = find_and_verify_program_address_skip_curve(&[b"vault", ...], program_id, &expected_addr)?;
 ```
 
 ## Patterns
 
-### Alignment-1 Pod wrappers
-
-Raw `u128` / `i128` in pod accounts can trip the no-padding check: on x86_64 hosts they're align-16, on SBF they're align-8. A struct that's perfectly packed on SBF can therefore fail the cross-target assertion. The `pod` module provides alignment-1 wrappers — `PodU64`, `PodU32`, `PodU16`, `PodU128`, `PodI*`, `PodBool`, `PodVec<T, N>` — that guarantee tight packing regardless of the native type's alignment. Reach for `PodU128` / `PodI128` when you need 128-bit fields, and for the narrower wrappers when a struct's overall layout needs alignment-1 anywhere it's embedded.
-
-### Bitmap state tracking
-
-```rust
-pub struct Vote {
-    pub approval_bitmap: PodU16,
-}
-
-impl Vote {
-    pub fn set_approval(&mut self, idx: u8) {
-        self.approval_bitmap |= PodU16::from(1u16 << idx);
-    }
-    pub fn has_approved(&self, idx: u8) -> bool {
-        self.approval_bitmap.get() & (1 << idx) != 0
-    }
-    pub fn approval_count(&self) -> u8 {
-        self.approval_bitmap.get().count_ones() as u8
-    }
-}
-```
-
-### PDA with stored bump
-
-Store the bump when your program later signs CPIs with this PDA. If every instruction re-validates via `#[account(seeds = [...], bump)]`, storing it is optimization, not correctness.
-
-```rust
-#[account]
-pub struct Wallet {
-    pub authority: Address,
-    pub bump: u8,
-}
-
-pub fn create_wallet(ctx: &mut Context<CreateWallet>) -> Result<()> {
-    ctx.accounts.wallet.authority = *ctx.accounts.payer.address();
-    ctx.accounts.wallet.bump = ctx.bumps.wallet;
-    Ok(())
-}
-```
-
-### `remaining_accounts()` is lazy-cached
-
-First call walks the cursor; subsequent calls clone the cached vec. Always validate count and owner before CPI dispatch.
-
-```rust
-pub fn execute(ctx: &mut Context<Execute>) -> Result<()> {
-    let remaining = ctx.remaining_accounts();
-    require!(remaining.len() % 2 == 0, ErrorCode::ConstraintRaw);
-    for chunk in remaining.chunks(2) {
-        let (from, to) = (&chunk[0], &chunk[1]);
-        require_keys_eq!(*from.owner(), Token::id());
-        require_keys_eq!(*to.owner(), Token::id());
-        // ... CPI
-    }
-    Ok(())
-}
-```
-
-### Validation order
-
-Declarative constraints run in field order; your handler body runs after. Inside handlers, order by security criticality, not by CU cost: signature/authorization checks, then membership/has-one, then state-machine, then timelock, then mutation.
-
-## Feature flags
-
-```toml
-[dependencies]
-anchor-lang-v2 = { git = "...", branch = "anchor-next" }
-```
-
-| Feature | Default | Purpose |
-|---|---|---|
-| `alloc` | ✅ | Enables `pinocchio/alloc` — installs the on-chain bump allocator. Required for on-chain code that uses `Vec`/`String`/`Box`; host-side tests always have `std`'s allocator. |
-| `guardrails` | ✅ | Runtime safety: writable check, use-after-release panic, executable check. ~0–5 CU per instruction. |
-| `account-resize` | ✅ | Enables `realloc_account()`. Compile error if a program calls `realloc_account` without this feature. |
-| `const-rent` | ❌ | Bakes rent formula into the binary. Saves ~85 CU per `create_account`; locks you into redeploying when the runtime rent formula changes. Enable only for high-creation programs. |
-| `idl-build` | ❌ | Internal flag the `anchor idl build` pipeline sets. Don't enable manually. |
-| `compat` | ❌ | v1-compat shims. Currently adds a `debug!` macro that accepts any `format!` pattern (`{:?}`, `{:x}`, dynamic width) via `alloc::format!`. Default-off because the heap-alloc + trait-dispatch costs are higher than `msg!`. |
-
-Feature flags the **scaffold** emits in your program's `Cargo.toml` (`cpi`, `no-entrypoint`, `no-log-ix-name`, `profile`) are program-level features, not `anchor-lang-v2` features.
-
-## Status
-
-**Working today:**
-- Account types: `Account<T>`, `BorshAccount<T>`, `Signer`, `Program<T>`, `SystemAccount`, `UncheckedAccount`, `Sysvar<T>`, `Slab<H, Item>`, `Option<Account<T>>`
-- Constraints: `init`, `init_if_needed`, `mut`, `has_one`, `seeds`, `bump`, `constraint`, `close`, `owner`, `address`, `rent_exempt`, `token::*`, `mint::*`, `associated_token::*`
-- Macros: `#[program]`, `#[derive(Accounts)]`, `#[account]` / `#[account(borsh)]`, `#[event]` / `#[event(bytemuck)]` / `#[event(borsh)]`, `#[error_code]`, `#[constant]`, `#[access_control]`, `#[derive(InitSpace)]`
-- CPIs: system program create, PDA-signed, remaining-accounts injection
-- SPL: `Mint`, `TokenAccount`, associated-token init, full CPI surface (`Transfer`, `MintTo`, `Burn`, `Approve`, `Revoke`, `SetAuthority`, `CloseAccount`, `Freeze`/`Thaw`, `SyncNative` + checked variants) via `spl-v2`
-- In-process testing via LiteSVM + `anchor-v2-testing`, flamegraphs via `anchor test --profile`
-
-**Known gaps:**
-
-- **TypeScript client partially tested.** `anchor idl build` now emits `events` metadata, but the `@anchor-lang/core` `EventParser` and `AccountsResolver` paths haven't been validated against v2 IDLs end-to-end. Basic RPC calls and account decoding work; complex client-side decodes may need manual work.
-- **Token2022 not supported.** `Mint`/`TokenAccount` validate against SPL Token only; Token2022 programs fail owner checks silently. Other SPL programs (governance, name-service, stake-pool, etc.) aren't wrapped.
-- **Not on crates.io.** Must depend via git on the `anchor-next` branch until publish. Expected to stay that way through pre-1.0.
-
-## v1 → v2
-
-| Aspect | v1 | v2 |
-|---|---|---|
-| Runtime | `solana_program` | `pinocchio` |
-| Stdlib | `std` required | `#![no_std]`, `alloc` is a feature |
-| Binary size | baseline | −81% to −94% (see intro benchmarks) |
-| Lifetime on Accounts | `<'info>` required everywhere | removed |
-| Context in handlers | `Context<T>` | `&mut Context<T>` |
-| Field access | `.key()` | `.address()` |
-| `Account<T>` default | borsh-based | pod-based (v1 behavior → `BorshAccount<T>`) |
-| `init` space | `space = 8 + T::INIT_SPACE` required | optional for pod `Account<T>` (defaults to `8 + size_of::<T>()`) |
-| Pubkey type | `Pubkey` | `Address` (current SDK aliases `Pubkey` to `Address`, so both resolve to the same struct) |
-| Dispatch | macro-generated match | trait-based direct calls |
-
-## Examples
-
-Worked examples live under [`bench/programs/`](../bench/programs/). The anchor-v2 variants are what the prototype benchmarks measure; the same directory also holds v1/quasar/steel ports for direct comparison.
-
-| Program | Description |
-|---|---|
-| [`helloworld`](../bench/programs/helloworld/anchor-v2) | Single-instruction counter. Minimum viable `#[program]` + `#[account]`. |
-| [`vault`](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault. Two handlers (`deposit`, `withdraw`), PDA with stored bump, signed CPI. |
-| [`multisig`](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig. Multi-account state, PDA-signed transfers, `has_one` / `constraint` patterns. |
-| [`prop-amm`](../bench/programs/prop-amm/anchor-v2) | Oracle price-feed with asm fast-path (`update` = 26 CU). Custom entrypoint + normal anchor handlers. |
+- **PDA with stored bump.** Store the bump if your program later signs CPIs with the PDA. If every instruction re-validates via `#[account(seeds = [...], bump)]`, storing is optimization, not correctness.
+- **`remaining_accounts()` is lazy-cached.** First call walks the cursor; subsequent calls clone the cached vec. Validate count and owner before dispatching into a CPI.
+- **Handler-body validation order.** Constraints run in field order. Inside the handler, order by security criticality: signatures / authorization → `has_one` / membership → state machine → timelock → mutation.
 
 ## Tooling
 
-### `anchor test --profile`
+Both tools run in-process on LiteSVM. No validator, no network.
 
-Flamegraph generation. Rebuilds with DWARF symbols, runs the test suite via LiteSVM in-process (no validator), captures per-test SBF register traces, and renders one SVG flamegraph per transaction under `target/anchor-v2-profile/`.
+**`anchor test --profile`** rebuilds with DWARF, runs the tests, captures SBF register traces, and writes a flamegraph SVG per tx to `target/anchor-v2-profile/`. The scaffold wires up the `profile` Cargo feature that forwards to `anchor-v2-testing/profile`; `--profile` turns it on for you.
 
-```bash
-anchor test --profile
-# prints paths: target/anchor-v2-profile/<test>__tx<N>.svg
-```
-
-The SVGs are written to disk and their paths are printed — open them in a browser manually. The scaffold's `Cargo.toml` includes a `profile` feature that forwards to `anchor-v2-testing/profile` — the register-tracing callback that captures the traces. `anchor test --profile` enables this feature automatically.
-
-### `anchor debugger`
-
-Foundry-style instruction-level TUI debugger. Reuses the `--profile` trace pipeline — builds with DWARF, runs tests, then opens a `ratatui` terminal UI over the captured register traces instead of rendering flamegraphs. Source-mapped: shows Rust source alongside the SBF disassembly with per-instruction CU.
+**`anchor debugger`** is a Foundry-style instruction-level TUI on top of the same traces. Source-mapped: Rust next to SBF disasm, per-instruction CU.
 
 ```bash
-anchor debugger                      # build + test + open TUI
-anchor debugger my_test_name         # filter to tests matching "my_test_name"
-anchor debugger --skip-run           # open TUI over existing traces
+$ anchor debugger                       # build + test + open TUI
+$ anchor debugger my_test_name          # filter to a specific test
+$ anchor debugger --skip-run            # open over existing traces
 ```
 
-Both tools run entirely in-process via LiteSVM — no validator process, no network.
+## Extensibility
 
-## Architecture
+An important implication of our trait-based framework is: **you can write your own Anchor extensions.**
 
+In v1, anything the macro didn't already support meant forking the derive. v2 moves most logic out of the macro and behind traits, so anyone can ship new behavior from a separate crate — no fork, no upstream PR. The core derive shrinks from ~11,400 LoC to ~3,700 as a nice side effect.
+
+For example, [anchor-dynamic-account](https://github.com/chen-robert/anchor-dynamic-account) adds a brand-new primitive — zero-copy accounts with a `Vec<T>` / `String` tail that auto-reallocates to fit — behind a single `#[wrapped_account]` macro, with no changes to `anchor-lang-v2`:
+
+```rust
+#[wrapped_account]
+pub struct Post {
+    pub author: Address,
+    pub body:   Vec<u8>,     // tail, auto-reallocs to fit
+}
+
+#[derive(Accounts)]
+pub struct Edit {
+    #[account(mut)]
+    pub author: Signer,
+    #[account(mut, dynamic_account::payer = author)]
+    pub post: DynamicAccount<Post>,
+}
 ```
-my_program/
-├── src/
-│   ├── lib.rs           // declare_id! + #[program]
-│   ├── state.rs         // #[account] / #[account(borsh)] types
-│   ├── error.rs         // #[error_code]
-│   ├── constants.rs     // #[constant]
-│   ├── instructions/
-│   │   ├── mod.rs
-│   │   └── initialize.rs
-│   └── events.rs        // #[event] (optional)
-└── Cargo.toml
+
+At the call site, `DynamicAccount<T>` is a cosmetic alias that reads parallel to v2's `Account<T>` / `BorshAccount<T>`. Under the hood, the macro plugs it into v2 by implementing `AnchorAccount`:
+
+```rust
+impl AnchorAccount for DynamicAccount<Post> {
+    type Data = PostFixed;
+    fn load(view, pid)   -> Result<Self>     { /* parse disc + tail */ }
+    fn exit(&mut self)   -> ProgramResult    { /* realloc to fit, persist */ }
+    // load_mut, load_mut_after_init, account
+}
 ```
-
-## Key code paths
-
-| Concept | File |
-|---|---|
-| Account types | `src/accounts/mod.rs` |
-| Core traits (`AnchorAccount`, `Owner`, `Discriminator`, `Constrain`) | `src/traits.rs` |
-| `Account<T>` / `Slab<H, Item>` — borrow tracking, exit semantics | `src/accounts/slab.rs` |
-| `BorshAccount<T>` | `src/accounts/borsh_account.rs` |
-| Derive macros | `derive/src/lib.rs` |
-| Constraint parsing | `derive/src/parse.rs` |
-| Dispatch + `Context` setup | `src/dispatch.rs` |
-| CPI helpers + PDA derivation | `src/cpi.rs` |
-| Pod alignment-1 wrappers | `src/pod.rs` |
-| Program ID markers (`System`, `Token`, `Token2022`, `AssociatedToken`, `Memo`) | `src/programs.rs` |
-| SPL wrappers | `../spl-v2/src/` |
 
 ## Contributing
 
