@@ -57,6 +57,21 @@ jobs:
             cargo-target-${{ runner.os }}-v2-${{ hashFiles('**/Cargo.lock') }}-
             cargo-target-${{ runner.os }}-v2-
 
+      # `bench/` is its own cargo workspace, so its build artifacts live
+      # in `bench/target/` (separate tree from `./target/` above). The
+      # `anchor debugger` smoke step below triggers `cargo build-sbf` +
+      # `cargo test --features profile` for each anchor-v2 program —
+      # all of which write here. Keyed on `bench/Cargo.lock` since that
+      # is the lockfile that gates bench-workspace dep resolution.
+      - uses: actions/cache@v4
+        name: Cache bench cargo target
+        with:
+          path: ./bench/target/
+          key: cargo-target-bench-${{ runner.os }}-v2-${{ hashFiles('bench/Cargo.lock') }}-${{ github.ref_name }}
+          restore-keys: |
+            cargo-target-bench-${{ runner.os }}-v2-${{ hashFiles('bench/Cargo.lock') }}-
+            cargo-target-bench-${{ runner.os }}-v2-
+
       # Install platform-tools up front so the concurrent `cargo build-sbf`
       # invocations fired by parallel test threads don't race on the
       # one-time extract-then-rename of `~/.cache/solana/v1.52/platform-tools`
