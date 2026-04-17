@@ -306,3 +306,281 @@ fn test_unsafe_dup_distinct_ok() {
     // data_b is never written by the handler.
     assert_eq!(read_value(&svm, &b), 0);
 }
+
+// ===========================================================================
+// Nested<Inner> variants — mirror the above cases one-for-one through a
+// `Nested<Inner>` wrapper. This exercises the derive's `base_offset`
+// threading: `Inner::try_accounts` is called with `__base_offset + offset`
+// so bitvec indices stay in the global coordinate system.
+// ===========================================================================
+
+// -- Two mut via Nested -----------------------------------------------------
+
+#[test]
+fn test_nested_two_mut_distinct_ok() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+
+    let data = dup_mut::instruction::TouchNestedTwoMut { value: 7 }.data();
+    let metas = vec![AccountMeta::new(a, false), AccountMeta::new(b, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("nested distinct pubkeys should succeed");
+
+    assert_eq!(read_value(&svm, &a), 7);
+    assert_eq!(read_value(&svm, &b), 8);
+}
+
+#[test]
+fn test_nested_two_mut_dup_rejected() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+
+    let data = dup_mut::instruction::TouchNestedTwoMut { value: 7 }.data();
+    let metas = vec![AccountMeta::new(a, false), AccountMeta::new(a, false)];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
+
+// -- Three mut via Nested — every dup position -----------------------------
+
+#[test]
+fn test_nested_three_mut_all_distinct_ok() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+    let c = init_data(&mut svm, &payer, 2);
+
+    let data = dup_mut::instruction::TouchNestedThreeMut { value: 10 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new(b, false),
+        AccountMeta::new(c, false),
+    ];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("nested all-distinct should succeed");
+
+    assert_eq!(read_value(&svm, &a), 10);
+    assert_eq!(read_value(&svm, &b), 11);
+    assert_eq!(read_value(&svm, &c), 12);
+}
+
+#[test]
+fn test_nested_three_mut_dup_positions_0_and_1() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let c = init_data(&mut svm, &payer, 2);
+
+    let data = dup_mut::instruction::TouchNestedThreeMut { value: 10 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new(a, false),
+        AccountMeta::new(c, false),
+    ];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
+
+#[test]
+fn test_nested_three_mut_dup_positions_0_and_2() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+
+    let data = dup_mut::instruction::TouchNestedThreeMut { value: 10 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new(b, false),
+        AccountMeta::new(a, false),
+    ];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
+
+#[test]
+fn test_nested_three_mut_dup_positions_1_and_2() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+
+    let data = dup_mut::instruction::TouchNestedThreeMut { value: 10 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new(b, false),
+        AccountMeta::new(b, false),
+    ];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
+
+// -- Mut + readonly via Nested ---------------------------------------------
+
+#[test]
+fn test_nested_mut_readonly_distinct_ok() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+
+    let data = dup_mut::instruction::TouchNestedMutReadonly { value: 42 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new_readonly(b, false),
+    ];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("nested distinct mut+readonly should succeed");
+
+    assert_eq!(read_value(&svm, &a), 42);
+}
+
+#[test]
+fn test_nested_mut_readonly_dup_rejected() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+
+    let data = dup_mut::instruction::TouchNestedMutReadonly { value: 42 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new_readonly(a, false),
+    ];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
+
+// -- Asymmetric unsafe(dup) via Nested -------------------------------------
+
+#[test]
+fn test_nested_asym_unsafe_dup_still_rejected() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+
+    let data = dup_mut::instruction::TouchNestedAsymUnsafe { value: 5 }.data();
+    let metas = vec![AccountMeta::new(a, false), AccountMeta::new(a, false)];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
+
+#[test]
+fn test_nested_asym_unsafe_dup_distinct_ok() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+
+    let data = dup_mut::instruction::TouchNestedAsymUnsafe { value: 5 }.data();
+    let metas = vec![AccountMeta::new(a, false), AccountMeta::new(b, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("nested distinct under asym unsafe(dup)");
+
+    assert_eq!(read_value(&svm, &a), 5);
+    assert_eq!(read_value(&svm, &b), 6);
+}
+
+// -- Symmetric unsafe(dup) via Nested --------------------------------------
+
+#[test]
+fn test_nested_unsafe_dup_aliased_ok() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+
+    let data = dup_mut::instruction::TouchNestedUnsafe { value: 99 }.data();
+    let metas = vec![AccountMeta::new(a, false), AccountMeta::new(a, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("nested unsafe(dup) should allow same pubkey");
+
+    assert_eq!(read_value(&svm, &a), 99);
+}
+
+#[test]
+fn test_nested_unsafe_dup_distinct_ok() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+
+    let data = dup_mut::instruction::TouchNestedUnsafe { value: 99 }.data();
+    let metas = vec![AccountMeta::new(a, false), AccountMeta::new(b, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("nested unsafe(dup) with distinct pubkeys");
+
+    assert_eq!(read_value(&svm, &a), 99);
+    // data_b never written by the handler.
+    assert_eq!(read_value(&svm, &b), 0);
+}
+
+// -- Cross-boundary: outer mut + Nested<InnerTwoMut> -----------------------
+//
+// Global offsets: outer=0, pair.data_a=1, pair.data_b=2.
+// Exercises that bit indices stay global across the boundary — the
+// duplicate-check constraint on the OUTER field and the constraint inside
+// the inner struct both look at the same bitvec but with different
+// `base_offset`s.
+
+#[test]
+fn test_outer_plus_nested_all_distinct_ok() {
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+    let c = init_data(&mut svm, &payer, 2);
+
+    let data = dup_mut::instruction::TouchOuterMutPlusNested { value: 20 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new(b, false),
+        AccountMeta::new(c, false),
+    ];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("outer+nested all-distinct should succeed");
+
+    assert_eq!(read_value(&svm, &a), 20);
+    assert_eq!(read_value(&svm, &b), 21);
+    assert_eq!(read_value(&svm, &c), 22);
+}
+
+#[test]
+fn test_outer_dups_inner_first() {
+    // outer (pos 0) aliases pair.data_a (pos 1).
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let c = init_data(&mut svm, &payer, 2);
+
+    let data = dup_mut::instruction::TouchOuterMutPlusNested { value: 20 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new(a, false),
+        AccountMeta::new(c, false),
+    ];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
+
+#[test]
+fn test_outer_dups_inner_second() {
+    // outer (pos 0) aliases pair.data_b (pos 2).
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+
+    let data = dup_mut::instruction::TouchOuterMutPlusNested { value: 20 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new(b, false),
+        AccountMeta::new(a, false),
+    ];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
+
+#[test]
+fn test_outer_plus_nested_inner_dup() {
+    // Dup stays inside the nested struct — inner try_accounts catches it.
+    let (mut svm, payer) = setup();
+    let a = init_data(&mut svm, &payer, 0);
+    let b = init_data(&mut svm, &payer, 1);
+
+    let data = dup_mut::instruction::TouchOuterMutPlusNested { value: 20 }.data();
+    let metas = vec![
+        AccountMeta::new(a, false),
+        AccountMeta::new(b, false),
+        AccountMeta::new(b, false),
+    ];
+    let result = send_raw(&mut svm, data, metas, &payer);
+    assert_custom_error(&result, DUPLICATE_MUT_ERROR);
+}
