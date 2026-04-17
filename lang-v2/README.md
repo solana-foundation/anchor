@@ -28,21 +28,23 @@ anchor build
 anchor test
 ```
 
-> [!WARNING]
-> **`yarn install` in the scaffold currently fails.** The generated
-> `package.json` pins `"@anchor-lang/core": "^<cli-version>"` (e.g. `^2.0.0`),
-> but only `1.0.0` is on npm today — no 2.0.0 rc has been published off
-> `anchor-next` yet. Until that lands, either:
-> - downgrade the pin to `^1.0.0` in your project's `package.json` (accepts
->   API drift from the Rust-side v2 CLI), or
+> [!NOTE]
+> The default test template is **LiteSVM** — tests run as pure Rust
+> (`cargo test`), so the usual v2 workflow never touches the TS client.
+> The scaffold still emits a `package.json` at init time, and the
+> `yarn install` it triggers pins `"@anchor-lang/core": "^<cli-version>"`
+> (e.g. `^2.0.0`), a version not yet on npm — the install step will fail
+> until `2.0.0-rc.N` ships. Workarounds for those who want to get past it:
+> - run `anchor init --no-install` and skip the TS deps entirely, or
+> - downgrade the pin to `^1.0.0` in `package.json` before running
+>   `yarn install`, or
 > - link the local TS package:
->   `yarn add file:../../anchor/ts/packages/anchor` (path to a clone of
->   this repo's `ts/packages/anchor`).
+>   `yarn add file:../../anchor/ts/packages/anchor`.
 >
-> Tracked as a TODO in `cli/src/rust_template.rs` above both
-> `package_json` / `ts_package_json` templates. npm doesn't support
-> subdirectory git deps, so a git-branch pin to the in-repo TS package
-> isn't viable without release tooling — the fix is publishing an rc.
+> Tracked in `cli/src/rust_template.rs` above both `package_json` /
+> `ts_package_json` templates. The long-term fix is publishing an rc —
+> npm doesn't support subdirectory git deps, so pinning to the in-repo
+> TS package via a git URL isn't viable.
 
 The scaffold generates a minimal program that initializes a single account:
 
