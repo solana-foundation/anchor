@@ -28,6 +28,22 @@ anchor build
 anchor test
 ```
 
+> [!WARNING]
+> **`yarn install` in the scaffold currently fails.** The generated
+> `package.json` pins `"@anchor-lang/core": "^<cli-version>"` (e.g. `^2.0.0`),
+> but only `1.0.0` is on npm today — no 2.0.0 rc has been published off
+> `anchor-next` yet. Until that lands, either:
+> - downgrade the pin to `^1.0.0` in your project's `package.json` (accepts
+>   API drift from the Rust-side v2 CLI), or
+> - link the local TS package:
+>   `yarn add file:../../anchor/ts/packages/anchor` (path to a clone of
+>   this repo's `ts/packages/anchor`).
+>
+> Tracked as a TODO in `cli/src/rust_template.rs` above both
+> `package_json` / `ts_package_json` templates. npm doesn't support
+> subdirectory git deps, so a git-branch pin to the in-repo TS package
+> isn't viable without release tooling — the fix is publishing an rc.
+
 The scaffold generates a minimal program that initializes a single account:
 
 ```rust
