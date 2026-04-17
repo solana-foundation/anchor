@@ -387,13 +387,94 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     };
 
     // --- Client-side struct for off-chain usage (tests, CPI, SDK) ---
+    //
+    // The struct only contains fields the user must provide (Signer, raw
+    // accounts, etc.). Derivable fields (Program<T>, PDAs) are computed
+    // inside `to_account_metas()` so the user never has to fill them.
     let client_mod_name = syn::Ident::new(
         &format!("__client_accounts_{}", name.to_string().to_lowercase()),
         name.span(),
     );
-    let client_fields: Vec<_> = fields
+
+    // Classify each field as user-required or auto-derivable.
+    #[derive(Clone)]
+    enum FieldKind {
+        Required,
+        Program(proc_macro2::TokenStream),
+        Pda {
+            seed_exprs: Vec<proc_macro2::TokenStream>,
+            deps: Vec<String>,
+        },
+    }
+
+    let field_kinds: Vec<_> = fields
         .iter()
-        .map(|f| {
+        .zip(named_fields.named.iter())
+        .map(|(f, raw_field)| {
+            let base_ty = match parse::extract_option_inner(&f.ty) {
+                Some(inner) => inner,
+                None => &f.ty,
+            };
+            let ty_name = parse::field_ty_str(base_ty);
+
+            if ty_name == "Program" {
+                if let Type::Path(tp) = base_ty {
+                    if let Some(seg) = tp.path.segments.last() {
+                        if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
+                            if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
+                                return (f, FieldKind::Program(quote! {
+                                    <#inner as anchor_lang_v2::Id>::id()
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+
+            let attrs = parse::parse_account_attrs(&raw_field.attrs);
+            if let Some(ref seeds) = attrs.seeds {
+                if attrs.seeds_program.is_none() {
+                    let mut seed_exprs = Vec::new();
+                    let mut deps = Vec::new();
+                    let mut all_derivable = true;
+
+                    for seed in seeds {
+                        if let Some(bytes) = pda::seed_as_const_bytes(seed) {
+                            let lits: Vec<_> = bytes.iter().map(|b| quote! { #b }).collect();
+                            seed_exprs.push(quote! { &[#(#lits),*] as &[u8] });
+                        } else if let Some(ref root) = idl::receiver_root_ident_str(seed) {
+                            if raw_field_names.contains(root) {
+                                let ident = syn::Ident::new(
+                                    root,
+                                    proc_macro2::Span::call_site(),
+                                );
+                                seed_exprs.push(quote! { #ident.as_ref() });
+                                deps.push(root.clone());
+                            } else {
+                                all_derivable = false;
+                                break;
+                            }
+                        } else {
+                            all_derivable = false;
+                            break;
+                        }
+                    }
+
+                    if all_derivable {
+                        return (f, FieldKind::Pda { seed_exprs, deps });
+                    }
+                }
+            }
+
+            (f, FieldKind::Required)
+        })
+        .collect();
+
+    // Client struct fields: only the ones the user must provide.
+    let client_fields: Vec<_> = field_kinds
+        .iter()
+        .filter(|(_, kind)| matches!(kind, FieldKind::Required))
+        .map(|(f, _)| {
             let fname = &f.name;
             if f.is_optional {
                 quote! { pub #fname: Option<anchor_lang_v2::Address> }
@@ -402,77 +483,75 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             }
         })
         .collect();
-    // Default impl: auto-fill fields that have a single deterministic address:
-    //   - Program<T> → T::id()
-    //   - PDA with all-const seeds → find_program_address(&[const_seeds], &crate::ID).0
-    //   - Everything else → Address::default() (user must override)
-    let client_default_fields: Vec<_> = fields
+
+    // Topo-sort derivable fields: programs first, then PDAs by dependency order.
+    let required_names: std::collections::HashSet<String> = field_kinds
         .iter()
-        .zip(named_fields.named.iter())
-        .map(|(f, raw_field)| {
+        .filter(|(_, kind)| matches!(kind, FieldKind::Required))
+        .map(|(f, _)| f.name.to_string())
+        .collect();
+
+    let mut derive_order: Vec<usize> = Vec::new();
+    let mut resolved = required_names.clone();
+    for (i, (f, kind)) in field_kinds.iter().enumerate() {
+        if matches!(kind, FieldKind::Program(_)) {
+            derive_order.push(i);
+            resolved.insert(f.name.to_string());
+        }
+    }
+    let mut progress = true;
+    while progress {
+        progress = false;
+        for (i, (f, kind)) in field_kinds.iter().enumerate() {
+            let name_str = f.name.to_string();
+            if resolved.contains(&name_str) {
+                continue;
+            }
+            if let FieldKind::Pda { deps, .. } = kind {
+                if deps.iter().all(|dep| resolved.contains(dep)) {
+                    derive_order.push(i);
+                    resolved.insert(name_str);
+                    progress = true;
+                }
+            }
+        }
+    }
+
+    // Inside to_account_metas: copy required fields to locals, then derive the rest.
+    let required_locals: Vec<_> = field_kinds
+        .iter()
+        .filter(|(_, kind)| matches!(kind, FieldKind::Required))
+        .map(|(f, _)| {
             let fname = &f.name;
-            let base_ty = match parse::extract_option_inner(&f.ty) {
-                Some(inner) => inner,
-                None => &f.ty,
-            };
-            let ty_name = parse::field_ty_str(base_ty);
-
-            // Program<T> → T::id()
-            if ty_name == "Program" {
-                if let Type::Path(tp) = base_ty {
-                    if let Some(seg) = tp.path.segments.last() {
-                        if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-                            if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
-                                return quote! { #fname: <#inner as anchor_lang_v2::Id>::id() };
-                            }
-                        }
-                    }
-                }
-            }
-
-            // PDA with all-const seeds → derive at default-construction time
-            let attrs = parse::parse_account_attrs(&raw_field.attrs);
-            if let Some(ref seeds) = attrs.seeds {
-                if attrs.seeds_program.is_none() {
-                    let const_bytes: Option<Vec<Vec<u8>>> = seeds
-                        .iter()
-                        .map(|s| pda::seed_as_const_bytes(s))
-                        .collect();
-                    if let Some(all_const) = const_bytes {
-                        let seed_slices: Vec<_> = all_const
-                            .iter()
-                            .map(|bytes| {
-                                let lits: Vec<_> = bytes.iter().map(|b| quote! { #b }).collect();
-                                quote! { &[#(#lits),*] as &[u8] }
-                            })
-                            .collect();
-                        return quote! {
-                            #fname: anchor_lang_v2::find_program_address(
-                                &[#(#seed_slices),*],
-                                &crate::ID,
-                            ).0
-                        };
-                    }
-                }
-            }
-
             if f.is_optional {
-                quote! { #fname: None }
+                quote! { let #fname = self.#fname; }
             } else {
-                quote! { #fname: anchor_lang_v2::Address::default() }
+                quote! { let #fname = self.#fname; }
             }
         })
         .collect();
-    // Client-side `AccountMeta` is compile-time-built and only needs to
-    // reflect the `is_signer` flag for `Signer`-typed fields plus any
-    // `init`-without-seeds site (fresh keypair must sign). For the IDL
-    // emission path we route signer-ness through
-    // `IdlAccountType::__IDL_IS_SIGNER`, which isn't a regular compile-time
-    // path — so we keep a local string-match here. Only `Signer` matters
-    // client-side; other wrappers are always non-signing.
-    let client_meta_entries: Vec<_> = fields
+
+    let derive_stmts: Vec<_> = derive_order
         .iter()
-        .map(|field| {
+        .filter_map(|&i| {
+            let (f, kind) = &field_kinds[i];
+            let ident = &f.name;
+            match kind {
+                FieldKind::Program(expr) => Some(quote! { let #ident = #expr; }),
+                FieldKind::Pda { seed_exprs, .. } => Some(quote! {
+                    let (#ident, _) = anchor_lang_v2::find_program_address(
+                        &[#(#seed_exprs),*], &crate::ID,
+                    );
+                }),
+                _ => None,
+            }
+        })
+        .collect();
+
+    // Build AccountMeta entries in original field order, using bare idents.
+    let client_meta_entries: Vec<_> = field_kinds
+        .iter()
+        .map(|(field, _kind)| {
             let writable = field.idl_writable;
             let is_signer_ty = parse::field_ty_str(match parse::extract_option_inner(&field.ty) {
                 Some(inner) => inner,
@@ -481,11 +560,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             let signer = is_signer_ty || field.idl_init_signer;
             let field_ident = &field.name;
             if field.is_optional {
-                // None-sentinel: matches v1's to_account_metas behavior —
-                // emit `crate::ID` with no flags so the on-chain side reads it
-                // back as the program-id sentinel and treats the slot as None.
                 quote! {
-                    match self.#field_ident {
+                    match #field_ident {
                         Some(__addr) => anchor_lang_v2::AccountMeta {
                             pubkey: __addr,
                             is_writable: #writable,
@@ -501,7 +577,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             } else {
                 quote! {
                     anchor_lang_v2::AccountMeta {
-                        pubkey: self.#field_ident,
+                        pubkey: #field_ident,
                         is_writable: #writable,
                         is_signer: #signer,
                     }
@@ -529,7 +605,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 field_name.span(),
             );
 
-            // Classify each seed and build params + seed exprs.
             let mut params: Vec<TokenStream2> = Vec::new();
             let mut seed_exprs: Vec<TokenStream2> = Vec::new();
             let mut seen_params = std::collections::HashSet::new();
@@ -538,7 +613,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 let root = idl::receiver_root_ident_str(seed_expr);
                 if let Some(ref root_name) = root {
                     if raw_field_names.contains(root_name) {
-                        // Account seed → &Address parameter.
                         let param_ident = syn::Ident::new(root_name, proc_macro2::Span::call_site());
                         if seen_params.insert(root_name.clone()) {
                             params.push(quote! { #param_ident: &anchor_lang_v2::Address });
@@ -547,7 +621,6 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                         continue;
                     }
                     if ix_arg_names.contains(root_name) {
-                        // Arg seed → &[u8] parameter.
                         let param_ident = syn::Ident::new(root_name, proc_macro2::Span::call_site());
                         if seen_params.insert(root_name.clone()) {
                             params.push(quote! { #param_ident: &[u8] });
@@ -556,12 +629,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                         continue;
                     }
                 }
-                // Const seed — try to extract byte literal.
                 if let Some(bytes) = pda::seed_as_const_bytes(seed_expr) {
                     let byte_lits: Vec<_> = bytes.iter().map(|b| quote! { #b }).collect();
                     seed_exprs.push(quote! { &[#(#byte_lits),*] });
                 } else {
-                    // Unrecognized seed shape — can't generate a PDA helper.
                     return None;
                 }
             }
@@ -577,26 +648,88 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         })
         .collect();
 
+    // Full struct: all fields as Address, user fills every one manually.
+    let all_client_fields: Vec<_> = fields
+        .iter()
+        .map(|f| {
+            let fname = &f.name;
+            if f.is_optional {
+                quote! { pub #fname: Option<anchor_lang_v2::Address> }
+            } else {
+                quote! { pub #fname: anchor_lang_v2::Address }
+            }
+        })
+        .collect();
+
+    // Full struct to_account_metas: straightforward self.field access.
+    let full_meta_entries: Vec<_> = fields
+        .iter()
+        .map(|field| {
+            let writable = field.idl_writable;
+            let is_signer_ty = parse::field_ty_str(match parse::extract_option_inner(&field.ty) {
+                Some(inner) => inner,
+                None => &field.ty,
+            }) == "Signer";
+            let signer = is_signer_ty || field.idl_init_signer;
+            let field_ident = &field.name;
+            if field.is_optional {
+                quote! {
+                    match self.#field_ident {
+                        Some(__addr) => anchor_lang_v2::AccountMeta {
+                            pubkey: __addr,
+                            is_writable: #writable,
+                            is_signer: #signer,
+                        },
+                        None => anchor_lang_v2::AccountMeta {
+                            pubkey: crate::ID,
+                            is_writable: false,
+                            is_signer: false,
+                        },
+                    }
+                }
+            } else {
+                quote! {
+                    anchor_lang_v2::AccountMeta {
+                        pubkey: self.#field_ident,
+                        is_writable: #writable,
+                        is_signer: #signer,
+                    }
+                }
+            }
+        })
+        .collect();
+
+    let resolved_name = syn::Ident::new(
+        &format!("{name}Resolved"),
+        name.span(),
+    );
+
+    let resolved_struct = quote! {
+        pub struct #resolved_name {
+            #(#client_fields,)*
+        }
+        impl anchor_lang_v2::ToAccountMetas for #resolved_name {
+            fn to_account_metas(&self, _is_signer: Option<bool>) -> alloc::vec::Vec<anchor_lang_v2::AccountMeta> {
+                #(#required_locals)*
+                #(#derive_stmts)*
+                alloc::vec![#(#client_meta_entries),*]
+            }
+        }
+    };
+
     quote! {
-        /// Client-side accounts struct with `Address` fields for off-chain use.
         pub mod #client_mod_name {
             extern crate alloc;
             use super::*;
             pub struct #name {
-                #(#client_fields,)*
-            }
-            impl ::core::default::Default for #name {
-                fn default() -> Self {
-                    Self {
-                        #(#client_default_fields,)*
-                    }
-                }
+                #(#all_client_fields,)*
             }
             impl anchor_lang_v2::ToAccountMetas for #name {
                 fn to_account_metas(&self, _is_signer: Option<bool>) -> alloc::vec::Vec<anchor_lang_v2::AccountMeta> {
-                    alloc::vec![#(#client_meta_entries),*]
+                    alloc::vec![#(#full_meta_entries),*]
                 }
             }
+            #resolved_struct
             impl #name {
                 #(#pda_fns)*
             }
@@ -1186,15 +1319,14 @@ fn process_handler(
             }
         }
         impl #ix_lt_decl #ix_struct_name #ix_lt_use {
-            /// Build a complete `Instruction` from these args + accounts.
             pub fn to_instruction(
                 self,
-                accounts: super::accounts::#accounts_type,
+                accounts: impl anchor_lang_v2::ToAccountMetas,
             ) -> anchor_lang_v2::solana_program::instruction::Instruction {
                 anchor_lang_v2::solana_program::instruction::Instruction::new_with_bytes(
                     crate::ID,
                     &<Self as anchor_lang_v2::InstructionData>::data(&self),
-                    <_ as anchor_lang_v2::ToAccountMetas>::to_account_metas(&accounts, None),
+                    accounts.to_account_metas(None),
                 )
             }
         }
@@ -1208,8 +1340,13 @@ fn process_handler(
         ),
         fn_name.span(),
     );
+    let resolved_type = syn::Ident::new(
+        &format!("{accounts_type}Resolved"),
+        accounts_type.span(),
+    );
     let accounts_reexport = quote! {
         pub use super::#client_mod::#accounts_type;
+        pub use super::#client_mod::#resolved_type;
     };
 
     // Instruction-level docs come from `///` comments on the handler fn.
@@ -1338,6 +1475,14 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     let idl_ix_args: Vec<_> = codegen.iter().map(|c| &c.idl_args).collect();
     let idl_ix_docs: Vec<_> = codegen.iter().map(|c| &c.idl_docs_json).collect();
     let idl_accounts_types: Vec<_> = codegen.iter().map(|c| &c.idl_accounts_type).collect();
+    // One `Vec<Type>` per handler, for the ix-arg transitive IDL walker.
+    // Nested `#(...)*` inside the quote! sees this as a Vec<Vec<Type>> and
+    // expands the outer level over handlers, the inner level over each
+    // handler's arg types. `arg_types` includes every handler parameter
+    // past `ctx: &mut Context<...>`, so primitives / &T / Vec / etc. all
+    // flow through (with the blanket no-op impls for non-`IdlType` types).
+    let ix_arg_types_per_handler: Vec<&Vec<Type>> =
+        codegen.iter().map(|c| &c.arg_types).collect();
     let all_ix_arg_types: Vec<_> = codegen.iter().map(|c| &c.arg_types).collect();
 
     // Generate disc parsing code based on mode.
@@ -1565,8 +1710,22 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                 // too. View wrappers (Signer, Program<T>, Sysvar<T>, …) use
                 // the trait's default no-op `__register_idl_deps`, so they
                 // contribute nothing.
+                //
+                // Also walk every handler's **ix arg types** — a user
+                // struct referenced only as a `#[program]` fn argument
+                // (e.g. `args: MixedArgs<'_>`) otherwise lands in
+                // `instructions[].args` as a bare `{defined:{name:...}}`
+                // reference with no matching `types[]` entry. Primitive /
+                // collection / `&T` blanket impls are no-op forwarders
+                // (`idl_build.rs`), so only user-derived `IdlType` structs
+                // contribute.
                 let mut all_types: Vec<&str> = Vec::new();
                 #(#idl_accounts_types::__idl_register_deps(&mut all_types);)*
+                #(
+                    #(
+                        <#ix_arg_types_per_handler as anchor_lang_v2::IdlAccountType>::__register_idl_deps(&mut all_types);
+                    )*
+                )*
                 all_types.sort();
                 all_types.dedup();
 
