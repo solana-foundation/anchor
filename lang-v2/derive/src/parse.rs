@@ -64,7 +64,7 @@ pub struct IdlPdaMeta {
     pub program: Option<String>,
 }
 
-pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
+pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
     let mut result = AccountAttrs {
         is_mut: false,
         is_signer: false,
@@ -97,7 +97,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
         if !attr.path().is_ident("account") {
             continue;
         }
-        let _ = attr.parse_args_with(|input: ParseStream| {
+        attr.parse_args_with(|input: ParseStream| {
             while !input.is_empty() {
                 let ident = Ident::parse_any(input)?;
                 match ident.to_string().as_str() {
@@ -298,9 +298,9 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> AccountAttrs {
                 }
             }
             Ok(())
-        });
+        })?;
     }
-    result
+    Ok(result)
 }
 
 pub fn field_ty_str(ty: &Type) -> String {
@@ -646,10 +646,10 @@ pub fn parse_field(
     field_names: &[String],
     offset_expr: proc_macro2::TokenStream,
     ix_arg_names: &[String],
-) -> AccountField {
+) -> syn::Result<AccountField> {
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
-    let attrs = parse_account_attrs(&field.attrs);
+    let attrs = parse_account_attrs(&field.attrs)?;
 
     let option_inner = extract_option_inner(field_ty);
     let is_optional = option_inner.is_some();
@@ -712,7 +712,7 @@ pub fn parse_field(
         let exit = Some(quote! {
             self.#field_name.0.exit_accounts()?;
         });
-        return AccountField {
+        return Ok(AccountField {
             name: field_name.clone(),
             ty: field.ty.clone(),
             load,
@@ -726,7 +726,7 @@ pub fn parse_field(
             idl_docs: vec![],
             idl_pda: None,
             idl_field_ty: None,
-        };
+        });
     }
 
     let load = if let Some(inner_ty) = option_inner {
@@ -1192,7 +1192,7 @@ pub fn parse_field(
         (constraints, exit)
     };
 
-    AccountField {
+    Ok(AccountField {
         name: field_name.clone(),
         ty: field.ty.clone(),
         load,
@@ -1206,5 +1206,28 @@ pub fn parse_field(
         idl_docs,
         idl_pda,
         idl_field_ty,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn h01_parse_account_attrs_rejects_malformed_constraints() {
+        let attrs: Vec<Attribute> = vec![syn::parse_quote!(
+            #[account(mut, seeds = [b"vault"], bumpp, signer)]
+        )];
+
+        let err = match parse_account_attrs(&attrs) {
+            Ok(_) => panic!("expected malformed account attrs to be rejected"),
+            Err(err) => err,
+        };
+
+        assert!(
+            err.to_string()
+                .contains("unknown account constraint `bumpp`"),
+            "unexpected error: {err}"
+        );
     }
 }
