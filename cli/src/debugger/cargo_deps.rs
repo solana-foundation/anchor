@@ -129,6 +129,44 @@ pub fn discover_dep_src_roots(workspace_root: &Path) -> Vec<PathBuf> {
     roots
 }
 
+/// Discover path dependencies from a crate's `Cargo.toml` and return their
+/// resolved absolute directories. These are local deps like
+/// `anchor-lang-v2 = { path = "../../../../lang-v2" }` — their source
+/// root is the resolved path itself, which needs to be in `src_roots` so
+/// relative DWARF paths like `src/lib.rs` resolve to the right crate
+/// instead of colliding with a same-named file at the workspace root.
+pub fn discover_path_dep_roots(crate_dir: &Path) -> Vec<PathBuf> {
+    let manifest = crate_dir.join("Cargo.toml");
+    let Ok(contents) = std::fs::read_to_string(&manifest) else {
+        return Vec::new();
+    };
+    let Ok(parsed) = toml::from_str::<toml::Value>(&contents) else {
+        return Vec::new();
+    };
+
+    let mut roots = Vec::new();
+    for section in ["dependencies", "dev-dependencies"] {
+        let Some(deps) = parsed.get(section).and_then(|v| v.as_table()) else {
+            continue;
+        };
+        for (_name, spec) in deps {
+            let path_str = match spec {
+                toml::Value::Table(t) => t.get("path").and_then(|v| v.as_str()),
+                _ => None,
+            };
+            if let Some(p) = path_str {
+                let resolved = crate_dir.join(p);
+                if let Ok(canonical) = resolved.canonicalize() {
+                    if canonical.is_dir() {
+                        roots.push(canonical);
+                    }
+                }
+            }
+        }
+    }
+    roots
+}
+
 /// Locate `$CARGO_HOME`. Mirrors cargo's own resolution: env var first,
 /// then `~/.cargo`.
 fn cargo_home() -> Option<PathBuf> {

@@ -30,14 +30,25 @@ pub struct PathLabel {
     pub path_display: String,
 }
 
-/// Classify a resolved source path. `src_roots[0]` is treated as the
-/// workspace root when present. `path_rewrites` are the same set the
-/// resolver used; their `replacement` half is the local stdlib root.
+/// Classify a resolved source path for the source pane title.
+///
+/// `cwd` is the directory the debugger was invoked from — paths under it
+/// are displayed relative to it (e.g. `src/lib.rs`). `src_roots` are
+/// tried next for workspace-relative display. `path_rewrites` handle
+/// stdlib CI paths.
 pub fn classify(
     path: &Path,
     src_roots: &[PathBuf],
     path_rewrites: &[(PathBuf, PathBuf)],
+    cwd: Option<&Path>,
 ) -> PathLabel {
+    // Highest priority: paths under the user's CWD are shown relative to
+    // it with the enclosing package name as the label.
+    if let Some(cwd) = cwd {
+        if let Some(label) = classify_cwd(path, cwd) {
+            return label;
+        }
+    }
     if let Some(label) = classify_stdlib(path, path_rewrites) {
         return label;
     }
@@ -54,6 +65,22 @@ pub fn classify(
         label: "(unknown)".to_owned(),
         path_display: path.display().to_string(),
     }
+}
+
+fn classify_cwd(path: &Path, cwd: &Path) -> Option<PathLabel> {
+    let rel = path.strip_prefix(cwd).ok()?;
+    let pkg = enclosing_package_name(cwd, rel);
+    let label = pkg
+        .or_else(|| {
+            cwd.file_name()
+                .and_then(|n| n.to_str())
+                .map(str::to_owned)
+        })
+        .unwrap_or_else(|| "workspace".to_owned());
+    Some(PathLabel {
+        label,
+        path_display: rel.display().to_string(),
+    })
 }
 
 fn classify_stdlib(path: &Path, rewrites: &[(PathBuf, PathBuf)]) -> Option<PathLabel> {
@@ -117,25 +144,25 @@ fn classify_cargo_git(path: &Path) -> Option<PathLabel> {
 }
 
 fn classify_workspace(path: &Path, src_roots: &[PathBuf]) -> Option<PathLabel> {
-    let workspace = src_roots.first()?;
-    let rel = path.strip_prefix(workspace).ok()?;
-    // Walk up from the file looking for the nearest Cargo.toml — gives us
-    // the package name a workspace member contributes from. Falls back to
-    // the workspace dir name if the file isn't inside any package (rare —
-    // shared scratch files at the workspace root).
-    let pkg = enclosing_package_name(workspace, rel);
-    let label = pkg
-        .or_else(|| {
-            workspace
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map(str::to_owned)
-        })
-        .unwrap_or_else(|| "workspace".to_owned());
-    Some(PathLabel {
-        label,
-        path_display: rel.display().to_string(),
-    })
+    for root in src_roots {
+        let rel = match path.strip_prefix(root) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        let pkg = enclosing_package_name(root, rel);
+        let label = pkg
+            .or_else(|| {
+                root.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(str::to_owned)
+            })
+            .unwrap_or_else(|| "workspace".to_owned());
+        return Some(PathLabel {
+            label,
+            path_display: rel.display().to_string(),
+        });
+    }
+    None
 }
 
 /// Walk up from `<workspace>/<rel>` toward `workspace` looking for a

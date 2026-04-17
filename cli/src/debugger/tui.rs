@@ -708,6 +708,7 @@ impl App {
             &loc.file,
             &self.session.src_roots,
             &self.session.path_rewrites,
+            loc.line,
         );
         let Some(path) = resolved_path else {
             let msg = format!(
@@ -752,7 +753,7 @@ impl App {
         let label = if let Some(cached) = self.label_cache.get(&path) {
             cached.clone()
         } else {
-            let l = classify(&path, &self.session.src_roots, &self.session.path_rewrites);
+            let l = classify(&path, &self.session.src_roots, &self.session.path_rewrites, self.session.cwd.as_deref());
             self.label_cache.insert(path.clone(), l.clone());
             l
         };
@@ -953,7 +954,7 @@ fn window_from_lines(
 ) -> Vec<(u32, String, bool)> {
     let target_idx = target_line.saturating_sub(1) as usize;
     let half = (height / 2) as usize;
-    let start = target_idx.saturating_sub(half);
+    let start = target_idx.saturating_sub(half).min(lines.len());
     let end = (start + height as usize).min(lines.len());
     lines[start..end]
         .iter()
@@ -980,15 +981,13 @@ fn resolve_src_path(
     file: &std::path::Path,
     roots: &[std::path::PathBuf],
     rewrites: &[(std::path::PathBuf, std::path::PathBuf)],
+    line: u32,
 ) -> Option<std::path::PathBuf> {
     if file.is_absolute() && file.exists() {
         return Some(file.to_path_buf());
     }
 
     // Prefix rewrites (e.g. `platform-tools` CI path → local stdlib cache).
-    // Stringify for prefix matching — `Path::starts_with` only matches on
-    // component boundaries, which is what we want, but `str::strip_prefix`
-    // is simpler for the matching case we care about.
     if let Some(file_str) = file.to_str() {
         for (prefix, replacement) in rewrites {
             if let Some(prefix_str) = prefix.to_str() {
@@ -1002,11 +1001,34 @@ fn resolve_src_path(
         }
     }
 
+    // SBF DWARF omits DW_AT_comp_dir (-Zremap-cwd-prefix= strips it),
+    // so relative paths like `src/lib.rs` are ambiguous across crates.
+    // When multiple roots contain a matching file, prefer the one that
+    // actually has enough lines for the DWARF-referenced line number.
+    // This correctly disambiguates e.g. anchor-lang-v2's `src/cpi.rs`
+    // (538 lines) from pinocchio's `src/cpi.rs` (683 lines) when the
+    // DWARF says line 668.
+    let mut fallback: Option<std::path::PathBuf> = None;
     for root in roots {
         let candidate = root.join(file);
         if candidate.exists() {
-            return Some(candidate);
+            if line == 0 {
+                return Some(candidate);
+            }
+            if let Ok(contents) = std::fs::read(&candidate) {
+                let line_count = contents.iter().filter(|&&b| b == b'\n').count() + 1;
+                if line as usize <= line_count {
+                    return Some(candidate);
+                }
+            }
+            if fallback.is_none() {
+                fallback = Some(candidate);
+            }
         }
+    }
+
+    if let Some(fb) = fallback {
+        return Some(fb);
     }
 
     if file.exists() {

@@ -22,6 +22,10 @@ pub struct DebugSession {
     /// stdlib baked as `/Users/runner/work/platform-tools/…`) to the
     /// source tree shipped with the local toolchain.
     pub path_rewrites: Vec<(PathBuf, PathBuf)>,
+    /// The directory the debugger was invoked from. Used by the source pane
+    /// to show paths relative to the user's CWD (e.g. `src/lib.rs` instead
+    /// of the full absolute path).
+    pub cwd: Option<PathBuf>,
     /// Static disassembly per program, keyed by base58 program id. The
     /// instructions pane reads the current step's PC, looks up the active
     /// node's program in this map, and renders a window of PCs in memory

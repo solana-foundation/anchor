@@ -3621,6 +3621,7 @@ fn debugger_anchor_workspace(
             &profile_dir,
             &pubkey_to_so,
             Some(&workspace_root),
+            None,
             test_name.as_deref(),
         )
     })?
@@ -3661,6 +3662,21 @@ fn debugger_loose(
         // unaffected.
         std::env::set_var("CARGO_PROFILE_RELEASE_DEBUG", "2");
 
+        // The Solana cargo passes `-Zremap-cwd-prefix=` (empty) to rustc,
+        // which strips DW_AT_comp_dir from the DWARF and makes all source
+        // paths relative. This breaks the debugger's source pane when
+        // multiple crates share filenames like `src/lib.rs`. We fix this
+        // by setting RUSTC_WRAPPER to the anchor binary itself — a hidden
+        // wrapper mode (see `debugger::rustc_wrapper`) that rewrites the
+        // flag to `-Zremap-cwd-prefix=$CWD`, preserving absolute paths.
+        let anchor_exe = std::env::current_exe()
+            .context("resolve anchor binary path for RUSTC_WRAPPER")?;
+        std::env::set_var("RUSTC_WRAPPER", &anchor_exe);
+        std::env::set_var(
+            debugger::rustc_wrapper::WRAPPER_SENTINEL,
+            "1",
+        );
+
         // Build the SBF program first so `target/deploy/<name>.so` exists
         // (post-linked, sbpf-loadable). Skipping build-sbf is the #1 cause
         // of "everything runs but the disasm pane is empty" — the test
@@ -3675,6 +3691,12 @@ fn debugger_loose(
             eprintln!("running `cargo build-sbf` from {}", build_cwd.display());
             cargo_build_sbf(Some(build_cwd), &cargo_args)?;
         }
+
+        // Clear the wrapper env before `cargo test` — the host-side test
+        // build doesn't need it and RUSTC_WRAPPER would slow it down.
+        std::env::remove_var("RUSTC_WRAPPER");
+        std::env::remove_var(debugger::rustc_wrapper::WRAPPER_SENTINEL);
+
         eprintln!(
             "running `cargo test --features {profile_feature}{pkg}{filter}` from {dir}",
             pkg = ws
@@ -3722,6 +3744,7 @@ fn debugger_loose(
         &profile_dir,
         &pubkey_to_so,
         Some(&ws.root),
+        Some(&ws.cwd),
         test_name.as_deref(),
     )
 }

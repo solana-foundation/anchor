@@ -21,7 +21,7 @@ use crate::flamegraph::trace::{
 };
 
 use super::model::{DebugNode, DebugSession, DebugStep, DebugTx, ProgramDisasm, StaticInsn};
-use super::cargo_deps::discover_dep_src_roots;
+use super::cargo_deps::{discover_dep_src_roots, discover_path_dep_roots};
 use super::highlight::highlight_asm;
 use super::source::{discover_platform_tools_stdlib_roots, SourceResolver, CI_PLATFORM_TOOLS_PREFIX};
 
@@ -34,14 +34,21 @@ pub fn build_session(
     profile_dir: &Path,
     programs: &BTreeMap<String, PathBuf>,
     manifest_dir: Option<&Path>,
+    crate_dir: Option<&Path>,
     test_filter: Option<&str>,
 ) -> Result<DebugSession> {
     let mut txs: Vec<DebugTx> = Vec::new();
     let mut src_roots: Vec<PathBuf> = Vec::new();
+    // Path deps (e.g. `anchor-lang-v2 = { path = "../../../../lang-v2" }`)
+    // must come before the workspace root so their `src/lib.rs` wins over
+    // a same-named file at the workspace root (`bench/src/lib.rs`). SBF
+    // DWARF omits `DW_AT_comp_dir`, so relative paths like `src/lib.rs`
+    // are ambiguous — insertion order is the only disambiguation.
+    if let Some(c) = crate_dir {
+        src_roots.extend(discover_path_dep_roots(c));
+    }
     if let Some(p) = manifest_dir {
         src_roots.push(p.to_path_buf());
-        // Cargo deps come after the workspace root so workspace-relative
-        // paths win over a same-named file in some random registry crate.
         src_roots.extend(discover_dep_src_roots(p));
     }
 
@@ -54,11 +61,14 @@ pub fn build_session(
         .map(|replacement| (PathBuf::from(CI_PLATFORM_TOOLS_PREFIX), replacement))
         .collect();
 
+    let cwd = crate_dir.map(|p| p.to_path_buf());
+
     if !profile_dir.exists() {
         return Ok(DebugSession {
             txs,
             src_roots,
             path_rewrites,
+            cwd,
             programs: BTreeMap::new(),
         });
     }
@@ -212,6 +222,7 @@ pub fn build_session(
         txs,
         src_roots,
         path_rewrites,
+        cwd,
         programs: programs_disasm,
     })
 }

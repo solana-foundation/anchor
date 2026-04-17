@@ -22,6 +22,7 @@ pub mod highlight;
 pub mod loose;
 pub mod model;
 pub mod path_label;
+pub mod rustc_wrapper;
 pub mod source;
 pub mod tui;
 
@@ -38,6 +39,7 @@ pub fn run(
     profile_dir: &Path,
     programs: &BTreeMap<String, PathBuf>,
     manifest_dir: Option<&Path>,
+    crate_dir: Option<&Path>,
     test_filter: Option<&str>,
 ) -> Result<()> {
     // Probe the terminal background BEFORE anything that might call into
@@ -45,6 +47,6 @@ pub fn run(
     // round-trips an OSC 11 query on a regular TTY; once the TUI raw-mode
     // takeover starts, the reply might not get back to us cleanly.
     highlight::detect_theme_mode_once();
-    let session = arena::build_session(profile_dir, programs, manifest_dir, test_filter)?;
+    let session = arena::build_session(profile_dir, programs, manifest_dir, crate_dir, test_filter)?;
     tui::run(session)
 }
