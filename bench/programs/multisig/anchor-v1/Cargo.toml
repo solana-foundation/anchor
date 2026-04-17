@@ -17,6 +17,13 @@ anchor-debug = []
 no-log-ix-name = []
 custom-heap = []
 custom-panic = []
+profile = ["anchor-v2-testing/profile"]
 
 [dependencies]
 anchor-lang = { path = "../../../../lang" }
+
+[dev-dependencies]
+anchor-v2-testing = { path = "../../../../v2-testing" }
+litesvm = "0.11"
+solana-account = "3.0"
+solana-pubkey = "3.0"

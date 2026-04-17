@@ -1,13 +1,13 @@
 [package]
-name = "hello-world"
+name = "vault-v1"
 version = "0.1.0"
-description = "Hello world program used by anchor-bench"
+description = "Anchor v1 port of the quasar-vault benchmark program."
 edition = "2021"
 publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-name = "hello_world"
+name = "vault_v1"
 
 [features]
 no-entrypoint = []
@@ -15,8 +15,6 @@ cpi = ["no-entrypoint"]
 idl-build = ["anchor-lang/idl-build"]
 anchor-debug = []
 no-log-ix-name = []
-custom-heap = []
-custom-panic = []
 profile = ["anchor-v2-testing/profile"]
 
 [dependencies]
