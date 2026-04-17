@@ -402,6 +402,37 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             }
         })
         .collect();
+    // Default impl: Program<T> fields auto-fill from T::id(), everything
+    // else defaults to Address::default() (all zeros). Users override
+    // non-program fields via struct-update syntax: `Init { payer, counter, ..Default::default() }`.
+    let client_default_fields: Vec<_> = fields
+        .iter()
+        .map(|f| {
+            let fname = &f.name;
+            let base_ty = match parse::extract_option_inner(&f.ty) {
+                Some(inner) => inner,
+                None => &f.ty,
+            };
+            let ty_name = parse::field_ty_str(base_ty);
+            if ty_name == "Program" {
+                // Extract the generic arg T from Program<T> to call T::id().
+                if let Type::Path(tp) = base_ty {
+                    if let Some(seg) = tp.path.segments.last() {
+                        if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
+                            if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
+                                return quote! { #fname: <#inner as anchor_lang_v2::Id>::id() };
+                            }
+                        }
+                    }
+                }
+                quote! { #fname: anchor_lang_v2::Address::default() }
+            } else if f.is_optional {
+                quote! { #fname: None }
+            } else {
+                quote! { #fname: anchor_lang_v2::Address::default() }
+            }
+        })
+        .collect();
     // Client-side `AccountMeta` is compile-time-built and only needs to
     // reflect the `is_signer` flag for `Signer`-typed fields plus any
     // `init`-without-seeds site (fresh keypair must sign). For the IDL
@@ -523,6 +554,13 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             use super::*;
             pub struct #name {
                 #(#client_fields,)*
+            }
+            impl ::core::default::Default for #name {
+                fn default() -> Self {
+                    Self {
+                        #(#client_default_fields,)*
+                    }
+                }
             }
             impl anchor_lang_v2::ToAccountMetas for #name {
                 fn to_account_metas(&self, _is_signer: Option<bool>) -> alloc::vec::Vec<anchor_lang_v2::AccountMeta> {
@@ -1115,6 +1153,19 @@ fn process_handler(
                 anchor_lang_v2::wincode::serialize_into(&mut data, self)
                     .expect("instruction serialization failed");
                 data
+            }
+        }
+        impl #ix_lt_decl #ix_struct_name #ix_lt_use {
+            /// Build a complete `Instruction` from these args + accounts.
+            pub fn to_instruction(
+                self,
+                accounts: super::accounts::#accounts_type,
+            ) -> anchor_lang_v2::solana_program::instruction::Instruction {
+                anchor_lang_v2::solana_program::instruction::Instruction::new_with_bytes(
+                    crate::ID,
+                    &<Self as anchor_lang_v2::InstructionData>::data(&self),
+                    <_ as anchor_lang_v2::ToAccountMetas>::to_account_metas(&accounts, None),
+                )
             }
         }
     };

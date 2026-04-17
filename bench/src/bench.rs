@@ -207,6 +207,15 @@ impl BenchInstruction {
         }
     }
 
+    /// Creates a benchmark instruction from a `solana_instruction::Instruction`.
+    pub fn from_instruction(ix: Instruction) -> Self {
+        Self {
+            instruction_data: ix.data,
+            account_metas: ix.accounts,
+            signers: Vec::new(),
+        }
+    }
+
     /// Adds a single extra signer to the benchmark transaction.
     pub fn with_signer(mut self, signer: Keypair) -> Self {
         self.signers.push(signer);

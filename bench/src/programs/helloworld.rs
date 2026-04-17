@@ -29,24 +29,20 @@ pub mod anchor_v1 {
 pub mod anchor_v2 {
     use {
         crate::bench::{BenchContext, BenchInstruction},
-        anchor_lang_v2::{programs::System, Id, InstructionData, ToAccountMetas},
         anyhow::Result,
     };
 
     pub fn build_init_case(ctx: &mut BenchContext) -> Result<BenchInstruction> {
-        let program_id = ctx.program_id();
-        let (counter_pda, _bump) =
-            hello_world_v2::accounts::Init::find_counter_address(&program_id);
+        let (counter_pda, _) = hello_world_v2::accounts::Init::find_counter_address();
 
-        Ok(BenchInstruction::new(
-            hello_world_v2::instruction::Init {}.data(),
+        let ix = hello_world_v2::instruction::Init {}.to_instruction(
             hello_world_v2::accounts::Init {
                 payer: ctx.payer_pubkey(),
                 counter: counter_pda,
-                system_program: System::id(),
-            }
-            .to_account_metas(None),
-        ))
+                ..Default::default()
+            },
+        );
+        Ok(BenchInstruction::from_instruction(ix))
     }
 }
 

@@ -182,11 +182,11 @@ pub mod anchor_v2 {
     };
 
     fn multisig_v2_config_address(creator: &Address) -> (Address, u8) {
-        multisig_v2::accounts::Create::find_config_address(creator, &multisig_v2::id())
+        multisig_v2::accounts::Create::find_config_address(creator)
     }
 
     fn multisig_v2_vault_address(config: &Address) -> (Address, u8) {
-        multisig_v2::accounts::Deposit::find_vault_address(config, &multisig_v2::id())
+        multisig_v2::accounts::Deposit::find_vault_address(config)
     }
 
     pub fn build_create_case(ctx: &mut BenchContext) -> Result<BenchInstruction> {
