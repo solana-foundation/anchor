@@ -3427,14 +3427,12 @@ fn test(
         let root = cfg.path().parent().unwrap().to_owned();
         cfg.add_test_config(root, test_paths)?;
 
-        // Run the deploy against the cluster in two cases:
-        //
-        // 1. The cluster is not localnet.
-        // 2. The cluster is localnet, but we're not booting a local validator.
-        //
-        // In either case, skip the deploy if the user specifies.
+        // Deploy to the cluster unless told to skip. For localnet with
+        // skip_local_validator (the LiteSVM / in-process path), there's no
+        // running validator to deploy to — skip unconditionally.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
-        if (!is_localnet || skip_local_validator) && !skip_deploy {
+        let skip_deploy = skip_deploy || (is_localnet && skip_local_validator);
+        if !skip_deploy {
             deploy(cfg_override, None, None, false, true, vec![])?;
         }
 
