@@ -1,17 +1,10 @@
-//! Raw pointer cursor for walking the serialized instruction input buffer
-//! one account at a time.
+//! Lazy cursor over the serialized instruction input buffer.
 //!
-//! Unlike the old eager approach (walk all accounts into a slice before
-//! dispatching), [`AccountCursor`] yields `AccountView`s on demand so
-//! dispatch can happen first and each dispatch arm can walk only the
-//! exact number of accounts it declares.
-//!
-//! The cursor also tracks a caller-provided `lookup` array used to resolve
-//! `Duplicated` account references: when the BPF loader serializes an
-//! account that aliases an earlier one, it writes the earlier account's
-//! index into `borrow_state` instead of the full record. The cursor looks
-//! up the earlier `AccountView` from `lookup[idx]` and returns it without
-//! re-parsing.
+//! [`AccountCursor`] yields `AccountView`s on demand so dispatch can
+//! happen first and each arm walks only its declared accounts. A
+//! caller-provided `lookup` array resolves duplicate account references:
+//! when the BPF loader writes a dup index into `borrow_state`, the cursor
+//! returns the earlier `AccountView` from `lookup[idx]`.
 
 use pinocchio::account::{AccountView, RuntimeAccount, MAX_PERMITTED_DATA_INCREASE};
 
@@ -31,25 +24,18 @@ const BPF_ALIGN_OF_U128: usize = 8;
 
 /// Cursor into the serialized instruction input buffer.
 ///
-/// Holds a raw pointer that advances past one account record per
-/// [`next`](AccountCursor::next) call, plus a pointer to the caller's
-/// stack-local `[AccountView; N]` lookup array for dup resolution.
+/// Advances a raw pointer past one account record per [`next`](AccountCursor::next)
+/// call and uses a `lookup` array for dup resolution.
 ///
 /// # Safety
 ///
-/// Created from a raw pointer into the runtime's input region (r1 at
-/// entry). The pointer is only valid for the lifetime of the entrypoint
-/// invocation, so the cursor must not outlive the handler dispatch.
-/// Callers must also ensure:
+/// Created from the runtime's input pointer (r1). Must not outlive the
+/// entrypoint invocation. Callers must ensure:
 ///
-/// - `lookup` points to an `[AccountView; N]` where `N >=
-///   max(consumed + 1, max_dup_index + 1)` for every subsequent `next()`
-///   call. In practice the caller allocates a `[MaybeUninit<AccountView>;
-///   256]` (Solana's tx-wide account cap) once in the dispatcher frame
-///   and reuses it for both declared and remaining account walks.
-/// - `next()` is only called while the current `ptr` still points inside
-///   the serialized account region (i.e. fewer than `num_accounts` calls
-///   have been made since construction).
+/// - `lookup` points to `[AccountView; N]` where `N >= max(consumed + 1,
+///   max_dup_index + 1)`. In practice: a `[MaybeUninit<AccountView>; 256]`
+///   allocated once in the dispatcher frame.
+/// - `next()` is called fewer than `num_accounts` times.
 pub struct AccountCursor {
     /// Current position in the input buffer. Advances on each `next()`.
     ptr: *mut u8,

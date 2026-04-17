@@ -254,30 +254,11 @@ impl Constrain<TokenProgramConstraint> for Account<TokenAccount> {
 // CPI helpers for SPL Token program invocations (`anchor_spl_v2::token::cpi`)
 // ---------------------------------------------------------------------------
 //
-// Minimum viable surface — only `Transfer` and `TransferChecked` for now.
-// Mirrors v1's `anchor_spl::token::cpi` path so users writing
-// `anchor_spl_v2::token::cpi::transfer(ctx, amount)?` get the same
-// ergonomics they had in v1.
+// Mirrors v1's `anchor_spl::token::cpi` path. Each helper routes through
+// `CpiContext::invoke` (pinocchio `invoke_signed_unchecked`), bypassing
+// the borrow-state check that rejects direct pinocchio-token invoke on
+// Slab-loaded accounts.
 //
-// Each helper routes through `anchor_lang_v2::CpiContext::invoke`, which
-// uses pinocchio's `invoke_signed_unchecked` — bypassing the borrow-state
-// check that rejected the old `pinocchio_token::Transfer::invoke()` call
-// against Slab-loaded `Account<TokenAccount>` accounts.
-//
-// TODO: add the rest of the SPL Token instruction surface here before
-// this crate stabilizes:
-//   - MintTo, MintToChecked
-//   - Burn, BurnChecked
-//   - Approve, ApproveChecked, Revoke
-//   - SetAuthority
-//   - CloseAccount
-//   - SyncNative
-//   - InitializeAccount[2/3], InitializeMint[2], InitializeMultisig[2]
-//   - FreezeAccount, ThawAccount
-// V1's `anchor_spl::token::cpi` covers all of these; porting is mostly
-// mechanical (disc + data layout + accounts list), one function per
-// instruction. We stop here to unblock the e2e tests — anything else
-// wouldn't be exercised yet.
 pub mod cpi {
     extern crate alloc;
     use {
@@ -343,43 +324,386 @@ pub mod cpi {
                 vec![self.from, self.mint, self.to, self.authority]
             }
         }
+
+        pub struct MintTo<'a> {
+            pub mint: CpiHandle<'a>,
+            pub to: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for MintTo<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.mint.address()),
+                    InstructionAccount::writable(self.to.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.mint, self.to, self.authority]
+            }
+        }
+
+        pub struct MintToChecked<'a> {
+            pub mint: CpiHandle<'a>,
+            pub to: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for MintToChecked<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.mint.address()),
+                    InstructionAccount::writable(self.to.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.mint, self.to, self.authority]
+            }
+        }
+
+        pub struct Burn<'a> {
+            pub account: CpiHandle<'a>,
+            pub mint: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for Burn<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.account.address()),
+                    InstructionAccount::writable(self.mint.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.account, self.mint, self.authority]
+            }
+        }
+
+        pub struct BurnChecked<'a> {
+            pub account: CpiHandle<'a>,
+            pub mint: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for BurnChecked<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.account.address()),
+                    InstructionAccount::writable(self.mint.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.account, self.mint, self.authority]
+            }
+        }
+
+        pub struct Approve<'a> {
+            pub source: CpiHandle<'a>,
+            pub delegate: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for Approve<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.source.address()),
+                    InstructionAccount::new(self.delegate.address(), false, false),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.source, self.delegate, self.authority]
+            }
+        }
+
+        pub struct ApproveChecked<'a> {
+            pub source: CpiHandle<'a>,
+            pub mint: CpiHandle<'a>,
+            pub delegate: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for ApproveChecked<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.source.address()),
+                    InstructionAccount::new(self.mint.address(), false, false),
+                    InstructionAccount::new(self.delegate.address(), false, false),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.source, self.mint, self.delegate, self.authority]
+            }
+        }
+
+        pub struct Revoke<'a> {
+            pub source: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for Revoke<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.source.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.source, self.authority]
+            }
+        }
+
+        pub struct SetAuthority<'a> {
+            pub account: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for SetAuthority<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.account.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.account, self.authority]
+            }
+        }
+
+        pub struct CloseAccount<'a> {
+            pub account: CpiHandle<'a>,
+            pub destination: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for CloseAccount<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.account.address()),
+                    InstructionAccount::writable(self.destination.address()),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.account, self.destination, self.authority]
+            }
+        }
+
+        pub struct FreezeAccount<'a> {
+            pub account: CpiHandle<'a>,
+            pub mint: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for FreezeAccount<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.account.address()),
+                    InstructionAccount::new(self.mint.address(), false, false),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.account, self.mint, self.authority]
+            }
+        }
+
+        pub struct ThawAccount<'a> {
+            pub account: CpiHandle<'a>,
+            pub mint: CpiHandle<'a>,
+            pub authority: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for ThawAccount<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![
+                    InstructionAccount::writable(self.account.address()),
+                    InstructionAccount::new(self.mint.address(), false, false),
+                    InstructionAccount::readonly_signer(self.authority.address()),
+                ]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.account, self.mint, self.authority]
+            }
+        }
+
+        pub struct SyncNative<'a> {
+            pub account: CpiHandle<'a>,
+        }
+
+        impl<'a> ToCpiAccounts<'a> for SyncNative<'a> {
+            fn to_instruction_accounts(&self) -> Vec<InstructionAccount<'a>> {
+                vec![InstructionAccount::writable(self.account.address())]
+            }
+            fn to_cpi_handles(&self) -> Vec<CpiHandle<'a>> {
+                vec![self.account]
+            }
+        }
     }
 
-    // SPL Token instruction discriminators — see the pinocchio-token crate
-    // or the upstream spl-token source of truth.
     const DISC_TRANSFER: u8 = 3;
+    const DISC_APPROVE: u8 = 4;
+    const DISC_REVOKE: u8 = 5;
+    const DISC_SET_AUTHORITY: u8 = 6;
+    const DISC_MINT_TO: u8 = 7;
+    const DISC_BURN: u8 = 8;
+    const DISC_CLOSE_ACCOUNT: u8 = 9;
+    const DISC_FREEZE_ACCOUNT: u8 = 10;
+    const DISC_THAW_ACCOUNT: u8 = 11;
     const DISC_TRANSFER_CHECKED: u8 = 12;
+    const DISC_APPROVE_CHECKED: u8 = 13;
+    const DISC_MINT_TO_CHECKED: u8 = 14;
+    const DISC_BURN_CHECKED: u8 = 15;
+    const DISC_SYNC_NATIVE: u8 = 17;
 
-    /// Invoke SPL Token `Transfer` with a fixed `amount`.
-    ///
-    /// The authority is the single source-account owner or a delegate.
-    /// Multisig authorities are not supported by this helper — use a
-    /// hand-built `CpiContext` if you need them.
     pub fn transfer<'a>(
         ctx: CpiContext<'a, accounts::Transfer<'a>>,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        // Layout: 1-byte discriminator + u64 amount LE = 9 bytes.
         let mut data = [0u8; 9];
         data[0] = DISC_TRANSFER;
         data[1..9].copy_from_slice(&amount.to_le_bytes());
         ctx.invoke(&data)
     }
 
-    /// Invoke SPL Token `TransferChecked`. Extra on-chain safety over
-    /// `transfer`: the SPL program verifies that `decimals` matches the
-    /// mint's stored decimals and that the mint address matches the
-    /// one threaded through the token accounts.
     pub fn transfer_checked<'a>(
         ctx: CpiContext<'a, accounts::TransferChecked<'a>>,
         amount: u64,
         decimals: u8,
     ) -> Result<(), ProgramError> {
-        // Layout: 1-byte discriminator + u64 amount LE + u8 decimals = 10 bytes.
         let mut data = [0u8; 10];
         data[0] = DISC_TRANSFER_CHECKED;
         data[1..9].copy_from_slice(&amount.to_le_bytes());
         data[9] = decimals;
         ctx.invoke(&data)
+    }
+
+    pub fn mint_to<'a>(
+        ctx: CpiContext<'a, accounts::MintTo<'a>>,
+        amount: u64,
+    ) -> Result<(), ProgramError> {
+        let mut data = [0u8; 9];
+        data[0] = DISC_MINT_TO;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        ctx.invoke(&data)
+    }
+
+    pub fn mint_to_checked<'a>(
+        ctx: CpiContext<'a, accounts::MintToChecked<'a>>,
+        amount: u64,
+        decimals: u8,
+    ) -> Result<(), ProgramError> {
+        let mut data = [0u8; 10];
+        data[0] = DISC_MINT_TO_CHECKED;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        data[9] = decimals;
+        ctx.invoke(&data)
+    }
+
+    pub fn burn<'a>(
+        ctx: CpiContext<'a, accounts::Burn<'a>>,
+        amount: u64,
+    ) -> Result<(), ProgramError> {
+        let mut data = [0u8; 9];
+        data[0] = DISC_BURN;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        ctx.invoke(&data)
+    }
+
+    pub fn burn_checked<'a>(
+        ctx: CpiContext<'a, accounts::BurnChecked<'a>>,
+        amount: u64,
+        decimals: u8,
+    ) -> Result<(), ProgramError> {
+        let mut data = [0u8; 10];
+        data[0] = DISC_BURN_CHECKED;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        data[9] = decimals;
+        ctx.invoke(&data)
+    }
+
+    pub fn approve<'a>(
+        ctx: CpiContext<'a, accounts::Approve<'a>>,
+        amount: u64,
+    ) -> Result<(), ProgramError> {
+        let mut data = [0u8; 9];
+        data[0] = DISC_APPROVE;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        ctx.invoke(&data)
+    }
+
+    pub fn approve_checked<'a>(
+        ctx: CpiContext<'a, accounts::ApproveChecked<'a>>,
+        amount: u64,
+        decimals: u8,
+    ) -> Result<(), ProgramError> {
+        let mut data = [0u8; 10];
+        data[0] = DISC_APPROVE_CHECKED;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        data[9] = decimals;
+        ctx.invoke(&data)
+    }
+
+    pub fn revoke<'a>(
+        ctx: CpiContext<'a, accounts::Revoke<'a>>,
+    ) -> Result<(), ProgramError> {
+        ctx.invoke(&[DISC_REVOKE])
+    }
+
+    /// SPL Token `SetAuthority`.
+    ///
+    /// `authority_type`: 0 = MintTokens, 1 = FreezeAccount, 2 = AccountOwner,
+    /// 3 = CloseAccount. See `spl_token::instruction::AuthorityType`.
+    ///
+    /// `new_authority`: `Some(address)` to set, `None` to revoke.
+    pub fn set_authority<'a>(
+        ctx: CpiContext<'a, accounts::SetAuthority<'a>>,
+        authority_type: u8,
+        new_authority: Option<&anchor_lang_v2::Address>,
+    ) -> Result<(), ProgramError> {
+        // Layout: disc(1) + authority_type(1) + option_tag(1) + [address(32)] = 3 or 35.
+        let mut data = [0u8; 35];
+        data[0] = DISC_SET_AUTHORITY;
+        data[1] = authority_type;
+        match new_authority {
+            Some(addr) => {
+                data[2] = 1;
+                data[3..35].copy_from_slice(addr.as_ref());
+                ctx.invoke(&data[..35])
+            }
+            None => {
+                data[2] = 0;
+                ctx.invoke(&data[..3])
+            }
+        }
+    }
+
+    pub fn close_account<'a>(
+        ctx: CpiContext<'a, accounts::CloseAccount<'a>>,
+    ) -> Result<(), ProgramError> {
+        ctx.invoke(&[DISC_CLOSE_ACCOUNT])
+    }
+
+    pub fn freeze_account<'a>(
+        ctx: CpiContext<'a, accounts::FreezeAccount<'a>>,
+    ) -> Result<(), ProgramError> {
+        ctx.invoke(&[DISC_FREEZE_ACCOUNT])
+    }
+
+    pub fn thaw_account<'a>(
+        ctx: CpiContext<'a, accounts::ThawAccount<'a>>,
+    ) -> Result<(), ProgramError> {
+        ctx.invoke(&[DISC_THAW_ACCOUNT])
+    }
+
+    pub fn sync_native<'a>(
+        ctx: CpiContext<'a, accounts::SyncNative<'a>>,
+    ) -> Result<(), ProgramError> {
+        ctx.invoke(&[DISC_SYNC_NATIVE])
     }
 }

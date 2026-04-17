@@ -68,16 +68,13 @@ pub trait ToCpiAccounts<'a> {
 pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     type Data;
 
-    /// Minimum account data length for this type. Used at compile time to
-    /// decide whether PDA verification can skip the `sol_curve_validate_point`
-    /// syscall: any account with `data_len > 0` must have been signed for
-    /// (via CreateAccount/Allocate), and signing proves PDA validity because
-    /// `invoke_signed` → `create_program_address` includes the runtime's own
-    /// curve check.
+    /// Minimum account data length for this type. When > 0, PDA
+    /// verification can skip `sol_curve_validate_point`: a non-empty
+    /// account was created via CreateAccount/Allocate (which requires
+    /// signing), and `invoke_signed` already includes the curve check.
     ///
-    /// Slab-backed types override this to `8` (discriminator length).
-    /// UncheckedAccount and other zero-data wrappers keep the default `0`,
-    /// which forces the curve check on PDA verification.
+    /// Slab-backed types: `8`. UncheckedAccount / zero-data wrappers: `0`
+    /// (forces the curve check).
     const MIN_DATA_LEN: usize = 0;
 
     fn load(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError>;
@@ -86,23 +83,14 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     ///
     /// # Safety
     ///
-    /// The caller must guarantee that no other live `&mut` reference to the
-    /// same account's data exists for the duration that the returned value
-    /// (or any `&mut` derived from it) is alive. Violating this creates two
-    /// `&mut` references aliasing the same memory, which is immediate
-    /// undefined behaviour under Rust's aliasing rules.
+    /// No other live `&mut` to the same account data may exist while the
+    /// returned value is alive. In derive-generated code the bitvec
+    /// duplicate-account check enforces this; direct callers must uphold
+    /// it themselves.
     ///
-    /// In generated `#[derive(Accounts)]` code this invariant is upheld by
-    /// the bitvec duplicate-account check that fires before any handler code
-    /// runs. Direct callers are responsible for the same guarantee.
-    ///
-    /// ## Implementing types
-    ///
-    /// Zero-data view wrappers (`UncheckedAccount`, `SystemAccount`,
-    /// `Program<T>`, `Sysvar<T>`) inherit this default, which validates
-    /// `is_writable` and delegates to `load()`. Data-carrying wrappers
-    /// (`Account<T>`, `BorshAccount<T>`, `Slab<H, T>`) override this to
-    /// use `borrow_unchecked_mut` for zero-cost access with write provenance.
+    /// Default impl validates `is_writable` and delegates to `load()`.
+    /// Data-carrying wrappers (`Account<T>`, `BorshAccount<T>`, `Slab<H, T>`)
+    /// override to use `borrow_unchecked_mut` for write provenance.
     /// `Signer` overrides with a fused `is_signer` + `is_writable` check.
     #[inline(always)]
     unsafe fn load_mut(
@@ -115,21 +103,14 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
         Self::load(view, program_id)
     }
 
-    /// Like [`load_mut`], but called immediately after
-    /// `AccountInitialize::create_and_initialize`. Owner / discriminator /
-    /// minimum-length checks are tautologies on this path:
-    /// - the system program set the owner to our program in the CPI
-    /// - we just wrote the 8-byte discriminator ourselves
-    /// - `create_account` allocated exactly `space = disc + size_of::<T>()`
-    ///
-    /// Default forwards to [`load_mut`] so every type that doesn't care
-    /// (Sysvar, Signer, Program, …) keeps the same behavior. Data-carrying
-    /// wrappers override this to skip the redundant validation.
+    /// Like [`load_mut`], but called right after
+    /// `AccountInitialize::create_and_initialize`. Owner, discriminator,
+    /// and min-length checks are tautologies on this path, so data-carrying
+    /// wrappers override to skip them. Default forwards to [`load_mut`].
     ///
     /// # Safety
     ///
-    /// Same precondition as [`load_mut`]: no other live `&mut` to the same
-    /// account data may exist while the returned value is alive.
+    /// Same as [`load_mut`]: no other live `&mut` to the same account data.
     ///
     /// [`load_mut`]: Self::load_mut
     #[inline(always)]
@@ -181,8 +162,8 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     /// the transaction.
     #[inline(always)]
     fn cpi_handle_mut(&mut self) -> CpiHandle<'_> {
-        // FIXME: This should perhaps be `cfg(guardrails)`, as it's a correctness
-        // rather than a safety invariant.
+        // Unconditional (not guardrails-gated): passing a read-only account
+        // to a CPI that writes is a program bug, not a "nice to have" check.
         assert!(
             self.account().is_writable(),
             "cpi_handle_mut called on a read-only account"
@@ -223,14 +204,9 @@ pub trait Discriminator {
     const DISCRIMINATOR: &'static [u8];
 }
 
-/// Wrapper-level init: creates the on-chain account *and* returns a loaded
-/// `Self`. Implementers can capture init-time context (e.g. cache a payer
-/// for later tail mutations) between the byte-write and the load.
-///
-/// `Slab<H, T>` (= `Account<H>` / `BorshAccount<H>`) gets this automatically
-/// for any `H: SlabInit` via a forward impl in `accounts/slab.rs`.
-/// Self-contained wrappers (custom `AnchorAccount` types that aren't
-/// `Slab`-backed) implement it directly.
+/// Wrapper-level init: creates the on-chain account and returns a loaded
+/// `Self`. `Slab<H, T>` and `BorshAccount<T>` get this automatically;
+/// custom wrappers implement it directly.
 pub trait AccountInitialize: Sized {
     type Params<'a>: Default;
 
@@ -244,13 +220,9 @@ pub trait AccountInitialize: Sized {
     ) -> Result<Self, ProgramError>;
 }
 
-/// A constraint check on an account. Each account type opts in to specific
-/// constraint keys by implementing this trait for the corresponding marker.
-///
-/// `V` is the expected value type — defaults to `Address` for address comparisons.
-/// Use a different `V` for non-address checks (e.g. `mint::DecimalsConstraint` uses `u8`).
-///
-/// Unknown keys → compile error ("Constrain<X> is not implemented for Y").
+/// Constraint check on an account. `V` defaults to `Address`; override
+/// for non-address checks (e.g. `mint::DecimalsConstraint` uses `u8`).
+/// Unknown keys produce a compile error.
 pub trait Constrain<C, V = Address> {
     fn constrain(&mut self, expected: &V) -> core::result::Result<(), ProgramError>;
 }

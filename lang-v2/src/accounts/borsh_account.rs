@@ -15,25 +15,17 @@ const DISC_LEN: usize = 8;
 
 /// Borsh-serialized account type.
 ///
-/// Validates owner, checks discriminator, deserializes via borsh.
-/// Holds a pinocchio borrow guard to prevent duplicate mutable accounts:
-/// - `load()` takes an immutable borrow (blocks subsequent `load_mut` on same account)
-/// - `load_mut()` takes a mutable borrow (blocks any other borrow on same account)
-/// - `exit()` serializes through the held `RefMut`
+/// Validates owner, checks discriminator, deserializes via borsh. Holds a
+/// pinocchio borrow guard (`Ref` for `load`, `RefMut` for `load_mut`);
+/// `exit()` serializes through the held `RefMut`.
 ///
 /// ## `#[account(owner = X @ MyErr)]` does NOT surface `MyErr`
 ///
-/// `BorshAccount<T>` validates the on-chain owner against `T::owner(program_id)`
-/// as part of `load`/`load_mut` — that check runs *before* any derive-level
-/// constraint hook. A mismatch surfaces as `ProgramError::IllegalOwner`, never
-/// as the user's `@ MyErr` code. The same is true for the discriminator check.
-///
-/// If you need a custom error code on owner mismatch, switch the field to
-/// `UncheckedAccount` (which has no built-in owner validation) and the
-/// derive-level `owner = X @ MyErr` becomes the authoritative check. Note
-/// that you also lose the discriminator and borsh deserialization the wrapper
-/// would have done — make those checks explicit in the handler if you need
-/// them.
+/// Owner/discriminator validation runs inside `load`/`load_mut`, before
+/// derive-level constraints. A mismatch is `ProgramError::IllegalOwner`,
+/// not the user's `@ MyErr`. For a custom error, use `UncheckedAccount`
+/// with derive-level `owner = X @ MyErr` (you lose the built-in disc/borsh
+/// checks).
 pub struct BorshAccount<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> {
     view: AccountView,
     data: T,
@@ -57,6 +49,16 @@ enum BorshBorrow {
 }
 
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<T> {
+    /// Returns the account's on-chain address. Inherent method so
+    /// `.address()` works uniformly on all wrapper types — `Signer`,
+    /// `Account<T>`, `BorshAccount<T>`, `UncheckedAccount`, etc. — without
+    /// callers needing to know whether the wrapper derefs to `AccountView`
+    /// or to `T`.
+    #[inline(always)]
+    pub fn address(&self) -> &Address {
+        self.view.address()
+    }
+
     /// Release the data borrow guard so the underlying `AccountView` can be
     /// resized or passed to CPIs that call `check_borrow_mut()`. After this,
     /// `exit()` becomes a no-op until `reacquire_borrow_mut()` is called.
@@ -165,7 +167,15 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         if self.view.lamports() == 0 {
             return Ok(());
         }
-        // Write through the held RefMut — no need to re-acquire the borrow
+        // Belt-and-braces: the derive's `realloc` constraint does
+        // release_borrow + reacquire after resize, but if someone resizes
+        // through a non-derive path the guard's length would be stale.
+        // Detect and fix before serializing.
+        let stale = matches!(&self.borrow, BorshBorrow::Mutable { guard } if guard.len() != self.view.data_len());
+        if stale {
+            self.release_borrow();
+            self.reacquire_borrow_mut()?;
+        }
         if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
             self.data
                 .serialize(&mut &mut guard[DISC_LEN..])
@@ -220,13 +230,9 @@ where
     }
 }
 
-/// Wrapper-level init for `BorshAccount<T>`: creates the underlying account
-/// (CPI to system program), writes the 8-byte discriminator, then borsh-
-/// deserializes `T` from the zero-filled tail so the in-memory state matches
-/// exactly what a subsequent `load()` would observe. Any deserialization
-/// failure propagates — types whose borsh schema rejects all-zero encoding
-/// cannot be `init`-ed this way and must be constructed through a custom
-/// handler.
+/// Init for `BorshAccount<T>`: creates the account, writes the discriminator,
+/// then borsh-deserializes `T` from the zero-filled tail. Types whose borsh
+/// schema rejects all-zero encoding cannot be `init`-ed this way.
 impl<T> AccountInitialize for BorshAccount<T>
 where
     T: BorshDeserialize + BorshSerialize + Owner + Discriminator,

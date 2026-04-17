@@ -8,7 +8,7 @@ license = "Apache-2.0"
 [features]
 default = ["alloc", "guardrails", "account-resize"]
 alloc = ["pinocchio/alloc"]
-idl-build = []
+idl-build = ["dep:serde_json"]
 # Opt-in v1-compat shims for users porting anchor-lang code. Currently
 # exposes `debug!` — a `msg!`-shaped macro that accepts any Rust format
 # string (`{:?}`, `{:x}`, dynamic width, …) via `alloc::format!`. Default-off
@@ -53,6 +53,10 @@ solana-program-log = { version = "1.1", features = ["macro"] }
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 wincode = { version = "0.5", features = ["derive"] }
+# Only pulled in under `idl-build`; the program-level IDL assembler uses it
+# to structurally split type defs into `accounts[]` + `types[]` entries
+# instead of doing byte-level surgery. Not shipped in production BPF binaries.
+serde_json = { version = "1", optional = true }
 
 [target.'cfg(target_os = "solana")'.dependencies]
 solana-define-syscall = "5.0"

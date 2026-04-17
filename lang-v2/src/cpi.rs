@@ -9,13 +9,8 @@ use {
 pub use pinocchio::cpi::{Seed as CpiSeed, Signer as CpiSigner};
 pub use pinocchio::instruction::{InstructionAccount, InstructionView};
 
-/// Largest `space` for which the const path is guaranteed not to
-/// overflow `u64`. Only referenced when the `const-rent` feature is on.
-///
-/// `(MAX_SAFE_SPACE + ACCOUNT_STORAGE_OVERHEAD) * DEFAULT_LAMPORTS_PER_BYTE`
-/// is the largest expression that fits in `u64`. In practice the Solana
-/// runtime caps account data at 10 MiB (~262× smaller than this bound) so
-/// the precondition is essentially unreachable from honest callers.
+/// Largest `space` that won't overflow `u64` in the const rent formula.
+/// In practice unreachable (Solana caps accounts at 10 MiB).
 #[cfg(feature = "const-rent")]
 const MAX_SAFE_SPACE: u64 = (u64::MAX / DEFAULT_LAMPORTS_PER_BYTE) - ACCOUNT_STORAGE_OVERHEAD;
 
@@ -191,13 +186,9 @@ pub fn create_program_address(
 
 /// Verify that `expected` matches the PDA derived from `seeds` and `program_id`.
 ///
-/// Computes `sha256` and compares the hash to `expected`. Does NOT
-/// check if the point is off-curve — the bump is assumed to be canonical
-/// (e.g. read from account data that was set during init, or precomputed at
-/// compile time). Callers passing untrusted bump values should use
-/// `find_and_verify_program_address` instead, which includes the curve check.
-///
-/// The seeds slice should already include the bump byte.
+/// Hash-only (no curve check) — assumes the bump is canonical. For
+/// untrusted bumps use `find_and_verify_program_address`. Seeds should
+/// already include the bump byte.
 #[inline(always)]
 pub fn verify_program_address(
     seeds: &[&[u8]],
@@ -228,18 +219,11 @@ pub fn verify_program_address(
 
 /// Like [`find_and_verify_program_address`] but skips `sol_curve_validate_point`.
 ///
-/// Safe when the caller can prove the account was signed for:
-/// - **`MIN_DATA_LEN > 0`**: account has data → was created via
-///   CreateAccount/Allocate (which require the account to be a signer).
-///   For PDAs, signing goes through `invoke_signed` →
-///   `create_program_address` which includes the runtime's curve check.
-/// - **`init`**: account is system-owned with `data_len == 0` → the
-///   subsequent CreateAccount/Allocate/Assign CPI requires signing →
-///   same reasoning.
-///
-/// Without the curve check the loop tries all 256 bumps via hash-and-compare.
-/// SHA-256 collision resistance ensures only the canonical bump matches
-/// the expected on-chain address.
+/// Safe when the account was signed for (`MIN_DATA_LEN > 0` or `init`):
+/// signing goes through `invoke_signed` → `create_program_address` which
+/// includes the runtime's own curve check. The loop tries all 256 bumps
+/// via hash-and-compare; SHA-256 collision resistance ensures only the
+/// canonical bump matches.
 #[inline(always)]
 pub fn find_and_verify_program_address_skip_curve(
     seeds: &[&[u8]],
@@ -471,13 +455,9 @@ fn create_prefunded(
 
 /// Realloc an account to a new size, adjusting rent as needed.
 ///
-/// Requires the `account-resize` feature (default-on). Disabling that
-/// feature also drops the pinocchio `account-resize` entrypoint hook that
-/// writes `data_len` into `RuntimeAccount.padding` for every non-duplicate
-/// account, so calling this without the hook would corrupt the stored
-/// `original_data_len` that `AccountView::resize()` reads back. The two
-/// have to move together, hence the compile-time gate rather than a
-/// runtime error.
+/// Requires `account-resize` feature (default-on). Without it the
+/// `original_data_len` tracking in `RuntimeAccount.padding` is absent,
+/// so `AccountView::resize()` would corrupt data — hence the compile gate.
 #[cfg(feature = "account-resize")]
 pub fn realloc_account(
     account: &mut AccountView,
@@ -494,12 +474,31 @@ pub fn realloc_account(
     if new_space > old_space {
         let deficit = required.saturating_sub(current_lamports);
         if deficit > 0 {
-            pinocchio_system::instructions::Transfer {
-                from: payer,
-                to: account,
-                lamports: deficit,
+            // SAFETY: Transfer writes lamports only (via raw pointer, not
+            // through the borrow system). BorshAccount's RefMut guards data
+            // bytes — disjoint region, no aliasing. The unchecked path
+            // bypasses pinocchio's borrow-flag check which would otherwise
+            // reject the CPI while the RefMut is held.
+            unsafe {
+                let cpi_accounts: [pinocchio::cpi::CpiAccount; 2] = [
+                    pinocchio::cpi::CpiAccount::from(payer),
+                    pinocchio::cpi::CpiAccount::from(&*account as &AccountView),
+                ];
+                let mut ix_data = [0u8; 12];
+                ix_data[0] = 2;
+                ix_data[4..12].copy_from_slice(&deficit.to_le_bytes());
+                let instruction = pinocchio::instruction::InstructionView {
+                    program_id: &pinocchio_system::ID,
+                    accounts: &[
+                        pinocchio::instruction::InstructionAccount::writable_signer(
+                            payer.address(),
+                        ),
+                        pinocchio::instruction::InstructionAccount::writable(account.address()),
+                    ],
+                    data: &ix_data,
+                };
+                pinocchio::cpi::invoke_unchecked(&instruction, &cpi_accounts);
             }
-            .invoke()?;
         }
     } else if new_space < old_space {
         let excess = current_lamports.saturating_sub(required);
@@ -518,10 +517,12 @@ pub fn realloc_account(
         }
     }
 
-    // SAFETY: realloc is called from derive-generated code on an AccountView
-    // whose backing Slab holds the conceptual borrow (borrow_state == 0).
-    // Using resize_unchecked bypasses pinocchio's check_borrow_mut() which
-    // would reject the operation due to the Slab's borrow flag.
+    // SAFETY: resize_unchecked writes data_len (a fixed-offset field
+    // before the data region) — disjoint from BorshAccount's RefMut
+    // which guards data[..]. Slab's borrow_state == 0 also triggers
+    // the checked path's rejection. The derive's realloc constraint
+    // does release/reacquire around this call; exit() has a fallback
+    // stale-length detector for non-derive callers.
     unsafe { account.resize_unchecked(new_space)? };
 
     if zero && new_space > old_space {

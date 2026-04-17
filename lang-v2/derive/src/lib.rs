@@ -228,11 +228,27 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let ix_args = parse_instruction_attrs(&input.attrs);
     let ix_arg_names: Vec<String> = ix_args.iter().map(|(n, _)| n.to_string()).collect();
 
+    // Compute the views-slice offset for each field. Direct fields occupy 1
+    // slot; `Nested<Inner>` fields occupy `Inner::HEADER_SIZE` slots. Each
+    // offset is a const expression resolved at monomorphization time.
+    let mut offset_exprs: Vec<proc_macro2::TokenStream> = Vec::new();
+    let mut current_offset: proc_macro2::TokenStream = quote::quote! { 0usize };
+    for f in named_fields.named.iter() {
+        offset_exprs.push(current_offset.clone());
+        if let Some(inner_ty) = parse::extract_nested_inner_type(&f.ty) {
+            current_offset = quote::quote! {
+                #current_offset + <#inner_ty as anchor_lang_v2::TryAccounts>::HEADER_SIZE
+            };
+        } else {
+            current_offset = quote::quote! { #current_offset + 1 };
+        }
+    }
+
     let fields: Vec<parse::AccountField> = named_fields
         .named
         .iter()
-        .enumerate()
-        .map(|(i, f)| parse::parse_field(f, &raw_field_names, i as u8, &ix_arg_names))
+        .zip(offset_exprs.into_iter())
+        .map(|(f, offset)| parse::parse_field(f, &raw_field_names, offset, &ix_arg_names))
         .collect();
 
     let field_names: Vec<_> = fields.iter().map(|f| &f.name).collect();
@@ -330,6 +346,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 docs: &f.idl_docs,
                 pda_json: pda_jsons[i].clone(),
                 field_ty: &f.idl_field_ty,
+                // `Nested<Inner>` flattens at IDL emission time by calling
+                // into `Inner::__idl_accounts()`. Grab the inner `Type` so
+                // the emitter can synthesize that call.
+                nested_inner_ty: parse::extract_nested_inner_type(&f.ty),
             }
         })
         .collect();
@@ -453,16 +473,15 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         impl anchor_lang_v2::TryAccounts for #name {
             const HEADER_SIZE: usize = #header_size_expr;
 
-            //
             #[inline]
             fn try_accounts(
                 __program_id: &anchor_lang_v2::Address,
-                __cursor: &mut anchor_lang_v2::AccountCursor,
+                __views: &[anchor_lang_v2::AccountView],
+                __duplicates: &anchor_lang_v2::AccountBitvec,
+                __base_offset: usize,
                 __ix_data: &[u8],
             ) -> anchor_lang_v2::Result<(Self, #bumps_name)> {
                 #ix_deser
-                let mut __loader = anchor_lang_v2::AccountLoader::new(__program_id, __cursor);
-                let (__views, __duplicates) = __loader.walk_n(Self::HEADER_SIZE);
                 #bumps_init
                 #(#loads)*
                 #(#constraints)*
@@ -504,7 +523,10 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
 #[proc_macro_attribute]
 pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let is_borsh = attr.to_string().contains("borsh");
+    let is_borsh = match parse_account_mode(attr) {
+        Ok(b) => b,
+        Err(err) => return err.to_compile_error().into(),
+    };
     let input = parse_macro_input!(item as DeriveInput);
     let name = &input.ident;
     let name_str = name.to_string();
@@ -648,24 +670,27 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
 // #[derive(IdlType)]
 // ---------------------------------------------------------------------------
 
-/// Register a plain (non-`#[account]`, non-`#[event]`) struct in the IDL's
-/// `types[]` array.
+/// Register a plain (non-`#[account]`, non-`#[event]`) struct or enum in
+/// the IDL's `types[]` array.
 ///
 /// V1 had `#[derive(IdlBuild)]` for the same purpose. Without this, a nested
-/// user-defined struct referenced by an `#[event]` / `#[account]` field
-/// appears in the outer type's JSON as `{"defined":{"name":"Inner"}}` but
-/// has no corresponding entry in `types[]` — TS clients then fail to decode
-/// the nested field.
+/// user-defined struct or enum referenced by an `#[event]` / `#[account]`
+/// field appears in the outer type's JSON as `{"defined":{"name":"Inner"}}`
+/// but has no corresponding entry in `types[]` — TS clients then fail to
+/// decode the nested field.
 ///
 /// Unlike `#[account]`, this derive carries **none** of the account-kind
 /// baggage: no discriminator, no `Owner`, no `Discriminator` trait, no
 /// forced `#[repr(C)]`, no Pod/Zeroable derives. It only emits the
-/// `IdlAccountType` impl so the struct gets picked up by the transitive
+/// `IdlAccountType` impl so the type gets picked up by the transitive
 /// walker.
 ///
-/// # Example
+/// Unions are rejected — the IDL spec has no tagged-union shape for them.
+///
+/// # Examples
 ///
 /// ```ignore
+/// // Plain struct dep.
 /// #[repr(C)]
 /// #[derive(Clone, Copy, Pod, Zeroable, IdlType)]
 /// pub struct Inner { pub a: u64, pub b: u64 }
@@ -675,6 +700,14 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///     pub outer_id: u64,
 ///     pub inner: Inner, // <- pulls `Inner` into the IDL's types[]
 /// }
+///
+/// // Enum dep — unit, tuple, and struct variants all supported.
+/// #[derive(IdlType)]
+/// pub enum Kind {
+///     Spot,
+///     Futures(u64),
+///     Margin { leverage: u8, symbol: [u8; 8] },
+/// }
 /// ```
 #[proc_macro_derive(IdlType)]
 pub fn derive_idl_type(input: TokenStream) -> TokenStream {
@@ -682,22 +715,10 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
     let name = &input.ident;
     let name_str = name.to_string();
 
-    let fields = match &input.data {
-        Data::Struct(data) => &data.fields,
-        _ => {
-            return syn::Error::new(
-                name.span(),
-                "`#[derive(IdlType)]` only supports structs",
-            )
-            .to_compile_error()
-            .into()
-        }
-    };
-
-    let struct_docs = idl::extract_doc_lines(&input.attrs);
-    // `IdlType` structs have no discriminator — they're just plain type
-    // definitions referenced from other structs. `build_type_json` still
-    // expects a discriminator for shape uniformity with `#[account]` /
+    let docs = idl::extract_doc_lines(&input.attrs);
+    // `IdlType` items have no discriminator — they're just plain type
+    // definitions referenced from other structs. `build_*_type_json` still
+    // expect a discriminator for shape uniformity with `#[account]` /
     // `#[event]`; we pass an empty slice and strip the discriminator field
     // downstream when splitting accounts vs types entries. The spec's
     // `IdlTypeDef` doesn't carry `discriminator`, so the program-level
@@ -706,32 +727,76 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
     // Default to `Borsh` serialization (no `serialization` / `repr` fields).
     // `IdlType` is layout-agnostic — users opt into Pod separately via
     // their own `bytemuck::Pod` derive if they need zero-copy. Forcing a
-    // `"bytemuck"` tag here would lie in the IDL for non-Pod structs.
-    let idl_type_json = if let Fields::Named(named) = fields {
-        idl::build_type_json(
-            &name_str,
-            &empty_disc,
-            &struct_docs,
-            &named.named,
-            idl::TypeKind::Borsh,
-        )
-    } else {
-        idl::build_type_json(
-            &name_str,
-            &empty_disc,
-            &struct_docs,
-            &syn::punctuated::Punctuated::new(),
-            idl::TypeKind::Borsh,
-        )
-    };
-
-    // Walk named fields for the transitive dep registration. Unnamed /
-    // unit structs contribute nothing to the walker (no inner fields to
-    // recurse into) — the empty expansion is correct.
-    let field_tys: Vec<&Type> = match fields {
-        Fields::Named(named) => named.named.iter().map(|f| &f.ty).collect(),
-        Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(|f| &f.ty).collect(),
-        Fields::Unit => Vec::new(),
+    // `"bytemuck"` tag here would lie in the IDL for non-Pod types.
+    let (idl_type_json, field_tys) = match &input.data {
+        Data::Struct(data) => {
+            let idl_json = match &data.fields {
+                Fields::Named(named) => idl::build_type_json(
+                    &name_str,
+                    &empty_disc,
+                    &docs,
+                    &named.named,
+                    idl::TypeKind::Borsh,
+                ),
+                // Unnamed (tuple) and unit structs are emitted with an empty
+                // named-fields array. The spec doesn't carry a tuple-struct
+                // distinction at the top level of `IdlTypeDef` — only enum
+                // variants get `IdlDefinedFields::Tuple` — so tuple structs
+                // fall through to struct-with-empty-fields. Users needing
+                // tuple shapes should prefer named fields.
+                _ => idl::build_type_json(
+                    &name_str,
+                    &empty_disc,
+                    &docs,
+                    &syn::punctuated::Punctuated::new(),
+                    idl::TypeKind::Borsh,
+                ),
+            };
+            // Walk named fields for the transitive dep registration. Unnamed
+            // / unit structs contribute nothing to the walker (no inner
+            // fields to recurse into) — the empty expansion is correct.
+            let field_tys: Vec<&Type> = match &data.fields {
+                Fields::Named(named) => named.named.iter().map(|f| &f.ty).collect(),
+                Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(|f| &f.ty).collect(),
+                Fields::Unit => Vec::new(),
+            };
+            (idl_json, field_tys)
+        }
+        Data::Enum(data) => {
+            let idl_json = idl::build_enum_type_json(
+                &name_str,
+                &empty_disc,
+                &docs,
+                &data.variants,
+                idl::TypeKind::Borsh,
+            );
+            // Every variant's fields contribute dependent types for the
+            // transitive walker — a `Foo::Bar(Inner)` variant needs to pull
+            // `Inner` into `types[]` just like a struct field would.
+            let field_tys: Vec<&Type> = data
+                .variants
+                .iter()
+                .flat_map(|v| match &v.fields {
+                    Fields::Named(named) => {
+                        named.named.iter().map(|f| &f.ty).collect::<Vec<_>>()
+                    }
+                    Fields::Unnamed(unnamed) => {
+                        unnamed.unnamed.iter().map(|f| &f.ty).collect()
+                    }
+                    Fields::Unit => Vec::new(),
+                })
+                .collect();
+            (idl_json, field_tys)
+        }
+        Data::Union(_) => {
+            return syn::Error::new(
+                name.span(),
+                "`#[derive(IdlType)]` does not support unions — use a struct \
+                 or enum instead",
+            )
+            .to_compile_error()
+            .into();
+        }
     };
 
     TokenStream::from(quote! {
@@ -1349,59 +1414,47 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
                 // Split each __IDL_TYPE into an `IdlAccount`
                 // (name + discriminator, spec:137-140) and an
-                // `IdlTypeDef` (everything else, spec:176-188). The
-                // serialized shape is:
+                // `IdlTypeDef` (everything else, spec:176-188). Each
+                // input string is a full type def:
                 //
                 //   {"name":"X","discriminator":[...][,"docs":[...]]
                 //    [,"serialization":"...","repr":{...}],
                 //    "type":{"kind":"struct","fields":[...]}}
                 //
-                // Accounts entries only want `name` + `discriminator`; the
-                // rest (docs, serialization, repr, type) belong in the
-                // types entry. Pull name+disc from the front up to the
-                // first non-disc field, and splice the remainder onto a
-                // fresh `{"name":"X", ...}` wrapper for the types list.
+                // We parse each one as structured JSON, pluck off
+                // `name` + `discriminator` for the accounts entry, drop
+                // `discriminator` for the types entry, and skip
+                // `IdlType`-registered plain types (empty discriminator)
+                // from `accounts[]` entirely.
                 let mut accounts_entries = Vec::new();
                 let mut types_entries = Vec::new();
                 for ty in &all_types {
-                    // Find the end of the discriminator array. The shape
-                    // is always `"discriminator":[<comma-separated u8s>]`
-                    // so we walk past the `]` that closes the array.
-                    let disc_key = "\"discriminator\":[";
-                    let Some(disc_start) = ty.find(disc_key) else { continue; };
-                    let after_bracket = disc_start + disc_key.len();
-                    let Some(close_offset) = ty[after_bracket..].find(']') else { continue; };
-                    let disc_end = after_bracket + close_offset + 1; // include `]`
-
-                    // name + discriminator (e.g. `{"name":"X","discriminator":[...]`).
-                    // `IdlType`-registered plain structs carry an empty
-                    // discriminator (`[]`) and should NOT land in the
-                    // top-level `accounts[]` array — only in `types[]`.
-                    // `close_offset == 0` means the closing `]` sits
-                    // immediately after the opening `[`.
-                    let disc_is_empty = close_offset == 0;
-                    let name_disc_prefix = &ty[..disc_end];
-                    if !disc_is_empty {
-                        accounts_entries.push(anchor_lang_v2::__alloc::format!(
-                            "{}}}", name_disc_prefix
-                        ));
+                    let Ok(mut parsed) =
+                        anchor_lang_v2::__serde_json::from_str::<
+                            anchor_lang_v2::__serde_json::Value,
+                        >(ty)
+                    else {
+                        continue;
+                    };
+                    let Some(obj) = parsed.as_object_mut() else { continue; };
+                    let Some(name) = obj.get("name").cloned() else { continue; };
+                    let disc = obj.remove("discriminator");
+                    let disc_is_empty = matches!(
+                        &disc,
+                        Some(anchor_lang_v2::__serde_json::Value::Array(a)) if a.is_empty()
+                    );
+                    if let Some(disc_v) = disc {
+                        if !disc_is_empty {
+                            let acct = anchor_lang_v2::__serde_json::json!({
+                                "name": name,
+                                "discriminator": disc_v,
+                            });
+                            accounts_entries.push(acct.to_string());
+                        }
                     }
-
-                    // Extract the bare struct name so the types entry is
-                    // a standalone `IdlTypeDef` with its own `name`.
-                    let Some(name) = ty
-                        .split("\"name\":\"")
-                        .nth(1)
-                        .and_then(|s| s.split('"').next())
-                    else { continue; };
-
-                    // Everything after the discriminator — `,"docs":...,"type":...`
-                    // — gets spliced as-is onto the types entry, minus the
-                    // discriminator itself (types don't carry one in the spec).
-                    let rest = &ty[disc_end..ty.len() - 1]; // strip trailing `}`
-                    types_entries.push(anchor_lang_v2::__alloc::format!(
-                        "{{\"name\":\"{}\"{}}}", name, rest,
-                    ));
+                    // `parsed` is now `{name, docs?, serialization?, repr?, type}` —
+                    // exactly the `IdlTypeDef` shape (spec:176-188).
+                    types_entries.push(parsed.to_string());
                 }
 
                 let crate_name = env!("CARGO_CRATE_NAME").replace('-', "_");
@@ -1454,35 +1507,49 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
 /// Attribute macro that marks a struct as an event.
 ///
-/// Two modes:
+/// Three modes:
 ///
-/// **Default (zero-copy, fixed-size).** Emits `#[repr(C)]` + a raw
-/// `copy_nonoverlapping` of the struct bytes. Fastest, but the struct must
-/// contain only fixed-size, non-fat-pointer fields (no `Vec`/`String`/`Box`/
-/// `Option`/enums/maps) and must have zero `repr(C)` padding. Both invariants
-/// are enforced at compile time — fat-pointer fields emit a spanned error,
-/// padding trips a `const` assertion that tells the author to reorder fields
-/// by descending alignment.
+/// **Default (`#[event]`, wincode).** Derives `wincode::SchemaWrite` and
+/// serializes via `wincode::serialize_into`. Supports arbitrary layouts,
+/// including `Vec`/`String`/`Option`/enums, and is materially cheaper than
+/// borsh on SBF (see `cu-bench` — roughly 3–10× fewer CUs depending on
+/// shape). This is the right default for almost every event.
 ///
-/// **`#[event(borsh)]`.** Emits a `borsh::BorshSerialize` derive and uses
-/// borsh to serialize. Matches v1 semantics — supports any borsh-serializable
-/// type. Slower, but correct for dynamic-size events and avoids the padding
-/// trap.
+/// **`#[event(bytemuck)]`.** Emits `#[repr(C)]` + a raw `copy_nonoverlapping`
+/// of the struct bytes. Fastest of the three for fixed-size events, but the
+/// struct must contain only fixed-size, non-fat-pointer fields (no
+/// `Vec`/`String`/`Box`/`Option`/enums/maps) and must have zero `repr(C)`
+/// padding. Both invariants are enforced at compile time. Opt into this only
+/// when the event is on a hot path and profiling shows wincode's per-field
+/// encoding is the bottleneck.
 ///
-/// Both modes share the same discriminator and `Event::data()` contract, so
-/// `emit!` works identically.
+/// **`#[event(borsh)]`.** Emits a `borsh::BorshSerialize` derive. Matches v1
+/// semantics and wire format. Retained for IDL compatibility with existing
+/// off-chain consumers that decode via borsh; prefer the default otherwise.
+///
+/// All three modes share the same discriminator and `Event::data()` contract,
+/// so `emit!` works identically. The IDL carries a `serialization` tag so TS
+/// clients know how to decode.
 ///
 /// # Examples
 ///
 /// ```ignore
-/// // Default: fastest, layout-constrained.
+/// // Default: wincode, supports dynamic fields.
 /// #[event]
 /// pub struct DepositRecorded {
 ///     pub ledger: [u8; 32],
 ///     pub amount: u64,
+///     pub memo: String,
 /// }
 ///
-/// // Opt-in borsh: slower, unconstrained.
+/// // Opt-in bytemuck: cheapest on fixed-size hot-path events.
+/// #[event(bytemuck)]
+/// pub struct TickUpdate {
+///     pub price: u64,
+///     pub ts: u64,
+/// }
+///
+/// // Opt-in borsh: v1-compatible wire format.
 /// #[event(borsh)]
 /// pub struct MetadataUpdated {
 ///     pub uri: String,
@@ -1523,11 +1590,13 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // Build the `--- IDL begin event ---` payload. `idl/src/build.rs` expects
     // a JSON object with `event: IdlEvent` (name + discriminator) plus
-    // `types: Vec<IdlTypeDef>` (the full struct definition). Pod-mode events
-    // carry `serialization:"bytemuck",repr:{"kind":"c"}`; borsh-mode events
-    // fall back to the spec default (both fields skipped on serialize).
+    // `types: Vec<IdlTypeDef>` (the full struct definition). Each mode tags
+    // its own serialization; borsh uses the spec default (skip_serializing_if
+    // strips it), bytemuck adds `{serialization:"bytemuck",repr:{kind:"c"}}`,
+    // wincode uses the `Custom(String)` escape hatch.
     let type_kind = match mode {
-        EventMode::Pod => idl::TypeKind::BytemuckRepr,
+        EventMode::Wincode => idl::TypeKind::Wincode,
+        EventMode::Bytemuck => idl::TypeKind::BytemuckRepr,
         EventMode::Borsh => idl::TypeKind::Borsh,
     };
     let struct_docs = idl::extract_doc_lines(attrs);
@@ -1610,7 +1679,40 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     match mode {
-        EventMode::Pod => {
+        EventMode::Wincode => TokenStream::from(quote! {
+            // `#[derive(wincode::SchemaWrite)]` lays down the per-field encoder.
+            // No `repr(C)` — wincode is layout-agnostic (it walks the derived
+            // schema, not the in-memory byte layout) so the compiler is free
+            // to pick whichever Rust layout is best.
+            #[derive(anchor_lang_v2::wincode::SchemaWrite)]
+            #(#attrs)*
+            #vis struct #name #fields
+
+            #discriminator_impl
+
+            impl anchor_lang_v2::Event for #name {
+                fn data(&self) -> anchor_lang_v2::__alloc::vec::Vec<u8> {
+                    let disc = <Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
+                    // 256-byte preallocation matches the instruction-data
+                    // emission site (derive/src/lib.rs ~line 971). Wincode
+                    // has no `encoded_size()` yet, so this is a best-guess
+                    // that avoids a reallocation for typical event shapes.
+                    let mut buf = anchor_lang_v2::__alloc::vec::Vec::with_capacity(
+                        disc.len() + 256,
+                    );
+                    buf.extend_from_slice(disc);
+                    anchor_lang_v2::wincode::serialize_into(&mut buf, self)
+                        .expect("`#[event]` wincode serialization cannot fail for \
+                                 derived SchemaWrite types");
+                    buf
+                }
+            }
+
+            #idl_account_type_impl
+
+            #idl_event_print
+        }),
+        EventMode::Bytemuck => {
             let field_types: Vec<_> = fields.iter().map(|f| &f.ty).collect();
 
             // Targeted diagnostics for common non-Pod field types. Fires
@@ -1782,36 +1884,70 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 enum EventMode {
-    Pod,
+    Wincode,
+    Bytemuck,
     Borsh,
 }
 
-fn parse_event_mode(attr: TokenStream) -> Result<EventMode, syn::Error> {
+/// Parse the `#[account]` attribute's optional mode argument.
+///
+/// Accepts: `#[account]` (default → zero-copy Pod) or `#[account(borsh)]`.
+/// Previously this was `attr.to_string().contains("borsh")`, which silently
+/// accepted typos like `#[account(borhs)]` as zero-copy — the struct would
+/// compile under the wrong layout and clients decoding it as borsh would
+/// get garbage.
+fn parse_account_mode(attr: TokenStream) -> Result<bool, syn::Error> {
     if attr.is_empty() {
-        return Ok(EventMode::Pod);
+        return Ok(false);
     }
     let attr2: proc_macro2::TokenStream = attr.into();
     let ident: syn::Ident = syn::parse2(attr2.clone()).map_err(|_| {
         syn::Error::new_spanned(
             &attr2,
-            "expected `#[event]` or `#[event(borsh)]` — no other arguments are supported",
+            "expected `#[account]` or `#[account(borsh)]` — no other \
+             arguments are supported",
         )
     })?;
     if ident == "borsh" {
-        Ok(EventMode::Borsh)
+        Ok(true)
     } else {
         Err(syn::Error::new_spanned(
             ident,
-            "unknown `#[event]` mode — only `borsh` is accepted",
+            "unknown `#[account]` mode — only `borsh` is accepted",
         ))
     }
 }
 
-/// Targeted diagnostics for common non-Pod field types on default
-/// `#[event]` structs. Same shape as `diagnose_non_pod_field` for
-/// `#[account]`, but suggests `#[event(borsh)]` as the dynamic-fields
-/// fallback (events have one; zero-copy accounts don't). Returns `None` for
-/// types we can't recognize by name — the emitted `assert_pod::<T>` bound
+fn parse_event_mode(attr: TokenStream) -> Result<EventMode, syn::Error> {
+    if attr.is_empty() {
+        return Ok(EventMode::Wincode);
+    }
+    let attr2: proc_macro2::TokenStream = attr.into();
+    let ident: syn::Ident = syn::parse2(attr2.clone()).map_err(|_| {
+        syn::Error::new_spanned(
+            &attr2,
+            "expected `#[event]`, `#[event(bytemuck)]`, or `#[event(borsh)]` — \
+             no other arguments are supported",
+        )
+    })?;
+    if ident == "bytemuck" {
+        Ok(EventMode::Bytemuck)
+    } else if ident == "borsh" {
+        Ok(EventMode::Borsh)
+    } else {
+        Err(syn::Error::new_spanned(
+            ident,
+            "unknown `#[event]` mode — only `bytemuck` and `borsh` are accepted",
+        ))
+    }
+}
+
+/// Targeted diagnostics for common non-Pod field types on
+/// `#[event(bytemuck)]` structs. Bytemuck mode is strict by design —
+/// `Vec`/`String`/`Option`/etc. can't round-trip through a `copy_nonoverlapping`
+/// of the struct bytes. The hint steers authors to drop the `bytemuck` flag
+/// (getting the wincode default, which handles these fine). Returns `None`
+/// for types we can't recognize by name — the `assert_pod::<T>` bound
 /// catches those generically via `bytemuck::Pod`.
 fn diagnose_non_pod_event_field(ty: &Type, field_name: &str) -> Option<String> {
     let Type::Path(tp) = ty else { return None };
@@ -1820,40 +1956,42 @@ fn diagnose_non_pod_event_field(ty: &Type, field_name: &str) -> Option<String> {
     match ident.as_str() {
         "Vec" => Some(format!(
             "event field `{field_name}` uses `Vec`, which is a fat pointer — the \
-             zero-copy memcpy serializer would emit the `(ptr, len, cap)` bits \
-             instead of the elements. Use `[T; N]` for a fixed-size array, or \
-             switch the event to `#[event(borsh)]` for dynamic payloads."
+             `#[event(bytemuck)]` memcpy path would emit the `(ptr, len, cap)` \
+             bits instead of the elements. Use `[T; N]` for a fixed-size array, \
+             or drop the `bytemuck` attribute to use the default wincode \
+             encoding, which handles `Vec` natively."
         )),
         "String" => Some(format!(
             "event field `{field_name}` uses `String`, which is a fat pointer — \
-             the zero-copy memcpy serializer would emit the `(ptr, len, cap)` \
-             bits instead of the UTF-8 bytes. Use `[u8; N]` for a bounded \
-             buffer, or switch the event to `#[event(borsh)]` for dynamic \
-             strings."
+             the `#[event(bytemuck)]` memcpy path would emit the `(ptr, len, \
+             cap)` bits instead of the UTF-8 bytes. Use `[u8; N]` for a bounded \
+             buffer, or drop the `bytemuck` attribute to use the default \
+             wincode encoding, which handles `String` natively."
         )),
         "Option" => Some(format!(
-            "event field `{field_name}` uses `Option`, whose niche-or-tag layout \
-             isn't guaranteed to match borsh's `(tag: u8, payload)` encoding on \
-             the client side. Use a sentinel value (e.g. an all-zero `[u8; 32]` \
-             for \"no address\"), or switch the event to `#[event(borsh)]`."
+            "event field `{field_name}` uses `Option`, whose niche-or-tag \
+             layout isn't guaranteed to match the client decoder. Use a \
+             sentinel value (e.g. an all-zero `[u8; 32]` for \"no address\"), \
+             or drop the `bytemuck` attribute to use the default wincode \
+             encoding."
         )),
         "Box" | "Rc" | "Arc" | "Cow" | "Weak" => Some(format!(
             "event field `{field_name}` uses `{ident}`, which is a heap/shared \
-             pointer — its bytes are a pointer, not the referenced data. Inline \
-             the value directly (`T` instead of `{ident}<T>`), or switch the \
-             event to `#[event(borsh)]`."
+             pointer — its bytes are a pointer, not the referenced data. \
+             Inline the value directly (`T` instead of `{ident}<T>`), or drop \
+             the `bytemuck` attribute to use the default wincode encoding."
         )),
         "HashMap" | "HashSet" | "BTreeMap" | "BTreeSet" | "BinaryHeap"
         | "LinkedList" | "VecDeque" => Some(format!(
             "event field `{field_name}` uses `{ident}`, which allocates on the \
-             heap. Switch the event to `#[event(borsh)]` for dynamic \
-             collections."
+             heap. Drop the `bytemuck` attribute to use the default wincode \
+             encoding, which handles dynamic collections."
         )),
         "bool" => Some(format!(
             "event field `{field_name}` is `bool`. `bytemuck` disallows `bool` \
              as Pod because only `0x00` and `0x01` are valid — any other byte \
              is UB. Use a `u8` and treat `0` / non-zero as the boolean, or \
-             switch the event to `#[event(borsh)]`."
+             drop the `bytemuck` attribute to use the default wincode encoding."
         )),
         _ => None,
     }

@@ -1,13 +1,9 @@
-//! Hooks that `Slab<H, T>` requires from its header type `H`. Factored out
-//! of `slab.rs` so the Slab machinery itself stays focused on the wrapper
-//! logic (load/validate/deref/close).
+//! Hooks that `Slab<H, T>` requires from its header type `H`.
 //!
-//! - [`SlabSchema`] — bytes-level layout + validation (offset, owner, discriminator, size).
-//!   Every `#[account]` type gets a default via the `Owner + Discriminator`
-//!   blanket; SPL `Mint` / `TokenAccount` override directly.
-//! - [`SlabInit`] — bytes-level init (create + disc write by default, SPL
-//!   CPI for `Mint`/`TokenAccount`). Invoked by `Slab<H, _>`'s
-//!   `AccountInitialize` forward impl.
+//! - [`SlabSchema`] — layout + validation (offset, owner, disc, size).
+//!   Blanket impl for `Owner + Discriminator`; SPL types override.
+//! - [`SlabInit`] — bytes-level init (create + disc write). Blanket impl
+//!   for `Owner + Discriminator`; SPL types override with CPI.
 
 use {
     crate::{Discriminator, Owner},

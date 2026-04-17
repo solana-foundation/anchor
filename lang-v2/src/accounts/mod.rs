@@ -22,40 +22,20 @@ pub use {
 
 /// Anchor account with a typed header and no trailing items.
 ///
-/// This is the common case — a one-struct-per-account layout where the
-/// account's data bytes are `[disc][T]`. It's a thin type alias over
-/// [`Slab<T, HeaderOnly>`], which means `Account<T>` shares all of `Slab`'s
-/// validation, borrow-tracking, init, and close machinery. The layout is
-/// byte-identical to the pre-Slab `Account<T>` (the `HeaderOnly` marker is
-/// a ZST that doesn't implement `Pod`, so the tail-only impl block never
-/// matches and the length field is never emitted), so existing on-chain
-/// accounts stay readable and no migration is required.
+/// Alias for `Slab<T, HeaderOnly>` — layout is `[disc][T]`. Shares all of
+/// Slab's validation, borrow-tracking, init, and close machinery.
+/// `HeaderOnly` is a ZST that doesn't impl `Pod`, so tail-only methods
+/// (`len`, `push`, `as_slice`, ...) are "method not found" compile errors.
+/// Layout is byte-identical to the pre-Slab `Account<T>` (no migration).
 ///
-/// Tail-only methods (`len`, `push`, `as_slice`, etc.) are compile errors
-/// on `Account<T>` — they live in an `impl<H, T> Slab<H, T> where T: Pod`
-/// block that `HeaderOnly` doesn't satisfy. The error is the standard
-/// "method not found" from the compiler.
-///
-/// For accounts with a length-prefixed tail, use [`Slab<H, T>`] directly:
-/// ```ignore
-/// #[derive(Accounts)]
-/// pub struct Grow {
-///     #[account(mut)]
-///     pub ledger: Slab<Ledger, Entry>,  // tail of `Entry` items
-/// }
-/// ```
+/// For accounts with a length-prefixed tail, use `Slab<H, T>` directly.
 ///
 /// ## `#[account(owner = X @ MyErr)]` does NOT surface `MyErr`
 ///
-/// Owner validation runs inside the wrapper's `load`/`load_mut`, before any
-/// derive-level constraint hook. A mismatch surfaces as
-/// `ProgramError::IllegalOwner`, never as the user's `@ MyErr` code. The
-/// same is true for the discriminator check.
-///
-/// To get a custom error code on owner mismatch, use `UncheckedAccount`
-/// (no built-in owner validation) and rely on the derive-level
-/// `owner = X @ MyErr` as the authoritative check. You'll need to handle
-/// the discriminator and any zero-copy field access by hand.
+/// Owner/discriminator validation runs inside `load`/`load_mut`, before
+/// any derive-level constraint hook. A mismatch surfaces as
+/// `ProgramError::IllegalOwner`, not the user's `@ MyErr` code. For a
+/// custom error, use `UncheckedAccount` with derive-level `owner = X @ MyErr`.
 pub type Account<T> = slab::Slab<T, HeaderOnly>;
 
 /// Generates `Deref<Target=AccountView>` + `AsRef<AccountView>` + `AsRef<Address>`

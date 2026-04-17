@@ -257,6 +257,45 @@ export class Program<IDL extends Idl = Idl> {
   private _coder: Coder;
 
   /**
+   * Return the discriminator bytes for an instruction, account, or event by
+   * name. Reads straight from the IDL — the v2 derive bakes
+   * `sha256("{kind}:{name}")[..8]` into every entry at macro time, so this
+   * is a lookup, not a recomputation. Safer than rolling your own sighash
+   * in tests because it transparently handles `#[discrim = N]`-overridden
+   * discriminators and any future encoding changes.
+   *
+   * ```ts
+   * const ix = new TransactionInstruction({
+   *   programId: program.programId,
+   *   keys: [...],
+   *   data: program.discriminator("instruction", "increment"),
+   * });
+   * ```
+   *
+   * Throws if the name isn't in the IDL section.
+   */
+  public discriminator(
+    kind: "instruction" | "account" | "event",
+    name: string,
+  ): Buffer {
+    const section =
+      kind === "instruction"
+        ? this._rawIdl.instructions
+        : kind === "account"
+          ? this._rawIdl.accounts ?? []
+          : this._rawIdl.events ?? [];
+    const entry = (section as Array<{ name: string; discriminator?: number[] }>).find(
+      (e) => e.name === name,
+    );
+    if (!entry?.discriminator) {
+      throw new Error(
+        `anchor: no ${kind} named '${name}' with a discriminator in the IDL`,
+      );
+    }
+    return Buffer.from(entry.discriminator);
+  }
+
+  /**
    * Wallet and network provider.
    */
   public get provider(): Provider {

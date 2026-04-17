@@ -71,15 +71,10 @@ where
     const DISCRIMINATOR: &'static [u8] = H::DISCRIMINATOR;
 }
 
-// Compute `Space::INIT_SPACE` directly from `size_of::<H>()` so the
-// `#[account(init)]` macro can fall back to `<Account<T> as Space>::INIT_SPACE`
-// without requiring users to derive `InitSpace` on the header type. Safe
-// because `H: Pod` guarantees a fully-defined layout with no uninit bytes —
-// `size_of::<H>()` equals the exact byte count the zero-copy serializer
-// writes. The `+ 8` accounts for the discriminator at `[0..8]`, matching
-// `BorshAccount`'s impl. `Account<T>` uses `HeaderOnly` as its ZST tail,
-// so this gives the full on-wire size; item-carrying Slabs pay capacity at
-// runtime and should specify `space` explicitly.
+// `INIT_SPACE = 8 + size_of::<H>()` — no `H: Space` bound needed since
+// `H: Pod` guarantees a fully-defined layout. Gives the full on-wire size
+// for header-only accounts; item-carrying Slabs should specify `space`
+// explicitly.
 impl<H, T> crate::Space for Slab<H, T>
 where
     H: Pod + Zeroable + SlabSchema,
@@ -96,49 +91,26 @@ where
 ///
 /// ## Layout
 ///
-/// - `[0..8]` — 8-byte discriminator (from `H::DISCRIMINATOR`)
-/// - `[8..HEADER_END]` — the header `H` (read via `Deref<Target = H>`)
-/// - when `T` is not a ZST:
-///   - `[HEADER_END..HEADER_END+4]` — `u32 len` (current number of items)
-///   - padding bytes until `ITEMS_OFFSET` is aligned to `align_of::<T>()`
-///   - `[ITEMS_OFFSET..ITEMS_OFFSET + capacity * size_of::<T>()]` — raw items
-/// - when `T` is a ZST (the default `Account<T> = Slab<T, HeaderOnly>` case):
-///   - nothing after the header; layout is byte-identical to pre-rewrite
-///     `Account<T>`, no rent change, no migration.
-///
-/// `capacity` is derived at load time from the account's current data length,
-/// so it's fully dynamic — the user picks `space` at init (or grows it via
-/// `resize_to_capacity`) and this type handles the pointer math.
+/// `[disc:8][H]` — when `T` is a ZST (`Account<T> = Slab<T, HeaderOnly>`).
+/// `[disc:8][H][len:u32][pad][items...]` — when `T: Pod` (non-ZST).
+/// Capacity is derived from `view.data_len()` at load time.
 ///
 /// ## Rent responsibility
 ///
-/// This type deliberately does **not** touch lamports during push/pop/clear
-/// or during `resize_to_capacity`. Rent management is the caller's job — we
-/// only expose the information they need:
-///
-/// - [`Slab::min_lamports`] — rent-exempt floor for the account's current size
-/// - [`Slab::space_for`] — `const fn` to size a `#[account(init, space = ...)]`
-/// - [`Slab::top_up`] / [`Slab::refund`] — lamport movement helpers the handler
-///   composes after a resize
+/// Push/pop/clear/`resize_to_capacity` do **not** touch lamports. Use
+/// [`min_lamports`](Slab::min_lamports), [`top_up`](Slab::top_up),
+/// [`refund`](Slab::refund), and [`space_for`](Slab::space_for).
 ///
 /// ## Tail-only methods
 ///
-/// `try_push`, `pop`, `clear`, `truncate`, `swap_remove`, and `Index<usize>`
-/// live in an `impl<H, T> Slab<H, T> where T: Pod` block. `HeaderOnly`
-/// doesn't implement `Pod`, so calling them on `Account<T>` =
-/// `Slab<T, HeaderOnly>` is a plain "method not found" compile error rather
-/// than a runtime no-op.
+/// `try_push`, `pop`, `clear`, `truncate`, `swap_remove`, `Index<usize>`
+/// require `T: Pod`; `HeaderOnly` doesn't impl `Pod`, so these are
+/// compile errors on `Account<T>`.
 ///
 /// ## Internals
 ///
-/// Holds a cached typed pointer to the header. The pointer is valid for the
-/// entire instruction lifetime (Solana runtime guarantee). Duplicate mutable
-/// account detection is handled at deserialization time by the derive macro,
-/// so no pinocchio borrow guard is needed here. Field access goes through
-/// the cached pointer with no per-access dispatch in the common case.
-///
-/// The `is_mutable` flag distinguishes read-only loads from mutable ones;
-/// `DerefMut` panics on a read-only `Slab` (missing `#[account(mut)]`).
+/// Caches a typed pointer to `H` (valid for the instruction lifetime).
+/// `is_mutable` gates `DerefMut` to catch missing `#[account(mut)]`.
 pub struct Slab<H, T = HeaderOnly>
 where
     H: Pod + Zeroable + SlabSchema,
@@ -261,13 +233,7 @@ where
     }
 
     /// Low-level constructor: set up `header_ptr` with write provenance,
-    /// return a `Slab` with no validation. Shared by `load_mut_after_init`
-    /// (which calls it directly) and `load_mut` (which calls it via
-    /// `load_mut_after_init` then validates on top).
-    ///
-    /// Under `guardrails`, includes a minimum-length check so the
-    /// cached `header_ptr` points at bytes that actually exist in the
-    /// account data region.
+    /// no validation. Under `guardrails`, includes a minimum-length check.
     #[inline(always)]
     fn build_mutable(view: AccountView) -> Result<Self, ProgramError> {
         // SAFETY: AccountView's data pointer is valid for the instruction lifetime.
@@ -301,9 +267,7 @@ where
     // Rent helpers — work for both header-only and tail forms.
     // -----------------------------------------------------------------------
 
-    /// Rent-exempt lamport minimum for the account's **current** data length.
-    ///
-    /// Minimum lamports for rent exemption at the current account size.
+    /// Rent-exempt lamport minimum for the account's current data length.
     /// Uses runtime sysvar by default; `const-rent` feature uses baked-in rate.
     #[inline]
     pub fn min_lamports(&self) -> Result<u64, ProgramError> {
@@ -360,12 +324,8 @@ where
 }
 
 // ===========================================================================
-// Tail-only impl block
-//
-// The `T: Pod` bound makes every method in this block *invisible* for
-// `Slab<H, HeaderOnly>` = `Account<H>`, because `HeaderOnly` doesn't
-// implement `Pod`. Calling `.len()` / `.push()` / `.as_slice()` on an
-// `Account<Counter>` becomes a plain "method not found" compile error.
+// Tail-only impl block — `T: Pod` bound excludes `HeaderOnly`, so these
+// methods are "method not found" compile errors on `Account<H>`.
 // ===========================================================================
 
 impl<H, T> Slab<H, T>
@@ -582,15 +542,9 @@ where
     }
 
     /// Resize the account's data region to hold `new_capacity` items without
-    /// touching lamports. After calling this, compose with `top_up` (grow)
-    /// or `refund` (shrink) to get back to the rent floor.
-    ///
-    /// `header_ptr` is re-derived after the resize — on SBF the data region
-    /// is stable (pinocchio pre-allocates `MAX_PERMITTED_DATA_INCREASE` bytes
-    /// of padding after each account), but re-deriving is cheap and
-    /// future-proofs against any runtime that *does* relocate the buffer.
-    /// `guard_bytes*` derive their slice length from `view.data_len()` on
-    /// every call, so they see the updated size without any further action.
+    /// touching lamports. Compose with `top_up` / `refund` afterward to
+    /// settle rent. Re-derives `header_ptr` after the resize; `guard_bytes*`
+    /// pick up the new size from `view.data_len()` automatically.
     #[cfg(feature = "account-resize")]
     pub fn resize_to_capacity(&mut self, new_capacity: usize) -> Result<(), ProgramError> {
         use pinocchio::Resize;
@@ -648,20 +602,13 @@ where
         Ok(slab)
     }
 
-    /// Fast-path `load_mut` for the post-`create_and_initialize` case. Skips
-    /// `H::validate` (owner / disc / min-length all tautologies: the
-    /// system program set the owner, we just wrote the disc, and
-    /// `create_account` allocated exactly `ITEMS_OFFSET + 0 * size_of::<T>()`
-    /// bytes). Also skips `validate_tail` because `len == 0` is guaranteed
-    /// by the zero-init semantics of `create_account`.
-    ///
-    /// Under `guardrails`, `build_mutable` still does a length check so the
-    /// cached `header_ptr` is valid. Under `guardrails = off`, drops it too.
+    /// Fast-path `load_mut` after `create_and_initialize`. Skips
+    /// `H::validate` and `validate_tail` (all tautologies post-init).
     ///
     /// # Safety
     ///
-    /// See [`AnchorAccount::load_mut`] — caller must ensure no other live
-    /// `&mut` to the same account data exists.
+    /// See [`AnchorAccount::load_mut`] — no other live `&mut` to the
+    /// same account data.
     #[inline(always)]
     unsafe fn load_mut_after_init(
         view: AccountView,

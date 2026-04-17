@@ -69,12 +69,9 @@ impl<'a, T: ToCpiAccounts<'a>> CpiContext<'a, T> {
         self
     }
 
-    /// Invoke the CPI with the given instruction data.
-    ///
-    /// Collects instruction accounts and CPI handles from the typed
-    /// accounts struct (via [`ToCpiAccounts`]), appends remaining
-    /// accounts, converts signer seeds to pinocchio's format, and
-    /// calls `invoke_signed_unchecked`.
+    /// Invoke the CPI with the given instruction data. Collects accounts
+    /// from [`ToCpiAccounts`], appends remaining accounts, and calls
+    /// `invoke_signed_unchecked`.
     pub fn invoke(&self, data: &[u8]) -> Result<(), ProgramError> {
         let mut instruction_accounts = self.accounts.to_instruction_accounts();
         let mut handles = self.accounts.to_cpi_handles();

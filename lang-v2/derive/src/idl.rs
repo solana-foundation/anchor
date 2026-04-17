@@ -1,45 +1,81 @@
 //! IDL generation helpers.
+//!
+//! All macro-time JSON construction goes through `serde_json::Value` and
+//! serializes once at the boundary. Hand-rolled `format!()` string splicing
+//! is a footgun — an unescaped quote in a doc comment or a malformed
+//! `Custom(String)` shape would silently produce invalid JSON, and the
+//! failure surfaces far downstream as "unknown variant" or parser
+//! crashes in TS clients. Using `serde_json::json!()` and `Value` gets
+//! escaping, composition, and round-trip fidelity for free.
+//!
+//! The one exception is [`build_accounts_emission`]: it generates a runtime
+//! `__idl_accounts()` function that assembles JSON at test time (inside the
+//! program crate, not the macro), and pulling `serde_json` into the user's
+//! program is not worth it — those format! calls are controlled and tested.
 
 use {
     proc_macro2::TokenStream as TokenStream2,
     quote::quote,
+    serde_json::{json, Value},
     syn::{Expr, Lit, Type},
 };
 
-/// Convert a Rust type to its IDL JSON representation.
-pub fn rust_type_to_idl(ty: &Type) -> String {
-    type_str_to_idl(&quote!(#ty).to_string().replace(' ', ""))
+/// Convert a Rust type to its IDL JSON representation (as a `serde_json`
+/// value ready to splice into a containing `Value`). See [`rust_type_to_idl`]
+/// for the stringified convenience wrapper.
+pub fn rust_type_to_idl_value(ty: &Type) -> Value {
+    type_str_to_idl_value(&quote!(#ty).to_string().replace(' ', ""))
 }
 
-/// Convert a stringified Rust type to IDL JSON.
-fn type_str_to_idl(s: &str) -> String {
-    // Strip lifetimes and leading `&` (reference) so `&'a [u64]` → `[u64]`.
+/// String-returning convenience wrapper around [`rust_type_to_idl_value`].
+/// Kept for callers that splice the result into runtime `format!()` templates.
+pub fn rust_type_to_idl(ty: &Type) -> String {
+    rust_type_to_idl_value(ty).to_string()
+}
+
+/// Convert a stringified Rust type to an IDL JSON value.
+fn type_str_to_idl_value(s: &str) -> Value {
     let s = strip_ref_and_lifetime(s);
     let s = s.as_str();
     match s {
         "u8" | "u16" | "u32" | "u64" | "u128" | "i8" | "i16" | "i32" | "i64" | "i128" | "bool" => {
-            format!("\"{s}\"")
+            Value::String(s.to_owned())
         }
-        "String" | "string" | "str" => "\"string\"".into(),
-        "Pubkey" | "Address" | "pubkey" => "\"pubkey\"".into(),
-        "bytes" => "\"bytes\"".into(),
-        // `&[u8]` → bytes
-        "[u8]" => "\"bytes\"".into(),
-        // `&[T]` slice → vec<T>
+        // Pod wrappers (`lang-v2/src/pod.rs`) drop alignment to 1 so the type
+        // fits in `repr(C)` zero-copy accounts without padding, but the
+        // on-disk byte representation is bit-identical to the corresponding
+        // primitive (8 bytes LE for `PodU64`, one byte for `PodBool`, etc.).
+        // Report them as primitives so the TS coder's default borsh path
+        // decodes them without a registered `types[]` entry or hand-rolled
+        // readers. `PodVec<T, N>` stays defined — its layout is non-trivial.
+        "PodU16" => Value::String("u16".into()),
+        "PodU32" => Value::String("u32".into()),
+        "PodU64" => Value::String("u64".into()),
+        "PodU128" => Value::String("u128".into()),
+        "PodI16" => Value::String("i16".into()),
+        "PodI32" => Value::String("i32".into()),
+        "PodI64" => Value::String("i64".into()),
+        "PodI128" => Value::String("i128".into()),
+        "PodBool" => Value::String("bool".into()),
+        "String" | "string" | "str" => Value::String("string".into()),
+        "Pubkey" | "Address" | "pubkey" => Value::String("pubkey".into()),
+        "bytes" | "[u8]" => Value::String("bytes".into()),
+        // `&[T]` slice (no `;`) → vec<T>
         _ if s.starts_with('[') && s.ends_with(']') && !s.contains(';') => {
             let inner = &s[1..s.len() - 1];
-            format!("{{\"vec\":{}}}", type_str_to_idl(inner))
+            json!({ "vec": type_str_to_idl_value(inner) })
         }
         // `[T; N]` array
         _ if s.starts_with('[') && s.ends_with(']') && s.contains(';') => {
             let inner = &s[1..s.len() - 1];
             if let Some((ty_part, n_part)) = inner.split_once(';') {
-                let ty_json = type_str_to_idl(ty_part);
-                // Try to parse as integer literal; if const expression, use 0 as placeholder
+                let ty_json = type_str_to_idl_value(ty_part);
+                // Const expressions that aren't plain integer literals fall
+                // through to 0 as a placeholder — matches the prior behavior.
                 let size = n_part.trim().parse::<usize>().unwrap_or(0);
-                format!("{{\"array\":[{ty_json},{size}]}}")
+                json!({ "array": [ty_json, size] })
             } else {
-                format!("{{\"defined\":{{\"name\":\"{s}\"}}}}")
+                json!({ "defined": { "name": s } })
             }
         }
         _ if s.starts_with("Vec<") => {
@@ -47,23 +83,48 @@ fn type_str_to_idl(s: &str) -> String {
                 .strip_prefix("Vec<")
                 .and_then(|s| s.strip_suffix('>'))
                 .expect("syn-generated type string has balanced angle brackets");
-            format!("{{\"vec\":{}}}", type_str_to_idl(inner))
+            json!({ "vec": type_str_to_idl_value(inner) })
         }
         _ if s.starts_with("Option<") => {
             let inner = s
                 .strip_prefix("Option<")
                 .and_then(|s| s.strip_suffix('>'))
                 .expect("syn-generated type string has balanced angle brackets");
-            format!("{{\"option\":{}}}", type_str_to_idl(inner))
+            json!({ "option": type_str_to_idl_value(inner) })
         }
         _ if s.starts_with("Box<") => {
             let inner = s
                 .strip_prefix("Box<")
                 .and_then(|s| s.strip_suffix('>'))
                 .expect("syn-generated type string has balanced angle brackets");
-            type_str_to_idl(inner)
+            type_str_to_idl_value(inner)
         }
-        other => format!("{{\"defined\":{{\"name\":\"{other}\"}}}}"),
+        other => json!({ "defined": { "name": strip_type_generics(other) } }),
+    }
+}
+
+/// Drop the `<...>` suffix on a user-defined type name.
+///
+/// `MixedArgs<'_>` / `MixedArgs<'info>` → `MixedArgs`.
+/// `PodVec<PodU64, 16>` → `PodVec`.
+///
+/// The IDL spec's `IdlType::Defined { name, generics }` models generic
+/// references structurally (spec:284+), but the v2 derive doesn't yet emit
+/// the `generics` payload. Meanwhile, `#[derive(IdlType)]` registers types
+/// under the bare ident (no `<...>`), so leaking the generic suffix into
+/// the reference produces a `{"defined":{"name":"Foo<'_>"}}` that never
+/// resolves against the `types[]` entry named `"Foo"`. Strip here so the
+/// two sides agree — downstream TS clients used to patch this at runtime
+/// (`tests/shared.ts::loadIdl`).
+///
+/// Limitation: multiple instantiations of the same generic type
+/// (`PodVec<PodU64, 16>` + `PodVec<PodU32, 8>`) collapse to the same
+/// `"PodVec"` defined name. Fine for today's single-instantiation
+/// programs; a proper fix needs full generics emission.
+fn strip_type_generics(name: &str) -> &str {
+    match name.find('<') {
+        Some(idx) => &name[..idx],
+        None => name,
     }
 }
 
@@ -71,11 +132,8 @@ fn type_str_to_idl(s: &str) -> String {
 /// string, so `&'a [u64]` → `[u64]`. Leaves nested types alone.
 fn strip_ref_and_lifetime(s: &str) -> String {
     let s = s.trim();
-    // Remove leading `&` and optional `mut`
     let s = s.strip_prefix('&').unwrap_or(s).trim_start();
-    // Remove lifetime annotation like `'a` (stop at the next whitespace/'[')
     let s = if let Some(rest) = s.strip_prefix('\'') {
-        // Drop up to the next whitespace
         match rest.find(|c: char| c.is_whitespace() || c == '[' || c == ',') {
             Some(pos) => rest[pos..].trim_start().to_owned(),
             None => String::new(),
@@ -110,6 +168,13 @@ pub struct AccountsJsonField<'a> {
     /// The wrapper `Type` (post-`Option` unwrap) whose trait consts we
     /// dispatch on at runtime. Should match `AccountField::idl_field_ty`.
     pub field_ty: &'a Option<Type>,
+    /// Set when this field is a `Nested<Inner>`, carrying the inner
+    /// struct type. The emission splices the inner struct's own
+    /// `__idl_accounts()` into the outer array instead of producing a
+    /// single account entry for the `Nested` wrapper, so the IDL's
+    /// `accounts[]` list flattens the nested block in source order —
+    /// matching how the runtime actually consumes accounts.
+    pub nested_inner_ty: Option<&'a Type>,
 }
 
 /// Build a `fn __idl_accounts() -> alloc::string::String` body that assembles
@@ -126,6 +191,33 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
     let parts: Vec<TokenStream2> = fields
         .iter()
         .map(|f| {
+            // `Nested<Inner>` flattens at IDL time. Ask the inner struct
+            // for its own `__idl_accounts()` string, strip the outer
+            // `[` / `]`, and splice the element sequence in place. The
+            // outer's join-with-`,` loop then produces a single flat
+            // array in source order.
+            if let Some(inner) = f.nested_inner_ty {
+                return quote! {
+                    {
+                        let __inner = <#inner>::__idl_accounts();
+                        // Strip the bracketing `[`/`]` produced by the
+                        // inner emission. Use char-indexed slicing
+                        // rather than `trim_matches`, which would also
+                        // eat balanced brackets from inside string
+                        // literals (there are none today, but the
+                        // narrow form is future-proof).
+                        let __bytes = __inner.as_bytes();
+                        if __bytes.len() >= 2
+                            && __bytes[0] == b'['
+                            && __bytes[__bytes.len() - 1] == b']'
+                        {
+                            __inner[1..__inner.len() - 1].to_string()
+                        } else {
+                            __inner
+                        }
+                    }
+                };
+            }
             let name = f.name;
             let writable_json = if f.writable {
                 ",\"writable\":true"
@@ -211,6 +303,10 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
             let mut __s = anchor_lang_v2::__alloc::string::String::from("[");
             let mut __first = true;
             for __p in &__parts {
+                // A `Nested<Inner>` whose inner has zero fields contributes
+                // an empty part — skip it so we don't emit `,,` or a leading
+                // comma.
+                if __p.is_empty() { continue; }
                 if !__first { __s.push(','); }
                 __first = false;
                 __s.push_str(__p);
@@ -223,28 +319,33 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
 
 /// Build IDL instruction args JSON from handler parameters.
 pub fn build_args_json(args: &[(&syn::Ident, &Type)]) -> String {
-    let parts: Vec<String> = args
+    let arr: Vec<Value> = args
         .iter()
         .map(|(name, ty)| {
-            let ty_json = rust_type_to_idl(ty);
-            format!("{{\"name\":\"{name}\",\"type\":{ty_json}}}")
+            json!({
+                "name": name.to_string(),
+                "type": rust_type_to_idl_value(ty),
+            })
         })
         .collect();
-    format!("[{}]", parts.join(","))
+    Value::Array(arr).to_string()
 }
 
-/// Build discriminator JSON from hash bytes.
+/// Build discriminator JSON array from hash bytes.
 pub fn disc_json(disc_bytes: &[u8]) -> String {
-    let parts: Vec<String> = disc_bytes.iter().map(|b| b.to_string()).collect();
-    format!("[{}]", parts.join(","))
+    disc_json_value(disc_bytes).to_string()
 }
 
-/// Zero-copy / borsh mode tag passed down from the `#[account]` / `#[event]`
-/// call sites. The spec (`idl/spec/src/lib.rs:180-216`) models this as the
-/// pair `(IdlSerialization, Option<IdlRepr>)`, but both fields are tightly
-/// coupled — bytemuck always pairs with `repr(C)` in our codegen, and borsh
-/// carries no repr — so we collapse them into a single enum and expand both
-/// fields at emission time.
+fn disc_json_value(disc_bytes: &[u8]) -> Value {
+    Value::Array(disc_bytes.iter().map(|b| json!(*b)).collect())
+}
+
+/// Zero-copy / borsh / wincode mode tag passed down from the `#[account]` /
+/// `#[event]` call sites. The spec (`idl/spec/src/lib.rs:180-216`) models
+/// this as the pair `(IdlSerialization, Option<IdlRepr>)`, but the two
+/// fields are tightly coupled — bytemuck always pairs with `repr(C)` in our
+/// codegen, borsh and wincode carry no repr — so we collapse them into a
+/// single enum and expand both fields at emission time.
 #[derive(Clone, Copy)]
 pub enum TypeKind {
     /// Default borsh layout. Spec `skip_serializing_if`s both fields at the
@@ -252,6 +353,13 @@ pub enum TypeKind {
     Borsh,
     /// `bytemuck` Pod + `repr(C)`. Both fields show up in the JSON.
     BytemuckRepr,
+    /// Wincode serialization. Emitted via the spec's `Custom(String)`
+    /// escape hatch (`"serialization":{"custom":"wincode"}`) — the spec
+    /// also has a first-class `Wincode` variant as a forward-compat
+    /// deserialize target, but we emit the Custom shape for now because
+    /// surfpool 1.1.2 pins an older spec that aborts deployment on unknown
+    /// tags. Flip to bare `"wincode"` once surfpool ships an updated spec.
+    Wincode,
 }
 
 /// Build IDL type definition JSON from struct fields. `docs` is the list of
@@ -269,45 +377,110 @@ pub fn build_type_json(
     fields: &syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
     kind: TypeKind,
 ) -> String {
-    let disc_json = disc_json(disc);
-    let docs_json = if docs.is_empty() {
-        String::new()
-    } else {
-        format!(",\"docs\":{}", docs_to_json_array(docs))
-    };
-    // `IdlSerialization` / `IdlRepr` (spec:190-216). `Borsh` is the default
-    // on both the tagged enum and the `Option<IdlRepr>`, so we splice
-    // nothing and let the serde-default path handle it. `bytemuckUnsafe`
-    // deliberately isn't emitted — its semantics aren't nailed down in v2.
-    let serialization_repr_json = match kind {
-        TypeKind::Borsh => String::new(),
-        TypeKind::BytemuckRepr => {
-            ",\"serialization\":\"bytemuck\",\"repr\":{\"kind\":\"c\"}".to_string()
-        }
-    };
-    let field_jsons: Vec<String> = fields
+    let mut out = build_type_header(name, disc, docs, kind);
+    let field_values: Vec<Value> = fields.iter().map(named_field_value).collect();
+    out.insert(
+        "type".into(),
+        json!({ "kind": "struct", "fields": field_values }),
+    );
+    Value::Object(out).to_string()
+}
+
+/// Build IDL type definition JSON from enum variants. Matches the spec's
+/// `IdlTypeDefTy::Enum { variants }` shape (idl/spec/src/lib.rs:237-248).
+/// Each variant is emitted as `{"name": ..., "fields"?: ...}` where `fields`
+/// is either a named-field object array (struct-like variants), a tuple of
+/// types (tuple-like variants), or omitted entirely (unit variants) —
+/// consistent with `IdlDefinedFields`'s `#[serde(untagged)]` shape.
+///
+/// Only `TypeKind::Borsh` is really meaningful for enums today — bytemuck
+/// enums are rare and wincode's enum encoding matches borsh's. We accept
+/// the same `kind` parameter for shape symmetry with `build_type_json`.
+pub fn build_enum_type_json(
+    name: &str,
+    disc: &[u8],
+    docs: &[String],
+    variants: &syn::punctuated::Punctuated<syn::Variant, syn::token::Comma>,
+    kind: TypeKind,
+) -> String {
+    let mut out = build_type_header(name, disc, docs, kind);
+    let variant_values: Vec<Value> = variants
         .iter()
-        .map(|f| {
-            let fname = f
-                .ident
-                .as_ref()
-                .expect("named fields always have idents")
-                .to_string();
-            let ftype = rust_type_to_idl(&f.ty);
-            let field_docs = extract_doc_lines(&f.attrs);
-            let field_docs_json = if field_docs.is_empty() {
-                String::new()
-            } else {
-                format!(",\"docs\":{}", docs_to_json_array(&field_docs))
-            };
-            format!("{{\"name\":\"{fname}\"{field_docs_json},\"type\":{ftype}}}")
+        .map(|v| {
+            let mut obj = serde_json::Map::new();
+            obj.insert("name".into(), Value::String(v.ident.to_string()));
+            match &v.fields {
+                syn::Fields::Unit => {}
+                syn::Fields::Named(named) => {
+                    let fields: Vec<Value> =
+                        named.named.iter().map(named_field_value).collect();
+                    obj.insert("fields".into(), Value::Array(fields));
+                }
+                syn::Fields::Unnamed(unnamed) => {
+                    let tys: Vec<Value> = unnamed
+                        .unnamed
+                        .iter()
+                        .map(|f| rust_type_to_idl_value(&f.ty))
+                        .collect();
+                    obj.insert("fields".into(), Value::Array(tys));
+                }
+            }
+            Value::Object(obj)
         })
         .collect();
-    format!(
-        "{{\"name\":\"{name}\",\"discriminator\":{disc_json}{docs_json}{serialization_repr_json},\"type\":{{\"kind\":\"struct\",\"\
-         fields\":[{}]}}}}",
-        field_jsons.join(",")
-    )
+    out.insert(
+        "type".into(),
+        json!({ "kind": "enum", "variants": variant_values }),
+    );
+    Value::Object(out).to_string()
+}
+
+/// Shared header construction for struct and enum type definitions. Emits
+/// `name`, `discriminator`, optional `docs`, and the `serialization` / `repr`
+/// pair derived from `kind`. The caller appends the `type` object matching
+/// `IdlTypeDefTy::{Struct, Enum, Type}`.
+fn build_type_header(
+    name: &str,
+    disc: &[u8],
+    docs: &[String],
+    kind: TypeKind,
+) -> serde_json::Map<String, Value> {
+    let mut out = serde_json::Map::new();
+    out.insert("name".into(), Value::String(name.to_owned()));
+    out.insert("discriminator".into(), disc_json_value(disc));
+    if !docs.is_empty() {
+        out.insert("docs".into(), docs_value(docs));
+    }
+    match kind {
+        TypeKind::Borsh => {}
+        TypeKind::BytemuckRepr => {
+            out.insert("serialization".into(), Value::String("bytemuck".into()));
+            out.insert("repr".into(), json!({ "kind": "c" }));
+        }
+        TypeKind::Wincode => {
+            out.insert("serialization".into(), json!({ "custom": "wincode" }));
+        }
+    }
+    out
+}
+
+/// Build a named `IdlField` value — `{name, type, docs?}` — for a single
+/// `syn::Field`. Used by both struct field and enum-variant struct-field
+/// emission.
+fn named_field_value(f: &syn::Field) -> Value {
+    let fname = f
+        .ident
+        .as_ref()
+        .expect("named fields always have idents")
+        .to_string();
+    let mut obj = serde_json::Map::new();
+    obj.insert("name".into(), Value::String(fname));
+    let field_docs = extract_doc_lines(&f.attrs);
+    if !field_docs.is_empty() {
+        obj.insert("docs".into(), docs_value(&field_docs));
+    }
+    obj.insert("type".into(), rust_type_to_idl_value(&f.ty));
+    Value::Object(obj)
 }
 
 // ---------------------------------------------------------------------------
@@ -339,33 +512,13 @@ pub fn extract_doc_lines(attrs: &[syn::Attribute]) -> Vec<String> {
         .collect()
 }
 
-/// Serialize a list of doc lines into a JSON array. Pulling `serde_json`
-/// into a proc-macro crate is overkill for what amounts to a 7-byte escape
-/// table, so the escaping is inlined.
+/// Serialize a list of doc lines into a JSON array string.
 pub fn docs_to_json_array(docs: &[String]) -> String {
-    let parts: Vec<String> = docs
-        .iter()
-        .map(|d| format!("\"{}\"", escape_json_string(d)))
-        .collect();
-    format!("[{}]", parts.join(","))
+    docs_value(docs).to_string()
 }
 
-fn escape_json_string(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            '\x08' => out.push_str("\\b"),
-            '\x0c' => out.push_str("\\f"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out
+fn docs_value(docs: &[String]) -> Value {
+    Value::Array(docs.iter().map(|d| Value::String(d.clone())).collect())
 }
 
 // ---------------------------------------------------------------------------
@@ -396,6 +549,14 @@ pub fn classify_seed(
     field_names: &[String],
     ix_arg_names: &[String],
 ) -> String {
+    classify_seed_value(expr, field_names, ix_arg_names).to_string()
+}
+
+fn classify_seed_value(
+    expr: &Expr,
+    field_names: &[String],
+    ix_arg_names: &[String],
+) -> Value {
     // Peel `&<inner>` wrappers — they're common in seed expressions and
     // always transparent to classification.
     let mut cur = expr;
@@ -403,12 +564,11 @@ pub fn classify_seed(
         cur = &r.expr;
     }
 
-    // Byte / string / byte-lit literal.
     if let Expr::Lit(lit) = cur {
         match &lit.lit {
-            Lit::ByteStr(bs) => return const_seed_json(&bs.value()),
-            Lit::Str(s) => return const_seed_json(s.value().as_bytes()),
-            Lit::Byte(b) => return const_seed_json(&[b.value()]),
+            Lit::ByteStr(bs) => return const_seed_value(&bs.value()),
+            Lit::Str(s) => return const_seed_value(s.value().as_bytes()),
+            Lit::Byte(b) => return const_seed_value(&[b.value()]),
             _ => {}
         }
     }
@@ -430,7 +590,7 @@ pub fn classify_seed(
             break;
         }
         if let Some(b) = bytes {
-            return const_seed_json(&b);
+            return const_seed_value(&b);
         }
     }
 
@@ -441,10 +601,10 @@ pub fn classify_seed(
             if seg.arguments.is_empty() {
                 let name = seg.ident.to_string();
                 if field_names.contains(&name) {
-                    return account_seed_json(&name);
+                    return account_seed_value(&name);
                 }
                 if ix_arg_names.contains(&name) {
-                    return arg_seed_json(&name);
+                    return arg_seed_value(&name);
                 }
             }
         }
@@ -455,10 +615,10 @@ pub fn classify_seed(
     // `foo.to_le_bytes()`, `foo[0]`, `(foo)`, etc.
     if let Some(root) = receiver_root_ident(cur) {
         if field_names.contains(&root) {
-            return account_seed_json(&root);
+            return account_seed_value(&root);
         }
         if ix_arg_names.contains(&root) {
-            return arg_seed_json(&root);
+            return arg_seed_value(&root);
         }
     }
 
@@ -470,7 +630,7 @@ pub fn classify_seed(
         }) = &*mc.receiver
         {
             if mc.method == "as_bytes" {
-                return const_seed_json(s.value().as_bytes());
+                return const_seed_value(s.value().as_bytes());
             }
         }
     }
@@ -484,9 +644,7 @@ pub fn classify_seed(
     // rather than the empty-bytes fallback.
     //
     // Only the five well-known markers ship in `lang-v2/src/programs.rs`;
-    // custom user markers still fall through to the warn path. That's
-    // acceptable — it matches the closed set `extract_program_address`
-    // covered before Part A's trait refactor.
+    // custom user markers still fall through to the warn path.
     if let Expr::Call(call) = cur {
         if call.args.is_empty() {
             if let Expr::Path(ep) = &*call.func {
@@ -505,7 +663,7 @@ pub fn classify_seed(
                     };
                     if let Some(b58) = addr_b58 {
                         if let Ok(bytes) = bs58::decode(b58).into_vec() {
-                            return const_seed_json(&bytes);
+                            return const_seed_value(&bytes);
                         }
                     }
                 }
@@ -513,14 +671,11 @@ pub fn classify_seed(
         }
     }
 
-    // Unknown — emit a warning (visible in `cargo build` output) and keep
-    // emission valid with an empty const so downstream tooling doesn't
-    // choke on malformed JSON.
     eprintln!(
         "anchor-v2 idl: unable to classify seed expression `{}`; emitting empty const",
         quote!(#expr)
     );
-    const_seed_json(&[])
+    const_seed_value(&[])
 }
 
 /// Walk down a method-call / field-access / index chain and return the
@@ -548,26 +703,37 @@ fn receiver_root_ident(expr: &Expr) -> Option<String> {
     }
 }
 
-fn const_seed_json(bytes: &[u8]) -> String {
-    let values: Vec<String> = bytes.iter().map(|b| b.to_string()).collect();
-    format!("{{\"kind\":\"const\",\"value\":[{}]}}", values.join(","))
+fn const_seed_value(bytes: &[u8]) -> Value {
+    json!({ "kind": "const", "value": bytes })
 }
 
-fn account_seed_json(path: &str) -> String {
-    format!("{{\"kind\":\"account\",\"path\":\"{path}\"}}")
+fn account_seed_value(path: &str) -> Value {
+    json!({ "kind": "account", "path": path })
 }
 
-fn arg_seed_json(path: &str) -> String {
-    format!("{{\"kind\":\"arg\",\"path\":\"{path}\"}}")
+fn arg_seed_value(path: &str) -> Value {
+    json!({ "kind": "arg", "path": path })
 }
 
 /// Assemble the `pda: {...}` object body from a field's classified seeds
 /// plus optional program override. Returns the JSON object (without the
 /// leading `,"pda":` — that's spliced by `build_accounts_emission`).
 pub fn pda_object_json(seeds: &[String], program: Option<&String>) -> String {
-    let seeds_arr = format!("[{}]", seeds.join(","));
-    match program {
-        Some(p) => format!("{{\"seeds\":{seeds_arr},\"program\":{p}}}"),
-        None => format!("{{\"seeds\":{seeds_arr}}}"),
+    // Seed strings come in pre-serialized (via `classify_seed`) so we
+    // re-parse them back to `Value`s for structured composition. The
+    // parse can't fail because `classify_seed` controls the producer.
+    let seeds_arr: Vec<Value> = seeds
+        .iter()
+        .map(|s| serde_json::from_str(s).expect("classify_seed emits valid JSON"))
+        .collect();
+    let mut obj = serde_json::Map::new();
+    obj.insert("seeds".into(), Value::Array(seeds_arr));
+    if let Some(p) = program {
+        // The program override comes from `seeds::program = <expr>` and is
+        // also a pre-serialized JSON value (an address or a defined ref).
+        let program_val: Value =
+            serde_json::from_str(p).expect("program seed value is valid JSON");
+        obj.insert("program".into(), program_val);
     }
+    Value::Object(obj).to_string()
 }

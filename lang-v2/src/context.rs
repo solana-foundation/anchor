@@ -3,12 +3,9 @@ use {
     pinocchio::{account::AccountView, address::Address},
 };
 
-/// Instruction-scoped context passed to every handler.
-///
-/// Holds the validated declared accounts (`accounts`), the program_id
-/// (as a borrow to avoid the 32-byte copy into every frame), bumps for
-/// PDA-backed fields, and a reference to the still-advancing cursor for
-/// lazy `remaining_accounts()` access.
+/// Instruction-scoped context passed to every handler. Holds the
+/// declared accounts, program_id, PDA bumps, and a cursor for lazy
+/// `remaining_accounts()` access.
 pub struct Context<'a, T: Bumps> {
     /// Program id as a reference — lives for the whole instruction
     /// since it comes from the entrypoint's input buffer.
@@ -58,15 +55,10 @@ impl<'a, T: Bumps> Context<'a, T> {
         }
     }
 
-    /// Walks any trailing accounts beyond the declared `T` fields and
-    /// returns them as an owned `Vec<AccountView>`.
-    ///
-    /// On the first call this advances the cursor through the remaining
-    /// region, populates an internal cache, and returns a clone. On
-    /// subsequent calls the cached vec is cloned without re-walking the
-    /// cursor. Returns an owned vec (rather than a slice tied to
-    /// `&mut self`) so handlers can keep using `self.accounts` and
-    /// `self.bumps` alongside the remaining list.
+    /// Returns trailing accounts beyond the declared `T` fields as an
+    /// owned `Vec<AccountView>`. First call walks the cursor and caches;
+    /// subsequent calls clone the cache. Owned vec avoids borrow conflicts
+    /// with `self.accounts` / `self.bumps`.
     pub fn remaining_accounts(&mut self) -> alloc::vec::Vec<AccountView> {
         if self.remaining_cache.is_none() {
             let mut v = alloc::vec::Vec::with_capacity(self.remaining_num as usize);

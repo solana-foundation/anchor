@@ -34,18 +34,14 @@ pub use solana_address::declare_id;
 #[doc(hidden)]
 pub use solana_program_log::log as __log_impl;
 
-// Re-export `solana_program_log::log` (the plain `&str` → syscall wrapper)
-// and the `alloc` crate so the `debug!` macro below can route through this
-// crate's namespace — user programs don't need `solana-program-log` or
-// `extern crate alloc;` to use it.
+// Re-export for `debug!` macro — routes through this crate's namespace so
+// user programs don't need `solana-program-log` or `extern crate alloc;`.
 #[cfg(feature = "compat")]
 #[doc(hidden)]
 pub use solana_program_log::log as __log_str;
 
-// Publicly re-exported so generated macro code can reach `Vec` without
-// assuming std or requiring user crates to write `extern crate alloc;`
-// themselves. Ungated because multiple macros (`#[event]`, `debug!`, …) need
-// it; gating it behind `compat` would force every v2 user onto that feature.
+// Ungated re-export so generated macro code (`#[event]`, `debug!`, etc.)
+// can reach `Vec` without std or `extern crate alloc;` in user crates.
 #[doc(hidden)]
 pub extern crate alloc as __alloc;
 
@@ -62,21 +58,15 @@ macro_rules! msg {
     }};
 }
 
-/// v1-compat logger with full Rust format-string support.
+/// v1-compat logger with full `format!` support (`{:?}`, `{:x}`, etc.).
 ///
-/// Accepts any `format!` pattern (`{:?}`, `{:x}`, dynamic width, …) at the
-/// cost of a heap allocation via `alloc::format!` plus `fmt::Display` trait
-/// dispatch. Prefer [`msg!`] for production paths — it's dramatically
-/// cheaper in CUs. Use `debug!` for the cases where you specifically need
-/// `{:?}` on a type that doesn't impl `solana_program_log::Log`.
-///
-/// Gated behind the `compat` feature so the heap cost is opt-in.
+/// Heap-allocates via `alloc::format!`. Prefer [`msg!`] for production
+/// (cheaper CUs). Gated behind `compat`.
 ///
 /// # Example
 ///
 /// ```ignore
 /// debug!("raw bytes: {:?}", &data[..32]);
-/// debug!("{:>8x}", pubkey);
 /// ```
 #[cfg(feature = "compat")]
 #[macro_export]
@@ -90,6 +80,13 @@ macro_rules! debug {
 }
 // Re-export wincode for instruction data serialization
 pub use wincode;
+
+// Internal: only used by `#[cfg(feature = "idl-build")]` codegen from the
+// derive macros to split type-def JSON in `__anchor_private_print_idl_program`.
+// Not part of the stable API — hence the `__` prefix.
+#[cfg(feature = "idl-build")]
+#[doc(hidden)]
+pub use serde_json as __serde_json;
 pub use {
     accounts::{AccountInitialize, SlabInit},
     anchor_derive_accounts_v2::{

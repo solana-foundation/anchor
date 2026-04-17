@@ -1,48 +1,27 @@
-//! IDL emission trait — parallel to [`crate::AnchorAccount`], but scoped to
-//! type metadata rather than runtime loading.
+//! IDL emission trait — type metadata for the IDL, parallel to
+//! [`crate::AnchorAccount`] for runtime loading.
 //!
-//! `#[derive(Accounts)]` dispatches on the *wrapper* (`Program<T>`, `Sysvar<T>`,
-//! `Account<T>`, `BorshAccount<T>`, …) to decide whether a field contributes a
-//! user-defined type to the IDL's `types`/`accounts` sections. The default
-//! impl returns `None`, so sysvar / signer / program / unchecked fields are
-//! cleanly elided from IDL type collection — without requiring us to reach
-//! into their `::Data` associated type (which for `Sysvar<Clock>` is a foreign
-//! struct with no `__IDL_TYPE` to speak of).
+//! Dispatches on the wrapper type: default returns `None` (elides
+//! sysvar/signer/program/unchecked from IDL types). Data-bearing wrappers
+//! (`Box<T>`, `Account<T>`, `BorshAccount<T>`, `Slab<H, T>`, `Nested<T>`)
+//! delegate to the inner type. User `#[account]`/`#[event]`/`#[derive(IdlType)]`
+//! structs get auto-generated impls with `__IDL_TYPE = Some(<JSON>)` and
+//! recursive `__register_idl_deps`.
 //!
-//! Data-bearing wrappers (`Box<T>`, `Account<T>`, `BorshAccount<T>`,
-//! `Slab<H, T>`, `Nested<T>`) delegate to the inner type's `__IDL_TYPE`.
-//!
-//! User `#[account]` / `#[event]` / `#[derive(IdlType)]` structs get this impl
-//! generated automatically, with `__IDL_TYPE = Some(<JSON>)` plus an
-//! `__register_idl_deps` body that walks each field type so nested user
-//! structs land in the IDL's `types[]` array too.
-//!
-//! This trait is only present under the `idl-build` cfg — it compiles out
-//! entirely for on-chain builds.
+//! Only present under `idl-build` cfg; compiles out for on-chain builds.
 
 extern crate alloc;
 
 /// Contributes (or elides) a user-defined type to the generated IDL.
 ///
-/// Returning `None` for `__IDL_TYPE` means "this field's Rust type is a
-/// framework wrapper around a foreign / view-only type; don't add anything
-/// to the IDL's `types` section for it." Returning `Some(json)` means
-/// "this field's Rust type (or its inner `#[account]` type, after
-/// transparent wrapper delegation) should contribute `json` as a types
-/// entry."
+/// `__IDL_TYPE = None` → framework wrapper, nothing added to `types[]`.
+/// `__IDL_TYPE = Some(json)` → contributes a types entry.
+/// `__IDL_IS_SIGNER` / `__IDL_ADDRESS` surface per-wrapper metadata in
+/// `instructions[i].accounts[j]` JSON (`Signer`, `Program<T>`, `Sysvar<T>`).
 ///
-/// `__IDL_IS_SIGNER` and `__IDL_ADDRESS` capture per-wrapper metadata that
-/// surfaces in the emitted `instructions[i].accounts[j]` JSON: `Signer`
-/// sets `__IDL_IS_SIGNER = true`; `Program<T: Id>` and `Sysvar<T>` forward
-/// well-known addresses through their respective `IDL_ADDRESS` const paths.
-/// Replaces the old string-match + hardcoded address table in
-/// `derive/src/parse.rs`.
-///
-/// `__register_idl_deps` powers transitive type registration. A struct that
-/// appears as a field inside another `#[account]` / `#[event]` / `#[derive(
-/// IdlType)]` body gets its `__IDL_TYPE` pushed into the accumulator **and**
-/// recurses into its own fields. Primitives / collections default to the
-/// no-op impl; framework wrappers delegate to the inner type.
+/// `__register_idl_deps` handles transitive type registration: user structs
+/// push their type def and recurse into fields. Primitives/collections
+/// default to no-op; wrappers delegate to the inner type.
 pub trait IdlAccountType {
     const __IDL_TYPE: Option<&'static str> = None;
     const __IDL_IS_SIGNER: bool = false;

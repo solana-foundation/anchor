@@ -195,6 +195,10 @@ pub enum IdlSerialization {
     Borsh,
     Bytemuck,
     BytemuckUnsafe,
+    /// wincode — the default `#[event]` codec in v2. Wire format matches
+    /// borsh for fixed-size primitive/array structs, but diverges on
+    /// dynamic fields (u64 length prefixes vs borsh's u32).
+    Wincode,
     Custom(String),
 }
 

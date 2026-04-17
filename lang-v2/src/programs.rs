@@ -1,13 +1,8 @@
 //! Well-known program marker types for use with `Program<T>`.
 //!
-//! Program IDs are const-evaluated via `from_str_const` stored in `const` bindings
-//! so base58 decoding happens at compile time, not at runtime.
-//!
-//! Each marker also exposes `IDL_ADDRESS: &'static str` (gated behind the
-//! `idl-build` feature), which `Program<T>` forwards through
-//! `IdlAccountType::__IDL_ADDRESS` at IDL emission time. Replaces the old
-//! hardcoded 5-entry address table that used to live in
-//! `derive/src/parse.rs::extract_program_address`.
+//! IDs are const-evaluated via `from_str_const` (base58 decoded at compile
+//! time). Each marker exposes `IDL_ADDRESS` (gated behind `idl-build`)
+//! forwarded through `IdlAccountType::__IDL_ADDRESS` at emission time.
 
 use {crate::Id, pinocchio::address::Address};
 

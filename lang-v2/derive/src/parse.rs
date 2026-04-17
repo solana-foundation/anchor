@@ -644,10 +644,9 @@ fn emit_init_body(
 pub fn parse_field(
     field: &syn::Field,
     field_names: &[String],
-    field_index: u8,
+    offset_expr: proc_macro2::TokenStream,
     ix_arg_names: &[String],
 ) -> AccountField {
-    let field_index_usize = field_index as usize;
     let field_name = field.ident.as_ref().expect("named field");
     let field_ty = &field.ty;
     let attrs = parse_account_attrs(&field.attrs);
@@ -683,9 +682,54 @@ pub fn parse_field(
     let has_bump = attrs.seeds.is_some();
 
     // --- Load ---
-    let load = if is_nested_type(field_ty) {
-        quote! { compile_error!("Nested<T> codegen not yet implemented"); }
-    } else if let Some(inner_ty) = option_inner {
+    if is_nested_type(field_ty) {
+        let inner_ty = extract_nested_inner_type(field_ty)
+            .expect("is_nested_type was true but extract_nested_inner_type returned None");
+        // Nested<Inner> — delegate to Inner::try_accounts, which advances the
+        // shared cursor by Inner::HEADER_SIZE. The outer walk_n covers only
+        // direct (non-nested) fields; the nested try_accounts picks up where
+        // the outer left off.
+        //
+        // Constraint processing and exit are handled by the inner struct's own
+        // try_accounts / exit_accounts — the outer derives don't need to
+        // re-check them.
+        // TODO: passing `__base_offset + #offset_expr` means the nested
+        // struct's bitvec lookups hit the correct global indices. This is
+        // correct but adds a runtime addition per dup-check inside the
+        // nested struct. A future optimization could pre-shift the bitvec
+        // or use a wrapper that offsets transparently.
+        let load = quote! {
+            let (__nested_inner, _) =
+                <#inner_ty as anchor_lang_v2::TryAccounts>::try_accounts(
+                    __program_id,
+                    &__views[#offset_expr .. #offset_expr + <#inner_ty as anchor_lang_v2::TryAccounts>::HEADER_SIZE],
+                    __duplicates,
+                    __base_offset + #offset_expr,
+                    __ix_data,
+                )?;
+            let #field_name = anchor_lang_v2::Nested(__nested_inner);
+        };
+        let exit = Some(quote! {
+            self.#field_name.0.exit_accounts()?;
+        });
+        return AccountField {
+            name: field_name.clone(),
+            ty: field.ty.clone(),
+            load,
+            constraints: vec![],
+            exit,
+            has_bump: false,
+            is_optional: false,
+            idl_writable: false,
+            idl_init_signer: false,
+            idl_has_one: vec![],
+            idl_docs: vec![],
+            idl_pda: None,
+            idl_field_ty: None,
+        };
+    }
+
+    let load = if let Some(inner_ty) = option_inner {
         // `Option<T>` field: client-side sentinel of "account address ==
         // program_id" is interpreted as `None`. Otherwise we run the same
         // load / init / init_if_needed / zeroed logic we would for a
@@ -758,7 +802,7 @@ pub fn parse_field(
         };
         quote! {
             let mut #field_name: #field_ty = {
-                let __target = __views[#field_index_usize];
+                let __target = __views[#offset_expr];
                 if anchor_lang_v2::address_eq(__target.address(), __program_id) {
                     None
                 } else {
@@ -770,7 +814,7 @@ pub fn parse_field(
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names, false);
         quote! {
             let mut #field_name: #field_ty = {
-                let __target = __views[#field_index_usize];
+                let __target = __views[#offset_expr];
                 #init_body
             };
         }
@@ -778,7 +822,7 @@ pub fn parse_field(
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names, false);
         quote! {
             let mut #field_name: #field_ty = {
-                let __target = __views[#field_index_usize];
+                let __target = __views[#offset_expr];
                 if __target.data_len() > 0 && !__target.owned_by(&anchor_lang_v2::programs::System::id()) {
                     // SAFETY: the bitvec duplicate-account check below ensures
                     // no other mutable reference to this account's data exists.
@@ -793,7 +837,7 @@ pub fn parse_field(
         // stamp the real discriminator, then load mutably.
         quote! {
             let mut #field_name: #field_ty = {
-                let __target = __views[#field_index_usize];
+                let __target = __views[#offset_expr];
                 let __disc = <#field_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
                 {
                     let __data = __target.try_borrow()?;
@@ -815,11 +859,11 @@ pub fn parse_field(
         quote! {
             // SAFETY: the bitvec duplicate-account check below ensures no
             // other mutable reference to this account's data exists.
-            let mut #field_name = unsafe { <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__views[#field_index_usize], __program_id)? };
+            let mut #field_name = unsafe { <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__views[#offset_expr], __program_id)? };
         }
     } else {
         quote! {
-            let #field_name: #field_ty = anchor_lang_v2::AnchorAccount::load(__views[#field_index_usize], __program_id)?;
+            let #field_name: #field_ty = anchor_lang_v2::AnchorAccount::load(__views[#offset_expr], __program_id)?;
         }
     };
 
@@ -1011,20 +1055,36 @@ pub fn parse_field(
             .as_ref()
             .expect("realloc requires realloc_payer");
         let zero_fill = attrs.realloc_zero;
+        // BorshAccount holds a pinocchio RefMut that (a) blocks the system
+        // program Transfer CPI inside realloc_account and (b) captures a
+        // stale slice length after resize. Release before, reacquire after.
+        // Slab holds no pinocchio borrow so needs neither step.
+        let base_ty = option_inner.unwrap_or(field_ty);
+        let is_borsh_account = field_ty_str(base_ty) == "BorshAccount";
+        let pre_realloc = if is_borsh_account {
+            quote! { #field_name.release_borrow(); }
+        } else {
+            quote! {}
+        };
+        let post_realloc = if is_borsh_account {
+            quote! { #field_name.reacquire_borrow_mut()?; }
+        } else {
+            quote! {}
+        };
         constraints.push(quote! {
             {
                 let __new_space = #new_space;
                 let mut __view = *#field_name.account();
                 let __payer_view = *#realloc_payer.account();
                 if __new_space != __view.data_len() {
-                    // Slab holds no pinocchio borrow, so resize() proceeds
-                    // without any release/reacquire dance.
+                    #pre_realloc
                     anchor_lang_v2::realloc_account(
                         &mut __view,
                         __new_space,
                         &__payer_view,
                         #zero_fill,
                     )?;
+                    #post_realloc
                 }
             }
         });
@@ -1056,7 +1116,7 @@ pub fn parse_field(
 
     if attrs.is_mut && !attrs.is_dup {
         constraints.push(quote! {
-            if __duplicates.get(#field_index) {
+            if __duplicates.get((__base_offset + #offset_expr) as u8) {
                 return Err(anchor_lang_v2::ErrorCode::ConstraintDuplicateMutableAccount.into());
             }
         });
@@ -1067,22 +1127,35 @@ pub fn parse_field(
     // so `#field_name.account()`, `#field_name.authority`, etc. resolve on the
     // inner `T` (via autoderef). The exit/close path regenerates against the
     // unwrapped `&mut T` so `AnchorAccount::exit/close` get the right type.
+    //
+    // Mutable fields use `ref mut` so constraint bodies that need `&mut self`
+    // (e.g. BorshAccount::release_borrow in the realloc path) can work.
+    // Read-only methods still resolve via auto-deref from `&mut T` to `&T`.
     let (constraints, exit) = if is_optional {
         let constraints = constraints
             .into_iter()
             .map(|c| {
-                quote! {
-                    if let Some(ref #field_name) = #field_name {
-                        // `#c` may not textually name `#field_name` (e.g. a
-                        // literal `constraint = false`, or the derive-
-                        // generated duplicate-mut guard that only touches
-                        // `__duplicates[..]`). Without this no-op reference
-                        // rustc flags the original field as unused. Narrow
-                        // silencer rather than a blanket
-                        // `#[allow(unused_variables)]` so real typos in
-                        // `#c` still surface.
-                        let _ = &#field_name;
-                        #c
+                if attrs.is_mut {
+                    quote! {
+                        if let Some(ref mut #field_name) = #field_name {
+                            let _ = &#field_name;
+                            #c
+                        }
+                    }
+                } else {
+                    quote! {
+                        if let Some(ref #field_name) = #field_name {
+                            // `#c` may not textually name `#field_name` (e.g. a
+                            // literal `constraint = false`, or the derive-
+                            // generated duplicate-mut guard that only touches
+                            // `__duplicates[..]`). Without this no-op reference
+                            // rustc flags the original field as unused. Narrow
+                            // silencer rather than a blanket
+                            // `#[allow(unused_variables)]` so real typos in
+                            // `#c` still surface.
+                            let _ = &#field_name;
+                            #c
+                        }
                     }
                 }
             })
