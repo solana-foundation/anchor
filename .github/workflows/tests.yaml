@@ -13,12 +13,6 @@ on:
 
 env:
   SOLANA_VERSION: "3.1.10"
-  CARGO_CACHE_PATH: |
-    ~/.cargo/bin/
-    ~/.cargo/registry/index/
-    ~/.cargo/registry/cache/
-    ~/.cargo/git/db/
-    ./target/
 
 jobs:
   test-v2:
@@ -32,11 +26,36 @@ jobs:
       # the v2 stack doesn't need the Solana toolchain but installing it
       # once for the whole job is cheaper than splitting the matrix.
       - uses: ./.github/actions/setup-solana/
-      - uses: actions/cache@v3
-        name: Cache Cargo registry + target
+
+      # Split caches: the cargo home (registry/git/installed binaries)
+      # only churns on dep additions, whereas ./target/ churns on any
+      # source change. Keeping them separate means a pure-source PR still
+      # gets a clean registry restore, and restore-keys prefix fallbacks
+      # let Cargo.lock-changing PRs pick up a partial target/ from a
+      # prior run and only rebuild the diff instead of the world.
+      - uses: actions/cache@v4
+        name: Cache Cargo home
         with:
-          path: ${{ env.CARGO_CACHE_PATH }}
-          key: cargo-${{ runner.os }}-v2-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-home-${{ runner.os }}-v2-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-home-${{ runner.os }}-v2-
+
+      - uses: actions/cache@v4
+        name: Cache cargo target
+        with:
+          path: ./target/
+          # Per-ref primary key so concurrent branches don't clobber each
+          # other's incremental state; restore chain falls back first to
+          # the lockfile-matched cache from any ref, then to any v2 cache.
+          key: cargo-target-${{ runner.os }}-v2-${{ hashFiles('**/Cargo.lock') }}-${{ github.ref_name }}
+          restore-keys: |
+            cargo-target-${{ runner.os }}-v2-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-target-${{ runner.os }}-v2-
 
       # Install platform-tools up front so the concurrent `cargo build-sbf`
       # invocations fired by parallel test threads don't race on the
