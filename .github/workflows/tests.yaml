@@ -18,7 +18,7 @@ jobs:
   test-v2:
     name: v2 Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
@@ -76,3 +76,42 @@ jobs:
       # no `anchor build`/`anchor test` flows, no tests/* integration.
       - run: cargo check -p anchor-cli
       - run: cargo test -p anchor-cli
+
+      # Install the `anchor` bin to `~/.cargo/bin` (already on PATH via
+      # rustup). Shared `./target/` via `--target-dir` means the build
+      # reuses artifacts from prior `cargo test -p anchor-cli` instead
+      # of starting from scratch in a temp tree; `--debug` skips release
+      # opt (smoke test — runtime speed doesn't matter).
+      - run: cargo install --path cli --locked --debug --target-dir ./target
+
+      # `anchor debugger` smoke test. These bench crates have no
+      # Anchor.toml, so the CLI falls into loose mode and runs the full
+      # pipeline: `cargo build-sbf` → `cargo test --features profile` →
+      # TUI. We wrap in `script` so crossterm can enter raw mode on a
+      # pty (GHA stdin/stdout aren't ttys) and `timeout` kills the TUI
+      # once it's in its event loop. Exit 124 ("still alive when
+      # killed") is the success signal; anything else is a real failure
+      # we want to see, so we tee the pty log to a file and dump it
+      # when a run exits non-124-non-zero.
+      - name: anchor debugger TUI launches for bench anchor-v2 programs
+        run: |
+          set -u
+          fail=0
+          for prog in bench/programs/*/anchor-v2; do
+            echo "::group::anchor debugger in $prog"
+            log=$(mktemp)
+            set +e
+            ( cd "$prog" && \
+              timeout --kill-after=30 300 \
+                script -qec 'anchor debugger' "$log" )
+            rc=$?
+            set -e
+            if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
+              echo "anchor debugger failed in $prog (exit $rc)"
+              cat "$log"
+              fail=1
+            fi
+            rm -f "$log"
+            echo "::endgroup::"
+          done
+          exit "$fail"
