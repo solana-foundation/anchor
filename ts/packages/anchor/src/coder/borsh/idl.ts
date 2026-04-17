@@ -86,6 +86,16 @@ export class IdlCoder {
             fieldName
           );
         }
+        if ("coption" in field.type) {
+          return borsh.coption(
+            IdlCoder.fieldLayout(
+              { type: field.type.coption },
+              types,
+              genericArgs
+            ),
+            fieldName
+          );
+        }
         if ("vec" in field.type) {
           return borsh.vec(
             IdlCoder.fieldLayout({ type: field.type.vec }, types, genericArgs),

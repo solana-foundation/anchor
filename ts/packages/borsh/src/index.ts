@@ -175,6 +175,59 @@ export function option<T>(
   return new OptionLayout<T>(layout, property);
 }
 
+// C-style Option: 4-byte LE u32 tag (0 = None, 1 = Some) followed by the
+// payload. Used by native Solana account layouts (e.g. SPL Mint/Account)
+// and by programs that want wire compatibility with them.
+class COptionLayout<T> extends LayoutCls<T | null> {
+  layout: Layout<T>;
+  discriminator: Layout<number>;
+
+  constructor(layout: Layout<T>, property?: string) {
+    super(-1, property);
+    this.layout = layout;
+    this.discriminator = u32();
+  }
+
+  encode(src: T | null, b: Buffer, offset = 0): number {
+    if (src === null || src === undefined) {
+      this.discriminator.encode(0, b, offset);
+      // Still reserve the payload slot for fixed-width inners so downstream
+      // offsets line up; variable-width inners (span < 0) contribute 0.
+      const payloadSpan = this.layout.span >= 0 ? this.layout.span : 0;
+      return 4 + payloadSpan;
+    }
+    this.discriminator.encode(1, b, offset);
+    return this.layout.encode(src, b, offset + 4) + 4;
+  }
+
+  decode(b: Buffer, offset = 0): T | null {
+    const discriminator = this.discriminator.decode(b, offset);
+    if (discriminator === 0) {
+      return null;
+    } else if (discriminator === 1) {
+      return this.layout.decode(b, offset + 4);
+    }
+    throw new Error("Invalid coption " + this.property);
+  }
+
+  getSpan(b: Buffer, offset = 0): number {
+    const discriminator = this.discriminator.decode(b, offset);
+    if (discriminator === 0) {
+      return 4;
+    } else if (discriminator === 1) {
+      return this.layout.getSpan(b, offset + 4) + 4;
+    }
+    throw new Error("Invalid coption " + this.property);
+  }
+}
+
+export function coption<T>(
+  layout: Layout<T>,
+  property?: string
+): Layout<T | null> {
+  return new COptionLayout<T>(layout, property);
+}
+
 export function bool(property?: string): Layout<boolean> {
   return new WrappedLayout(u8(), decodeBool, encodeBool, property);
 }

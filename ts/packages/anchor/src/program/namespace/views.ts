@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { Idl, IdlInstructionAccount } from "../../idl.js";
+import { Idl, IdlInstructionAccountItem, isCompositeAccounts } from "../../idl.js";
 import { SimulateFn } from "./simulate.js";
 import {
   AllInstructions,
@@ -9,6 +9,14 @@ import {
 import { IdlCoder } from "../../coder/borsh/idl";
 import { decode } from "../../utils/bytes/base64";
 
+// Recursively walk composite account groups so a nested `#[account(mut)]`
+// still disqualifies an instruction from being surfaced as a view.
+function hasWritableAccount(accounts: IdlInstructionAccountItem[]): boolean {
+  return accounts.some((a) =>
+    isCompositeAccounts(a) ? hasWritableAccount(a.accounts) : a.writable === true
+  );
+}
+
 export default class ViewFactory {
   public static build<IDL extends Idl, I extends AllInstructions<IDL>>(
     programId: PublicKey,
@@ -16,9 +24,7 @@ export default class ViewFactory {
     simulateFn: SimulateFn<IDL>,
     idl: IDL
   ): ViewFn<IDL, I> | undefined {
-    const isWritable = idlIx.accounts.find(
-      (a: IdlInstructionAccount) => a.writable
-    );
+    const isWritable = hasWritableAccount(idlIx.accounts);
     const hasReturn = !!idlIx.returns;
     if (isWritable || !hasReturn) return;
 
