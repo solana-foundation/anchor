@@ -1214,7 +1214,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn h01_parse_account_attrs_rejects_malformed_constraints() {
+    fn test_parse_account_attrs() {
+        let attrs: Vec<Attribute> = vec![syn::parse_quote!(
+            #[account(mut, seeds = [b"vault"], bump, signer)]
+        )];
+        let parsed_attrs = parse_account_attrs(&attrs).unwrap();
+        assert!(parsed_attrs.is_mut);
+        assert!(parsed_attrs.seeds.is_some());
+        assert!(parsed_attrs.bump.is_some());
+        assert!(parsed_attrs.is_signer);
+    }
+
+    #[test]
+    fn test_parse_invalid_account_attrs() {
         let attrs: Vec<Attribute> = vec![syn::parse_quote!(
             #[account(mut, seeds = [b"vault"], bumpp, signer)]
         )];
