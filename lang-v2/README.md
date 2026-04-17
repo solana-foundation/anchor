@@ -42,6 +42,18 @@ $ anchor debugger                    # optional: step through the SBF trace in a
 > $ CARGO_PROFILE_RELEASE_LTO=off cargo install --git https://github.com/solana-foundation/anchor.git --branch anchor-next anchor-cli --force
 > ```
 
+### Building from source
+
+Same codebase, but built from a local checkout — useful if you want to tweak v2 internals or try `anchor debugger` on one of the bench programs without leaving the repo:
+
+```bash
+$ git clone https://github.com/solana-foundation/anchor.git && cd anchor
+$ git checkout anchor-next
+$ cargo install --path cli --force   # prepend `CARGO_PROFILE_RELEASE_LTO=off` on macOS
+$ cd bench
+$ anchor debugger prop_amm            # or: vault, multisig, nested, helloworld
+```
+
 ## Migrating from v1
 
 Most v1 programs port with the renames below. `#[derive(Accounts)]` constraints, `emit!`, `#[error_code]`, `require!`, `CpiContext`, and the TS `program.methods.foo(...).accounts(...).rpc()` entry point all still work as-is.
