@@ -416,18 +416,8 @@ describe("{}", () => {{
     )
 }
 
-// TODO(anchor-next): the scaffold pins `@anchor-lang/core` at `^{VERSION}`
-// (the CLI's own workspace version, currently 2.0.0). That version is NOT
-// yet on npm — `npm view @anchor-lang/core versions` tops out at 1.0.0.
-// Fresh `anchor init` projects will fail `yarn install` until either
-// (a) 2.0.0-rc.N ships to npm off anchor-next, or (b) the Rust-side fix:
-// swap the pin to a git+subdirectory tarball (needs release tooling — npm
-// doesn't natively support subdir git deps, the TS package lives at
-// `ts/packages/anchor` inside this repo).
-//
-// Short-term mitigation once this bites: downgrade the pin below to
-// `^1.0.0`. Drifts from the Rust-side CLI version; acceptable until the
-// rc ships.
+// TODO(anchor-next): bump to `^2.0.0` once the TS package is published.
+// Pinned at `^1.0.0` because 2.0.0 isn't on npm yet.
 pub fn package_json(jest: bool, license: String) -> String {
     if jest {
         format!(
@@ -438,7 +428,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@anchor-lang/core": "^{VERSION}"
+    "@anchor-lang/core": "^1.0.0"
   }},
   "devDependencies": {{
     "jest": "^30.3.0",
@@ -456,7 +446,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@anchor-lang/core": "^{VERSION}"
+    "@anchor-lang/core": "^1.0.0"
   }},
   "devDependencies": {{
     "chai": "^4.5.0",
@@ -469,8 +459,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     }
 }
 
-// TODO(anchor-next): same version-mismatch caveat as `package_json` above.
-// Both scaffolds pin the same unpublished `@anchor-lang/core` version.
+// TODO(anchor-next): bump to `^2.0.0` once published (same as `package_json`).
 pub fn ts_package_json(jest: bool, license: String) -> String {
     if jest {
         format!(
@@ -481,7 +470,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@anchor-lang/core": "^{VERSION}"
+    "@anchor-lang/core": "^1.0.0"
   }},
   "devDependencies": {{
     "@types/bn.js": "^5.2.0",
@@ -503,7 +492,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@anchor-lang/core": "^{VERSION}"
+    "@anchor-lang/core": "^1.0.0"
   }},
   "devDependencies": {{
     "chai": "^4.5.0",
