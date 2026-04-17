@@ -1526,13 +1526,10 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
     // `types: Vec<IdlTypeDef>` (the full struct definition). Pod-mode events
     // carry `serialization:"bytemuck",repr:{"kind":"c"}`; borsh-mode events
     // fall back to the spec default (both fields skipped on serialize).
-    // Both event modes produce a borsh-compatible wire format. The Pod mode's
-    // serializer below writes fields one-by-one (no `repr(C)` padding on the
-    // wire), which is byte-identical to borsh for fixed-size structs — so
-    // clients decode either mode through the same borsh path.
-    let type_kind = idl::TypeKind::Borsh;
-    let _ = mode_unused_marker(&mode); // keep `mode` live for the match below
-    fn mode_unused_marker(_: &EventMode) {}
+    let type_kind = match mode {
+        EventMode::Pod => idl::TypeKind::BytemuckRepr,
+        EventMode::Borsh => idl::TypeKind::Borsh,
+    };
     let struct_docs = idl::extract_doc_lines(attrs);
     let type_def_json = if let Fields::Named(named) = fields {
         idl::build_type_json(&name_str, disc_bytes, &struct_docs, &named.named, type_kind)
