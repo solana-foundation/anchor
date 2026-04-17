@@ -33,12 +33,10 @@ pub mod anchor_v2 {
     };
 
     pub fn build_init_case(ctx: &mut BenchContext) -> Result<BenchInstruction> {
-        let (counter_pda, _) = hello_world_v2::accounts::Init::find_counter_address();
-
+        // counter + system_program auto-filled by Default (const-seed PDA + Program<System>)
         let ix = hello_world_v2::instruction::Init {}.to_instruction(
             hello_world_v2::accounts::Init {
                 payer: ctx.payer_pubkey(),
-                counter: counter_pda,
                 ..Default::default()
             },
         );

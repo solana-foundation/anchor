@@ -402,20 +402,23 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             }
         })
         .collect();
-    // Default impl: Program<T> fields auto-fill from T::id(), everything
-    // else defaults to Address::default() (all zeros). Users override
-    // non-program fields via struct-update syntax: `Init { payer, counter, ..Default::default() }`.
+    // Default impl: auto-fill fields that have a single deterministic address:
+    //   - Program<T> → T::id()
+    //   - PDA with all-const seeds → find_program_address(&[const_seeds], &crate::ID).0
+    //   - Everything else → Address::default() (user must override)
     let client_default_fields: Vec<_> = fields
         .iter()
-        .map(|f| {
+        .zip(named_fields.named.iter())
+        .map(|(f, raw_field)| {
             let fname = &f.name;
             let base_ty = match parse::extract_option_inner(&f.ty) {
                 Some(inner) => inner,
                 None => &f.ty,
             };
             let ty_name = parse::field_ty_str(base_ty);
+
+            // Program<T> → T::id()
             if ty_name == "Program" {
-                // Extract the generic arg T from Program<T> to call T::id().
                 if let Type::Path(tp) = base_ty {
                     if let Some(seg) = tp.path.segments.last() {
                         if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
@@ -425,8 +428,35 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                         }
                     }
                 }
-                quote! { #fname: anchor_lang_v2::Address::default() }
-            } else if f.is_optional {
+            }
+
+            // PDA with all-const seeds → derive at default-construction time
+            let attrs = parse::parse_account_attrs(&raw_field.attrs);
+            if let Some(ref seeds) = attrs.seeds {
+                if attrs.seeds_program.is_none() {
+                    let const_bytes: Option<Vec<Vec<u8>>> = seeds
+                        .iter()
+                        .map(|s| pda::seed_as_const_bytes(s))
+                        .collect();
+                    if let Some(all_const) = const_bytes {
+                        let seed_slices: Vec<_> = all_const
+                            .iter()
+                            .map(|bytes| {
+                                let lits: Vec<_> = bytes.iter().map(|b| quote! { #b }).collect();
+                                quote! { &[#(#lits),*] as &[u8] }
+                            })
+                            .collect();
+                        return quote! {
+                            #fname: anchor_lang_v2::find_program_address(
+                                &[#(#seed_slices),*],
+                                &crate::ID,
+                            ).0
+                        };
+                    }
+                }
+            }
+
+            if f.is_optional {
                 quote! { #fname: None }
             } else {
                 quote! { #fname: anchor_lang_v2::Address::default() }
