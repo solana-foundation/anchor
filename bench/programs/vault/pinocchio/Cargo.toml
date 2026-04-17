@@ -1,26 +1,22 @@
 [package]
-# Renamed from upstream `quasar-vault` to fit the bench suite's
-# `<family>_<framework>` naming convention (so the compiled `.so`
-# lands at `target/deploy/vault_quasar.so` which the harness
-# expects). Everything under src/ is a byte-identical verbatim
-# copy from the quasar vault example source.
-name = "vault-quasar"
+name = "vault-pinocchio"
 version = "0.1.0"
+description = "Raw pinocchio port of the vault benchmark program."
 edition = "2021"
 publish = false
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "vault_quasar"
+name = "vault_pinocchio"
 
 [features]
-alloc = []
-client = []
-debug = []
+no-entrypoint = []
 profile = ["anchor-v2-testing/profile"]
 
 [dependencies]
-quasar-lang = { git = "https://github.com/blueshift-gg/quasar", branch = "feat/dynamic-types-rework" }
+pinocchio = { version = "0.11", default-features = false, features = ["copy"] }
+pinocchio-system = "0.6"
+solana-program-error = "3.0"
 
 [dev-dependencies]
 anchor-v2-testing = { path = "../../../../v2-testing" }

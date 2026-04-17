@@ -10,6 +10,9 @@ use {
 };
 
 // Shared helloworld id — base58 `B7ihZyo...`.
+// The line below is scanned by `anchor debugger`'s program discovery to map
+// this .so's runtime id without depending on anchor's `declare_id!` macro.
+// declare_id!("B7ihZyoXZ1fwAY3TugkiFJ6SXkzJwMuQrxrekBaSmn32")
 pub const ID: Address = Address::new_from_array([
     150, 77, 128, 252, 18, 209, 27, 135, 162, 60, 31, 212, 195, 62, 83, 235,
     169, 66, 250, 246, 54, 206, 179, 35, 44, 128, 206, 68, 111, 175, 179, 217,

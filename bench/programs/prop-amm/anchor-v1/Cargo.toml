@@ -1,0 +1,26 @@
+[package]
+name = "prop-amm-v1"
+version = "0.1.0"
+description = "Anchor v1 port of the prop-amm oracle, for head-to-head against anchor-v2 + asm."
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "prop_amm_v1"
+
+[features]
+no-entrypoint = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+no-log-ix-name = []
+profile = ["anchor-v2-testing/profile"]
+
+[dependencies]
+anchor-lang = { path = "../../../../lang" }
+
+[dev-dependencies]
+anchor-v2-testing = { path = "../../../../v2-testing" }
+litesvm = "0.11"
+solana-account = "3.0"
