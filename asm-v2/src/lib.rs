@@ -60,8 +60,8 @@
 
 mod preamble;
 
-// Re-export proc macros so users write `anchor_asm_v2::asm_error_enum` etc.
-pub use anchor_asm_v2_macros::{asm_discriminant, asm_error_enum, asm_offsets};
+// Re-export the main proc macro.
+pub use anchor_asm_v2_macros::asm_program;
 
 use std::path::{Path, PathBuf};
 
