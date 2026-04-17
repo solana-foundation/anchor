@@ -29,10 +29,14 @@ pub mod vault_v2 {
 
     #[discrim = 1]
     pub fn withdraw(ctx: &mut Context<Withdraw>, amount: u64) -> Result<()> {
-        let mut vault_view = *ctx.accounts.vault.account();
-        let mut user_view = *ctx.accounts.user.account();
-        vault_view.set_lamports(vault_view.lamports() - amount);
-        user_view.set_lamports(user_view.lamports() + amount);
+        // AccountView is Copy — copying gives an owned value we can call
+        // `set_lamports(&mut self)` on. The write goes through a raw
+        // pointer into the account's serialized data buffer, so both the
+        // original and the copy point to the same backing memory.
+        let mut vault = *ctx.accounts.vault.account();
+        let mut user = *ctx.accounts.user.account();
+        vault.set_lamports(vault.lamports() - amount);
+        user.set_lamports(user.lamports() + amount);
         Ok(())
     }
 }
@@ -41,7 +45,7 @@ pub mod vault_v2 {
 pub struct Deposit {
     #[account(mut)]
     pub user: Signer,
-    #[account(mut, seeds = [b"vault", user.account().address().as_ref()], bump)]
+    #[account(mut, seeds = [b"vault", user.address().as_ref()], bump)]
     pub vault: UncheckedAccount,
     pub system_program: Program<System>,
 }
@@ -50,6 +54,6 @@ pub struct Deposit {
 pub struct Withdraw {
     #[account(mut)]
     pub user: Signer,
-    #[account(mut, seeds = [b"vault", user.account().address().as_ref()], bump)]
+    #[account(mut, seeds = [b"vault", user.address().as_ref()], bump)]
     pub vault: UncheckedAccount,
 }

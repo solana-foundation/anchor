@@ -9,7 +9,7 @@ use crate::{
 pub struct ExecuteTransfer {
     #[account(
         has_one = creator,
-        seeds = [b"multisig", creator.account().address().as_ref()],
+        seeds = [b"multisig", creator.address().as_ref()],
         bump = config.bump
     )]
     pub config: Account<MultisigConfig>,

@@ -10,7 +10,7 @@ pub struct Create {
     #[account(mut)]
     pub creator: Signer,
     // `space` omitted — defaults to `8 + size_of::<MultisigConfig>()` for pod accounts.
-    #[account(init, payer = creator, seeds = [b"multisig", creator.account().address().as_ref()])]
+    #[account(init, payer = creator, seeds = [b"multisig", creator.address().as_ref()])]
     pub config: Account<MultisigConfig>,
     pub system_program: Program<System>,
 }
