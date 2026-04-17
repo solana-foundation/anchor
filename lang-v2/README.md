@@ -1,8 +1,8 @@
 # anchor-lang-v2
 
-v2 is a drop-in speedup for Anchor v1. Same constraints DSL, same `#[derive(Accounts)]` — but up to **94% smaller** and **3–4× faster** per instruction (see the [Examples](#examples) table). v2 also comes with first-class tooling like `anchor debugger` to help you optimize your programs.
+v2 is a drop-in speedup for Anchor v1, but up to **94% smaller** and **3–6× faster** per instruction (see the [Examples](#examples) table).
 
-**Compatibility is a priority.** Most v1 programs port with the renames in [Migrating from v1](#migrating-from-v1). A `compat` feature restores v1-shaped helpers to ease migrations for larger programs.
+**Compatibility is a priority.** Most v1 programs port with the renames in [Migrating from v1](#migrating-from-v1). A `compat` feature restores v1-shaped helpers to ease migrations for larger programs. v2 also comes with first-class tooling like `anchor debugger` to help give you full visibility into your program.
 
 **Built for extensibility.** As active contributors and auditors of Anchor v1, we've felt the struggles of working inside a large macro-based framework — v2 is our answer. The core derive is around 3× smaller, moving most of the logic from the macro to behind traits. This makes it much easier to audit and maintain, and more excitingly also lets you write your own Anchor extensions (see [Extensibility](#extensibility))!
 
@@ -47,11 +47,10 @@ $ anchor debugger                    # optional: step through the SBF trace in a
 Same codebase, but built from a local checkout — useful if you want to tweak v2 internals or try `anchor debugger` on one of the bench programs without leaving the repo:
 
 ```bash
-$ git clone https://github.com/solana-foundation/anchor.git && cd anchor
-$ git checkout anchor-next
+$ git clone https://github.com/solana-foundation/anchor.git && cd anchor && git checkout anchor-next
 $ cargo install --path cli --force   # prepend `CARGO_PROFILE_RELEASE_LTO=off` on macOS
-$ cd bench
-$ anchor debugger prop_amm            # or: vault, multisig, nested, helloworld
+$ cd bench/programs/prop-amm          # or: vault, multisig, nested, helloworld
+$ anchor debugger
 ```
 
 ## Migrating from v1
