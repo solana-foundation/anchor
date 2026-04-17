@@ -1,5 +1,5 @@
 mod svg;
-mod trace;
+pub(crate) mod trace;
 
 use anyhow::Result;
 use std::collections::BTreeMap;

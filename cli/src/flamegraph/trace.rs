@@ -65,10 +65,31 @@ pub struct FlamegraphReport {
 }
 
 /// Size in bytes of one register trace entry: 12 x u64 = 96 bytes.
-pub(super) const REGS_ENTRY_SIZE: usize = 12 * std::mem::size_of::<u64>();
+pub const REGS_ENTRY_SIZE: usize = 12 * std::mem::size_of::<u64>();
 
 /// Size in bytes of one raw SBPF instruction: 8 bytes.
-pub(super) const INSN_ENTRY_SIZE: usize = 8;
+pub const INSN_ENTRY_SIZE: usize = 8;
+
+/// One step yielded by [`stream_trace`].
+///
+/// Borrowed from the caller's maintained call stack so consumers that only
+/// care about a snapshot can clone into owned state on demand.
+pub struct StreamStep<'a> {
+    pub pc: u64,
+    pub regs: [u64; 12],
+    pub insn: [u8; 8],
+    /// Call stack from program-root to current frame. Length >= 1.
+    pub call_stack: &'a [String],
+    /// Resolved function display name for this PC (same as `call_stack.last()`
+    /// with the `@ {entry_pc:#x}` suffix stripped).
+    pub func: &'a str,
+    /// `Some(name)` if this step is a syscall leaf (SBPFv1 `CALL_IMM` where
+    /// the next traced PC == pc+1); `None` otherwise.
+    pub syscall: Option<String>,
+    /// CU cost attributed to this step: 1 for a plain instruction, or the
+    /// syscall base cost (from `ComputeBudget`) for a syscall leaf.
+    pub cu_cost: u64,
+}
 
 /// Provides the minimal VM context needed to parse and inspect an executable.
 #[derive(Default)]
@@ -81,7 +102,9 @@ impl ContextObject for NoopContext {
     }
 }
 
-/// Processes a single trace (regs + insns pair) and returns folded stacks + total CU.
+/// Streams a trace (regs + insns pair), invoking `visit` for every step with
+/// the up-to-date call stack, resolved function, CU cost, and (for syscall
+/// leaves) the syscall name.
 ///
 /// The algorithm is PC-driven rather than opcode-driven: for every traced
 /// instruction we look up which function the PC falls into and resync the
@@ -96,7 +119,7 @@ impl ContextObject for NoopContext {
 /// syscall does not change the persistent call stack (the caller resumes at
 /// the next instruction), but we still want to attribute its single traced
 /// CU to a `[syscall] {name}` leaf frame for display.
-fn process_trace(
+pub fn stream_trace(
     regs_data: &[u8],
     insns_data: &[u8],
     count: usize,
@@ -104,10 +127,8 @@ fn process_trace(
     syscall_names: &BTreeMap<u32, String>,
     program_name: &str,
     budget: &ComputeBudget,
-) -> (BTreeMap<Vec<String>, u64>, u64) {
-    let mut folded_stacks: BTreeMap<Vec<String>, u64> = BTreeMap::new();
-    let mut total_cu: u64 = 0;
-
+    mut visit: impl FnMut(StreamStep<'_>),
+) {
     // Track the call stack by maintaining a stack of function display names.
     // The root frame is the program name and is never popped. Every other
     // frame is formatted as `{function_name} @ {entry_pc:#x}` so the SVG
@@ -162,27 +183,72 @@ fn process_trace(
                     .cloned()
                     .unwrap_or_else(|| format!("syscall_{imm:#x}"));
                 let cost = syscall_cost(budget, &syscall_name);
-                let mut syscall_stack = call_stack.clone();
-                syscall_stack.push(format!("[syscall] {syscall_name}"));
-                *folded_stacks.entry(syscall_stack).or_default() += cost;
-                total_cu += cost;
+                visit(StreamStep {
+                    pc,
+                    regs,
+                    insn,
+                    call_stack: &call_stack,
+                    func: &current_name,
+                    syscall: Some(syscall_name),
+                    cu_cost: cost,
+                });
                 continue;
             }
         }
 
-        // Default attribution: credit one CU to the current call stack top.
-        // EXIT / RETURN opcodes fall into this arm as well — their pop is
-        // handled implicitly by the next iteration's PC-driven resync once
-        // control returns to the caller.
-        *folded_stacks.entry(call_stack.clone()).or_default() += 1;
-        total_cu += 1;
+        // Default attribution: 1 CU to the current call-stack top. EXIT /
+        // RETURN opcodes fall into this arm too — their pop is handled
+        // implicitly by the next iteration's PC-driven resync.
+        visit(StreamStep {
+            pc,
+            regs,
+            insn,
+            call_stack: &call_stack,
+            func: &current_name,
+            syscall: None,
+            cu_cost: 1,
+        });
     }
+}
+
+/// Folds a trace into SVG stacks + total CU by consuming [`stream_trace`].
+fn process_trace(
+    regs_data: &[u8],
+    insns_data: &[u8],
+    count: usize,
+    symbol_map: &BTreeMap<u64, String>,
+    syscall_names: &BTreeMap<u32, String>,
+    program_name: &str,
+    budget: &ComputeBudget,
+) -> (BTreeMap<Vec<String>, u64>, u64) {
+    let mut folded_stacks: BTreeMap<Vec<String>, u64> = BTreeMap::new();
+    let mut total_cu: u64 = 0;
+
+    stream_trace(
+        regs_data,
+        insns_data,
+        count,
+        symbol_map,
+        syscall_names,
+        program_name,
+        budget,
+        |step| {
+            total_cu += step.cu_cost;
+            if let Some(syscall) = &step.syscall {
+                let mut stack: Vec<String> = step.call_stack.to_vec();
+                stack.push(format!("[syscall] {syscall}"));
+                *folded_stacks.entry(stack).or_default() += step.cu_cost;
+            } else {
+                *folded_stacks.entry(step.call_stack.to_vec()).or_default() += step.cu_cost;
+            }
+        },
+    );
 
     (folded_stacks, total_cu)
 }
 
 /// Reads the i-th register entry (12 x u64) from raw bytes.
-pub(super) fn read_regs(data: &[u8], i: usize) -> [u64; 12] {
+pub fn read_regs(data: &[u8], i: usize) -> [u64; 12] {
     let offset = i * REGS_ENTRY_SIZE;
     let mut regs = [0u64; 12];
     for r in 0..12 {
@@ -194,7 +260,7 @@ pub(super) fn read_regs(data: &[u8], i: usize) -> [u64; 12] {
 }
 
 /// Reads the i-th instruction entry (8 bytes) from raw bytes.
-pub(super) fn read_insn(data: &[u8], i: usize) -> [u8; 8] {
+pub fn read_insn(data: &[u8], i: usize) -> [u8; 8] {
     let offset = i * INSN_ENTRY_SIZE;
     data[offset..offset + 8].try_into().unwrap()
 }
@@ -203,7 +269,7 @@ pub(super) fn read_insn(data: &[u8], i: usize) -> [u8; 8] {
 /// map, by walking to the nearest lower-or-equal symbol entry. Returns
 /// `("unknown_{pc:#x}", pc)` as a fallback when the map has no covering
 /// entry.
-pub(super) fn lookup_function_with_pc(symbol_map: &BTreeMap<u64, String>, pc: u64) -> (String, u64) {
+pub fn lookup_function_with_pc(symbol_map: &BTreeMap<u64, String>, pc: u64) -> (String, u64) {
     symbol_map
         .range(..=pc)
         .next_back()
@@ -212,7 +278,7 @@ pub(super) fn lookup_function_with_pc(symbol_map: &BTreeMap<u64, String>, pc: u6
 }
 
 /// One invocation's trace files + the program it ran.
-pub(super) struct InvocationFiles {
+pub struct InvocationFiles {
     pub inv_seq: u32,
     pub tx_seq: u32,
     pub program_id: String,
@@ -225,7 +291,7 @@ pub(super) struct InvocationFiles {
 /// under a test directory into a stable, tx-ordered list of
 /// invocations. Ignores files that don't match the expected layout or
 /// are missing a sibling.
-pub(super) fn discover_invocations(trace_dir: &Path) -> Result<Vec<InvocationFiles>> {
+pub fn discover_invocations(trace_dir: &Path) -> Result<Vec<InvocationFiles>> {
     let mut found = Vec::new();
     if !trace_dir.exists() {
         return Ok(found);
@@ -408,7 +474,7 @@ fn short_pid(pid: &str) -> String {
 /// If the deployed binary is stripped (common for `cargo-build-sbf`), we also
 /// try loading symbols from the unstripped build artifact in the
 /// `target/sbpf-solana-solana/release/` directory.
-pub(super) fn load_function_map(
+pub fn load_function_map(
     elf_path: &Path,
     manifest_dir: Option<&Path>,
 ) -> Result<(BTreeMap<u64, String>, BTreeMap<u32, String>)> {
@@ -469,65 +535,69 @@ pub(super) fn load_function_map(
     Ok((symbols, syscall_hash_map()))
 }
 
-/// Known syscall names registered by `agave`/`solana-program-runtime`. Hashes
-/// are computed on the fly via `solana_sbpf::ebpf::hash_symbol_name` so we
+/// Known syscall names registered by `agave`/`solana-program-runtime`. Used
+/// both for symbol resolution in trace processing and to seed sbpf's loader
+/// registry so its disassembler can name `CALL_IMM` syscalls instead of
+/// printing `[invalid]`.
+pub const KNOWN_SYSCALLS: &[&str] = &[
+    // Panics / aborts.
+    "abort",
+    // Logging.
+    "sol_log_",
+    "sol_log_64_",
+    "sol_log_compute_units_",
+    "sol_log_data",
+    "sol_log_pubkey",
+    // Hashing + crypto.
+    "sol_sha256",
+    "sol_keccak256",
+    "sol_blake3",
+    "sol_poseidon",
+    "sol_secp256k1_recover",
+    "sol_curve_validate_point",
+    "sol_curve_group_op",
+    "sol_curve_multiscalar_mul",
+    "sol_curve_pairing_map",
+    "sol_alt_bn128_group_op",
+    "sol_alt_bn128_compression",
+    "sol_big_mod_exp",
+    // CPIs.
+    "sol_invoke_signed_c",
+    "sol_invoke_signed_rust",
+    // Return data.
+    "sol_set_return_data",
+    "sol_get_return_data",
+    // PDAs.
+    "sol_create_program_address",
+    "sol_try_find_program_address",
+    // Memory ops.
+    "sol_memcpy_",
+    "sol_memmove_",
+    "sol_memset_",
+    "sol_memcmp_",
+    // Sysvars (individual fast paths + the generic dispatcher).
+    "sol_get_clock_sysvar",
+    "sol_get_epoch_schedule_sysvar",
+    "sol_get_fees_sysvar",
+    "sol_get_rent_sysvar",
+    "sol_get_last_restart_slot",
+    "sol_get_epoch_rewards_sysvar",
+    "sol_get_sysvar",
+    // Misc.
+    "sol_panic_",
+    "sol_get_processed_sibling_instruction",
+    "sol_get_stack_height",
+    "sol_remaining_compute_units",
+    "sol_get_epoch_stake",
+];
+
+/// Build the syscall hash → name map for trace processing. Hashes are
+/// computed on the fly via `solana_sbpf::ebpf::hash_symbol_name` so we
 /// never have to keep a table of hex magic numbers in sync.
 ///
-/// When a new syscall lands in agave-syscalls, add its name here and it'll
-/// automatically get symbolicated.
+/// When a new syscall lands in agave-syscalls, add its name to
+/// [`KNOWN_SYSCALLS`] and it'll automatically get symbolicated.
 fn syscall_hash_map() -> BTreeMap<u32, String> {
-    const KNOWN_SYSCALLS: &[&str] = &[
-        // Panics / aborts.
-        "abort",
-        // Logging.
-        "sol_log_",
-        "sol_log_64_",
-        "sol_log_compute_units_",
-        "sol_log_data",
-        "sol_log_pubkey",
-        // Hashing + crypto.
-        "sol_sha256",
-        "sol_keccak256",
-        "sol_blake3",
-        "sol_poseidon",
-        "sol_secp256k1_recover",
-        "sol_curve_validate_point",
-        "sol_curve_group_op",
-        "sol_curve_multiscalar_mul",
-        "sol_curve_pairing_map",
-        "sol_alt_bn128_group_op",
-        "sol_alt_bn128_compression",
-        "sol_big_mod_exp",
-        // CPIs.
-        "sol_invoke_signed_c",
-        "sol_invoke_signed_rust",
-        // Return data.
-        "sol_set_return_data",
-        "sol_get_return_data",
-        // PDAs.
-        "sol_create_program_address",
-        "sol_try_find_program_address",
-        // Memory ops.
-        "sol_memcpy_",
-        "sol_memmove_",
-        "sol_memset_",
-        "sol_memcmp_",
-        // Sysvars (individual fast paths + the generic dispatcher).
-        "sol_get_clock_sysvar",
-        "sol_get_epoch_schedule_sysvar",
-        "sol_get_fees_sysvar",
-        "sol_get_rent_sysvar",
-        "sol_get_last_restart_slot",
-        "sol_get_epoch_rewards_sysvar",
-        "sol_get_sysvar",
-        // Misc.
-        "sol_panic_",
-        "sol_get_processed_sibling_instruction",
-        "sol_get_stack_height",
-        "sol_remaining_compute_units",
-        "sol_get_epoch_stake",
-    ];
-
     KNOWN_SYSCALLS
         .iter()
         .map(|name| {
@@ -559,7 +629,7 @@ fn syscall_hash_map() -> BTreeMap<u32, String> {
 /// search under it for a file matching `name` inside any
 /// `sbpf-solana-solana/release` directory. Returns the first non-stripped
 /// match, or `None` if nothing is found.
-fn find_unstripped_binary(
+pub fn find_unstripped_binary(
     deployed_path: &Path,
     manifest_dir: Option<&Path>,
 ) -> Option<std::path::PathBuf> {

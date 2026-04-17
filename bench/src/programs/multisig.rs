@@ -257,7 +257,6 @@ pub mod anchor_v2 {
             multisig_v2::accounts::SetLabel {
                 creator: creator.pubkey(),
                 config,
-                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )

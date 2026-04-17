@@ -25,10 +25,7 @@ impl SetLabel {
         if len > MAX_LABEL_LEN {
             return Err(MultisigError::LabelTooLong.into());
         }
-        // Validate UTF-8 so the label matches a framework taking `&str`
-        // (e.g. quasar's `String<32>`). Without this check, v2 was
-        // previously ahead partly because it skipped the validation
-        // quasar does as part of argument deserialization.
+        // UTF-8 validate for parity with frameworks that deserialize as `&str`.
         core::str::from_utf8(&label[..len])
             .map_err(|_| MultisigError::LabelTooLong)?;
         self.config.label.set_from_slice(&label[..len]);

@@ -909,14 +909,13 @@ fn test_initialize() {{
     let payer = Keypair::new();
     let counter = Keypair::new();
 
-    // With `anchor test --profile` the `profile` feature is on and we use
-    // `anchor_v2_testing::svm()` to install the register-tracing callback
-    // that writes per-test SBF traces under `target/anchor-v2-profile/`.
-    // Without the feature we use plain `LiteSVM::new()` — zero overhead.
-    #[cfg(feature = "profile")]
+    // `svm()` is `LiteSVM::new()` by default. When this crate is built
+    // with `--features profile` (which `anchor test --profile` and
+    // `anchor debugger` set automatically), it also installs the
+    // register-tracing callback that writes per-test SBF traces under
+    // `target/anchor-v2-profile/`. The cfg switch lives inside
+    // `anchor-v2-testing` so test code stays clean either way.
     let mut svm = anchor_v2_testing::svm();
-    #[cfg(not(feature = "profile"))]
-    let mut svm = LiteSVM::new();
     let bytes = include_bytes!("../../../target/deploy/{0}.so");
     svm.add_program(program_id, bytes).unwrap();
     svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();

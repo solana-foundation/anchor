@@ -39,8 +39,7 @@ pub fn process_instruction(
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-    // Compute the PDA once so we don't pay for `find_program_address` twice
-    // (steel's `create_program_account` would otherwise do its own lookup).
+    // Pre-derive the bump so `create_program_account_with_bump` doesn't re-search.
     let (_pda, bump) = Pubkey::find_program_address(&[b"counter"], program_id);
 
     create_program_account_with_bump::<Counter>(
@@ -52,9 +51,7 @@ pub fn process_instruction(
         bump,
     )?;
 
-    // Write the initial counter state via zero-copy.
-    // Steel allocates `8 + size_of::<T>()` bytes and writes the 1-byte
-    // discriminator to `data[0]`; the struct starts at offset 8.
+    // Struct payload starts at offset 8 (after the 1-byte disc + alignment).
     let mut data = counter_info.data.borrow_mut();
     let counter = bytemuck::from_bytes_mut::<Counter>(
         &mut data[8..8 + core::mem::size_of::<Counter>()],

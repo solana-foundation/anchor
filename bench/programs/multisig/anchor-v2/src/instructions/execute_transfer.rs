@@ -14,7 +14,7 @@ pub struct ExecuteTransfer {
     )]
     pub config: Account<MultisigConfig>,
     pub creator: UncheckedAccount,
-    #[account(mut, seeds = [b"vault", config.account().address().as_ref()], bump)]
+    #[account(mut, seeds = [b"vault", config.address().as_ref()], bump)]
     pub vault: UncheckedAccount,
     #[account(mut)]
     pub recipient: UncheckedAccount,
@@ -50,7 +50,7 @@ impl ExecuteTransfer {
             return Err(MultisigError::MissingRequiredSignature.into());
         }
 
-        let config_address = self.config.account().address();
+        let config_address = self.config.address();
         let vault_bump_bytes = [vault_bump];
         let seeds = [
             pinocchio::cpi::Seed::from(b"vault" as &[u8]),

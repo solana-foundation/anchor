@@ -1,26 +1,7 @@
 #![no_std]
 
-//! Hand-rolled pinocchio port of the multisig benchmark — the raw-performance
-//! floor for this workload. No framework dispatch, no trait machinery. The
-//! entrypoint reads a 1-byte instruction discriminator and dispatches directly
-//! to one of four hand-written handlers.
-//!
-//! On-chain state layout (389 bytes):
-//!
-//! ```text
-//!   0    disc: u8 = 1 (MULTISIG_CONFIG_DISC)
-//!   1    creator: Address (32 bytes)
-//!   33   threshold: u8
-//!   34   bump: u8
-//!   35   label_len: u8
-//!   36   label: [u8; 32]
-//!   68   signers_len: u8
-//!   69   signers: [Address; 10] (320 bytes)
-//!   389  end
-//! ```
-//!
-//! PDAs are derived on-chain with the raw `sol_sha256` +
-//! `sol_curve_validate_point` fast path, matching anchor-v2/quasar's cost.
+//! Hand-rolled pinocchio multisig — the raw-performance floor for this bench.
+//! On-chain state layout matches the `OFFSET_*` constants below.
 
 use pinocchio::{
     account::AccountView,
@@ -32,13 +13,7 @@ use pinocchio::{
 };
 use solana_program_error::ProgramError;
 
-// Shared multisig program id: `44444444444444444444444444444444444444444444`.
-// Matches anchor-v1/anchor-v2/quasar/steel — `find_program_address` returns
-// the same bumps across variants so the CU comparison isolates framework cost.
-//
-// We don't need it as a constant inside the program itself (the entrypoint
-// receives `program_id` as a parameter), but the bench driver writes the
-// keypair file for this id via `target/deploy/multisig_pinocchio-keypair.json`.
+// Shared multisig id `4444...4444` — same across all bench variants.
 pub const ID: Address = Address::new_from_array([
     0x2d, 0x5b, 0x41, 0x3c, 0x65, 0x40, 0xde, 0x15, 0x0c, 0x93, 0x73, 0x14, 0x4d, 0x51, 0x33, 0xca,
     0x4c, 0xb8, 0x30, 0xba, 0x0f, 0x75, 0x67, 0x16, 0xac, 0xea, 0x0e, 0x50, 0xd7, 0x94, 0x35, 0xe5,
@@ -114,14 +89,6 @@ pub fn process_instruction(
     }
 }
 
-// ---- create(threshold: u8) ----
-//
-// Accounts:
-//   0: creator (signer, writable)
-//   1: config (PDA [b"multisig", creator], writable, uninit)
-//   2: system_program
-//   3..: additional signer accounts (each must be `is_signer`)
-
 fn handle_create(
     program_id: &Address,
     accounts: &mut [AccountView],
@@ -136,8 +103,7 @@ fn handle_create(
         return Err(ProgramError::NotEnoughAccountKeys);
     }
 
-    // Scope borrow of the first three accounts so we can later iterate
-    // remaining accounts (`accounts[3..]`) for the signer list.
+    // Scope first three accounts so we can iterate `accounts[3..]` later.
     let creator_addr;
     let config_bump;
     {
@@ -150,9 +116,6 @@ fn handle_create(
 
         creator_addr = *creator.address();
 
-        // Derive the config PDA on-chain (must match the address the caller
-        // passed in) using the fast `sol_sha256`+`sol_curve_validate_point`
-        // path. We also need the bump to sign the CreateAccount CPI.
         let (expected_pda, bump) = find_program_address(
             &[b"multisig", creator_addr.as_ref()],
             program_id,
@@ -163,7 +126,6 @@ fn handle_create(
         }
         config_bump = bump;
 
-        // CPI: CreateAccount signed with [b"multisig", creator, bump].
         let rent_lamports =
             (ACCOUNT_STORAGE_OVERHEAD + MULTISIG_CONFIG_SPACE as u64) * DEFAULT_LAMPORTS_PER_BYTE;
         let bump_slice = [bump];
@@ -184,7 +146,6 @@ fn handle_create(
         .invoke_signed(&[signer])?;
     }
 
-    // Capture signer addresses from remaining accounts (indices 3..).
     let remaining = &accounts[3..];
     if remaining.len() > MAX_SIGNERS {
         return Err(custom(ERR_TOO_MANY_SIGNERS));
@@ -204,7 +165,6 @@ fn handle_create(
         return Err(custom(ERR_INVALID_THRESHOLD));
     }
 
-    // Write the config account data.
     let config = unsafe { accounts.get_unchecked(1) };
     let mut config_mut = *config;
     let data_slice = unsafe { config_mut.borrow_unchecked_mut() };
@@ -217,7 +177,6 @@ fn handle_create(
     data_slice[OFFSET_THRESHOLD] = threshold;
     data_slice[OFFSET_BUMP] = config_bump;
     data_slice[OFFSET_LABEL_LEN] = 0;
-    // Label bytes are zero-initialized by CreateAccount.
     data_slice[OFFSET_SIGNERS_LEN] = count as u8;
     for i in 0..count {
         let dst = OFFSET_SIGNERS + i * 32;
@@ -226,14 +185,6 @@ fn handle_create(
 
     Ok(())
 }
-
-// ---- deposit(amount: u64) ----
-//
-// Accounts:
-//   0: depositor (signer, writable)
-//   1: config (readonly — we only need it to be present in the tx)
-//   2: vault (PDA [b"vault", config], writable)
-//   3: system_program
 
 fn handle_deposit(accounts: &mut [AccountView], data: &[u8]) -> ProgramResult {
     if data.len() < 8 {
@@ -256,13 +207,6 @@ fn handle_deposit(accounts: &mut [AccountView], data: &[u8]) -> ProgramResult {
     Ok(())
 }
 
-// ---- set_label(label_len: u8, label: [u8; 32]) ----
-//
-// Accounts:
-//   0: creator (signer, writable)
-//   1: config (writable)
-//   2: system_program
-
 fn handle_set_label(accounts: &mut [AccountView], data: &[u8]) -> ProgramResult {
     if data.len() < 1 + 32 {
         return Err(custom(ERR_INVALID_DATA));
@@ -273,9 +217,7 @@ fn handle_set_label(accounts: &mut [AccountView], data: &[u8]) -> ProgramResult 
     }
     let label_bytes = &data[1..1 + 32];
 
-    // UTF-8 validate the label slice (fairness with frameworks that take a
-    // `&str` argument — quasar's `String<32>` does this as part of
-    // deserialization).
+    // UTF-8 validate for parity with frameworks that deserialize as `&str`.
     core::str::from_utf8(&label_bytes[..label_len])
         .map_err(|_| custom(ERR_LABEL_TOO_LONG))?;
 
@@ -297,7 +239,6 @@ fn handle_set_label(accounts: &mut [AccountView], data: &[u8]) -> ProgramResult 
         return Err(custom(ERR_WRONG_ACCOUNT_OWNER));
     }
 
-    // has_one: creator must match the stored creator.
     if &cfg_data[OFFSET_CREATOR..OFFSET_CREATOR + 32] != creator.address().as_ref() {
         return Err(custom(ERR_UNAUTHORIZED_CREATOR));
     }
@@ -306,16 +247,6 @@ fn handle_set_label(accounts: &mut [AccountView], data: &[u8]) -> ProgramResult 
     cfg_data[OFFSET_LABEL..OFFSET_LABEL + MAX_LABEL_LEN].copy_from_slice(label_bytes);
     Ok(())
 }
-
-// ---- execute_transfer(amount: u64) ----
-//
-// Accounts:
-//   0: config (readonly, PDA [b"multisig", creator])
-//   1: creator (readonly)
-//   2: vault (writable, PDA [b"vault", config])
-//   3: recipient (writable)
-//   4: system_program
-//   5..: additional signer accounts
 
 fn handle_execute_transfer(
     program_id: &Address,
@@ -335,7 +266,6 @@ fn handle_execute_transfer(
     let vault = unsafe { accounts.get_unchecked(2) };
     let recipient = unsafe { accounts.get_unchecked(3) };
 
-    // Read the stored signers + threshold from the config account.
     let cfg_data = unsafe { config.borrow_unchecked() };
     if cfg_data.len() < MULTISIG_CONFIG_SPACE {
         return Err(custom(ERR_ACCOUNT_TOO_SMALL));
@@ -344,7 +274,6 @@ fn handle_execute_transfer(
         return Err(custom(ERR_WRONG_ACCOUNT_OWNER));
     }
 
-    // has_one: creator must match the stored creator.
     if &cfg_data[OFFSET_CREATOR..OFFSET_CREATOR + 32] != creator.address().as_ref() {
         return Err(custom(ERR_UNAUTHORIZED_CREATOR));
     }
@@ -356,8 +285,6 @@ fn handle_execute_transfer(
     }
     let stored_signers = &cfg_data[OFFSET_SIGNERS..OFFSET_SIGNERS + stored_count * 32];
 
-    // Count approvals from remaining accounts that are `is_signer` and in the
-    // stored signers list.
     let remaining = &accounts[5..];
     let mut approvals = 0u32;
     for account in remaining.iter() {
@@ -379,7 +306,6 @@ fn handle_execute_transfer(
         return Err(custom(ERR_MISSING_SIGNATURE));
     }
 
-    // Derive the vault bump on-chain (matching quasar's approach).
     let config_addr = *config.address();
     let (_vault_pda, vault_bump) =
         find_program_address(&[b"vault", config_addr.as_ref()], program_id)
@@ -405,11 +331,8 @@ fn handle_execute_transfer(
     Ok(())
 }
 
-// ---- PDA derivation fast path ----
-//
-// Copied inline from anchor-lang-v2/quasar so this crate stays self-contained.
-// Uses raw `sol_sha256` + `sol_curve_validate_point` syscalls for ~3x lower CU
-// than `sol_try_find_program_address`.
+// PDA derivation via raw `sol_sha256` + `sol_curve_validate_point` —
+// the same fast path anchor-v2/quasar use internally.
 #[inline(always)]
 fn find_program_address(seeds: &[&[u8]], program_id: &Address) -> Option<(Address, u8)> {
     #[cfg(target_os = "solana")]

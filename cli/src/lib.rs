@@ -51,6 +51,7 @@ use {
 mod account;
 mod checks;
 pub mod config;
+pub mod debugger;
 mod flamegraph;
 mod keygen;
 mod metadata;
@@ -261,6 +262,33 @@ pub enum Command {
         /// Create new program even if there is already one
         #[clap(long, action)]
         force: bool,
+    },
+    /// Run tests under a foundry-style instruction-level debugger.
+    ///
+    /// Reuses the `anchor test --profile` trace pipeline: rebuilds with DWARF,
+    /// runs the test suite via `anchor-v2-testing` (LiteSVM in-process), then
+    /// opens a ratatui TUI over the captured SBF register traces instead of
+    /// rendering flamegraphs. Never touches a validator — LiteSVM is the only
+    /// runtime that produces the traces this consumes.
+    Debugger {
+        /// Filter captured traces to tests whose name contains this substring.
+        /// If omitted, the TUI opens with a picker across every captured
+        /// `(test, tx)` pair.
+        test_name: Option<String>,
+        /// Skip the build+test phase and open the TUI directly over whatever
+        /// traces already exist under `target/anchor-v2-profile/`.
+        #[clap(long)]
+        skip_run: bool,
+        /// Skip `cargo build-sbf`. Use when the `.so` is already up to date
+        /// — saves a rebuild but fails if the deploy artifact is missing.
+        #[clap(long)]
+        skip_build: bool,
+        /// Forwarded to the underlying `anchor test` invocation.
+        #[clap(long)]
+        skip_lint: bool,
+        /// Arguments to pass to the underlying `cargo build-sbf` command.
+        #[clap(required = false, last = true)]
+        cargo_args: Vec<String>,
     },
     /// Commands for interacting with interface definitions.
     Idl {
@@ -1293,6 +1321,20 @@ fn process_command(opts: Opts) -> Result<()> {
             profile,
             args,
             env,
+            cargo_args,
+        ),
+        Command::Debugger {
+            test_name,
+            skip_run,
+            skip_build,
+            skip_lint,
+            cargo_args,
+        } => debugger(
+            &opts.cfg_override,
+            test_name,
+            skip_run,
+            skip_build,
+            skip_lint,
             cargo_args,
         ),
         Command::Airdrop { amount, pubkey } => airdrop(&opts.cfg_override, amount, pubkey),
@@ -2373,15 +2415,19 @@ fn _build_rust_cwd(
     no_docs: bool,
     cargo_args: Vec<String>,
 ) -> Result<()> {
-    let exit = std::process::Command::new("cargo")
-        .args(BUILD_SUBCOMMAND)
-        .args(cargo_args.clone())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| anyhow::format_err!("{}", e))?;
-    if !exit.status.success() {
-        std::process::exit(exit.status.code().unwrap_or(1));
+    // Fail fast on missing `idl-build` feature before the ~10s SBF compile
+    // so a misconfigured manifest surfaces immediately with the exact
+    // snippet to add, not after a full build cycle.
+    if !no_idl {
+        check_idl_build_feature()?;
+    }
+
+    // Preserves the historical behavior of `process::exit`-ing on build
+    // failure rather than propagating an Err — `anchor build` shells out,
+    // so a build failure should bubble straight to the user's exit code.
+    if let Err(e) = cargo_build_sbf(None, &cargo_args) {
+        eprintln!("{e}");
+        std::process::exit(1);
     }
 
     // Generate IDL
@@ -2424,8 +2470,42 @@ fn _build_rust_cwd(
     Ok(())
 }
 
-/// Subcommand and any arguments to be passed to cargo
-const BUILD_SUBCOMMAND: &[&str] = &["build-sbf", "--tools-version", "v1.52"];
+/// Subcommand + toolchain pin passed to cargo for every SBF build the CLI
+/// invokes. `--tools-version v1.52` is the SBF platform-tools release the
+/// rest of anchor's stack is tested against; using anything else risks
+/// link errors against the bundled stdlib (e.g. `feature edition2024 is
+/// required` when the user's host toolchain is too old to build modern
+/// transitive deps).
+pub const BUILD_SUBCOMMAND: &[&str] = &["build-sbf", "--tools-version", "v1.52"];
+
+/// Shell out to `cargo build-sbf` with our pinned toolchain
+/// ([`BUILD_SUBCOMMAND`]) plus any user-supplied `extra_args`.
+///
+/// Optional `cwd` is honored when set, otherwise inherits the parent's
+/// current dir. Stdio is inherited so the user sees the build live.
+/// Returns `Err` on non-zero exit instead of `std::process::exit`-ing,
+/// so callers (e.g. `anchor debugger` loose mode) can decide whether to
+/// continue.
+pub fn cargo_build_sbf(cwd: Option<&Path>, extra_args: &[String]) -> Result<()> {
+    let mut cmd = std::process::Command::new("cargo");
+    if let Some(d) = cwd {
+        cmd.current_dir(d);
+    }
+    let status = cmd
+        .args(BUILD_SUBCOMMAND)
+        .args(extra_args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .map_err(|e| anyhow!("spawn `cargo build-sbf`: {e}"))?;
+    if !status.success() {
+        return Err(anyhow!(
+            "`cargo build-sbf` failed (exit {:?})",
+            status.code()
+        ));
+    }
+    Ok(())
+}
 
 pub fn verify(
     program_id: Pubkey,
@@ -3442,6 +3522,210 @@ fn test(
     })?
 }
 
+/// Run the test suite (with profile tracing enabled) and then launch the
+/// foundry-style SBF instruction stepper over the traces it produced.
+///
+/// Reuses the `--profile` environment setup so the trace-writing half stays
+/// lock-stepped with the flamegraph renderer. `--skip-run` skips the
+/// `anchor test` phase and opens the TUI directly — useful when iterating
+/// on the TUI itself without paying for a rebuild each time.
+#[allow(clippy::too_many_arguments)]
+fn debugger(
+    cfg_override: &ConfigOverride,
+    test_name: Option<String>,
+    skip_run: bool,
+    skip_build: bool,
+    skip_lint: bool,
+    cargo_args: Vec<String>,
+) -> Result<()> {
+    // Dispatch on workspace shape:
+    //
+    //   - Anchor.toml present  → existing flow (build via `anchor build`,
+    //     test via the `[scripts.test]` script, deploy mapping from
+    //     `[programs.localnet]`).
+    //   - No Anchor.toml       → loose mode: cargo workspace discovery,
+    //     `cargo test --features profile` directly, deploy mapping from
+    //     `target/deploy/*-keypair.json`.
+    //
+    // We probe Config::discover instead of with_workspace because the
+    // latter exits the process on miss.
+    let has_anchor_toml = match Config::discover(cfg_override) {
+        Ok(Some(_)) => true,
+        Ok(None) => false,
+        Err(e) => {
+            return Err(anyhow!("failed to probe for Anchor.toml: {e}"));
+        }
+    };
+
+    if has_anchor_toml {
+        debugger_anchor_workspace(
+            cfg_override,
+            test_name,
+            skip_run,
+            skip_build,
+            skip_lint,
+            cargo_args,
+        )
+    } else {
+        debugger_loose(cfg_override, test_name, skip_run, skip_build, cargo_args)
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn debugger_anchor_workspace(
+    cfg_override: &ConfigOverride,
+    test_name: Option<String>,
+    skip_run: bool,
+    skip_build: bool,
+    skip_lint: bool,
+    cargo_args: Vec<String>,
+) -> Result<()> {
+    if !skip_run {
+        // LiteSVM is the only runtime that emits the register traces the
+        // debugger consumes, so `anchor debugger` hardcodes both
+        // `skip_deploy` and `skip_local_validator` to true — we neither
+        // touch nor require a running validator.
+        test(
+            cfg_override,
+            None,       // program_name
+            true,       // skip_deploy
+            true,       // skip_local_validator
+            skip_build, // skip_build
+            skip_lint,  // skip_lint
+            true,       // no_idl — debugger never uses the IDL
+            false,      // detach
+            Vec::new(), // tests_to_run
+            ValidatorType::Surfpool,
+            true,       // profile — always on for --debugger
+            Vec::new(), // extra_args
+            Vec::new(), // env_vars
+            cargo_args,
+        )?;
+    }
+
+    with_workspace(cfg_override, |cfg| -> Result<()> {
+        let workspace_root = cfg.path().parent().unwrap().to_owned();
+        let profile_dir = workspace_root.join(crate::profile::DEFAULT_PROFILE_DIR);
+
+        // Rebuild the pubkey → deployed `.so` map the same way render_profile does,
+        // so symbolication + disassembly have the same ELFs the flamegraph has.
+        let deploy_dir = workspace_root.join("target").join("deploy");
+        let mut pubkey_to_so: BTreeMap<String, PathBuf> = BTreeMap::new();
+        for programs in cfg.programs.values() {
+            for (name, deployment) in programs {
+                pubkey_to_so.insert(deployment.address.to_string(), deploy_dir.join(format!("{name}.so")));
+            }
+        }
+
+        debugger::run(
+            &profile_dir,
+            &pubkey_to_so,
+            Some(&workspace_root),
+            test_name.as_deref(),
+        )
+    })?
+}
+
+/// `anchor debugger` outside an Anchor workspace. Runs in any cargo
+/// workspace whose member crates use `anchor-v2-testing` for tests.
+///
+/// Sanity-checks the workspace shape before doing anything destructive
+/// (clearing the trace dir, running cargo test) so the user gets a clear
+/// error early rather than a "no traces" mystery later.
+fn debugger_loose(
+    _cfg_override: &ConfigOverride,
+    test_name: Option<String>,
+    skip_run: bool,
+    skip_build: bool,
+    cargo_args: Vec<String>,
+) -> Result<()> {
+    let cwd = std::env::current_dir().context("read current directory")?;
+    let ws = debugger::loose::LooseWorkspace::discover(cwd)?;
+
+    if !skip_run {
+        // Pre-flight checks before destructive ops. Anchor.toml flow
+        // tolerates these because `anchor build` would have caught them;
+        // here we own the contract.
+        ws.check_dev_dep()?;
+    }
+    let profile_feature = ws.detect_profile_feature()?;
+
+    let profile_dir = ws.root.join(debugger::loose_profile_dir_name());
+
+    if !skip_run {
+        debugger::loose::clear_profile_dir(&profile_dir)?;
+        // Force DWARF into the SBF release profile so the source pane can
+        // resolve PC → (file, line) via addr2line. Mirrors the env the
+        // Anchor.toml flow sets in `test()`. Scoped to `CARGO_PROFILE_*`
+        // so only the SBF build sees it — host-mode `cargo test` is
+        // unaffected.
+        std::env::set_var("CARGO_PROFILE_RELEASE_DEBUG", "2");
+
+        // Build the SBF program first so `target/deploy/<name>.so` exists
+        // (post-linked, sbpf-loadable). Skipping build-sbf is the #1 cause
+        // of "everything runs but the disasm pane is empty" — the test
+        // imports include_bytes!("../target/deploy/X.so") which depends
+        // on this step. `--skip-build` opts out for fast TUI iteration.
+        if !skip_build {
+            // Reuse the same cargo-build-sbf invocation `anchor build`
+            // uses (toolchain pinned via `BUILD_SUBCOMMAND`). Invoke from
+            // the package's manifest dir — `cargo build-sbf` doesn't
+            // accept top-level `-p`, so per-package selection is by cwd.
+            let build_cwd = ws.cargo_invocation_dir();
+            eprintln!("running `cargo build-sbf` from {}", build_cwd.display());
+            cargo_build_sbf(Some(build_cwd), &cargo_args)?;
+        }
+        eprintln!(
+            "running `cargo test --features {profile_feature}{pkg}{filter}` from {dir}",
+            pkg = ws
+                .current_package
+                .as_deref()
+                .map(|p| format!(" -p {p}"))
+                .unwrap_or_default(),
+            filter = test_name
+                .as_deref()
+                .map(|f| format!(" -- {f}"))
+                .unwrap_or_default(),
+            dir = ws.cargo_invocation_dir().display(),
+        );
+        debugger::loose::run_cargo_test(
+            ws.cargo_invocation_dir(),
+            ws.current_package.as_deref(),
+            &profile_feature,
+            &profile_dir,
+            test_name.as_deref(),
+        )?;
+    }
+
+    let pubkey_to_so = debugger::loose::discover_programs(&ws.root)?;
+    if pubkey_to_so.is_empty() {
+        eprintln!(
+            "warning: no programs found under {}/target/deploy/.\n\
+             ELFs are required for source/disasm symbolication. The debugger \
+             will still open but the static disasm pane will be empty.",
+            ws.root.display()
+        );
+    }
+
+    if !profile_dir.exists() {
+        return Err(anyhow!(
+            "no traces produced at {}.\n\n\
+             Did the test actually run? Check that:\n\
+             - the test calls `anchor_v2_testing::svm()` (NOT `LiteSVM::new()`)\n\
+             - the `{profile_feature}` feature is enabled in the test build\n\
+             - the test sent at least one transaction that hit a BPF program",
+            profile_dir.display()
+        ));
+    }
+
+    debugger::run(
+        &profile_dir,
+        &pubkey_to_so,
+        Some(&ws.root),
+        test_name.as_deref(),
+    )
+}
+
 /// Walks the per-test trace directories left behind by
 /// `anchor-v2-testing`'s profile callback and renders one flamegraph
 /// SVG per transaction under `<profile_dir>/<test>__tx<N>.svg`.
@@ -4103,18 +4387,47 @@ fn start_surfpool_validator(
     surfpool_config: &Option<SurfpoolConfig>,
     full_simnet_mode: bool,
 ) -> Result<Child> {
+    let (host, port) = match surfpool_config {
+        Some(SurfpoolConfig { host, rpc_port, .. }) => (host.clone(), *rpc_port),
+        _ => (SURFPOOL_HOST.to_string(), DEFAULT_RPC_PORT),
+    };
     let rpc_url = surfpool_rpc_url(surfpool_config);
 
-    let (test_validator_stdout, test_validator_stderr) = match full_simnet_mode {
-        true => (Stdio::inherit(), Stdio::inherit()),
-        false => (Stdio::null(), Stdio::null()),
+    // Pre-spawn port-in-use detection. If someone is already bound to
+    // `host:port` (stale surfpool, earlier `solana-test-validator`, whatever),
+    // our new `surfpool` process would race for the bind and quietly lose —
+    // then the startup health loop would succeed against the stranger's RPC
+    // and `anchor test` would silently run against a foreign validator with
+    // unknown state. Refuse up front and tell the user how to unblock.
+    if std::net::TcpStream::connect_timeout(
+        &format!("{host}:{port}")
+            .parse()
+            .map_err(|e| anyhow!("invalid surfpool host:port `{host}:{port}`: {e}"))?,
+        std::time::Duration::from_millis(200),
+    )
+    .is_ok()
+    {
+        return Err(anyhow!(
+            "port {port} on {host} is already in use — another validator is running \
+             there. Kill it (e.g. `pkill -f surfpool`) or set `[surfpool] rpc_port = N` \
+             in Anchor.toml to pick a free port."
+        ));
+    }
+
+    // Keep surfpool's stderr attached to the user's terminal even in non-
+    // simnet mode so bind failures / panics surface immediately instead of
+    // getting silently swallowed. Stdout stays nulled — surfpool's INFO-level
+    // logs are noisy and not useful during a test run.
+    let test_validator_stdout = match full_simnet_mode {
+        true => Stdio::inherit(),
+        false => Stdio::null(),
     };
 
     let mut validator_handle = std::process::Command::new("surfpool")
         .arg("start")
         .args(flags.unwrap_or_default())
         .stdout(test_validator_stdout)
-        .stderr(test_validator_stderr)
+        .stderr(Stdio::inherit())
         .spawn()
         .map_err(|e| anyhow!("Failed to spawn `surfpool`: {e}"))?;
 
@@ -4128,6 +4441,16 @@ fn start_surfpool_validator(
         .unwrap_or(STARTUP_WAIT);
 
     while count < ms_wait {
+        // If surfpool died during startup (most common cause: port bind
+        // failure), bail out instead of letting the health poll fall through
+        // to whatever foreign process happens to be answering on the port.
+        if let Ok(Some(status)) = validator_handle.try_wait() {
+            return Err(anyhow!(
+                "`surfpool` exited during startup with {status} — see the stderr \
+                 output above. Common causes: port {port} in use, missing deploy \
+                 artifacts in `target/deploy/`, invalid Anchor.toml config."
+            ));
+        }
         let r = client.get_latest_blockhash();
         if r.is_ok() {
             break;

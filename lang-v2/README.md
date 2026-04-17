@@ -2,7 +2,14 @@
 
 Next-generation [Anchor](https://www.anchor-lang.com/) runtime for Solana programs. Built on [pinocchio](https://github.com/anza-xyz/pinocchio), `#![no_std]` by default, trait-based account system. Drops the `'info` lifetime from user-facing code.
 
-Order-of-magnitude smaller binaries and ~70–86% fewer CU per instruction versus v1 in the prototype benchmarks ([#4393](https://github.com/solana-foundation/anchor/pull/4393)): a single-instruction counter drops 122 KB → 6.9 KB (−94%); a four-instruction multisig drops 178 KB → 28 KB (−84%).
+Order-of-magnitude smaller binaries and fewer CU per instruction versus v1 ([bench results](../bench/)):
+
+| Program | v1 | v2 | Δ binary | Δ CU (median ix) |
+|---|---|---|---|---|
+| helloworld (1 ix) | 122 KB / 5,855 CU | 6.9 KB / 1,383 CU | **−94%** | **−76%** |
+| multisig (4 ix) | 166 KB / 4,324–12,031 CU | 31 KB / 476–2,360 CU | **−81%** | **−67%** |
+| vault (2 ix) | — | 5.9 KB / 403–1,910 CU | — | — |
+| prop-amm (3 ix) | — | 9.2 KB / 26–1,383 CU | — | — |
 
 > [!WARNING]
 > **Alpha — do not use in production.** Not audited. APIs may break between commits. Programs written against today's `anchor-lang-v2` are not guaranteed an upgrade path. Not published to crates.io; depend via git on the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch.
@@ -89,6 +96,7 @@ All types are bare — no `'info` lifetime.
 | `Sysvar<T>` | `Sysvar<Clock>`, `Sysvar<Rent>`. | Address validated against the sysvar ID. Prefer `Clock::get()` / `Rent::get()` syscalls where possible. |
 | `Slab<H, Item>` | Header + dynamic item tail. | Zero-copy ledger / event-log accounts. `Account<T>` is `Slab<T, HeaderOnly>` under the hood. |
 | `Option<Account<T>>` | Optional account slot. | Client sends program-ID as sentinel when absent; constraints are skipped; bumps become `Option<u8>`. |
+| `Nested<T>` | Compose `#[derive(Accounts)]` structs. | Inline expansion — `Nested<Inner>` consumes Inner's accounts at that position in the flat list. Access nested fields via `ctx.accounts.inner.field` (auto-deref). |
 
 ### Why `Account<T>` is the default
 
@@ -107,9 +115,7 @@ pub struct Example {
     #[account(mut)]
     pub data: Account<Data>,
 
-    // `space =` is optional. When omitted the macro falls back to
-    // `<Account<Data> as Space>::INIT_SPACE`, which is
-    // `8 + size_of::<Data>()` for pod accounts.
+    // `space =` is optional for pod accounts — defaults to 8 + size_of::<Data>().
     #[account(init, payer = payer)]
     pub new_data: Account<Data>,
 
@@ -119,15 +125,19 @@ pub struct Example {
 
     #[account(has_one = authority)]
     pub managed: Account<Managed>,
+    pub authority: Signer,
 
-    #[account(mut, seeds = [b"vault", user.address().as_ref()], bump)]
+    #[account(mut, seeds = [b"vault", payer.address().as_ref()], bump)]
     pub vault: Account<Vault>,  // bump available at ctx.bumps.vault
 
     #[account(constraint = config.enabled != 0 @ MyError::Disabled)]
-    pub config: Account<Config>,  // arbitrary predicate over already-loaded fields; `@` attaches a custom error
+    pub config: Account<Config>,  // `@` attaches a custom error code
 
-    #[account(close = rent_refund)]
+    #[account(close = recipient)]
     pub closeable: Account<Data>,
+    /// CHECK: receives rent from the closed account.
+    #[account(mut)]
+    pub recipient: UncheckedAccount,
 
     #[account(mut)]
     pub payer: Signer,
@@ -135,8 +145,6 @@ pub struct Example {
     pub system_program: Program<System>,
 }
 ```
-
-Seed expressions use `.address()` on fields to pull an `Address`.
 
 ## Macros
 
@@ -192,18 +200,25 @@ pub struct Profile {
 
 Pod `#[account]` doesn't need `InitSpace` — the `Account<T>::INIT_SPACE` fallback computes `8 + size_of::<T>()` directly.
 
-### `#[event]` / `#[event(borsh)]`
+### `#[event]` / `#[event(bytemuck)]` / `#[event(borsh)]`
 
-Event definitions emitted via `emit!`.
+Event definitions emitted via `emit!`. Three serialization modes:
 
-- **Default `#[event]`**: pod-mode zero-copy. `repr(C)`, auto `bytemuck::Pod`/`Zeroable`. Rejects fat-pointer and non-Pod field types at compile time with actionable diagnostics. Pod layout without padding is byte-identical to borsh-packed, so clients decode either way.
-- **`#[event(borsh)]`**: borsh serialization. Supports `Vec`, `String`, `Option<T>`, enums. Slower (serialization cost per emit), flexible.
+- **Default `#[event]`**: wincode serialization. Supports `Vec`, `String`, `Option<T>`, enums — and is 3–10× cheaper than borsh on SBF.
+- **`#[event(bytemuck)]`**: zero-copy `copy_nonoverlapping` of a `repr(C)` Pod struct. Cheapest for fixed-size shapes, but rejects fat-pointer and non-Pod fields at compile time. No padding allowed.
+- **`#[event(borsh)]`**: borsh serialization. Retained for IDL-compatibility with v1 off-chain consumers that decode via borsh.
 
 ```rust
 #[event]
 pub struct Deposited {
     pub depositor: Address,
     pub amount: u64,
+}
+
+#[event(bytemuck)]
+pub struct Tick {
+    pub slot: u64,
+    pub price: u64,
 }
 
 #[event(borsh)]
@@ -353,16 +368,15 @@ Feature flags the **scaffold** emits in your program's `Cargo.toml` (`cpi`, `no-
 **Working today:**
 - Account types: `Account<T>`, `BorshAccount<T>`, `Signer`, `Program<T>`, `SystemAccount`, `UncheckedAccount`, `Sysvar<T>`, `Slab<H, Item>`, `Option<Account<T>>`
 - Constraints: `init`, `init_if_needed`, `mut`, `has_one`, `seeds`, `bump`, `constraint`, `close`, `owner`, `address`, `rent_exempt`, `token::*`, `mint::*`, `associated_token::*`
-- Macros: `#[program]`, `#[derive(Accounts)]`, `#[account]` / `#[account(borsh)]`, `#[event]` / `#[event(borsh)]`, `#[error_code]`, `#[constant]`, `#[access_control]`, `#[derive(InitSpace)]`
+- Macros: `#[program]`, `#[derive(Accounts)]`, `#[account]` / `#[account(borsh)]`, `#[event]` / `#[event(bytemuck)]` / `#[event(borsh)]`, `#[error_code]`, `#[constant]`, `#[access_control]`, `#[derive(InitSpace)]`
 - CPIs: system program create, PDA-signed, remaining-accounts injection
-- SPL: `Mint`, `TokenAccount`, associated-token init (via `spl-v2`)
+- SPL: `Mint`, `TokenAccount`, associated-token init, full CPI surface (`Transfer`, `MintTo`, `Burn`, `Approve`, `Revoke`, `SetAuthority`, `CloseAccount`, `Freeze`/`Thaw`, `SyncNative` + checked variants) via `spl-v2`
 - In-process testing via LiteSVM + `anchor-v2-testing`, flamegraphs via `anchor test --profile`
 
 **Known gaps:**
 
-- **Events not in IDL output.** `anchor idl build` doesn't currently emit `events` metadata for v2 programs. TypeScript clients can't use `EventParser` — events must be decoded manually from `Program data:` log lines.
-- **SPL coverage limited.** `anchor-spl-v2` wraps `Mint`, `TokenAccount`, and associated-token init. Other SPL programs (governance, name-service, stake-pool, token-swap, etc.) aren't wrapped.
-- **TypeScript client event decode.** `@anchor-lang/core` assumes v1 event semantics. Basic RPC calls and account decoding work against v2; event decode and complex `AccountsResolver` paths may need manual work.
+- **TypeScript client partially tested.** `anchor idl build` now emits `events` metadata, but the `@anchor-lang/core` `EventParser` and `AccountsResolver` paths haven't been validated against v2 IDLs end-to-end. Basic RPC calls and account decoding work; complex client-side decodes may need manual work.
+- **Token2022 not supported.** `Mint`/`TokenAccount` validate against SPL Token only; Token2022 programs fail owner checks silently. Other SPL programs (governance, name-service, stake-pool, etc.) aren't wrapped.
 - **Not on crates.io.** Must depend via git on the `anchor-next` branch until publish. Expected to stay that way through pre-1.0.
 
 ## v1 → v2
@@ -371,7 +385,7 @@ Feature flags the **scaffold** emits in your program's `Cargo.toml` (`cpi`, `no-
 |---|---|---|
 | Runtime | `solana_program` | `pinocchio` |
 | Stdlib | `std` required | `#![no_std]`, `alloc` is a feature |
-| Binary size | baseline | −84% to −94% (see intro benchmarks) |
+| Binary size | baseline | −81% to −94% (see intro benchmarks) |
 | Lifetime on Accounts | `<'info>` required everywhere | removed |
 | Context in handlers | `Context<T>` | `&mut Context<T>` |
 | Field access | `.key()` | `.address()` |
@@ -389,6 +403,32 @@ Worked examples live under [`bench/programs/`](../bench/programs/). The anchor-v
 | [`helloworld`](../bench/programs/helloworld/anchor-v2) | Single-instruction counter. Minimum viable `#[program]` + `#[account]`. |
 | [`vault`](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault. Two handlers (`deposit`, `withdraw`), PDA with stored bump, signed CPI. |
 | [`multisig`](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig. Multi-account state, PDA-signed transfers, `has_one` / `constraint` patterns. |
+| [`prop-amm`](../bench/programs/prop-amm/anchor-v2) | Oracle price-feed with asm fast-path (`update` = 26 CU). Custom entrypoint + normal anchor handlers. |
+
+## Tooling
+
+### `anchor test --profile`
+
+Flamegraph generation. Rebuilds with DWARF symbols, runs the test suite via LiteSVM in-process (no validator), captures per-test SBF register traces, and renders one SVG flamegraph per transaction under `target/anchor-v2-profile/`.
+
+```bash
+anchor test --profile
+# prints paths: target/anchor-v2-profile/<test>__tx<N>.svg
+```
+
+The SVGs are written to disk and their paths are printed — open them in a browser manually. The scaffold's `Cargo.toml` includes a `profile` feature that forwards to `anchor-v2-testing/profile` — the register-tracing callback that captures the traces. `anchor test --profile` enables this feature automatically.
+
+### `anchor debugger`
+
+Foundry-style instruction-level TUI debugger. Reuses the `--profile` trace pipeline — builds with DWARF, runs tests, then opens a `ratatui` terminal UI over the captured register traces instead of rendering flamegraphs. Source-mapped: shows Rust source alongside the SBF disassembly with per-instruction CU.
+
+```bash
+anchor debugger                      # build + test + open TUI
+anchor debugger my_test_name         # filter to tests matching "my_test_name"
+anchor debugger --skip-run           # open TUI over existing traces
+```
+
+Both tools run entirely in-process via LiteSVM — no validator process, no network.
 
 ## Architecture
 

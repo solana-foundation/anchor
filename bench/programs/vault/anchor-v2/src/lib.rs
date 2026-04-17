@@ -1,12 +1,4 @@
-//! Anchor v2 port of the quasar vault benchmark.
-//!
-//! Two instructions:
-//!   - `deposit(amount)` — transfers SOL from `user` to `vault` PDA via CPI
-//!   - `withdraw(amount)` — direct lamport arithmetic (vault has no allocated
-//!     data so the runtime's write-ownership check permits it)
-//!
-//! Matches the shape of `quasar-vault` in `examples/vault` so the cross-
-//! framework comparison is apples-to-apples.
+//! Anchor v2 port of the quasar vault bench. Shape matches `examples/vault`.
 
 use anchor_lang_v2::prelude::*;
 
@@ -29,10 +21,9 @@ pub mod vault_v2 {
 
     #[discrim = 1]
     pub fn withdraw(ctx: &mut Context<Withdraw>, amount: u64) -> Result<()> {
-        // AccountView is Copy — copying gives an owned value we can call
-        // `set_lamports(&mut self)` on. The write goes through a raw
-        // pointer into the account's serialized data buffer, so both the
-        // original and the copy point to the same backing memory.
+        // `AccountView: Copy` — copies still point at the same backing
+        // buffer, so `set_lamports(&mut self)` mutates the underlying
+        // account through the raw pointer.
         let mut vault = *ctx.accounts.vault.account();
         let mut user = *ctx.accounts.user.account();
         vault.set_lamports(vault.lamports() - amount);

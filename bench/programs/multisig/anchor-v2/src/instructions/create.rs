@@ -9,7 +9,6 @@ use crate::{
 pub struct Create {
     #[account(mut)]
     pub creator: Signer,
-    // `space` omitted — defaults to `8 + size_of::<MultisigConfig>()` for pod accounts.
     #[account(init, payer = creator, seeds = [b"multisig", creator.address().as_ref()])]
     pub config: Account<MultisigConfig>,
     pub system_program: Program<System>,
@@ -29,7 +28,6 @@ impl Create {
             return Err(MultisigError::InvalidThreshold.into());
         }
 
-        // Validate signers and capture their addresses into a temporary buffer.
         let mut signers_tmp = [Address::new_from_array([0u8; 32]); MAX_SIGNERS];
         for (i, account) in remaining.iter().enumerate() {
             if !account.is_signer() {
@@ -40,13 +38,10 @@ impl Create {
 
         self.config.creator = *self.creator.address();
         self.config.threshold = threshold;
-        self.config.bump = 0; // set by caller after init
-        // `init` zeroes the account, so both PodVecs start with len = 0.
-        // Fill the populated slots via the Vec-like API.
+        self.config.bump = 0; // caller writes the bump after init
         self.config
             .signers
             .set_from_slice(&signers_tmp[..remaining.len()]);
-        // Label starts empty — set_label writes to it later.
         self.config.label.clear();
 
         Ok(())

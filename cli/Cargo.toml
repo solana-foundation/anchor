@@ -78,3 +78,17 @@ object = { version = "0.37.3", features = ["read_core", "elf"] }
 rustc-demangle = "0.1"
 solana-compute-budget = { version = "3.1.10", features = ["agave-unstable-api"] }
 solana-sbpf = "0.13.1"
+
+# `anchor debugger` — foundry-style TUI stepper over the profile traces.
+addr2line = { version = "0.24", default-features = false, features = ["std", "rustc-demangle", "loader"] }
+crossterm = "0.28"
+ratatui = { version = "0.29", default-features = false, features = ["crossterm"] }
+# Syntax highlighting in the source + instructions panes. `two-face` adds
+# extra Sublime syntaxes (Rust grammar quality + GAS assembly) on top of
+# syntect's stripped default set.
+syntect = { version = "5.3", default-features = false, features = ["default-fancy"] }
+syntect-tui = { version = "3.0", default-features = false }
+two-face = "0.5"
+# OSC 11 / COLORFGBG terminal background detection — picks a light vs dark
+# syntect theme automatically, the same way `bat` and `delta` do.
+terminal-colorsaurus = "1.0"

@@ -16,6 +16,10 @@ cpi = ["no-entrypoint", "dep:borsh"]
 no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang-v2/idl-build"]
+# Switch tests to `anchor_v2_testing::svm()` so the SBF register-trace
+# callback fires. `anchor debugger` (loose mode) auto-detects this
+# feature and passes `--features profile` to cargo test.
+profile = ["anchor-v2-testing/profile"]
 
 [dependencies]
 # Same production profile the other bench/v2 programs use: drop the

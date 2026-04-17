@@ -1,27 +1,5 @@
-//! Steel port of the multisig benchmark program.
-//!
-//! Uses the `steel` crate's account + instruction macros plus `solana_program`
-//! as the runtime. State is a fixed-layout `Pod` struct with a 1-byte
-//! discriminator written by `create_program_account_with_bump`.
-//!
-//! On-chain state layout (388 bytes after the 1-byte disc = 389 total):
-//!
-//! ```text
-//!   0    disc: u8 = 1
-//!   1    creator: [u8; 32]
-//!   33   threshold: u8
-//!   34   bump: u8
-//!   35   label_len: u8
-//!   36   label: [u8; 32]
-//!   68   signers_len: u8
-//!   69   _pad: [u8; 3]
-//!   72   signers: [[u8; 32]; 10]
-//!   392  end
-//! ```
-//!
-//! (We pad `signers_len` out to a 4-byte boundary so the `[[u8;32];10]`
-//! signers array sits on an aligned offset — `Pod` requires no internal
-//! padding bytes.)
+//! Steel multisig bench variant. `_pad` after `signers_len` is required
+//! because `Pod` forbids implicit padding between fields.
 
 use solana_program::{
     entrypoint, msg,
@@ -89,10 +67,7 @@ pub struct MultisigConfig {
 account!(MultisigAccount, MultisigConfig);
 
 // --- Instruction discriminators ---
-//
-// Steel programs typically use separate instruction structs per opcode, but
-// for a straight 1:1 CU comparison we keep the dispatch layout identical to
-// pinocchio/quasar: 1-byte disc + LE-packed args.
+// Layout matches pinocchio/quasar: 1-byte disc + LE-packed args.
 
 const IX_CREATE: u8 = 0;
 const IX_DEPOSIT: u8 = 1;
@@ -125,14 +100,6 @@ pub fn process_instruction(
     }
 }
 
-// --- create(threshold: u8) ---
-//
-// Accounts:
-//   0: creator (signer, writable)
-//   1: config (PDA [b"multisig", creator], writable, uninit)
-//   2: system_program
-//   3..: additional signer accounts (each must be `is_signer`)
-
 fn handle_create(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -151,8 +118,6 @@ fn handle_create(
         return Err(MultisigError::MissingRequiredSignature.into());
     }
 
-    // Derive the config PDA bump and then use steel's
-    // `create_program_account_with_bump` to avoid a redundant derivation.
     let (expected, bump) =
         Pubkey::find_program_address(&[b"multisig", creator.key.as_ref()], program_id);
     if config.key != &expected {
@@ -168,7 +133,6 @@ fn handle_create(
         bump,
     )?;
 
-    // Capture signer addresses.
     if rest.len() > MAX_SIGNERS {
         return Err(MultisigError::TooManySigners.into());
     }
@@ -186,8 +150,7 @@ fn handle_create(
         return Err(MultisigError::InvalidThreshold.into());
     }
 
-    // Populate the newly-allocated account. Discriminator is written by
-    // `create_program_account_with_bump`; the payload starts at offset 8.
+    // `create_program_account_with_bump` wrote the discriminator; payload starts at offset 8.
     let mut raw = config.data.borrow_mut();
     let cfg = bytemuck::from_bytes_mut::<MultisigConfig>(
         &mut raw[8..8 + core::mem::size_of::<MultisigConfig>()],
@@ -203,14 +166,6 @@ fn handle_create(
 
     Ok(())
 }
-
-// --- deposit(amount: u64) ---
-//
-// Accounts:
-//   0: depositor (signer, writable)
-//   1: config (readonly — just needs to be present for PDA consistency)
-//   2: vault (writable, PDA [b"vault", config])
-//   3: system_program
 
 fn handle_deposit(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     if data.len() < 8 {
@@ -229,13 +184,6 @@ fn handle_deposit(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     Ok(())
 }
 
-// --- set_label(label_len: u8, label: [u8; 32]) ---
-//
-// Accounts:
-//   0: creator (signer, writable)
-//   1: config (writable)
-//   2: system_program
-
 fn handle_set_label(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     if data.len() < 1 + 32 {
         return Err(MultisigError::InvalidInstructionData.into());
@@ -246,8 +194,7 @@ fn handle_set_label(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     }
     let label_bytes: [u8; 32] = data[1..1 + 32].try_into().unwrap();
 
-    // UTF-8 validate — fairness with frameworks that take a `&str` argument
-    // (e.g. quasar's `String<32>`).
+    // UTF-8 validate for parity with frameworks that deserialize as `&str`.
     core::str::from_utf8(&label_bytes[..label_len])
         .map_err(|_| MultisigError::LabelTooLong)?;
 
@@ -269,7 +216,6 @@ fn handle_set_label(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
         &mut raw[8..8 + core::mem::size_of::<MultisigConfig>()],
     );
 
-    // has_one: creator must match stored creator.
     if cfg.creator != creator.key.to_bytes() {
         return Err(MultisigError::UnauthorizedCreator.into());
     }
@@ -278,16 +224,6 @@ fn handle_set_label(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     cfg.label = label_bytes;
     Ok(())
 }
-
-// --- execute_transfer(amount: u64) ---
-//
-// Accounts:
-//   0: config (readonly, PDA [b"multisig", creator])
-//   1: creator (readonly)
-//   2: vault (writable, PDA [b"vault", config])
-//   3: recipient (writable)
-//   4: system_program
-//   5..: additional signer accounts
 
 fn handle_execute_transfer(
     program_id: &Pubkey,
@@ -303,7 +239,6 @@ fn handle_execute_transfer(
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-    // Read the stored signers + threshold from config.
     let raw = config.data.borrow();
     if raw.len() < 8 + core::mem::size_of::<MultisigConfig>() {
         return Err(ProgramError::InvalidAccountData);
@@ -344,10 +279,8 @@ fn handle_execute_transfer(
         return Err(MultisigError::MissingRequiredSignature.into());
     }
 
-    // Derive the vault PDA on-chain, matching quasar/pinocchio behavior.
     let config_key = *config.key;
-    // Drop the immutable borrow of config data before the CPI (CPI will
-    // borrow accounts reentrantly via the runtime).
+    // Release the config-data borrow before the CPI reentrantly re-borrows it.
     drop(raw);
 
     let (expected_vault, vault_bump) =
