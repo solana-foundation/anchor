@@ -219,11 +219,7 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                 };
             }
             let name = f.name;
-            let writable_json = if f.writable {
-                ",\"writable\":true"
-            } else {
-                ""
-            };
+            let writable_json = if f.writable { ",\"writable\":true" } else { "" };
             let optional_json = if f.is_optional {
                 ",\"optional\":true"
             } else {
@@ -232,8 +228,7 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
             let relations_json = if f.relations.is_empty() {
                 String::new()
             } else {
-                let list: Vec<String> =
-                    f.relations.iter().map(|r| format!("\"{r}\"")).collect();
+                let list: Vec<String> = f.relations.iter().map(|r| format!("\"{r}\"")).collect();
                 format!(",\"relations\":[{}]", list.join(","))
             };
             let docs_json = if f.docs.is_empty() {
@@ -412,8 +407,7 @@ pub fn build_enum_type_json(
             match &v.fields {
                 syn::Fields::Unit => {}
                 syn::Fields::Named(named) => {
-                    let fields: Vec<Value> =
-                        named.named.iter().map(named_field_value).collect();
+                    let fields: Vec<Value> = named.named.iter().map(named_field_value).collect();
                     obj.insert("fields".into(), Value::Array(fields));
                 }
                 syn::Fields::Unnamed(unnamed) => {
@@ -501,9 +495,7 @@ pub fn extract_doc_lines(attrs: &[syn::Attribute]) -> Vec<String> {
                 if let Expr::Lit(lit) = &nv.value {
                     if let Lit::Str(s) = &lit.lit {
                         let v = s.value();
-                        return Some(
-                            v.strip_prefix(' ').map(str::to_owned).unwrap_or(v),
-                        );
+                        return Some(v.strip_prefix(' ').map(str::to_owned).unwrap_or(v));
                     }
                 }
             }
@@ -537,26 +529,18 @@ fn docs_value(docs: &[String]) -> Value {
 /// - account field ref (`user` bare ident,
 ///   `user.key().as_ref()`, `user.address().as_ref()`,
 ///   `user.as_ref()`) with `user` in `field_names`
-///                                            → `{"kind":"account","path":"user"}`
+///   → `{"kind":"account","path":"user"}`
 /// - instruction arg ref (`nonce` bare ident,
 ///   `nonce.to_le_bytes()`, `nonce.as_ref()`)
 ///   with `nonce` in `ix_arg_names`
-///                                            → `{"kind":"arg","path":"nonce"}`
+///   → `{"kind":"arg","path":"nonce"}`
 /// - anything else (e.g. `Some::Path::call()`) → `const` with empty value
 ///   + eprintln warning so the anchor build CLI surfaces it.
-pub fn classify_seed(
-    expr: &Expr,
-    field_names: &[String],
-    ix_arg_names: &[String],
-) -> String {
+pub fn classify_seed(expr: &Expr, field_names: &[String], ix_arg_names: &[String]) -> String {
     classify_seed_value(expr, field_names, ix_arg_names).to_string()
 }
 
-fn classify_seed_value(
-    expr: &Expr,
-    field_names: &[String],
-    ix_arg_names: &[String],
-) -> Value {
+fn classify_seed_value(expr: &Expr, field_names: &[String], ix_arg_names: &[String]) -> Value {
     // Peel `&<inner>` wrappers — they're common in seed expressions and
     // always transparent to classification.
     let mut cur = expr;
@@ -655,9 +639,7 @@ fn classify_seed_value(
                         "System" => Some("11111111111111111111111111111111"),
                         "Token" => Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
                         "Token2022" => Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
-                        "AssociatedToken" => {
-                            Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
-                        }
+                        "AssociatedToken" => Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
                         "Memo" => Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
                         _ => None,
                     };
@@ -735,8 +717,7 @@ pub fn pda_object_json(seeds: &[String], program: Option<&String>) -> String {
     if let Some(p) = program {
         // The program override comes from `seeds::program = <expr>` and is
         // also a pre-serialized JSON value (an address or a defined ref).
-        let program_val: Value =
-            serde_json::from_str(p).expect("program seed value is valid JSON");
+        let program_val: Value = serde_json::from_str(p).expect("program seed value is valid JSON");
         obj.insert("program".into(), program_val);
     }
     Value::Object(obj).to_string()
