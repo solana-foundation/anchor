@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-derive-accounts-v2"
-version = "0.1.0"
+version = "2.0.0"
 dependencies = [
  "bs58",
  "curve25519-dalek",
@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-lang-v2"
-version = "0.1.0"
+version = "2.0.0"
 dependencies = [
  "anchor-derive-accounts-v2",
  "borsh",
@@ -38,7 +38,7 @@ dependencies = [
  "solana-instruction",
  "solana-program-error",
  "solana-program-log",
- "wincode 0.4.9",
+ "wincode",
 ]
 
 [[package]]
@@ -500,7 +500,7 @@ dependencies = [
  "solana-program-error",
  "solana-sanitize",
  "solana-sha256-hasher",
- "wincode 0.5.1",
+ "wincode",
 ]
 
 [[package]]
@@ -715,19 +715,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "wincode"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "657690780ce23e6f66576a782ffd88eb353512381817029cc1d7a99154bb6d1f"
-dependencies = [
- "pastey",
- "proc-macro2",
- "quote",
- "thiserror",
- "wincode-derive",
-]
 
 [[package]]
 name = "wincode"

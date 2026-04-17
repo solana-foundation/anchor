@@ -34,6 +34,7 @@ use {
             anchor_v1, anchor_v2, pinocchio as multisig_pinocchio, quasar,
             steel as multisig_steel,
         },
+        prop_amm::anchor_v2 as prop_amm_anchor_v2,
         vault::{
             anchor_v2 as vault_anchor_v2, quasar as vault_quasar,
         },
@@ -59,6 +60,12 @@ fn multisig_shared_id() -> Pubkey {
 // declare_id as the quasar-vault example we're copying verbatim.
 fn vault_shared_id() -> Pubkey {
     "33333333333333333333333333333333333333333333".parse().unwrap()
+}
+
+// prop-amm: asm-fastpath oracle demo, anchor v2 only. ID matches
+// `declare_id!` in the program crate so on-chain writable checks pass.
+fn prop_amm_id() -> Pubkey {
+    "55555555555555555555555555555555555555555555".parse().unwrap()
 }
 
 /// Single source of truth for every benchmarked program and instruction.
@@ -198,6 +205,22 @@ pub const SUITES: &[ProgramSuite] = &[
         instructions: &[
             InstructionSuite { name: "deposit",  program_id: vault_shared_id, build: vault_quasar::build_deposit_case },
             InstructionSuite { name: "withdraw", program_id: vault_shared_id, build: vault_quasar::build_withdraw_case },
+        ],
+    },
+    // Oracle fast-path demo. `update` (discrim = 0) is an asm entrypoint
+    // that bypasses the anchor dispatcher entirely — branch on discrim,
+    // hand-rolled 2-account walk, signer check against a hardcoded
+    // authority, one 8-byte store. `initialize` and `rotate_authority` go
+    // through the normal anchor path.
+    ProgramSuite {
+        name: "prop_amm_v2",
+        family: "prop_amm",
+        variant: "anchor v2 + asm",
+        manifest_dir: "programs/prop-amm/anchor-v2",
+        instructions: &[
+            InstructionSuite { name: "initialize",       program_id: prop_amm_id, build: prop_amm_anchor_v2::build_initialize_case },
+            InstructionSuite { name: "update",           program_id: prop_amm_id, build: prop_amm_anchor_v2::build_update_case },
+            InstructionSuite { name: "rotate_authority", program_id: prop_amm_id, build: prop_amm_anchor_v2::build_rotate_authority_case },
         ],
     },
 ];
