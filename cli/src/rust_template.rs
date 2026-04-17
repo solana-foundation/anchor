@@ -416,6 +416,18 @@ describe("{}", () => {{
     )
 }
 
+// TODO(anchor-next): the scaffold pins `@anchor-lang/core` at `^{VERSION}`
+// (the CLI's own workspace version, currently 2.0.0). That version is NOT
+// yet on npm — `npm view @anchor-lang/core versions` tops out at 1.0.0.
+// Fresh `anchor init` projects will fail `yarn install` until either
+// (a) 2.0.0-rc.N ships to npm off anchor-next, or (b) the Rust-side fix:
+// swap the pin to a git+subdirectory tarball (needs release tooling — npm
+// doesn't natively support subdir git deps, the TS package lives at
+// `ts/packages/anchor` inside this repo).
+//
+// Short-term mitigation once this bites: downgrade the pin below to
+// `^1.0.0`. Drifts from the Rust-side CLI version; acceptable until the
+// rc ships.
 pub fn package_json(jest: bool, license: String) -> String {
     if jest {
         format!(
@@ -457,6 +469,8 @@ pub fn package_json(jest: bool, license: String) -> String {
     }
 }
 
+// TODO(anchor-next): same version-mismatch caveat as `package_json` above.
+// Both scaffolds pin the same unpublished `@anchor-lang/core` version.
 pub fn ts_package_json(jest: bool, license: String) -> String {
     if jest {
         format!(
