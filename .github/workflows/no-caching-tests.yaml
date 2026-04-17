@@ -1,11 +1,11 @@
 name: No Caching Tests
 
+# Legacy v1 full-suite test pipeline. Disabled — the anchor-next branch
+# tests only the v2 stack via `tests.yaml`. Left in the tree (manual
+# trigger only) so a future v1 release branch can re-enable it without
+# rebuilding the reusable workflow wiring.
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - "docs/**"
+  workflow_dispatch:
 
 jobs:
   no-caching-tests:

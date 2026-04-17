@@ -3,24 +3,50 @@ name: Tests
 on:
   push:
     branches:
-      - master
-    paths-ignore:
-      - "docs/**"
-  pull_request:
-    branches:
-      - master
       - anchor-next
     paths-ignore:
       - "docs/**"
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+  workflow_dispatch:
+
+env:
+  SOLANA_VERSION: "3.1.10"
+  CARGO_CACHE_PATH: |
+    ~/.cargo/bin/
+    ~/.cargo/registry/index/
+    ~/.cargo/registry/cache/
+    ~/.cargo/git/db/
+    ./target/
 
 jobs:
-  tests:
-    name: Reusable
-    uses: ./.github/workflows/reusable-tests.yaml
-    with:
-      cache: true
-      solana_version: 3.1.10
-      node_version: 20.18.0
-      cargo_profile: debug
-      anchor_binary_name: anchor-binary
-      surfpool_cli_version: 1.1.1
+  test-v2:
+    name: v2 Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup/
+      # tests-v2 runs `cargo build-sbf` on its member programs; the rest of
+      # the v2 stack doesn't need the Solana toolchain but installing it
+      # once for the whole job is cheaper than splitting the matrix.
+      - uses: ./.github/actions/setup-solana/
+      - uses: actions/cache@v3
+        name: Cache Cargo registry + target
+        with:
+          path: ${{ env.CARGO_CACHE_PATH }}
+          key: cargo-${{ runner.os }}-v2-${{ hashFiles('**/Cargo.lock') }}
+
+      # v2 runtime + derive crates.
+      - run: cargo test -p anchor-lang-v2
+      - run: cargo test -p anchor-spl-v2
+
+      # On-chain programs + litesvm integration tests. Exercises the full
+      # v2 codegen path end-to-end.
+      - run: cargo test -p tests-v2
+
+      # CLI: unit-test + build sanity only. No anchor-binary install,
+      # no `anchor build`/`anchor test` flows, no tests/* integration.
+      - run: cargo check -p anchor-cli
+      - run: cargo test -p anchor-cli
