@@ -35,7 +35,6 @@ fn helloworld_end_to_end() {
         &suites,
         RunOptions {
             skip_build: std::env::var("BENCH_SKIP_BUILD").is_ok(),
-            flamegraphs: std::env::var("BENCH_FLAMEGRAPHS").is_ok(),
         },
     )
     .expect("bench run failed");
