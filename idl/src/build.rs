@@ -205,14 +205,6 @@ fn build(
                 "--- IDL begin address ---" => state = State::Address,
                 "--- IDL begin const ---" => state = State::Constants(vec![]),
                 "--- IDL begin event ---" => state = State::Events(vec![]),
-                "--- IDL begin errors ---" if errors.is_some() => {
-                    return Err(anyhow!(
-                        "multiple #[error_code] enums detected — Anchor allows only \
-                         one per program. Consolidate your variants into a single \
-                         enum. If you need a non-default starting code, set it with \
-                         `#[error_code(offset = N)]`.",
-                    ));
-                }
                 "--- IDL begin errors ---" => state = State::Errors(vec![]),
                 "--- IDL begin program ---" => state = State::Program(vec![]),
                 _ => {
@@ -268,7 +260,14 @@ fn build(
             }
             State::Errors(lines) => {
                 if line == "--- IDL end errors ---" {
-                    errors = Some(serde_json::from_str(&lines.join("\n"))?);
+                    // Concat across enums — each `#[error_code]` enum in the
+                    // program emits its own `--- IDL begin errors ---` block
+                    // via its own print-test, so this branch runs once per
+                    // enum. Codes are already globally unique (the derive
+                    // offsets by 6000 per enum), so appending preserves
+                    // correctness.
+                    let block: Vec<_> = serde_json::from_str(&lines.join("\n"))?;
+                    errors.get_or_insert_with(Vec::new).extend(block);
                     state = State::Pass;
                     continue;
                 }
