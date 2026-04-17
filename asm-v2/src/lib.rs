@@ -60,7 +60,25 @@
 
 mod preamble;
 
+// Re-export proc macros so users write `anchor_asm_v2::asm_error_enum` etc.
+pub use anchor_asm_v2_macros::{asm_discriminant, asm_error_enum, asm_offsets};
+
 use std::path::{Path, PathBuf};
+
+/// Terminal macro for the callback chain. Wraps accumulated tokens in
+/// `global_asm!`. Place this as the innermost call:
+///
+/// ```ignore
+/// ErrorCode_asm!(Discriminant_asm!(emit_asm!(
+///     include_str!("asm/entrypoint.s"),
+/// )));
+/// ```
+#[macro_export]
+macro_rules! emit_asm {
+    ($($all:tt)*) => {
+        core::arch::global_asm!($($all)*);
+    };
+}
 
 /// Emit `global_asm!` linking the combined assembly output from `build()`.
 ///

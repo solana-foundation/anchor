@@ -7,7 +7,9 @@ license = "Apache-2.0"
 publish = false
 
 [workspace]
+members = ["macros"]
 
 [dependencies]
 syn = { version = "2", features = ["full", "parsing", "visit"] }
 quote = "1"
+anchor-asm-v2-macros = { path = "macros" }

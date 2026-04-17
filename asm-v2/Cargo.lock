@@ -6,6 +6,16 @@ version = 4
 name = "anchor-asm-v2"
 version = "0.1.0"
 dependencies = [
+ "anchor-asm-v2-macros",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "anchor-asm-v2-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
  "quote",
  "syn",
 ]
