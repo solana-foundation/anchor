@@ -149,22 +149,26 @@ fn collect_asm(dir: &Path) -> String {
     }
 }
 
-/// Find a root assembly file that should be processed first. Checks for
-/// `entrypoint.s` or a file matching the directory name.
+/// Find a root assembly file that should be processed first.
+///
+/// Priority: dir-name match (e.g. `dropset/dropset.s`) first — this is
+/// typically the manifest that orchestrates `.include` directives.
+/// Falls back to well-known names like `entrypoint.s` or `main.s`.
 fn find_root_file(dir: &Path, files: &[PathBuf]) -> Option<PathBuf> {
-    let candidates = ["entrypoint.s", "main.s"];
-
-    // Check for well-known names.
-    for name in &candidates {
-        let candidate = dir.join(name);
+    // Check for dir-name.s (e.g. dropset/dropset.s) — highest priority
+    // because a file named after the directory is typically the root
+    // manifest that includes everything else.
+    if let Some(dir_name) = dir.file_name().and_then(|n| n.to_str()) {
+        let candidate = dir.join(format!("{dir_name}.s"));
         if files.contains(&candidate) {
             return Some(candidate);
         }
     }
 
-    // Check for dir-name.s (e.g. dropset/dropset.s).
-    if let Some(dir_name) = dir.file_name().and_then(|n| n.to_str()) {
-        let candidate = dir.join(format!("{dir_name}.s"));
+    // Fall back to well-known names.
+    let candidates = ["entrypoint.s", "main.s"];
+    for name in &candidates {
+        let candidate = dir.join(name);
         if files.contains(&candidate) {
             return Some(candidate);
         }
