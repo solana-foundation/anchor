@@ -166,13 +166,13 @@ fn emit_args_deser(args: &[(&Ident, &Type)], struct_name: &str, inline_error: bo
 
 /// Parse `#[instruction(name: Type, ...)]` from struct-level attributes.
 /// Returns a list of (name, type) pairs.
-fn parse_instruction_attrs(attrs: &[syn::Attribute]) -> Vec<(Ident, Type)> {
+fn parse_instruction_attrs(attrs: &[syn::Attribute]) -> syn::Result<Vec<(Ident, Type)>> {
     let mut result = Vec::new();
     for attr in attrs {
         if !attr.path().is_ident("instruction") {
             continue;
         }
-        let _ = attr.parse_args_with(|input: syn::parse::ParseStream| {
+        attr.parse_args_with(|input: syn::parse::ParseStream| {
             while !input.is_empty() {
                 let name: Ident = input.parse()?;
                 input.parse::<syn::Token![:]>()?;
@@ -183,9 +183,9 @@ fn parse_instruction_attrs(attrs: &[syn::Attribute]) -> Vec<(Ident, Type)> {
                 }
             }
             Ok(())
-        });
+        })?;
     }
-    result
+    Ok(result)
 }
 
 fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
@@ -215,17 +215,17 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         .collect();
 
     if named_fields.named.len() > 255 {
-        return syn::Error::new(
-            name.span(),
-            "`Accounts` derive supports at most 255 fields",
-        )
-        .to_compile_error();
+        return syn::Error::new(name.span(), "`Accounts` derive supports at most 255 fields")
+            .to_compile_error();
     }
 
     // Parse #[instruction(arg: Type, ...)] — consumed both for the
     // runtime deser block AND for PDA seed classification: seeds that
     // reference an ix arg resolve to `IdlSeed::Arg{path}`.
-    let ix_args = parse_instruction_attrs(&input.attrs);
+    let ix_args = match parse_instruction_attrs(&input.attrs) {
+        Ok(args) => args,
+        Err(err) => return err.to_compile_error(),
+    };
     let ix_arg_names: Vec<String> = ix_args.iter().map(|(n, _)| n.to_string()).collect();
 
     // Compute the views-slice offset for each field. Direct fields occupy 1
@@ -244,12 +244,16 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
     }
 
-    let fields: Vec<parse::AccountField> = named_fields
+    let fields: Vec<parse::AccountField> = match named_fields
         .named
         .iter()
         .zip(offset_exprs.into_iter())
         .map(|(f, offset)| parse::parse_field(f, &raw_field_names, offset, &ix_arg_names))
-        .collect();
+        .collect::<syn::Result<_>>()
+    {
+        Ok(fields) => fields,
+        Err(err) => return err.to_compile_error(),
+    };
 
     let field_names: Vec<_> = fields.iter().map(|f| &f.name).collect();
     let loads: Vec<_> = fields.iter().map(|f| &f.load).collect();
@@ -422,16 +426,20 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                     if let Some(seg) = tp.path.segments.last() {
                         if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
                             if let Some(syn::GenericArgument::Type(inner)) = args.args.first() {
-                                return (f, FieldKind::Program(quote! {
-                                    <#inner as anchor_lang_v2::Id>::id()
-                                }));
+                                return (
+                                    f,
+                                    FieldKind::Program(quote! {
+                                        <#inner as anchor_lang_v2::Id>::id()
+                                    }),
+                                );
                             }
                         }
                     }
                 }
             }
 
-            let attrs = parse::parse_account_attrs(&raw_field.attrs);
+            let attrs = parse::parse_account_attrs(&raw_field.attrs)
+                .expect("parse_field already validated account attributes");
             if let Some(ref seeds) = attrs.seeds {
                 if attrs.seeds_program.is_none() {
                     let mut seed_exprs = Vec::new();
@@ -444,10 +452,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                             seed_exprs.push(quote! { &[#(#lits),*] as &[u8] });
                         } else if let Some(ref root) = idl::receiver_root_ident_str(seed) {
                             if raw_field_names.contains(root) {
-                                let ident = syn::Ident::new(
-                                    root,
-                                    proc_macro2::Span::call_site(),
-                                );
+                                let ident = syn::Ident::new(root, proc_macro2::Span::call_site());
                                 seed_exprs.push(quote! { #ident.as_ref() });
                                 deps.push(root.clone());
                             } else {
@@ -621,14 +626,13 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                     .iter()
                     .find(|nf| nf.ident.as_ref() == Some(&f.name))?
                     .attrs,
-            );
+            )
+            .expect("parse_field already validated account attributes");
             let seeds = attrs.seeds.as_ref()?;
 
             let field_name = &f.name;
-            let fn_name = syn::Ident::new(
-                &format!("find_{}_address", field_name),
-                field_name.span(),
-            );
+            let fn_name =
+                syn::Ident::new(&format!("find_{}_address", field_name), field_name.span());
 
             let mut params: Vec<TokenStream2> = Vec::new();
             let mut seed_exprs: Vec<TokenStream2> = Vec::new();
@@ -638,7 +642,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 let root = idl::receiver_root_ident_str(seed_expr);
                 if let Some(ref root_name) = root {
                     if raw_field_names.contains(root_name) {
-                        let param_ident = syn::Ident::new(root_name, proc_macro2::Span::call_site());
+                        let param_ident =
+                            syn::Ident::new(root_name, proc_macro2::Span::call_site());
                         if seen_params.insert(root_name.clone()) {
                             params.push(quote! { #param_ident: &anchor_lang_v2::Address });
                         }
@@ -646,7 +651,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                         continue;
                     }
                     if ix_arg_names.contains(root_name) {
-                        let param_ident = syn::Ident::new(root_name, proc_macro2::Span::call_site());
+                        let param_ident =
+                            syn::Ident::new(root_name, proc_macro2::Span::call_site());
                         if seen_params.insert(root_name.clone()) {
                             params.push(quote! { #param_ident: &[u8] });
                         }
@@ -724,10 +730,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         })
         .collect();
 
-    let resolved_name = syn::Ident::new(
-        &format!("{name}Resolved"),
-        name.span(),
-    );
+    let resolved_name = syn::Ident::new(&format!("{name}Resolved"), name.span());
 
     let resolved_struct = quote! {
         pub struct #resolved_name {
@@ -1073,12 +1076,8 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
                 .variants
                 .iter()
                 .flat_map(|v| match &v.fields {
-                    Fields::Named(named) => {
-                        named.named.iter().map(|f| &f.ty).collect::<Vec<_>>()
-                    }
-                    Fields::Unnamed(unnamed) => {
-                        unnamed.unnamed.iter().map(|f| &f.ty).collect()
-                    }
+                    Fields::Named(named) => named.named.iter().map(|f| &f.ty).collect::<Vec<_>>(),
+                    Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(|f| &f.ty).collect(),
                     Fields::Unit => Vec::new(),
                 })
                 .collect();
@@ -1087,8 +1086,7 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
         Data::Union(_) => {
             return syn::Error::new(
                 name.span(),
-                "`#[derive(IdlType)]` does not support unions — use a struct \
-                 or enum instead",
+                "`#[derive(IdlType)]` does not support unions — use a struct or enum instead",
             )
             .to_compile_error()
             .into();
@@ -1137,32 +1135,30 @@ fn diagnose_non_pod_field(ty: &Type, field_name: &str, struct_name: &str) -> Opt
     let ident = seg.ident.to_string();
     match ident.as_str() {
         "Vec" => Some(format!(
-            "field `{field_name}` on `#[account] struct {struct_name}` uses `Vec`, \
-             which allocates on the heap and isn't Pod. Zero-copy accounts need \
-             fixed-size fields. Use `[T; N]` for a bounded array, or restructure \
-             `{struct_name}` as `Slab<Header, T>` if you need a dynamic tail."
+            "field `{field_name}` on `#[account] struct {struct_name}` uses `Vec`, which \
+             allocates on the heap and isn't Pod. Zero-copy accounts need fixed-size fields. Use \
+             `[T; N]` for a bounded array, or restructure `{struct_name}` as `Slab<Header, T>` if \
+             you need a dynamic tail."
         )),
         "String" => Some(format!(
-            "field `{field_name}` on `#[account] struct {struct_name}` uses \
-             `String`, which allocates on the heap and isn't Pod. Use a fixed-size \
-             `[u8; N]` buffer to store string data in a zero-copy account."
+            "field `{field_name}` on `#[account] struct {struct_name}` uses `String`, which \
+             allocates on the heap and isn't Pod. Use a fixed-size `[u8; N]` buffer to store \
+             string data in a zero-copy account."
         )),
         "Option" => Some(format!(
-            "field `{field_name}` on `#[account] struct {struct_name}` uses \
-             `Option`, which carries a discriminant byte that breaks the zero-copy \
-             layout contract. Use a sentinel value (e.g. an all-zero `[u8; 32]` \
-             for \"no address\") or a `PodBool` flag stored alongside the value."
+            "field `{field_name}` on `#[account] struct {struct_name}` uses `Option`, which \
+             carries a discriminant byte that breaks the zero-copy layout contract. Use a \
+             sentinel value (e.g. an all-zero `[u8; 32]` for \"no address\") or a `PodBool` flag \
+             stored alongside the value."
         )),
         "Box" | "Rc" | "Arc" => Some(format!(
-            "field `{field_name}` on `#[account] struct {struct_name}` uses \
-             `{ident}`, which heap-allocates and isn't valid in a zero-copy \
-             account. Store the inner type directly."
+            "field `{field_name}` on `#[account] struct {struct_name}` uses `{ident}`, which \
+             heap-allocates and isn't valid in a zero-copy account. Store the inner type directly."
         )),
         "bool" => Some(format!(
-            "field `{field_name}` on `#[account] struct {struct_name}` uses \
-             `bool`. `bytemuck` disallows `bool` as Pod because only `0x00` and \
-             `0x01` are valid bit-patterns (any other byte read as `bool` is UB). \
-             Use `anchor_lang_v2::PodBool` instead."
+            "field `{field_name}` on `#[account] struct {struct_name}` uses `bool`. `bytemuck` \
+             disallows `bool` as Pod because only `0x00` and `0x01` are valid bit-patterns (any \
+             other byte read as `bool` is UB). Use `anchor_lang_v2::PodBool` instead."
         )),
         _ => None,
     }
@@ -1250,7 +1246,9 @@ fn process_handler(
     } else {
         let disc_bytes = &hash[..8];
         let disc_u64 = u64::from_le_bytes(
-            disc_bytes.try_into().expect("sha256[..8] is always 8 bytes"),
+            disc_bytes
+                .try_into()
+                .expect("sha256[..8] is always 8 bytes"),
         );
         let lits: Vec<_> = disc_bytes.iter().map(|b| quote! { #b }).collect();
         (disc_bytes.to_vec(), lits, quote! { #disc_u64 })
@@ -1365,10 +1363,7 @@ fn process_handler(
         ),
         fn_name.span(),
     );
-    let resolved_type = syn::Ident::new(
-        &format!("{accounts_type}Resolved"),
-        accounts_type.span(),
-    );
+    let resolved_type = syn::Ident::new(&format!("{accounts_type}Resolved"), accounts_type.span());
     let accounts_reexport = quote! {
         pub use super::#client_mod::#accounts_type;
         pub use super::#client_mod::#resolved_type;
@@ -1459,9 +1454,8 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         let mut seen: std::collections::HashMap<u8, proc_macro2::Span> =
             std::collections::HashMap::new();
         for (i, d) in discrim_attrs.iter().enumerate() {
-            let (byte, span) = d.expect(
-                "all-or-nothing discrim check guarantees every entry is Some",
-            );
+            let (byte, span) =
+                d.expect("all-or-nothing discrim check guarantees every entry is Some");
             if let Some(_first_span) = seen.insert(byte, span) {
                 return syn::Error::new(
                     span,
@@ -1506,8 +1500,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
     // handler's arg types. `arg_types` includes every handler parameter
     // past `ctx: &mut Context<...>`, so primitives / &T / Vec / etc. all
     // flow through (with the blanket no-op impls for non-`IdlType` types).
-    let ix_arg_types_per_handler: Vec<&Vec<Type>> =
-        codegen.iter().map(|c| &c.arg_types).collect();
+    let ix_arg_types_per_handler: Vec<&Vec<Type>> = codegen.iter().map(|c| &c.arg_types).collect();
     let all_ix_arg_types: Vec<_> = codegen.iter().map(|c| &c.arg_types).collect();
 
     // Generate disc parsing code based on mode.
@@ -2067,8 +2060,11 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
             let field_diagnostics: Vec<_> = fields
                 .iter()
                 .filter_map(|field| {
-                    let field_name =
-                        field.ident.as_ref().map(|i| i.to_string()).unwrap_or_default();
+                    let field_name = field
+                        .ident
+                        .as_ref()
+                        .map(|i| i.to_string())
+                        .unwrap_or_default();
                     let msg = diagnose_non_pod_event_field(&field.ty, &field_name)?;
                     Some(quote! { ::core::compile_error!(#msg); })
                 })
@@ -2246,8 +2242,7 @@ fn parse_account_mode(attr: TokenStream) -> Result<bool, syn::Error> {
     let ident: syn::Ident = syn::parse2(attr2.clone()).map_err(|_| {
         syn::Error::new_spanned(
             &attr2,
-            "expected `#[account]` or `#[account(borsh)]` — no other \
-             arguments are supported",
+            "expected `#[account]` or `#[account(borsh)]` — no other arguments are supported",
         )
     })?;
     if ident == "borsh" {
@@ -2268,8 +2263,8 @@ fn parse_event_mode(attr: TokenStream) -> Result<EventMode, syn::Error> {
     let ident: syn::Ident = syn::parse2(attr2.clone()).map_err(|_| {
         syn::Error::new_spanned(
             &attr2,
-            "expected `#[event]`, `#[event(bytemuck)]`, or `#[event(borsh)]` — \
-             no other arguments are supported",
+            "expected `#[event]`, `#[event(bytemuck)]`, or `#[event(borsh)]` — no other arguments \
+             are supported",
         )
     })?;
     if ident == "bytemuck" {
@@ -2298,42 +2293,39 @@ fn diagnose_non_pod_event_field(ty: &Type, field_name: &str) -> Option<String> {
     match ident.as_str() {
         "Vec" => Some(format!(
             "event field `{field_name}` uses `Vec`, which is a fat pointer — the \
-             `#[event(bytemuck)]` memcpy path would emit the `(ptr, len, cap)` \
-             bits instead of the elements. Use `[T; N]` for a fixed-size array, \
-             or drop the `bytemuck` attribute to use the default wincode \
-             encoding, which handles `Vec` natively."
+             `#[event(bytemuck)]` memcpy path would emit the `(ptr, len, cap)` bits instead of \
+             the elements. Use `[T; N]` for a fixed-size array, or drop the `bytemuck` attribute \
+             to use the default wincode encoding, which handles `Vec` natively."
         )),
         "String" => Some(format!(
-            "event field `{field_name}` uses `String`, which is a fat pointer — \
-             the `#[event(bytemuck)]` memcpy path would emit the `(ptr, len, \
-             cap)` bits instead of the UTF-8 bytes. Use `[u8; N]` for a bounded \
-             buffer, or drop the `bytemuck` attribute to use the default \
-             wincode encoding, which handles `String` natively."
+            "event field `{field_name}` uses `String`, which is a fat pointer — the \
+             `#[event(bytemuck)]` memcpy path would emit the `(ptr, len, cap)` bits instead of \
+             the UTF-8 bytes. Use `[u8; N]` for a bounded buffer, or drop the `bytemuck` \
+             attribute to use the default wincode encoding, which handles `String` natively."
         )),
         "Option" => Some(format!(
-            "event field `{field_name}` uses `Option`, whose niche-or-tag \
-             layout isn't guaranteed to match the client decoder. Use a \
-             sentinel value (e.g. an all-zero `[u8; 32]` for \"no address\"), \
-             or drop the `bytemuck` attribute to use the default wincode \
+            "event field `{field_name}` uses `Option`, whose niche-or-tag layout isn't guaranteed \
+             to match the client decoder. Use a sentinel value (e.g. an all-zero `[u8; 32]` for \
+             \"no address\"), or drop the `bytemuck` attribute to use the default wincode \
              encoding."
         )),
         "Box" | "Rc" | "Arc" | "Cow" | "Weak" => Some(format!(
-            "event field `{field_name}` uses `{ident}`, which is a heap/shared \
-             pointer — its bytes are a pointer, not the referenced data. \
-             Inline the value directly (`T` instead of `{ident}<T>`), or drop \
-             the `bytemuck` attribute to use the default wincode encoding."
+            "event field `{field_name}` uses `{ident}`, which is a heap/shared pointer — its \
+             bytes are a pointer, not the referenced data. Inline the value directly (`T` instead \
+             of `{ident}<T>`), or drop the `bytemuck` attribute to use the default wincode \
+             encoding."
         )),
-        "HashMap" | "HashSet" | "BTreeMap" | "BTreeSet" | "BinaryHeap"
-        | "LinkedList" | "VecDeque" => Some(format!(
-            "event field `{field_name}` uses `{ident}`, which allocates on the \
-             heap. Drop the `bytemuck` attribute to use the default wincode \
-             encoding, which handles dynamic collections."
+        "HashMap" | "HashSet" | "BTreeMap" | "BTreeSet" | "BinaryHeap" | "LinkedList"
+        | "VecDeque" => Some(format!(
+            "event field `{field_name}` uses `{ident}`, which allocates on the heap. Drop the \
+             `bytemuck` attribute to use the default wincode encoding, which handles dynamic \
+             collections."
         )),
         "bool" => Some(format!(
-            "event field `{field_name}` is `bool`. `bytemuck` disallows `bool` \
-             as Pod because only `0x00` and `0x01` are valid — any other byte \
-             is UB. Use a `u8` and treat `0` / non-zero as the boolean, or \
-             drop the `bytemuck` attribute to use the default wincode encoding."
+            "event field `{field_name}` is `bool`. `bytemuck` disallows `bool` as Pod because \
+             only `0x00` and `0x01` are valid — any other byte is UB. Use a `u8` and treat `0` / \
+             non-zero as the boolean, or drop the `bytemuck` attribute to use the default wincode \
+             encoding."
         )),
         _ => None,
     }
@@ -2477,9 +2469,7 @@ pub fn error_code(args: TokenStream, input: TokenStream) -> TokenStream {
 /// Parse the optional `#[discrim = N]` attribute on a handler fn.
 /// Returns `Ok(Some((byte, span)))` if present, `Ok(None)` if absent,
 /// or `Err` with a properly-spanned diagnostic on malformed input.
-fn parse_discrim_attr(
-    handler: &syn::ItemFn,
-) -> syn::Result<Option<(u8, proc_macro2::Span)>> {
+fn parse_discrim_attr(handler: &syn::ItemFn) -> syn::Result<Option<(u8, proc_macro2::Span)>> {
     for attr in &handler.attrs {
         if let syn::Meta::NameValue(nv) = &attr.meta {
             if nv.path.is_ident("discrim") {
@@ -2490,7 +2480,10 @@ fn parse_discrim_attr(
                 }) = &nv.value
                 {
                     let byte = lit.base10_parse::<u8>().map_err(|_| {
-                        syn::Error::new(lit.span(), "`#[discrim = N]` value must fit in a u8 (0..=255)")
+                        syn::Error::new(
+                            lit.span(),
+                            "`#[discrim = N]` value must fit in a u8 (0..=255)",
+                        )
                     })?;
                     return Ok(Some((byte, span)));
                 }
@@ -2508,11 +2501,8 @@ fn extract_context_inner_type(arg: &FnArg) -> TokenStream2 {
     let ty = match arg {
         FnArg::Typed(pt) => &*pt.ty,
         _ => {
-            return syn::Error::new(
-                arg.span(),
-                "first parameter must be `ctx: &mut Context<T>`",
-            )
-            .to_compile_error()
+            return syn::Error::new(arg.span(), "first parameter must be `ctx: &mut Context<T>`")
+                .to_compile_error()
         }
     };
     if let Type::Reference(r) = ty {
@@ -2551,4 +2541,40 @@ fn to_camel_case(s: &str) -> String {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn instruction_attrs_parse() {
+        let attrs: Vec<syn::Attribute> = vec![syn::parse_quote!(
+            #[instruction(first: u8, second: u16)]
+        )];
+
+        let parsed = parse_instruction_attrs(&attrs).unwrap();
+
+        assert_eq!(
+            parsed,
+            vec![
+                (syn::parse_quote!(first), syn::parse_quote!(u8)),
+                (syn::parse_quote!(second), syn::parse_quote!(u16)),
+            ]
+        );
+    }
+
+    #[test]
+    fn instruction_attrs_rejects_malformed_entries() {
+        let attrs: Vec<syn::Attribute> = vec![syn::parse_quote!(
+            #[instruction(first: u8, malformed, second: u16)]
+        )];
+
+        let err = parse_instruction_attrs(&attrs).unwrap_err();
+
+        assert!(
+            err.to_string().contains("expected `:`"),
+            "unexpected error: {err}"
+        );
+    }
 }
