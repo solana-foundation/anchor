@@ -62,6 +62,12 @@ enum AnnotatedItem {
         prefix: String,
         item: syn::ItemStruct,
     },
+    /// Stack frame: fields at negative offsets from r10 (frame pointer).
+    /// Offset = -(size_of::<Struct>() - offset_of!(Struct, field)).
+    Frame {
+        prefix: String,
+        item: syn::ItemStruct,
+    },
     /// Pass-through: items without a recognized #[...] annotation
     /// are emitted as-is (useful for helper structs, impls, etc.)
     Passthrough(Item),
@@ -118,6 +124,7 @@ fn classify_item(item: Item) -> syn::Result<AnnotatedItem> {
             if let Some((kind, prefix)) = extract_asm_attr(&mut s.attrs) {
                 match kind.as_str() {
                     "offsets" => Ok(AnnotatedItem::Offsets { prefix, item: s }),
+                    "frame" => Ok(AnnotatedItem::Frame { prefix, item: s }),
                     other => Err(syn::Error::new_spanned(
                         &s.ident,
                         format!("unknown asm attribute: {other}"),
@@ -134,7 +141,7 @@ fn classify_item(item: Item) -> syn::Result<AnnotatedItem> {
 /// Extract and remove `#[error_enum(...)]`, `#[discriminant(...)]`, or
 /// `#[offsets(...)]` from an attribute list. Returns (kind, prefix).
 fn extract_asm_attr(attrs: &mut Vec<syn::Attribute>) -> Option<(String, String)> {
-    let known = ["error_enum", "discriminant", "offsets"];
+    let known = ["error_enum", "discriminant", "offsets", "frame"];
     let pos = attrs.iter().position(|a| {
         a.path()
             .get_ident()
@@ -222,6 +229,34 @@ pub fn asm_program(input: TokenStream) -> TokenStream {
                         );
                         const_operands.push(quote! {
                             #const_name = const core::mem::offset_of!(#struct_name, #field_name) as i32,
+                        });
+                    }
+                    let size_name = format_ident!("{}_SIZE", prefix);
+                    const_operands.push(quote! {
+                        #size_name = const core::mem::size_of::<#struct_name>() as i32,
+                    });
+                }
+            }
+            AnnotatedItem::Frame { prefix, item } => {
+                rust_items.push(quote! { #item });
+                let struct_name = &item.ident;
+                if let Fields::Named(fields) = &item.fields {
+                    // Frame offsets are negative: -(size - offset_of(field))
+                    // so the first field is at the most negative offset and
+                    // the last field is closest to r10.
+                    for field in &fields.named {
+                        let field_name = field.ident.as_ref().unwrap();
+                        if field_name.to_string().starts_with('_') {
+                            continue;
+                        }
+                        let const_name = format_ident!(
+                            "{}_{}",
+                            prefix,
+                            to_screaming_snake(&field_name.to_string())
+                        );
+                        const_operands.push(quote! {
+                            #const_name = const -(core::mem::size_of::<#struct_name>() as i32
+                                - core::mem::offset_of!(#struct_name, #field_name) as i32),
                         });
                     }
                     let size_name = format_ident!("{}_SIZE", prefix);
