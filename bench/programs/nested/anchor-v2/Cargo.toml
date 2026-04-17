@@ -1,0 +1,33 @@
+[package]
+name = "nested-v2"
+version = "0.1.0"
+description = "Demonstrates Nested<T> account composition in Anchor v2"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "nested_v2"
+
+[features]
+default = ["no-log-ix-name"]
+no-entrypoint = []
+cpi = ["no-entrypoint", "dep:borsh"]
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang-v2/idl-build"]
+profile = ["anchor-v2-testing/profile"]
+
+[dependencies]
+anchor-lang-v2 = { path = "../../../../lang-v2", default-features = false, features = ["alloc"] }
+borsh = { version = "1", optional = true }
+bytemuck = { version = "1", features = ["derive"] }
+pinocchio = { version = "0.11", default-features = false, features = ["copy"] }
+wincode = { version = "0.5", features = ["derive"] }
+
+[dev-dependencies]
+anchor-v2-testing = { path = "../../../../v2-testing" }
+litesvm = "0.11"
+
+[lints.rust.unexpected_cfgs]
+level = "allow"
