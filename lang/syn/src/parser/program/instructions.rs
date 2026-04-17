@@ -44,7 +44,10 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
             let mut cleaned_method = method.clone();
             if has_raw_attr {
                 cleaned_method.attrs.retain(|attr| {
-                    attr.path.segments.last().is_some_and(|seg| seg.ident != "raw")
+                    attr.path
+                        .segments
+                        .last()
+                        .is_some_and(|seg| seg.ident != "raw")
                 });
             }
 
@@ -53,7 +56,8 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
                 if !has_raw_arg {
                     return Err(ParseError::new(
                         method.sig.span(),
-                        "Functions marked with #[raw] must have exactly one &[u8] or &mut [u8] argument",
+                        "Functions marked with #[raw] must have exactly one &[u8] or &mut [u8] \
+                         argument",
                     ));
                 }
                 // Validate &[u8] argument
@@ -78,7 +82,8 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
                 // If function has &[u8] argument but no #[raw] attribute, error
                 return Err(ParseError::new(
                     method.sig.span(),
-                    "Functions with &[u8] or &mut [u8] arguments must be marked with #[raw] attribute to skip instruction deserialization",
+                    "Functions with &[u8] or &mut [u8] arguments must be marked with #[raw] \
+                     attribute to skip instruction deserialization",
                 ));
             }
 
