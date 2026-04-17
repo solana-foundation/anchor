@@ -266,7 +266,7 @@ idl-build = ["anchor-lang-v2/idl-build"]
 # Once anchor-lang-v2 is published to crates.io, swap to: anchor-lang-v2 = "{3}"
 anchor-lang-v2 = {{ git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }}
 solana-program-log = {{ version = "1.1", features = ["macro"] }}
-wincode = {{ version = "0.4", features = ["derive"] }}
+wincode = {{ version = "0.5", features = ["derive"] }}
 {4}
 
 [lints.rust]
