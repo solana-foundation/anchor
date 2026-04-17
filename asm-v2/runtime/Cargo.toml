@@ -1,0 +1,9 @@
+[package]
+name = "anchor-asm-v2-runtime"
+version = "0.1.0"
+edition = "2021"
+description = "Runtime macros for anchor-asm-v2 (no dependencies)"
+license = "Apache-2.0"
+publish = false
+
+# Zero dependencies — safe to use in #![no_std] SBF crates.

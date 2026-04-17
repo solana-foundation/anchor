@@ -7,7 +7,7 @@ license = "Apache-2.0"
 publish = false
 
 [workspace]
-members = ["macros"]
+members = ["macros", "runtime"]
 
 [dependencies]
 syn = { version = "2", features = ["full", "parsing", "visit"] }
