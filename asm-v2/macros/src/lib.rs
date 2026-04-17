@@ -43,7 +43,10 @@ use syn::{
 
 struct AsmProgram {
     items: Vec<AnnotatedItem>,
-    files: Vec<LitStr>,
+    /// Raw token trees from the `asm { ... }` block. Passed through
+    /// verbatim to `global_asm!` so expressions like
+    /// `concat!(env!("OUT_DIR"), "/combined.s")` work.
+    asm_tokens: Vec<proc_macro2::TokenTree>,
 }
 
 enum AnnotatedItem {
@@ -67,7 +70,7 @@ enum AnnotatedItem {
 impl Parse for AsmProgram {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut items = Vec::new();
-        let mut files = Vec::new();
+        let mut asm_tokens = Vec::new();
 
         while !input.is_empty() {
             // Check for `asm { ... }` block
@@ -75,26 +78,22 @@ impl Parse for AsmProgram {
                 let lookahead = input.fork();
                 let ident: Ident = lookahead.parse()?;
                 if ident == "asm" {
-                    // Consume the real tokens
                     let _: Ident = input.parse()?;
                     let content;
                     braced!(content in input);
-                    let file_list: Punctuated<LitStr, Token![,]> =
-                        Punctuated::parse_terminated(&content)?;
-                    files = file_list.into_iter().collect();
+                    // Collect all tokens verbatim
+                    asm_tokens = content.parse::<proc_macro2::TokenStream>()?.into_iter().collect();
                     continue;
                 }
             }
 
-            // Parse a Rust item
             let item: Item = input.parse()?;
-
             match classify_item(item)? {
                 classified => items.push(classified),
             }
         }
 
-        Ok(AsmProgram { items, files })
+        Ok(AsmProgram { items, asm_tokens })
     }
 }
 
@@ -237,17 +236,30 @@ pub fn asm_program(input: TokenStream) -> TokenStream {
         }
     }
 
-    let file_includes: Vec<_> = program
-        .files
+    let asm_tokens: proc_macro2::TokenStream = program.asm_tokens.into_iter().collect();
+
+    // Build an asm comment that references every const operand name
+    // so LLVM doesn't error on "unused named argument". The comment
+    // is zero-cost — it's stripped during assembly.
+    let const_names: Vec<String> = const_operands
         .iter()
-        .map(|f| quote! { include_str!(#f), })
+        .filter_map(|ts| {
+            let s = ts.to_string();
+            s.split('=').next().map(|n| format!("{{{}}}", n.trim()))
+        })
         .collect();
+    let sink_comment = if const_names.is_empty() {
+        String::new()
+    } else {
+        format!("/* {} */", const_names.join(" "))
+    };
 
     let expanded = quote! {
         #(#rust_items)*
 
         core::arch::global_asm!(
-            #(#file_includes)*
+            #sink_comment,
+            #asm_tokens
             #(#const_operands)*
         );
     };
