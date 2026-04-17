@@ -13,7 +13,7 @@ const SYSTEM_PROGRAM_ID: Pubkey = Pubkey::new_from_array([0u8; 32]);
 fn setup() -> (LiteSVM, Pubkey, Keypair) {
     let program_id: Pubkey = PROGRAM_ID.parse().unwrap();
     let mut svm = anchor_v2_testing::svm();
-    let bytes = include_bytes!("../../../../../target/deploy/vault_quasar.so");
+    let bytes = include_bytes!("../../../../target/deploy/vault_quasar.so");
     svm.add_program(program_id, bytes).unwrap();
 
     let user = Keypair::new();

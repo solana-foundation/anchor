@@ -13,7 +13,7 @@ type TxResult = Result<TransactionMetadata, FailedTransactionMetadata>;
 
 fn setup() -> (LiteSVM, Keypair) {
     let mut svm = anchor_v2_testing::svm();
-    let bytes = include_bytes!("../../../../../target/deploy/hello_world.so");
+    let bytes = include_bytes!("../../../../target/deploy/hello_world.so");
     svm.add_program(hello_world::id(), bytes).unwrap();
 
     let payer = Keypair::new();

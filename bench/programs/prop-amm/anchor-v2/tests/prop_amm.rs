@@ -18,7 +18,7 @@ fn update_authority() -> Keypair {
 fn setup() -> (LiteSVM, Keypair, Keypair) {
     let program_id = prop_amm_v2::id();
     let mut svm = anchor_v2_testing::svm();
-    let bytes = include_bytes!("../../../../../target/deploy/prop_amm_v2.so");
+    let bytes = include_bytes!("../../../../target/deploy/prop_amm_v2.so");
     svm.add_program(program_id, bytes).unwrap();
 
     let payer = Keypair::new();

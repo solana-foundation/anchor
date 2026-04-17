@@ -9,7 +9,7 @@ type TxResult = Result<TransactionMetadata, FailedTransactionMetadata>;
 
 fn setup() -> (LiteSVM, Keypair) {
     let mut svm = anchor_v2_testing::svm();
-    let bytes = include_bytes!("../../../../../target/deploy/vault_v2.so");
+    let bytes = include_bytes!("../../../../target/deploy/vault_v2.so");
     svm.add_program(vault_v2::id(), bytes).unwrap();
 
     let user = Keypair::new();
