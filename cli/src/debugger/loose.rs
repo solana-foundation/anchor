@@ -224,7 +224,10 @@ fn read_cargo_toml(path: &Path) -> Result<CargoToml> {
 /// 0-byte artifacts are skipped, malformed keypairs / declare_id
 /// literals are skipped. Empty result is legal — the caller surfaces a
 /// clear "build first?" message rather than failing here.
-pub fn discover_programs(workspace_root: &Path) -> Result<BTreeMap<String, PathBuf>> {
+pub fn discover_programs(
+    workspace_root: &Path,
+    current_package: Option<&str>,
+) -> Result<BTreeMap<String, PathBuf>> {
     // Pre-cache the lib_name → pubkey map from `declare_id!` source scan.
     let lib_to_declare_id = scan_declare_ids(workspace_root);
 
@@ -271,13 +274,19 @@ pub fn discover_programs(workspace_root: &Path) -> Result<BTreeMap<String, PathB
             // No discoverable id — skip rather than poison the map.
             continue;
         }
+        // The current package (the crate the user invoked the debugger
+        // from) always wins when multiple libs share the same pubkey.
+        // This handles the common bench layout where v1 and v2 both
+        // declare the same program id for apples-to-apples comparison.
+        let is_current = current_package
+            .map(|pkg| lib_name.replace('-', "_") == pkg.replace('-', "_"))
+            .unwrap_or(false);
         for pk in pubkeys {
-            // No first-writer-wins here on purpose: same lib mapped under
-            // multiple ids is fine; conflicting ids across libs would be
-            // a real error worth investigating, but we still pick one
-            // deterministically by name order so the warning surfaces
-            // consistently.
-            out.entry(pk).or_insert_with(|| so_path.clone());
+            if is_current {
+                out.insert(pk, so_path.clone());
+            } else {
+                out.entry(pk).or_insert_with(|| so_path.clone());
+            }
         }
     }
     Ok(out)

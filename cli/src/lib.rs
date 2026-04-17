@@ -3717,7 +3717,7 @@ fn debugger_loose(
         )?;
     }
 
-    let pubkey_to_so = debugger::loose::discover_programs(&ws.root)?;
+    let pubkey_to_so = debugger::loose::discover_programs(&ws.root, ws.current_package.as_deref())?;
     if pubkey_to_so.is_empty() {
         eprintln!(
             "warning: no programs found under {}/target/deploy/.\n\
