@@ -173,20 +173,20 @@ pub mod anchor_v1 {
 pub mod anchor_v2 {
     use {
         crate::bench::{keypair_for_account, BenchContext, BenchInstruction},
-        anchor_lang::solana_program::{instruction::AccountMeta, system_program},
-        anchor_lang_v2::{InstructionData, ToAccountMetas},
+        anchor_lang_v2::{
+            programs::System, AccountMeta, Address, Id, InstructionData, ToAccountMetas,
+        },
         anyhow::Result,
         solana_keypair::Keypair,
-        solana_pubkey::Pubkey,
         solana_signer::Signer,
     };
 
-    fn multisig_v2_config_address(creator: &Pubkey) -> (Pubkey, u8) {
-        Pubkey::find_program_address(&[b"multisig", creator.as_ref()], &multisig_v2::id())
+    fn multisig_v2_config_address(creator: &Address) -> (Address, u8) {
+        anchor_lang_v2::find_program_address(&[b"multisig", creator.as_ref()], &multisig_v2::id())
     }
 
-    fn multisig_v2_vault_address(config: &Pubkey) -> (Pubkey, u8) {
-        Pubkey::find_program_address(&[b"vault", config.as_ref()], &multisig_v2::id())
+    fn multisig_v2_vault_address(config: &Address) -> (Address, u8) {
+        anchor_lang_v2::find_program_address(&[b"vault", config.as_ref()], &multisig_v2::id())
     }
 
     pub fn build_create_case(ctx: &mut BenchContext) -> Result<BenchInstruction> {
@@ -200,7 +200,7 @@ pub mod anchor_v2 {
         let mut metas = multisig_v2::accounts::Create {
             creator: creator.pubkey(),
             config,
-            system_program: system_program::ID,
+            system_program: System::id(),
         }
         .to_account_metas(None);
         metas.push(AccountMeta::new_readonly(signer_one.pubkey(), true));
@@ -229,7 +229,7 @@ pub mod anchor_v2 {
                 depositor: creator.pubkey(),
                 config,
                 vault,
-                system_program: system_program::ID,
+                system_program: System::id(),
             }
             .to_account_metas(None),
         )
@@ -280,7 +280,7 @@ pub mod anchor_v2 {
                 depositor: creator.pubkey(),
                 config,
                 vault,
-                system_program: system_program::ID,
+                system_program: System::id(),
             }
             .to_account_metas(None),
             &[&creator],
@@ -291,7 +291,7 @@ pub mod anchor_v2 {
             creator: creator.pubkey(),
             vault,
             recipient: recipient.pubkey(),
-            system_program: system_program::ID,
+            system_program: System::id(),
         }
         .to_account_metas(None);
         metas.push(AccountMeta::new_readonly(signer_one.pubkey(), true));
@@ -314,7 +314,7 @@ pub mod anchor_v2 {
         let mut metas = multisig_v2::accounts::Create {
             creator: creator.pubkey(),
             config,
-            system_program: system_program::ID,
+            system_program: System::id(),
         }
         .to_account_metas(None);
 
