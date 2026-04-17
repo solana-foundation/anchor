@@ -7857,7 +7857,6 @@ dependencies = [
 name = "tests-v2"
 version = "0.1.0"
 dependencies = [
- "anchor-lang",
  "anchor-lang-v2",
  "anyhow",
  "borsh-realloc",

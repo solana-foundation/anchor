@@ -9,8 +9,10 @@
 //! live `&mut Data` to the same bytes, so no UB.
 
 use {
-    anchor_lang::solana_program::instruction::{AccountMeta, Instruction},
-    anchor_lang_v2::InstructionData,
+    anchor_lang_v2::{
+        solana_program::instruction::{AccountMeta, Instruction},
+        InstructionData,
+    },
     litesvm::LiteSVM,
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},

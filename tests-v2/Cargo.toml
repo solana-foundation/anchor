@@ -8,7 +8,6 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
-anchor-lang = { path = "../lang" }
 anchor-lang-v2 = { path = "../lang-v2" }
 borsh-realloc = { path = "programs/borsh-realloc", features = ["cpi"] }
 callee = { path = "programs/callee", features = ["cpi"] }

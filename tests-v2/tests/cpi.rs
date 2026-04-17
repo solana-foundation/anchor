@@ -1,6 +1,5 @@
 use {
-    anchor_lang::solana_program::instruction::AccountMeta,
-    anchor_lang_v2::InstructionData,
+    anchor_lang_v2::{solana_program::instruction::AccountMeta, InstructionData},
     litesvm::LiteSVM,
     solana_pubkey::Pubkey,
     solana_signer::Signer,
