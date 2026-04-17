@@ -13,14 +13,15 @@ v2 is a drop-in speedup for Anchor v1. Same constraints DSL, same `#[derive(Acco
 
 ## Examples
 
-Worked programs live under [`bench/programs/`](../bench/programs/), paired with v1/quasar/steel ports for head-to-head comparison. Binary sizes and CU numbers are from the v2 variant.
+Worked programs live under [`bench/programs/`](../bench/programs/), paired with v1 for a head-to-head comparison. Binary sizes and CU numbers are from the v2 variant.
 
-| Program | Description | Binary | CU (median ix) | vs v1 |
+| Program | Description | Binary | CU range | vs v1 |
 |---|---|---|---|---|
 | [helloworld](../bench/programs/helloworld/anchor-v2) | Single-instruction counter | 6.9 KB | 1,383 | −94% bin / −76% CU |
-| [vault](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault | 5.9 KB | 403–1,910 | — |
-| [multisig](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig | 31 KB | 476–2,360 | −81% bin / −67% CU |
-| [prop-amm](../bench/programs/prop-amm/anchor-v2) | Oracle feed with asm fast-path | 9.2 KB | 26–1,383 | — |
+| [prop-amm](../bench/programs/prop-amm/anchor-v2) | Oracle feed with asm fast-path | 9.2 KB | 26–1,383 | −93% bin / −68% to −98% CU |
+| [vault](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault | 5.9 KB | 403–1,910 | −94% bin / −67% to −84% CU |
+| [nested](../bench/programs/nested/anchor-v2) | `Nested<T>` shared-validation demo | 13 KB | 476–2,748 | −91% bin / −86% to −90% CU |
+| [multisig](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig | 31 KB | 477–2,363 | −81% bin / −67% to −89% CU |
 
 ## Getting started
 
