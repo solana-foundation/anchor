@@ -15,23 +15,15 @@
   </p>
 </div>
 
-[Anchor](https://www.anchor-lang.com/) is a framework providing several convenient developer tools for writing Solana programs (sometimes called 'smart contracts').
+[Anchor](https://www.anchor-lang.com/) is a framework for Solana programs: a Rust eDSL, an [IDL](https://en.wikipedia.org/wiki/Interface_description_language) spec, a TypeScript client generated from that IDL, and a CLI + workspace tool for driving the whole loop.
 
-- Rust eDSL for writing Solana programs
-- [IDL](https://en.wikipedia.org/wiki/Interface_description_language) specification
-- TypeScript package for generating clients from IDL
-- CLI and workspace management for developing complete applications
+## v2 in progress
 
-Anchor is the most popular framework for Solana programs.
+[`anchor-lang-v2`](./lang-v2/) is the next-generation runtime, built on [pinocchio](https://github.com/anza-xyz/pinocchio) and `#![no_std]` by default. It produces an order of magnitude smaller binaries and fewer CU per instruction than v1. Alpha — see [`lang-v2/README.md`](./lang-v2/README.md) for quick-start, bench numbers, and caveats. The v1 (`lang/`) code in this repo remains the stable, published path.
 
-> [!NOTE]
-> If you're familiar with developing in Ethereum's [Solidity](https://docs.soliditylang.org/en/), [Truffle](https://www.trufflesuite.com/), [web3.js](https://github.com/ethereum/web3.js), then using Anchor will be familiar. Although the DSL syntax and semantics are targeted at Solana, the high level flow of writing RPC request handlers, emitting an IDL, and generating clients from IDL is the same.
+## Getting started
 
-## Getting Started
-
-For a quickstart guide and in depth tutorials, see the [Anchor book](https://book.anchor-lang.com) and the [Anchor documentation](https://anchor-lang.com).
-
-To jump straight to examples, go [here](https://github.com/solana-foundation/anchor/tree/master/examples). For the latest Rust and TypeScript API documentation, see [docs.rs](https://docs.rs/anchor-lang) and the [typedoc](https://www.anchor-lang.com/docs/clients/typescript).
+See the [Anchor book](https://book.anchor-lang.com), the [docs site](https://anchor-lang.com), and the [examples](https://github.com/solana-foundation/anchor/tree/master/examples). Rust API on [docs.rs](https://docs.rs/anchor-lang), TypeScript API in the [typedoc](https://www.anchor-lang.com/docs/clients/typescript).
 
 ## Packages
 
@@ -41,80 +33,17 @@ To jump straight to examples, go [here](https://github.com/solana-foundation/anc
 | `anchor-spl`            | CPI clients for SPL programs on Solana                   | [![crates](https://img.shields.io/crates/v/anchor-spl?color=blue)](https://crates.io/crates/anchor-spl)                          | [![Docs.rs](https://docs.rs/anchor-spl/badge.svg)](https://docs.rs/anchor-spl)                                  |
 | `anchor-client`         | Rust client for Anchor programs                          | [![crates](https://img.shields.io/crates/v/anchor-client?color=blue)](https://crates.io/crates/anchor-client)                    | [![Docs.rs](https://docs.rs/anchor-client/badge.svg)](https://docs.rs/anchor-client)                            |
 | `@anchor-lang/core`     | TypeScript client for Anchor programs                    | [![npm](https://img.shields.io/npm/v/@anchor-lang/core.svg?color=blue)](https://www.npmjs.com/package/@anchor-lang/core)         | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://solana-foundation.github.io/anchor/ts/index.html)     |
-| `@anchor-lang/cli` | CLI to support building and managing an Anchor workspace | [![npm](https://img.shields.io/npm/v/@anchor-lang/cli.svg?color=blue)](https://www.npmjs.com/package/@anchor-lang/core-cli) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://www.anchor-lang.com/docs/references/cli) |
+| `@anchor-lang/cli`      | CLI for building and managing an Anchor workspace        | [![npm](https://img.shields.io/npm/v/@anchor-lang/cli.svg?color=blue)](https://www.npmjs.com/package/@anchor-lang/cli)           | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://www.anchor-lang.com/docs/references/cli)      |
 
-## Note
+## Notes
 
-- **Anchor is in active development, so all APIs are subject to change.**
-- **This code is unaudited. Use at your own risk.**
-
-## Examples
-
-Here's a counter program, where only the designated `authority`
-can increment the count.
-
-```rust
-use anchor_lang::prelude::*;
-
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
-
-#[program]
-mod counter {
-    use super::*;
-
-    pub fn initialize(ctx: Context<Initialize>, start: u64) -> Result<()> {
-        let counter = &mut ctx.accounts.counter;
-        counter.authority = *ctx.accounts.authority.key;
-        counter.count = start;
-        Ok(())
-    }
-
-    pub fn increment(ctx: Context<Increment>) -> Result<()> {
-        let counter = &mut ctx.accounts.counter;
-        counter.count += 1;
-        Ok(())
-    }
-}
-
-#[derive(Accounts)]
-pub struct Initialize<'info> {
-    #[account(init, payer = authority, space = 48)]
-    pub counter: Account<'info, Counter>,
-    pub authority: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct Increment<'info> {
-    #[account(mut, has_one = authority)]
-    pub counter: Account<'info, Counter>,
-    pub authority: Signer<'info>,
-}
-
-#[account]
-pub struct Counter {
-    pub authority: Pubkey,
-    pub count: u64,
-}
-```
-
-For more, see the [examples](https://github.com/solana-foundation/anchor/tree/master/examples)
-and [tests](https://github.com/solana-foundation/anchor/tree/master/tests) directories.
+- **APIs are subject to change** — Anchor is under active development.
 
 ## License
 
-Anchor is licensed under [Apache 2.0](./LICENSE).
+Anchor is licensed under [Apache 2.0](./LICENSE). Contributions are accepted under the same license unless you explicitly state otherwise.
 
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in Anchor by you, as defined in the Apache-2.0 license, shall be
-licensed as above, without any additional terms or conditions.
-
-## Contribution
-
-Thank you for your interest in contributing to Anchor!
-Please see the [CONTRIBUTING.md](./CONTRIBUTING.md) to learn how.
-
-### Thanks ❤️
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
 
 <div align="center">
   <a href="https://github.com/solana-foundation/anchor/graphs/contributors">
