@@ -247,7 +247,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let fields: Vec<parse::AccountField> = match named_fields
         .named
         .iter()
-        .zip(offset_exprs.into_iter())
+        .zip(offset_exprs)
         .map(|(f, offset)| parse::parse_field(f, &raw_field_names, offset, &ix_arg_names))
         .collect::<syn::Result<_>>()
     {
@@ -528,11 +528,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         .filter(|(_, kind)| matches!(kind, FieldKind::Required))
         .map(|(f, _)| {
             let fname = &f.name;
-            if f.is_optional {
-                quote! { let #fname = self.#fname; }
-            } else {
-                quote! { let #fname = self.#fname; }
-            }
+            quote! { let #fname = self.#fname; }
         })
         .collect();
 
