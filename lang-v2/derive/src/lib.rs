@@ -7,6 +7,7 @@ mod idl;
 mod init_space;
 mod parse;
 mod pda;
+mod pod_wrapper;
 
 use {
     proc_macro::TokenStream,
@@ -2432,6 +2433,44 @@ pub fn constant(_attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(InitSpace, attributes(max_len))]
 pub fn derive_init_space(item: TokenStream) -> TokenStream {
     init_space::expand(item)
+}
+
+// ---------------------------------------------------------------------------
+// #[derive(PodWrapper)]
+// ---------------------------------------------------------------------------
+
+/// Generates a `Pod`-compatible companion type for an `#[repr(u8)]` enum.
+///
+/// Rust enums are not `bytemuck::Pod` — only declared discriminants round-trip
+/// safely, whereas `Pod` requires every bit pattern to be valid. Storing an
+/// enum inside a zero-copy `#[account]` struct is therefore unsound: a corrupt
+/// byte becomes an invalid enum value and instant UB on pattern match.
+///
+/// `#[derive(PodWrapper)]` emits a `#[repr(transparent)] struct Pod{Enum}(pub u8)`
+/// with `Pod + Zeroable` impls, per-variant `SCREAMING_SNAKE_CASE` constants,
+/// and `From` / `PartialEq` bridges so existing `engine.market_mode == MarketMode::Live`
+/// comparisons still compile after swapping a field from `Enum` to `PodEnum`.
+///
+/// # Example
+///
+/// ```ignore
+/// #[derive(PodWrapper)]
+/// #[repr(u8)]
+/// pub enum MarketMode { Live = 0, Resolved = 1 }
+///
+/// // generated: PodMarketMode::LIVE, PodMarketMode::RESOLVED
+/// // generated: From<MarketMode> / From<PodMarketMode> (panics on invalid byte)
+/// // generated: PartialEq<MarketMode> / PartialEq<PodMarketMode> bridges
+/// ```
+///
+/// # Requirements
+///
+/// * The item must be an `enum`.
+/// * The enum must carry `#[repr(u8)]` so the stored width is explicit.
+/// * Every variant must be a bare unit variant (no payload).
+#[proc_macro_derive(PodWrapper)]
+pub fn derive_pod_wrapper(item: TokenStream) -> TokenStream {
+    pod_wrapper::expand(item)
 }
 
 // ---------------------------------------------------------------------------

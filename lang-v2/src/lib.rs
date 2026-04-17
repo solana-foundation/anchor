@@ -91,6 +91,7 @@ pub use {
     accounts::{AccountInitialize, SlabInit},
     anchor_derive_accounts_v2::{
         access_control, account, constant, emit, error_code, event, program, Accounts, InitSpace,
+        PodWrapper,
     },
     borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
