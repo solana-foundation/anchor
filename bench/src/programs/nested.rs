@@ -110,7 +110,7 @@ pub mod anchor_v2 {
     use {
         crate::bench::{keypair_for_account, BenchContext, BenchInstruction},
         anchor_lang_v2::{
-            solana_program::instruction::AccountMeta, InstructionData, ToAccountMetas,
+            solana_program::instruction::AccountMeta, InstructionData,
         },
         anyhow::Result,
         solana_pubkey::Pubkey,
