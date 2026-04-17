@@ -116,9 +116,11 @@ jobs:
             echo "::group::anchor debugger in $prog"
             log=$(mktemp)
             set +e
-            ( cd "$prog" && \
-              timeout --kill-after=30 300 \
-                script -qec 'anchor debugger' "$log" )
+            pushd $prog
+            cargo build-sbf --tools-version v1.52
+            timeout --kill-after=30 30 \
+              script -qec 'anchor debugger' "$log"
+            popd
             rc=$?
             set -e
             if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
