@@ -18,7 +18,7 @@ jobs:
   test-v2:
     name: v2 Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup/
@@ -57,6 +57,21 @@ jobs:
             cargo-target-${{ runner.os }}-v2-${{ hashFiles('**/Cargo.lock') }}-
             cargo-target-${{ runner.os }}-v2-
 
+      # `bench/` is its own cargo workspace, so its build artifacts live
+      # in `bench/target/` (separate tree from `./target/` above). The
+      # `anchor debugger` smoke step below triggers `cargo build-sbf` +
+      # `cargo test --features profile` for each anchor-v2 program —
+      # all of which write here. Keyed on `bench/Cargo.lock` since that
+      # is the lockfile that gates bench-workspace dep resolution.
+      - uses: actions/cache@v4
+        name: Cache bench cargo target
+        with:
+          path: ./bench/target/
+          key: cargo-target-bench-${{ runner.os }}-v2-${{ hashFiles('bench/Cargo.lock') }}-${{ github.ref_name }}
+          restore-keys: |
+            cargo-target-bench-${{ runner.os }}-v2-${{ hashFiles('bench/Cargo.lock') }}-
+            cargo-target-bench-${{ runner.os }}-v2-
+
       # Install platform-tools up front so the concurrent `cargo build-sbf`
       # invocations fired by parallel test threads don't race on the
       # one-time extract-then-rename of `~/.cache/solana/v1.52/platform-tools`
@@ -76,3 +91,44 @@ jobs:
       # no `anchor build`/`anchor test` flows, no tests/* integration.
       - run: cargo check -p anchor-cli
       - run: cargo test -p anchor-cli
+
+      # Install the `anchor` bin to `~/.cargo/bin` (already on PATH via
+      # rustup). Shared `./target/` via `--target-dir` means the build
+      # reuses artifacts from prior `cargo test -p anchor-cli` instead
+      # of starting from scratch in a temp tree; `--debug` skips release
+      # opt (smoke test — runtime speed doesn't matter).
+      - run: cargo install --path cli --locked --debug --target-dir ./target
+
+      # `anchor debugger` smoke test. These bench crates have no
+      # Anchor.toml, so the CLI falls into loose mode and runs the full
+      # pipeline: `cargo build-sbf` → `cargo test --features profile` →
+      # TUI. We wrap in `script` so crossterm can enter raw mode on a
+      # pty (GHA stdin/stdout aren't ttys) and `timeout` kills the TUI
+      # once it's in its event loop. Exit 124 ("still alive when
+      # killed") is the success signal; anything else is a real failure
+      # we want to see, so we tee the pty log to a file and dump it
+      # when a run exits non-124-non-zero.
+      - name: anchor debugger TUI launches for bench anchor-v2 programs
+        run: |
+          set -u
+          fail=0
+          for prog in bench/programs/*/anchor-v2; do
+            echo "::group::anchor debugger in $prog"
+            log=$(mktemp)
+            set +e
+            pushd $prog
+            cargo build-sbf --tools-version v1.52
+            timeout --kill-after=30 30 \
+              script -qec 'anchor debugger' "$log"
+            popd
+            rc=$?
+            set -e
+            if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
+              echo "anchor debugger failed in $prog (exit $rc)"
+              cat "$log"
+              fail=1
+            fi
+            rm -f "$log"
+            echo "::endgroup::"
+          done
+          exit "$fail"
