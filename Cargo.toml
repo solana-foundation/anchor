@@ -12,6 +12,8 @@ members = [
     "lang-v2",
     "lang-v2/derive",
     "spl-v2",
+    "tests-v2",
+    "tests-v2/programs/*",
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
@@ -31,7 +33,6 @@ solana-commitment-config = "3.1.1"
 solana-compute-budget-interface = "3.0.0"
 solana-cpi = "3.0.0"
 solana-define-syscall = "3.0.0"
-solana-faucet = "3.0.14"
 solana-feature-gate-interface = "3.0.0"
 solana-instruction = "3.0.0"
 solana-instructions-sysvar = "3.0.0"
