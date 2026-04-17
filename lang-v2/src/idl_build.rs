@@ -87,6 +87,23 @@ impl<T: IdlAccountType> IdlAccountType for alloc::vec::Vec<T> {
     }
 }
 
+// Borrowed slice `&[T]` — surfaces on `#[derive(IdlType)]` structs that
+// carry borrowed slice fields (e.g. `MixedArgs<'a> { values: &'a [u64] }`),
+// which wincode supports as a zero-copy ix arg.
+impl<T: IdlAccountType> IdlAccountType for [T] {
+    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
+        T::__register_idl_deps(types);
+    }
+}
+
+// `&T` — forward to `T` so a field typed as `&'a Inner` pulls `Inner`'s
+// type def into the IDL's `types[]`.
+impl<T: IdlAccountType + ?Sized> IdlAccountType for &T {
+    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
+        T::__register_idl_deps(types);
+    }
+}
+
 impl<T: IdlAccountType> IdlAccountType for Option<T> {
     fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
         T::__register_idl_deps(types);

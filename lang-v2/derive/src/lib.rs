@@ -505,13 +505,11 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 }
             }
 
-            params.push(quote! { program_id: &anchor_lang_v2::Address });
-
             Some(quote! {
                 pub fn #fn_name(#(#params),*) -> (anchor_lang_v2::Address, u8) {
                     anchor_lang_v2::find_program_address(
                         &[#(#seed_exprs),*],
-                        program_id,
+                        &crate::ID,
                     )
                 }
             })
