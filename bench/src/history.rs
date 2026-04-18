@@ -12,7 +12,7 @@ pub const CURRENT_COMMIT: &str = "current";
 pub const MASTER_BRANCH: &str = "master";
 
 /// Stores the benchmark history as an ordered list of snapshots.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct BenchmarkHistory {
     pub baseline: BTreeMap<String, ProgramBenchmark>,
     pub baseline_programs: BTreeMap<String, Vec<String>>,

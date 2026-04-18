@@ -52,7 +52,7 @@ fn main() -> Result<()> {
     )?;
 
     let results_path = bench_dir.join(RESULTS_FILE);
-    let history = load_history(&results_path)?;
+    let history = load_history(&results_path).unwrap_or_default();
     let mut updated_history = history.clone();
 
     update_history(&mut updated_history, current_result)?;
