@@ -2,16 +2,17 @@ use {crate::Discriminator, alloc::vec::Vec};
 
 /// Trait for event structs. Implemented by the `#[event]` attribute macro.
 ///
-/// Three serialization modes are emitted by the macro, all exposed via the
+/// Two serialization modes are emitted by the macro, both exposed via the
 /// single `data()` entry point:
-/// - default (`#[event]`) — wincode. Supports `Vec`/`String`/`Option`/enums,
-///   and is materially cheaper than borsh on SBF (3–10× fewer CUs).
+/// - default (`#[event]`) — wincode with a borsh-compatible wire format
+///   (`BORSH_CONFIG`: u8 enum tags + fixed `u32` LE length prefixes), so
+///   off-chain consumers decoding as borsh see the same bytes. Supports
+///   `Vec`/`String`/`Option`/enums and is materially cheaper than borsh on
+///   SBF (3–10× fewer CUs).
 /// - opt-in (`#[event(bytemuck)]`) — zero-copy `copy_nonoverlapping` of a
 ///   `repr(C)` struct with a compile-time padding assertion. Cheapest on
 ///   fixed-size shapes, but the struct must contain only fixed-size,
 ///   non-fat-pointer fields.
-/// - opt-in (`#[event(borsh)]`) — borsh serialization. Retained for
-///   IDL-compatibility with v1 off-chain consumers that decode via borsh.
 pub trait Event: Discriminator {
     /// Serialize the event: discriminator bytes followed by event data.
     fn data(&self) -> Vec<u8>;

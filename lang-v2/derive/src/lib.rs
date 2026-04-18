@@ -135,7 +135,10 @@ fn emit_args_deser(args: &[(&Ident, &Type)], struct_name: &str, inline_error: bo
     } else {
         let error_handling = if inline_error {
             quote! {
-                match anchor_lang_v2::wincode::deserialize(__ix_data) {
+                match anchor_lang_v2::wincode::config::deserialize(
+                    __ix_data,
+                    anchor_lang_v2::BORSH_CONFIG,
+                ) {
                     Ok(__v) => __v,
                     Err(_) => return {
                         let __e: anchor_lang_v2::Error =
@@ -146,7 +149,10 @@ fn emit_args_deser(args: &[(&Ident, &Type)], struct_name: &str, inline_error: bo
             }
         } else {
             quote! {
-                anchor_lang_v2::wincode::deserialize(__ix_data)
+                anchor_lang_v2::wincode::config::deserialize(
+                    __ix_data,
+                    anchor_lang_v2::BORSH_CONFIG,
+                )
                     .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?
             }
         };
@@ -1333,7 +1339,11 @@ fn process_handler(
             fn data(&self) -> alloc::vec::Vec<u8> {
                 let mut data = alloc::vec::Vec::with_capacity(256);
                 data.extend_from_slice(Self::DISCRIMINATOR);
-                anchor_lang_v2::wincode::serialize_into(&mut data, self)
+                anchor_lang_v2::wincode::config::serialize_into(
+                    &mut data,
+                    self,
+                    anchor_lang_v2::BORSH_CONFIG,
+                )
                     .expect("instruction serialization failed");
                 data
             }
@@ -1839,34 +1849,32 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
 /// Attribute macro that marks a struct as an event.
 ///
-/// Three modes:
+/// Two modes:
 ///
 /// **Default (`#[event]`, wincode).** Derives `wincode::SchemaWrite` and
-/// serializes via `wincode::serialize_into`. Supports arbitrary layouts,
-/// including `Vec`/`String`/`Option`/enums, and is materially cheaper than
-/// borsh on SBF (see `cu-bench` — roughly 3–10× fewer CUs depending on
-/// shape). This is the right default for almost every event.
+/// serializes via `wincode::config::serialize_into` with `BORSH_CONFIG`, so
+/// the on-chain wire format is byte-compatible with borsh while keeping
+/// wincode's faster encoding path. Supports arbitrary layouts, including
+/// `Vec`/`String`/`Option`/enums, and is materially cheaper than borsh on
+/// SBF (see `cu-bench` — roughly 3–10× fewer CUs depending on shape). This
+/// is the right default for almost every event.
 ///
 /// **`#[event(bytemuck)]`.** Emits `#[repr(C)]` + a raw `copy_nonoverlapping`
-/// of the struct bytes. Fastest of the three for fixed-size events, but the
+/// of the struct bytes. Fastest of the two for fixed-size events, but the
 /// struct must contain only fixed-size, non-fat-pointer fields (no
 /// `Vec`/`String`/`Box`/`Option`/enums/maps) and must have zero `repr(C)`
 /// padding. Both invariants are enforced at compile time. Opt into this only
 /// when the event is on a hot path and profiling shows wincode's per-field
 /// encoding is the bottleneck.
 ///
-/// **`#[event(borsh)]`.** Emits a `borsh::BorshSerialize` derive. Matches v1
-/// semantics and wire format. Retained for IDL compatibility with existing
-/// off-chain consumers that decode via borsh; prefer the default otherwise.
-///
-/// All three modes share the same discriminator and `Event::data()` contract,
+/// Both modes share the same discriminator and `Event::data()` contract,
 /// so `emit!` works identically. The IDL carries a `serialization` tag so TS
 /// clients know how to decode.
 ///
 /// # Examples
 ///
 /// ```ignore
-/// // Default: wincode, supports dynamic fields.
+/// // Default: wincode (borsh-wire-compatible), supports dynamic fields.
 /// #[event]
 /// pub struct DepositRecorded {
 ///     pub ledger: [u8; 32],
@@ -1879,13 +1887,6 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 /// pub struct TickUpdate {
 ///     pub price: u64,
 ///     pub ts: u64,
-/// }
-///
-/// // Opt-in borsh: v1-compatible wire format.
-/// #[event(borsh)]
-/// pub struct MetadataUpdated {
-///     pub uri: String,
-///     pub tags: Vec<[u8; 32]>,
 /// }
 /// ```
 #[proc_macro_attribute]
@@ -1922,14 +1923,13 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // Build the `--- IDL begin event ---` payload. `idl/src/build.rs` expects
     // a JSON object with `event: IdlEvent` (name + discriminator) plus
-    // `types: Vec<IdlTypeDef>` (the full struct definition). Each mode tags
-    // its own serialization; borsh uses the spec default (skip_serializing_if
-    // strips it), bytemuck adds `{serialization:"bytemuck",repr:{kind:"c"}}`,
-    // wincode uses the `Custom(String)` escape hatch.
+    // `types: Vec<IdlTypeDef>` (the full struct definition). The default
+    // wincode mode tags its IDL entry as borsh-serialized (the wire format is
+    // borsh-compatible via `BORSH_CONFIG`); bytemuck adds
+    // `{serialization:"bytemuck",repr:{kind:"c"}}`.
     let type_kind = match mode {
-        EventMode::Wincode => idl::TypeKind::Wincode,
+        EventMode::Wincode => idl::TypeKind::Borsh,
         EventMode::Bytemuck => idl::TypeKind::BytemuckRepr,
-        EventMode::Borsh => idl::TypeKind::Borsh,
     };
     let struct_docs = idl::extract_doc_lines(attrs);
     let type_def_json = if let Fields::Named(named) = fields {
@@ -2033,7 +2033,11 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                         disc.len() + 256,
                     );
                     buf.extend_from_slice(disc);
-                    anchor_lang_v2::wincode::serialize_into(&mut buf, self)
+                    anchor_lang_v2::wincode::config::serialize_into(
+                        &mut buf,
+                        self,
+                        anchor_lang_v2::BORSH_CONFIG,
+                    )
                         .expect("`#[event]` wincode serialization cannot fail for \
                                  derived SchemaWrite types");
                     buf
@@ -2089,8 +2093,8 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #vis struct #name #fields
 
                 // Targeted diagnostics fire first so users see a specific
-                // migration hint (e.g. "use `#[event(borsh)]` for dynamic
-                // strings") instead of bytemuck's opaque `Pod not satisfied`.
+                // migration hint (e.g. "drop `bytemuck` for dynamic strings")
+                // instead of bytemuck's opaque `Pod not satisfied`.
                 #(#field_diagnostics)*
 
                 // Transitive Pod bound per field — catches fat pointers even
@@ -2115,8 +2119,9 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                         == 0 #( + ::core::mem::size_of::<#field_types>() )*,
                     "`#[event]` struct has `repr(C)` alignment padding — \
                      reorder fields from largest to smallest alignment (u128/u64 \
-                     first, then u32, then u16, then u8/bool), or switch to \
-                     `#[event(borsh)]` for arbitrary layouts"
+                     first, then u32, then u16, then u8/bool), or drop the \
+                     `bytemuck` flag and use the default `#[event]` (wincode) \
+                     for arbitrary layouts"
                 );
 
                 // SAFETY: `bytemuck::Pod` requires four invariants. Each is
@@ -2185,43 +2190,12 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #idl_event_print
             })
         }
-        EventMode::Borsh => TokenStream::from(quote! {
-            // No `repr(C)` — borsh is layout-agnostic, and letting the compiler
-            // pick layout leaves room for future niche optimizations.
-            //
-            // `#[borsh(crate = "…")]` points borsh's derive at the re-export
-            // path so user crates don't need `borsh` as a direct dependency —
-            // `anchor-lang-v2` already pins the version.
-            #[derive(anchor_lang_v2::borsh::BorshSerialize)]
-            #[borsh(crate = "anchor_lang_v2::borsh")]
-            #(#attrs)*
-            #vis struct #name #fields
-
-            #discriminator_impl
-
-            impl anchor_lang_v2::Event for #name {
-                fn data(&self) -> anchor_lang_v2::__alloc::vec::Vec<u8> {
-                    let disc = <Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
-                    let mut buf = anchor_lang_v2::__alloc::vec::Vec::with_capacity(disc.len() + 64);
-                    buf.extend_from_slice(disc);
-                    <Self as anchor_lang_v2::borsh::BorshSerialize>::serialize(self, &mut buf)
-                        .expect("`#[event(borsh)]` serialization cannot fail for \
-                                 standard borsh types");
-                    buf
-                }
-            }
-
-            #idl_account_type_impl
-
-            #idl_event_print
-        }),
     }
 }
 
 enum EventMode {
     Wincode,
     Bytemuck,
-    Borsh,
 }
 
 /// Parse the `#[account]` attribute's optional mode argument.
@@ -2260,18 +2234,15 @@ fn parse_event_mode(attr: TokenStream) -> Result<EventMode, syn::Error> {
     let ident: syn::Ident = syn::parse2(attr2.clone()).map_err(|_| {
         syn::Error::new_spanned(
             &attr2,
-            "expected `#[event]`, `#[event(bytemuck)]`, or `#[event(borsh)]` — no other arguments \
-             are supported",
+            "expected `#[event]` or `#[event(bytemuck)]` — no other arguments are supported",
         )
     })?;
     if ident == "bytemuck" {
         Ok(EventMode::Bytemuck)
-    } else if ident == "borsh" {
-        Ok(EventMode::Borsh)
     } else {
         Err(syn::Error::new_spanned(
             ident,
-            "unknown `#[event]` mode — only `bytemuck` and `borsh` are accepted",
+            "unknown `#[event]` mode — only `bytemuck` is accepted",
         ))
     }
 }

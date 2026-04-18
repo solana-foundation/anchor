@@ -81,6 +81,33 @@ macro_rules! debug {
 // Re-export wincode for instruction data serialization
 pub use wincode;
 
+/// Borsh-compatible wincode config: u8 enum tags + fixed u32 LE length
+/// prefixes. Used for all serialization in v2 (instruction args, events,
+/// `BorshAccount<T>`) so the on-chain wire format matches borsh exactly,
+/// while keeping wincode's faster encoding path.
+///
+/// `ZERO_COPY_ALIGN_CHECK = false`: borsh's u32 length prefix puts payload
+/// data 4 bytes off natural alignment, so handler args like `amounts: &[u64]`
+/// would otherwise fail wincode's runtime alignment guard. The guard exists
+/// to prevent Rust-level UB on hosts where misaligned wide loads are
+/// undefined; SBPF's `ldxdw` has no alignment-specialized variants and the
+/// Solana program ecosystem already reads u64 from arbitrary `&[u8]` offsets,
+/// so disabling the check on SBPF is safe.
+///
+/// Compatibility caveats:
+/// - `HashMap` / `HashSet` are NOT byte-identical (borsh sorts by key,
+///   wincode preserves insertion order). Use `Vec<(K, V)>` if you need
+///   canonical ordering.
+/// - `f32` / `f64` NaN: borsh rejects on deserialize, wincode accepts.
+pub const BORSH_CONFIG: wincode::config::Configuration<
+    false,
+    { wincode::config::DEFAULT_PREALLOCATION_SIZE_LIMIT },
+    wincode::len::FixIntLen<u32>,
+    wincode::int_encoding::LittleEndian,
+    wincode::int_encoding::FixInt,
+    u8,
+> = wincode::config::Configuration::new();
+
 // Internal: only used by `#[cfg(feature = "idl-build")]` codegen from the
 // derive macros to split type-def JSON in `__anchor_private_print_idl_program`.
 // Not part of the stable API — hence the `__` prefix.

@@ -335,12 +335,16 @@ fn disc_json_value(disc_bytes: &[u8]) -> Value {
     Value::Array(disc_bytes.iter().map(|b| json!(*b)).collect())
 }
 
-/// Zero-copy / borsh / wincode mode tag passed down from the `#[account]` /
-/// `#[event]` call sites. The spec (`idl/spec/src/lib.rs:180-216`) models
-/// this as the pair `(IdlSerialization, Option<IdlRepr>)`, but the two
-/// fields are tightly coupled — bytemuck always pairs with `repr(C)` in our
-/// codegen, borsh and wincode carry no repr — so we collapse them into a
-/// single enum and expand both fields at emission time.
+/// Borsh / bytemuck mode tag passed down from the `#[account]` / `#[event]`
+/// call sites. The spec (`idl/spec/src/lib.rs:180-216`) models this as the
+/// pair `(IdlSerialization, Option<IdlRepr>)`, but the two fields are tightly
+/// coupled — bytemuck always pairs with `repr(C)` in our codegen, borsh
+/// carries no repr — so we collapse them into a single enum and expand both
+/// fields at emission time.
+///
+/// Default `#[event]` (wincode under the hood) is also tagged `Borsh` here:
+/// the wire format is borsh-compatible via `BORSH_CONFIG`, so off-chain
+/// consumers decode it as borsh.
 #[derive(Clone, Copy)]
 pub enum TypeKind {
     /// Default borsh layout. Spec `skip_serializing_if`s both fields at the
@@ -348,13 +352,6 @@ pub enum TypeKind {
     Borsh,
     /// `bytemuck` Pod + `repr(C)`. Both fields show up in the JSON.
     BytemuckRepr,
-    /// Wincode serialization. Emitted via the spec's `Custom(String)`
-    /// escape hatch (`"serialization":{"custom":"wincode"}`) — the spec
-    /// also has a first-class `Wincode` variant as a forward-compat
-    /// deserialize target, but we emit the Custom shape for now because
-    /// surfpool 1.1.2 pins an older spec that aborts deployment on unknown
-    /// tags. Flip to bare `"wincode"` once surfpool ships an updated spec.
-    Wincode,
 }
 
 /// Build IDL type definition JSON from struct fields. `docs` is the list of
@@ -389,8 +386,8 @@ pub fn build_type_json(
 /// consistent with `IdlDefinedFields`'s `#[serde(untagged)]` shape.
 ///
 /// Only `TypeKind::Borsh` is really meaningful for enums today — bytemuck
-/// enums are rare and wincode's enum encoding matches borsh's. We accept
-/// the same `kind` parameter for shape symmetry with `build_type_json`.
+/// enums are rare. We accept the same `kind` parameter for shape symmetry
+/// with `build_type_json`.
 pub fn build_enum_type_json(
     name: &str,
     disc: &[u8],
@@ -450,9 +447,6 @@ fn build_type_header(
         TypeKind::BytemuckRepr => {
             out.insert("serialization".into(), Value::String("bytemuck".into()));
             out.insert("repr".into(), json!({ "kind": "c" }));
-        }
-        TypeKind::Wincode => {
-            out.insert("serialization".into(), json!({ "custom": "wincode" }));
         }
     }
     out
