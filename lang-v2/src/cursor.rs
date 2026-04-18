@@ -193,6 +193,50 @@ impl AccountBitvec {
         let bit_index = index % 64;
         self.data[arr_index] |= 1 << bit_index
     }
+
+    /// `true` iff any bit set in `self` is also set in `mask`. Used by the
+    /// dispatcher to fold every mutable-field dup check in a struct into a
+    /// single 4-word AND+test instead of one `get()` per mut field.
+    #[inline]
+    pub fn intersects(&self, mask: &[u64; 4]) -> bool {
+        (self.data[0] & mask[0])
+            | (self.data[1] & mask[1])
+            | (self.data[2] & mask[2])
+            | (self.data[3] & mask[3])
+            != 0
+    }
+}
+
+/// OR `1 << bit` into `mask`. Used by the derive to build `TryAccounts::MUT_MASK`
+/// at compile time from each direct mut field's offset.
+pub const fn mut_mask_set_bit(mut mask: [u64; 4], bit: usize) -> [u64; 4] {
+    mask[bit / 64] |= 1u64 << (bit % 64);
+    mask
+}
+
+/// OR `other << shift` (as a 256-bit shift) into `mask`. Used by the derive
+/// to fold a `Nested<U>` child's `MUT_MASK` into its parent's at the child's
+/// account offset.
+pub const fn mut_mask_or_shifted(
+    mut mask: [u64; 4],
+    other: [u64; 4],
+    shift: usize,
+) -> [u64; 4] {
+    let word_shift = shift / 64;
+    let bit_shift = shift % 64;
+    let mut i = 0;
+    while i < 4 {
+        let src = other[i];
+        let dst_lo = i + word_shift;
+        if dst_lo < 4 {
+            mask[dst_lo] |= src << bit_shift;
+            if bit_shift != 0 && dst_lo + 1 < 4 {
+                mask[dst_lo + 1] |= src >> (64 - bit_shift);
+            }
+        }
+        i += 1;
+    }
+    mask
 }
 
 #[cfg(test)]
