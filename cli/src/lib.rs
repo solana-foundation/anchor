@@ -3428,12 +3428,15 @@ fn test(
         let root = cfg.path().parent().unwrap().to_owned();
         cfg.add_test_config(root, test_paths)?;
 
-        // Deploy to the cluster unless told to skip. For localnet with
-        // skip_local_validator (the LiteSVM / in-process path), there's no
-        // running validator to deploy to — skip unconditionally.
+        // Deploy to the cluster unless told to skip. Skip the preemptive
+        // `deploy()` (RPC upload via `solana program deploy`) on localnet:
+        // the validator (surfpool / solana-test-validator) hasn't been
+        // started yet — that happens later in `run_test_suite` — and it
+        // loads programs itself via `surfpool_flags` / `validator_flags`.
+        // Note: `skip_deploy` itself is preserved so surfpool's runbook
+        // gating in `surfpool_flags` still respects the user's intent.
         let is_localnet = cfg.provider.cluster == Cluster::Localnet;
-        let skip_deploy = skip_deploy || (is_localnet && skip_local_validator);
-        if !skip_deploy {
+        if !skip_deploy && !is_localnet {
             deploy(cfg_override, None, None, false, true, vec![])?;
         }
 
