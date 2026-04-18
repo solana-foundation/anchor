@@ -102,7 +102,7 @@ pub const SUITES: &[ProgramSuite] = &[
         name: "hello_world_quasar",
         family: "hello_world",
         variant: "quasar",
-        manifest_dir: "programs/helloworld/quasar",
+        manifest_dir: "programs/helloworld/quasar/program",
         instructions: &[
             InstructionSuite { name: "init", program_id: hello_world_id, build: helloworld_quasar::build_init_case },
         ],
@@ -177,7 +177,7 @@ pub const SUITES: &[ProgramSuite] = &[
         name: "vault_quasar",
         family: "vault",
         variant: "quasar",
-        manifest_dir: "programs/vault/quasar",
+        manifest_dir: "programs/vault/quasar/program",
         instructions: &[
             InstructionSuite { name: "deposit",  program_id: vault_shared_id, build: vault_quasar::build_deposit_case },
             InstructionSuite { name: "withdraw", program_id: vault_shared_id, build: vault_quasar::build_withdraw_case },

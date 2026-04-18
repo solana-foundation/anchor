@@ -1,21 +1,19 @@
 [package]
-name = "hello-world-quasar"
+# Test-harness wrapper: compiles the nested `program/` SBF crate via build.rs
+# and hosts the `anchor debugger` smoke test.  Kept free of `quasar-lang` so
+# its dev-dep resolver (litesvm → solana-address 2.6) doesn't clash with
+# quasar-lang's own solana-address pin.
+name = "hello-world-quasar-debug"
 version = "0.1.0"
 edition = "2021"
 publish = false
+build = "build.rs"
 
 [lib]
-crate-type = ["cdylib", "lib"]
-name = "hello_world_quasar"
+path = "src/lib.rs"
 
 [features]
-client = []
-debug = []
 profile = ["anchor-v2-testing/profile"]
-
-[dependencies]
-quasar-lang = { git = "https://github.com/blueshift-gg/quasar", branch = "feat/dynamic-types-rework" }
-solana-program-log = "1.0.0"
 
 [dev-dependencies]
 anchor-v2-testing = { path = "../../../../v2-testing" }
@@ -27,7 +25,6 @@ solana-instruction = "3.0"
 level = "allow"
 
 [workspace]
-
 
 [profile.release]
 overflow-checks = false

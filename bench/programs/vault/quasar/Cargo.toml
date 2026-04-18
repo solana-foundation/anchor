@@ -1,26 +1,19 @@
 [package]
-# Renamed from upstream `quasar-vault` to fit the bench suite's
-# `<family>_<framework>` naming convention (so the compiled `.so`
-# lands at `target/deploy/vault_quasar.so` which the harness
-# expects). Everything under src/ is a byte-identical verbatim
-# copy from the quasar vault example source.
-name = "vault-quasar"
+# Test-harness wrapper: compiles the nested `program/` SBF crate via build.rs
+# and hosts the `anchor debugger` smoke tests. Kept free of `quasar-lang` so
+# its dev-dep resolver (litesvm → solana-address 2.6) doesn't clash with
+# quasar-lang's own solana-address pin.
+name = "vault-quasar-debug"
 version = "0.1.0"
 edition = "2021"
 publish = false
+build = "build.rs"
 
 [lib]
-crate-type = ["cdylib", "lib"]
-name = "vault_quasar"
+path = "src/lib.rs"
 
 [features]
-alloc = []
-client = []
-debug = []
 profile = ["anchor-v2-testing/profile"]
-
-[dependencies]
-quasar-lang = { git = "https://github.com/blueshift-gg/quasar", branch = "feat/dynamic-types-rework" }
 
 [dev-dependencies]
 anchor-v2-testing = { path = "../../../../v2-testing" }
