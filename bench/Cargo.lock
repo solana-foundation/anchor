@@ -141,6 +141,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
+name = "anchor-asm-v2"
+version = "0.1.0"
+dependencies = [
+ "anchor-asm-v2-macros",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "anchor-asm-v2-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "anchor-asm-v2-runtime"
+version = "0.1.0"
+
+[[package]]
 name = "anchor-attribute-access-control"
 version = "2.0.0"
 dependencies = [
@@ -2480,6 +2502,8 @@ dependencies = [
 name = "prop-amm-v2"
 version = "0.1.0"
 dependencies = [
+ "anchor-asm-v2",
+ "anchor-asm-v2-runtime",
  "anchor-lang-v2",
  "anchor-v2-testing",
  "borsh",
