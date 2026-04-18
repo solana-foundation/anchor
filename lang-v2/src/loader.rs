@@ -41,7 +41,7 @@ impl<'a> AccountLoader<'a> {
     ///
     /// Caller must ensure N does not exceed the remaining accounts.
     #[inline(always)]
-    pub fn walk_n(&mut self, n: usize) -> (&[AccountView], &AccountBitvec) {
+    pub fn walk_n(&mut self, n: usize) -> (&[AccountView], Option<&AccountBitvec>) {
         unsafe { self.cursor.walk_n(n) }
     }
 

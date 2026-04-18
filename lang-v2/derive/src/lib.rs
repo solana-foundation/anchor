@@ -266,6 +266,19 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     let loads: Vec<_> = fields.iter().map(|f| &f.load).collect();
     let constraints: Vec<_> = fields.iter().flat_map(|f| &f.constraints).collect();
     let exits: Vec<_> = fields.iter().filter_map(|f| f.exit.as_ref()).collect();
+    // Collect per-field dup checks under a single outer `if let Some(__dups)`
+    // gate so non-dup txs pay one Option-tag branch for the whole struct,
+    // not one per mut field.
+    let dup_checks: Vec<_> = fields.iter().filter_map(|f| f.dup_check.as_ref()).collect();
+    let dup_check_block = if dup_checks.is_empty() {
+        quote::quote! {}
+    } else {
+        quote::quote! {
+            if let Some(__dups) = __duplicates {
+                #(#dup_checks)*
+            }
+        }
+    };
     // Bumps fields. Optional accounts get `Option<u8>` so the default
     // (`None`) maps cleanly to the sentinel-`None` load path; the seeds
     // check assigns `Some(bump)` only when the inner is `Some`. Mirrors
@@ -779,13 +792,14 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             fn try_accounts(
                 __program_id: &anchor_lang_v2::Address,
                 __views: &[anchor_lang_v2::AccountView],
-                __duplicates: &anchor_lang_v2::AccountBitvec,
+                __duplicates: ::core::option::Option<&anchor_lang_v2::AccountBitvec>,
                 __base_offset: usize,
                 __ix_data: &[u8],
             ) -> anchor_lang_v2::Result<(Self, #bumps_name)> {
                 #ix_deser
                 #bumps_init
                 #(#loads)*
+                #dup_check_block
                 #(#constraints)*
                 Ok((Self { #(#field_names),* }, __bumps))
             }

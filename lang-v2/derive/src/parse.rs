@@ -375,6 +375,11 @@ pub struct AccountField {
     pub ty: Type,
     pub load: TokenStream2,
     pub constraints: Vec<TokenStream2>,
+    /// Duplicate-mutable-account check. Collected separately from
+    /// `constraints` so all mut-field dup checks can share a single outer
+    /// `if let Some(__dups) = __duplicates` gate — non-dup txs pay one
+    /// Option-tag branch regardless of field count.
+    pub dup_check: Option<TokenStream2>,
     pub exit: Option<TokenStream2>,
     pub has_bump: bool,
     /// True when the field type is `Option<T>` (optional account).
@@ -717,6 +722,7 @@ pub fn parse_field(
             ty: field.ty.clone(),
             load,
             constraints: vec![],
+            dup_check: None,
             exit,
             has_bump: false,
             is_optional: false,
@@ -1114,13 +1120,19 @@ pub fn parse_field(
         None
     };
 
-    if attrs.is_mut && !attrs.is_dup {
-        constraints.push(quote! {
-            if __duplicates.get((__base_offset + #offset_expr) as u8) {
+    // Dup-check emission: stored separately from `constraints` so the
+    // struct-level codegen can aggregate all mut fields' dup checks under a
+    // single outer `if let Some(__dups) = __duplicates { ... }` gate. That
+    // way non-dup txs pay one Option-tag branch regardless of field count.
+    let dup_check = if attrs.is_mut && !attrs.is_dup {
+        Some(quote! {
+            if __dups.get((__base_offset + #offset_expr) as u8) {
                 return Err(anchor_lang_v2::ErrorCode::ConstraintDuplicateMutableAccount.into());
             }
-        });
-    }
+        })
+    } else {
+        None
+    };
 
     // For `Option<T>` fields, each constraint body was generated against the
     // unwrapped inner — we wrap it in `if let Some(#field_name) = #field_name`
@@ -1197,6 +1209,7 @@ pub fn parse_field(
         ty: field.ty.clone(),
         load,
         constraints,
+        dup_check,
         exit,
         has_bump,
         is_optional,

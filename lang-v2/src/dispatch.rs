@@ -28,7 +28,7 @@ pub trait TryAccounts: Bumps + Sized {
     fn try_accounts(
         program_id: &Address,
         views: &[AccountView],
-        duplicates: &AccountBitvec,
+        duplicates: Option<&AccountBitvec>,
         base_offset: usize,
         ix_data: &[u8],
     ) -> Result<(Self, Self::Bumps), ProgramError>;

@@ -52,7 +52,9 @@ pub struct AccountCursor {
 
     /// Tracks accounts that are duplicates; the first instance of a duplicated account
     /// will also be marked.
-    duplicate: AccountBitvec,
+    /// Lazy: stays `None` for txs with no duplicates (the common case),
+    /// materialized via `get_or_insert_with` on the first dup seen.
+    duplicate: Option<AccountBitvec>,
 }
 
 impl AccountCursor {
@@ -70,7 +72,7 @@ impl AccountCursor {
             ptr: input_ptr.add(core::mem::size_of::<u64>()),
             lookup,
             consumed: 0,
-            duplicate: Default::default(),
+            duplicate: None,
         }
     }
 
@@ -89,14 +91,14 @@ impl AccountCursor {
     ///
     /// Caller must ensure N does not exceed the remaining accounts.
     #[inline(always)]
-    pub unsafe fn walk_n(&mut self, n: usize) -> (&[AccountView], &AccountBitvec) {
+    pub unsafe fn walk_n(&mut self, n: usize) -> (&[AccountView], Option<&AccountBitvec>) {
         let start = self.consumed as usize;
         for _ in 0..n {
             self.next();
         }
         (
             core::slice::from_raw_parts(self.lookup.add(start), n),
-            &self.duplicate,
+            self.duplicate.as_ref(),
         )
     }
 
@@ -153,9 +155,11 @@ impl AccountCursor {
             // Duplicate: look up the earlier slot. Safe because the
             // runtime only emits dup indices that are strictly less
             // than the current `consumed`, so the slot is already
-            // populated by a prior `next()` call.
-            self.duplicate.set(self.consumed);
-            self.duplicate.set(borrow_state);
+            // populated by a prior `next()` call. Lazy-materialize the
+            // bitvec on first dup so non-dup txs pay zero zero-init.
+            let bv = self.duplicate.get_or_insert_with(AccountBitvec::default);
+            bv.set(self.consumed);
+            bv.set(borrow_state);
             *self.lookup.add(borrow_state as usize)
         };
 
