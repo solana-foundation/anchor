@@ -16,63 +16,26 @@ import {
   IdlDiscriminator,
 } from "../../idl.js";
 import { IdlCoder } from "./idl.js";
-import { typeDivergesBetweenWincodeAndBorsh } from "./event.js";
 import { InstructionCoder } from "../index.js";
 
 /**
  * Encodes and decodes program instructions.
  */
 export class BorshInstructionCoder implements InstructionCoder {
-  // Instruction args layout. Maps namespaced method name to borsh encoder,
-  // IDL-declared discriminator bytes, and an optional wincode-divergence
-  // guard (see comment at the constructor for why).
+  // Instruction args layout. Maps namespaced method
   private ixLayouts: Map<
     string,
-    {
-      discriminator: IdlDiscriminator;
-      layout: Layout;
-      wincodeUnsupported?: string;
-    }
+    { discriminator: IdlDiscriminator; layout: Layout }
   >;
 
   public constructor(private idl: Idl) {
-    // Anchor v2 handlers decode their ix args via wincode, not borsh. The
-    // two wire formats agree on primitives, fixed-size arrays, `Address`,
-    // `Option` tag bytes, and enum tag bytes — anything whose encoding
-    // doesn't touch a length prefix. They diverge on `Vec<T>` / `String` /
-    // `bytes`: borsh uses a u32 LE length, wincode u64. A v2 handler fed a
-    // borsh-encoded vec would misparse the prefix and then read the wrong
-    // number of bytes. Detect divergent arg types up front and throw a
-    // clear TS-side error at `encode()` instead of letting the tx fail
-    // on-chain with an opaque wincode-deserialize error.
-    //
-    // Proper fix is a wincode instruction coder with u64 LE prefixes; this
-    // guard is the small cousin that closes the silent-failure gap until
-    // then.
     const ixLayouts = idl.instructions.map((ix) => {
       const name = ix.name;
       const fieldLayouts = ix.args.map((arg) =>
         IdlCoder.fieldLayout(arg, idl.types)
       );
       const layout = borsh.struct(fieldLayouts, name);
-      let wincodeUnsupported: string | undefined;
-      for (const arg of ix.args) {
-        if (typeDivergesBetweenWincodeAndBorsh(arg.type, idl.types ?? [])) {
-          wincodeUnsupported =
-            `instruction \`${name}\` arg \`${arg.name}\` contains a ` +
-            `Vec/String/bytes field whose wire format diverges between ` +
-            `wincode (u64 LE length) and borsh (u32 LE length). Anchor v2 ` +
-            `handlers decode via wincode, so a borsh-encoded payload would ` +
-            `misparse on-chain. A wincode instruction coder is not yet ` +
-            `implemented — build this instruction manually with a raw ` +
-            `\`TransactionInstruction\` for now.`;
-          break;
-        }
-      }
-      return [
-        name,
-        { discriminator: ix.discriminator, layout, wincodeUnsupported },
-      ] as const;
+      return [name, { discriminator: ix.discriminator, layout }] as const;
     });
     this.ixLayouts = new Map(ixLayouts);
   }
@@ -85,9 +48,6 @@ export class BorshInstructionCoder implements InstructionCoder {
     const encoder = this.ixLayouts.get(ixName);
     if (!encoder) {
       throw new Error(`Unknown method: ${ixName}`);
-    }
-    if (encoder.wincodeUnsupported) {
-      throw new Error(encoder.wincodeUnsupported);
     }
 
     const len = encoder.layout.encode(ix, buffer);

@@ -132,7 +132,6 @@ export type IdlSerialization =
   | "borsh"
   | "bytemuck"
   | "bytemuckunsafe"
-  | "wincode"
   | { custom: string };
 
 export type IdlRepr = IdlReprRust | IdlReprC | IdlReprTransparent;
