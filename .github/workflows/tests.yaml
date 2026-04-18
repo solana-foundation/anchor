@@ -97,7 +97,7 @@ jobs:
       # reuses artifacts from prior `cargo test -p anchor-cli` instead
       # of starting from scratch in a temp tree; `--debug` skips release
       # opt (smoke test — runtime speed doesn't matter).
-      - run: cargo install --path cli --locked --debug --target-dir ./target
+      - run: cargo install --path cli --locked --debug --force --target-dir ./target
 
       # `anchor debugger` smoke test. These bench crates have no
       # Anchor.toml, so the CLI falls into loose mode and runs the full
