@@ -421,7 +421,6 @@ pub fn create_account_signed(
 /// Rare-path fallback for when the target account already holds lamports
 /// at creation time (e.g. airdropped PDAs or `init_if_needed`).
 #[cold]
-#[inline(never)]
 fn create_prefunded(
     payer: &AccountView,
     target: &AccountView,

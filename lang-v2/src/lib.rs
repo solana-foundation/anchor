@@ -230,7 +230,6 @@ pub enum ErrorCode {
 
 impl From<ErrorCode> for solana_program_error::ProgramError {
     #[cold]
-    #[inline(never)]
     fn from(e: ErrorCode) -> Self {
         match e {
             ErrorCode::AccountNotEnoughKeys => {
