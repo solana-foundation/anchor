@@ -23,10 +23,12 @@
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use solana_keypair::read_keypair_file;
+use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 
 /// Discovered cargo workspace context.
 pub struct LooseWorkspace {
@@ -267,6 +269,18 @@ pub fn discover_programs(
         if keypair_path.is_file() {
             if let Ok(kp) = read_keypair_file(&keypair_path) {
                 pubkeys.push(kp.pubkey().to_string());
+            }
+        }
+
+        // Filename-as-pubkey: the .so stem itself parses as a valid
+        // 32-byte base58 pubkey. This is how `solana program dump <pk>`
+        // names its output — lets blackbox binaries (mainnet dumps, no
+        // source, no keypair) drop straight into `target/deploy/` with
+        // no scaffolding. Stricter than a length + alphabet check
+        // because `Pubkey::from_str` also enforces the 32-byte decode.
+        if pubkeys.is_empty() {
+            if let Ok(pk) = Pubkey::from_str(lib_name) {
+                pubkeys.push(pk.to_string());
             }
         }
 
