@@ -1,0 +1,28 @@
+[package]
+name = "humidifi-v2"
+version = "0.1.0"
+description = "Bench target wrapping the Humidifi mainnet program for `anchor debugger` stepping."
+edition = "2021"
+publish = false
+
+# build.rs stages `humidifi.so` into this crate's `target/deploy/` under
+# its program-id filename — that's where `anchor debugger` discovers
+# blackbox binaries (cli/src/debugger/loose.rs, filename-as-pubkey
+# fallback). Skipping this would force the user to stage the file by hand.
+build = "build.rs"
+
+[features]
+profile = ["anchor-v2-testing/profile"]
+
+[dev-dependencies]
+anchor-v2-testing = { path = "../../../../v2-testing" }
+litesvm = "0.11"
+solana-account = "3"
+solana-instruction = "3"
+solana-pubkey = "4"
+
+# Nested workspace — this crate is a test harness around a prebuilt
+# binary, not a program whose deps want to live in the bench Cargo.lock.
+# Matches the `v2-testing/` + `bench/` pattern of keeping independent
+# resolver contexts (see bench/Cargo.toml:39 for prior art).
+[workspace]
