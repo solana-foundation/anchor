@@ -7,7 +7,7 @@ use {
         ops::{Deref, DerefMut, Index, IndexMut},
     },
     pinocchio::{
-        account::{AccountView, NOT_BORROWED},
+        account::AccountView,
         address::Address,
     },
     solana_program_error::ProgramError,
@@ -219,11 +219,11 @@ where
         }
         Self::validate_tail(data)?;
         let header_ptr = unsafe { view.data_ptr().add(Self::HEADER_OFFSET) } as *mut H;
-        // Mark one immutable borrow outstanding so that any copied AccountView
-        // cannot obtain a mutable borrow via try_borrow_mut(). Additional
-        // immutable borrows are still allowed (safe — they alias &H, not &mut H,
-        // and DerefMut panics on a read-only Slab).
-        unsafe { (*view.account_ptr().cast_mut()).borrow_state = NOT_BORROWED - 1 };
+        // Leave `borrow_state = NOT_BORROWED` untouched. Duplicate-mutable
+        // detection runs at deserialization time in the derive macro, and
+        // leaving the byte clear means downstream pinocchio CPIs can call
+        // `try_borrow*()` against this account's view without an explicit
+        // release step on the Slab side.
         Ok(Self {
             view,
             header_ptr,
@@ -249,12 +249,10 @@ where
         // Using data_ptr → *const would lose it under Stacked Borrows / Tree Borrows.
         let mut view_mut = view;
         let header_ptr = unsafe { view_mut.data_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
-        // Mark as mutably borrowed so that any copied AccountView cannot
-        // obtain any borrow (immutable or mutable) via try_borrow*().
-        // borrow_state == 0 means "exclusively borrowed" in pinocchio's
-        // protocol. Slab itself accesses data via borrow_unchecked*() which
-        // bypasses this check.
-        unsafe { (*view_mut.account_mut_ptr()).borrow_state = 0 };
+        // Leave `borrow_state = NOT_BORROWED` untouched — same rationale as
+        // `from_ref`. Slab accesses data via `borrow_unchecked*()` anyway
+        // (the cached `header_ptr`), so the marker byte would not gate our
+        // own reads — only downstream pinocchio CPIs.
         Ok(Self {
             view,
             header_ptr,
