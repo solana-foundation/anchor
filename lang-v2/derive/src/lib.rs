@@ -1639,7 +1639,15 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         /// 32 bytes at `[r2 + len .. +32]` hold the program_id, per agave's
         /// aligned serialization layout (see `solana-program-runtime
         /// ::serialization::serialize_parameters_aligned`).
+        // Default path: export as the BPF loader's `entrypoint` symbol so
+        // this IS the program entrypoint.
+        //
+        // `no-entrypoint` path: export as `__anchor_dispatch` so a custom
+        // entrypoint (e.g. `global_asm!` writing its own `.globl entrypoint`)
+        // can either (a) call this from Rust via its module path, or
+        // (b) tail-call it from asm via the unmangled linker symbol.
         #[cfg_attr(not(feature = "no-entrypoint"), export_name = "entrypoint")]
+        #[cfg_attr(feature = "no-entrypoint", no_mangle)]
         pub unsafe extern "C" fn __anchor_dispatch(
             __input: *mut u8,
             __ix_data_ptr: *const u8,
