@@ -1646,8 +1646,17 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         // entrypoint (e.g. `global_asm!` writing its own `.globl entrypoint`)
         // can either (a) call this from Rust via its module path, or
         // (b) tail-call it from asm via the unmangled linker symbol.
-        #[cfg_attr(not(feature = "no-entrypoint"), export_name = "entrypoint")]
-        #[cfg_attr(feature = "no-entrypoint", no_mangle)]
+        //
+        // Both exports are gated on `target_os = "solana"`: the symbol names
+        // only matter to the SBF linker, and un-mangling on host would cause
+        // duplicate-symbol errors whenever two `no-entrypoint` crates end up
+        // in the same host-link (e.g. `cargo test` pulling in multiple `cpi`
+        // deps).
+        #[cfg_attr(
+            all(target_os = "solana", not(feature = "no-entrypoint")),
+            export_name = "entrypoint"
+        )]
+        #[cfg_attr(all(target_os = "solana", feature = "no-entrypoint"), no_mangle)]
         pub unsafe extern "C" fn __anchor_dispatch(
             __input: *mut u8,
             __ix_data_ptr: *const u8,
