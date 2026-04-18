@@ -58,10 +58,16 @@ impl SourceResolver {
 }
 
 /// Prefix the Solana `platform-tools` build bakes into DWARF paths for
-/// stdlib files. Every version on GitHub Actions uses this exact directory,
-/// so one rewrite rule covers them all.
+/// stdlib files.
+#[cfg(target_os = "macos")]
 pub const CI_PLATFORM_TOOLS_PREFIX: &str =
     "/Users/runner/work/platform-tools/platform-tools/out/rust/library/";
+#[cfg(target_os = "linux")]
+pub const CI_PLATFORM_TOOLS_PREFIX: &str =
+    "/home/runner/work/platform-tools/platform-tools/out/rust/library/";
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+pub const CI_PLATFORM_TOOLS_PREFIX: &str =
+    compile_error!("Current platform is not supported");
 
 /// Locate every `platform-tools/rust/lib/rustlib/src/rust/library/` tree
 /// under `~/.cache/solana/` and return them newest-version-first. Empty

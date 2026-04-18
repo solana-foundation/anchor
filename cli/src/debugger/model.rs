@@ -18,9 +18,9 @@ pub struct DebugSession {
     /// rather than joining them with `DW_AT_comp_dir`. Checked in order.
     pub src_roots: Vec<PathBuf>,
     /// `(prefix → replacement)` rewrites applied to absolute DWARF paths
-    /// before lookup. Used to map CI build paths (e.g. platform-tools
-    /// stdlib baked as `/Users/runner/work/platform-tools/…`) to the
-    /// source tree shipped with the local toolchain.
+    /// before lookup. Used to map the CI build path the local toolchain was
+    /// compiled under (e.g. `/home/runner/work/platform-tools/…` on Linux,
+    /// `/Users/runner/…` on macOS) to the source tree shipped with it.
     pub path_rewrites: Vec<(PathBuf, PathBuf)>,
     /// The directory the debugger was invoked from. Used by the source pane
     /// to show paths relative to the user's CWD (e.g. `src/lib.rs` instead
