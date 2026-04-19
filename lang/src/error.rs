@@ -273,6 +273,13 @@ pub enum ErrorCode {
     /// 4102 - Invalid numeric conversion error
     #[msg("Error during numeric conversion")]
     InvalidNumericConversion = 4102,
+    /// 4103 - Arithmetic operation caused an overflow.
+    ///
+    /// This error is returned when an arithmetic operation (e.g. adding lamports
+    /// during account closure) would overflow a `u64` value, which in practice
+    /// is only possible if the total SOL in an instruction exceeds `u64::MAX`.
+    #[msg("An arithmetic operation caused an overflow")]
+    ArithmeticOverflow = 4103,
 
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
