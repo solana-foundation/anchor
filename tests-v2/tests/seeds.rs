@@ -1,0 +1,174 @@
+//! Integration tests for PDA seeds in every supported form.
+//!
+//! Tests array-literal seeds, function-call expression seeds,
+//! const-item seeds, mixed (literal + field-ref) seeds, and both
+//! bare-bump (runtime find) and explicit stored-bump variants.
+
+use {
+    anchor_lang_v2::solana_program::instruction::AccountMeta,
+    litesvm::LiteSVM,
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    tests_v2::{build_program, keypair_for, send_instruction},
+};
+
+fn program_id() -> Pubkey {
+    "Hyc9ukTn9BRPXWcjS2UBbuN3NnCwy1hcaDNZ9Hb8QMNp"
+        .parse()
+        .unwrap()
+}
+
+fn data_pda() -> Pubkey {
+    Pubkey::find_program_address(&[b"data"], &program_id()).0
+}
+
+fn user_pda(user: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"user", user.as_ref()], &program_id()).0
+}
+
+fn setup() -> (LiteSVM, Keypair) {
+    let test_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let deploy_dir = test_dir.join("target/deploy");
+    build_program(
+        test_dir.join("programs/seeds").to_str().unwrap(),
+        deploy_dir.to_str().unwrap(),
+    );
+
+    let mut svm = LiteSVM::new();
+    svm.add_program_from_file(program_id(), deploy_dir.join("seeds.so"))
+        .expect("deploy");
+
+    let payer = keypair_for("payer");
+    svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
+    (svm, payer)
+}
+
+/// Helper: call an ix by discriminator with the given accounts.
+fn call(
+    svm: &mut LiteSVM,
+    payer: &Keypair,
+    disc: u8,
+    accounts: Vec<AccountMeta>,
+) -> anyhow::Result<()> {
+    send_instruction(
+        svm,
+        program_id(),
+        vec![disc],
+        accounts,
+        payer,
+        &[],
+    )?;
+    Ok(())
+}
+
+// ---- Tests -----------------------------------------------------------------
+
+#[test]
+fn init_and_check_literal_seeds() {
+    let (mut svm, payer) = setup();
+    let data = data_pda();
+
+    // 1. Init with literal seeds
+    call(&mut svm, &payer, 0, vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(data, false),
+        AccountMeta::new_readonly(Pubkey::default(), false),
+    ]).expect("init_literal");
+
+    // 2. Check literal seeds + bare bump
+    call(&mut svm, &payer, 1, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(data, false),
+    ]).expect("check_literal");
+
+    // 3. Check literal seeds + explicit bump
+    call(&mut svm, &payer, 2, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(data, false),
+    ]).expect("check_literal_explicit_bump");
+}
+
+#[test]
+fn check_fn_seeds() {
+    let (mut svm, payer) = setup();
+    let data = data_pda();
+
+    // Init first
+    call(&mut svm, &payer, 0, vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(data, false),
+        AccountMeta::new_readonly(Pubkey::default(), false),
+    ]).expect("init_literal");
+
+    // 4. Function-call seeds + bare bump
+    call(&mut svm, &payer, 3, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(data, false),
+    ]).expect("check_fn_seeds");
+
+    // 5. Function-call seeds + explicit bump
+    call(&mut svm, &payer, 4, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(data, false),
+    ]).expect("check_fn_seeds_explicit_bump");
+}
+
+#[test]
+fn check_const_seeds() {
+    let (mut svm, payer) = setup();
+    let data = data_pda();
+
+    // Init first
+    call(&mut svm, &payer, 0, vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(data, false),
+        AccountMeta::new_readonly(Pubkey::default(), false),
+    ]).expect("init_literal");
+
+    // 6. Const-item seeds + bare bump
+    call(&mut svm, &payer, 5, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(data, false),
+    ]).expect("check_const_seeds");
+}
+
+#[test]
+fn init_and_check_mixed_seeds() {
+    let (mut svm, payer) = setup();
+    let data = user_pda(&payer.pubkey());
+
+    // 7. Init with mixed seeds
+    call(&mut svm, &payer, 7, vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(data, false),
+        AccountMeta::new_readonly(Pubkey::default(), false),
+    ]).expect("init_mixed");
+
+    // 8. Check mixed seeds
+    call(&mut svm, &payer, 8, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(data, false),
+    ]).expect("check_mixed");
+}
+
+#[test]
+fn wrong_pda_rejected() {
+    let (mut svm, payer) = setup();
+    let data = data_pda();
+
+    // Init first
+    call(&mut svm, &payer, 0, vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(data, false),
+        AccountMeta::new_readonly(Pubkey::default(), false),
+    ]).expect("init_literal");
+
+    // Pass wrong account for fn-seeds check — should fail
+    let wrong = Pubkey::new_unique();
+    let result = call(&mut svm, &payer, 3, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(wrong, false),
+    ]);
+    assert!(result.is_err(), "wrong PDA should be rejected");
+}

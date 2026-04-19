@@ -3,7 +3,7 @@ use {
     quote::quote,
     syn::{
         ext::IdentExt,
-        parse::{Parse, ParseStream},
+        parse::ParseStream,
         Attribute, Expr, Ident, Token, Type,
     },
 };
@@ -37,7 +37,7 @@ pub struct AccountAttrs {
     pub bump: Option<Option<Expr>>,
     pub payer: Option<Ident>,
     pub space: Option<Expr>,
-    pub seeds: Option<Vec<Expr>>,
+    pub seeds: Option<Expr>,
     /// Override program_id for PDA derivation: `seeds::program = expr`
     pub seeds_program: Option<Expr>,
     pub has_one: Vec<(Ident, Option<Expr>)>,
@@ -163,13 +163,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                     }
                     "seeds" if input.peek(Token![=]) => {
                         input.parse::<Token![=]>()?;
-                        let content;
-                        syn::bracketed!(content in input);
-                        let seeds = content
-                            .parse_terminated(Expr::parse, Token![,])?
-                            .into_iter()
-                            .collect();
-                        result.seeds = Some(seeds);
+                        result.seeds = Some(input.parse()?);
                     }
                     // `seeds::program = expr` falls through to the
                     // namespaced-path handler below. Adding an explicit
@@ -463,7 +457,7 @@ fn rewrite_seed_expr(expr: &Expr, field_names: &[String]) -> proc_macro2::TokenS
 /// how to discover our own crate's `declare_id!`.
 #[allow(clippy::too_many_arguments)]
 fn emit_seeds_check(
-    seeds: &[Expr],
+    seeds: &[&Expr],
     seed_exprs: &[TokenStream2],
     pda_program: &TokenStream2,
     target_addr_ref: &TokenStream2,
@@ -536,9 +530,11 @@ fn emit_seeds_check(
     //
     // `MIN_DATA_LEN` is a trait const, so the branch is resolved at
     // compile time — LLVM eliminates the dead path entirely.
-    let skip_curve = if for_init {
-        quote! { true }
-    } else if let Some(ty) = field_ty {
+    // TODO: decide whether init paths should assume the subsequent
+    // CreateAccount CPI guarantees the address is off-curve, letting
+    // us skip `sol_curve_validate_point`. Currently we always run the
+    // curve check on init to avoid relying on the trait impl's CPI.
+    let skip_curve = if let Some(ty) = field_ty {
         quote! { <#ty as anchor_lang_v2::AnchorAccount>::MIN_DATA_LEN > 0 }
     } else {
         quote! { false }
@@ -606,27 +602,51 @@ fn emit_init_body(
         })
         .collect();
 
-    let seeds_arg = if let Some(ref seeds) = attrs.seeds {
-        let seed_exprs: Vec<_> = seeds
-            .iter()
-            .map(|s| rewrite_seed_expr(s, field_names))
-            .collect();
+    let seeds_arg = if let Some(ref seeds_expr) = attrs.seeds {
         let using_our_program_id = attrs.seeds_program.is_none();
         let pda_program = match &attrs.seeds_program {
             Some(prog) => quote! { &#prog },
             None => quote! { __program_id },
         };
-        emit_seeds_check(
-            seeds,
-            &seed_exprs,
-            &pda_program,
-            &quote! { __target.address() },
-            field_name,
-            None,
-            true,
-            using_our_program_id,
-            is_optional,
-        )
+        if let Expr::Array(arr) = seeds_expr {
+            let seed_elems: Vec<&Expr> = arr.elems.iter().collect();
+            let rewritten: Vec<_> = seed_elems
+                .iter()
+                .map(|s| rewrite_seed_expr(s, field_names))
+                .collect();
+            emit_seeds_check(
+                &seed_elems,
+                &rewritten,
+                &pda_program,
+                &quote! { __target.address() },
+                field_name,
+                None,
+                true,
+                using_our_program_id,
+                is_optional,
+            )
+        } else {
+            // Opaque expression seeds — runtime find + verify.
+            let bump_assign = if is_optional {
+                quote! { Some(__bump) }
+            } else {
+                quote! { __bump }
+            };
+            quote! {
+                let __seed_expr_val = #seeds_expr;
+                let __seed_ref: &[&[u8]] = __seed_expr_val.as_ref();
+                let __bump =
+                    anchor_lang_v2::find_and_verify_program_address(
+                        __seed_ref, #pda_program, &__target.address(),
+                    ).map_err(|_| anchor_lang_v2::ErrorCode::ConstraintSeeds)?;
+                __bumps.#field_name = #bump_assign;
+                let mut __seed_buf: [&[u8]; 17] = [&[]; 17];
+                let __n = __seed_ref.len();
+                __seed_buf[..__n].copy_from_slice(__seed_ref);
+                __seed_buf[__n] = &[__bump];
+                let __seeds: Option<&[&[u8]]> = Some(&__seed_buf[..__n + 1]);
+            }
+        }
     } else {
         quote! { let __seeds: Option<&[&[u8]]> = None; }
     };
@@ -665,15 +685,22 @@ pub fn parse_field(
     let idl_writable = attrs.is_mut;
     let idl_has_one: Vec<String> = attrs.has_one.iter().map(|(i, _)| i.to_string()).collect();
     let idl_docs = crate::idl::extract_doc_lines(&field.attrs);
-    let idl_pda = attrs.seeds.as_ref().map(|seeds| IdlPdaMeta {
-        seeds: seeds
-            .iter()
-            .map(|s| crate::idl::classify_seed(s, field_names, ix_arg_names))
-            .collect(),
-        program: attrs
-            .seeds_program
-            .as_ref()
-            .map(|p| crate::idl::classify_seed(p, field_names, ix_arg_names)),
+    let idl_pda = attrs.seeds.as_ref().map(|seeds_expr| {
+        let seed_entries = if let Expr::Array(arr) = seeds_expr {
+            arr.elems
+                .iter()
+                .map(|s| crate::idl::classify_seed(s, field_names, ix_arg_names))
+                .collect()
+        } else {
+            vec![r#"{"kind":"expr"}"#.to_string()]
+        };
+        IdlPdaMeta {
+            seeds: seed_entries,
+            program: attrs
+                .seeds_program
+                .as_ref()
+                .map(|p| crate::idl::classify_seed(p, field_names, ix_arg_names)),
+        }
     });
     let idl_field_ty: Option<syn::Type> = {
         let base_ty = option_inner.unwrap_or(field_ty);
@@ -918,49 +945,101 @@ pub fn parse_field(
     // check inside emit_init_body is authoritative and this block is
     // skipped to avoid a redundant find loop.
     if !attrs.is_init {
-        if let Some(ref seeds) = attrs.seeds {
-            let seed_exprs: Vec<_> = seeds
-                .iter()
-                .map(|s| rewrite_seed_expr(s, field_names))
-                .collect();
-            // seeds::program = expr overrides which program_id to derive PDA from
+        if let Some(ref seeds_expr) = attrs.seeds {
             let using_our_program_id = attrs.seeds_program.is_none();
             let pda_program = match &attrs.seeds_program {
                 Some(prog) => quote! { &#prog },
                 None => quote! { __program_id },
             };
-            if let Some(Some(ref bump_expr)) = attrs.bump {
-                // User-supplied bump (e.g. stored in account data). Always
-                // User-supplied bump — verify directly.
-                let bump_assign = if is_optional {
-                    quote! { Some(__bump_val) }
+            if let Expr::Array(arr) = seeds_expr {
+                // Array-literal seeds: `seeds = [b"vault", user.address().as_ref()]`
+                let seed_elems: Vec<&Expr> = arr.elems.iter().collect();
+                let rewritten: Vec<_> = seed_elems
+                    .iter()
+                    .map(|s| rewrite_seed_expr(s, field_names))
+                    .collect();
+                if let Some(Some(ref bump_expr)) = attrs.bump {
+                    let bump_assign = if is_optional {
+                        quote! { Some(__bump_val) }
+                    } else {
+                        quote! { __bump_val }
+                    };
+                    constraints.push(quote! {
+                        {
+                            let __bump_val: u8 = #bump_expr;
+                            anchor_lang_v2::verify_program_address(
+                                &[#(#rewritten),* , &[__bump_val]],
+                                #pda_program,
+                                #field_name.account().address(),
+                            )?;
+                            __bumps.#field_name = #bump_assign;
+                        }
+                    });
                 } else {
-                    quote! { __bump_val }
-                };
-                constraints.push(quote! {
-                    {
-                        let __bump_val: u8 = #bump_expr;
-                        anchor_lang_v2::verify_program_address(
-                            &[#(#seed_exprs),* , &[__bump_val]],
-                            #pda_program,
-                            #field_name.account().address(),
-                        )?;
-                        __bumps.#field_name = #bump_assign;
-                    }
-                });
+                    let target_addr_ref = quote! { #field_name.account().address() };
+                    constraints.push(emit_seeds_check(
+                        &seed_elems,
+                        &rewritten,
+                        &pda_program,
+                        &target_addr_ref,
+                        field_name,
+                        Some(field_ty),
+                        false,
+                        using_our_program_id,
+                        is_optional,
+                    ));
+                }
             } else {
-                let target_addr_ref = quote! { #field_name.account().address() };
-                constraints.push(emit_seeds_check(
-                    seeds,
-                    &seed_exprs,
-                    &pda_program,
-                    &target_addr_ref,
-                    field_name,
-                    Some(field_ty),
-                    /* for_init */ false,
-                    using_our_program_id,
-                    is_optional,
-                ));
+                // Opaque expression: `seeds = Counter::seeds()` etc.
+                let bump_assign = if is_optional {
+                    quote! { Some(__bump) }
+                } else {
+                    quote! { __bump }
+                };
+                if let Some(Some(ref bump_expr)) = attrs.bump {
+                    // Explicit bump + expression seeds: verify with appended bump
+                    constraints.push(quote! {
+                        {
+                            let __seed_val = #seeds_expr;
+                            let __seed_ref: &[&[u8]] = __seed_val.as_ref();
+                            let __bump_val: u8 = #bump_expr;
+                            let __bump_bytes = [__bump_val];
+                            let mut __seed_buf: [&[u8]; 17] = [&[]; 17];
+                            let __n = __seed_ref.len();
+                            __seed_buf[..__n].copy_from_slice(__seed_ref);
+                            __seed_buf[__n] = &__bump_bytes;
+                            anchor_lang_v2::verify_program_address(
+                                &__seed_buf[..__n + 1],
+                                #pda_program,
+                                #field_name.account().address(),
+                            )?;
+                            __bumps.#field_name = __bump_val;
+                        }
+                    });
+                } else {
+                    // Bare bump: use find_and_verify with skip_curve
+                    // when the account type guarantees non-zero data.
+                    let skip_curve = quote! {
+                        <#field_ty as anchor_lang_v2::AnchorAccount>::MIN_DATA_LEN > 0
+                    };
+                    let target_addr = quote! { #field_name.account().address() };
+                    constraints.push(quote! {
+                        {
+                            let __seed_val = #seeds_expr;
+                            let __seed_ref: &[&[u8]] = __seed_val.as_ref();
+                            let __bump = if #skip_curve {
+                                anchor_lang_v2::find_and_verify_program_address_skip_curve(
+                                    __seed_ref, #pda_program, #target_addr,
+                                ).map_err(|_| anchor_lang_v2::ErrorCode::ConstraintSeeds)?
+                            } else {
+                                anchor_lang_v2::find_and_verify_program_address(
+                                    __seed_ref, #pda_program, #target_addr,
+                                ).map_err(|_| anchor_lang_v2::ErrorCode::ConstraintSeeds)?
+                            };
+                            __bumps.#field_name = #bump_assign;
+                        }
+                    });
+                }
             }
         }
     }

@@ -4837,6 +4837,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "seeds"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang-v2",
+ "bytemuck",
+ "pinocchio",
+ "pinocchio-system",
+ "solana-program-error",
+ "wincode 0.5.2",
+]
+
+[[package]]
 name = "semver"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7864,6 +7876,7 @@ dependencies = [
  "caller",
  "dup-mut",
  "litesvm",
+ "seeds",
  "solana-keypair",
  "solana-message",
  "solana-pubkey 3.0.0",

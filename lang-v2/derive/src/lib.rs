@@ -460,33 +460,41 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
             let attrs = parse::parse_account_attrs(&raw_field.attrs)
                 .expect("parse_field already validated account attributes");
-            if let Some(ref seeds) = attrs.seeds {
-                if attrs.seeds_program.is_none() {
-                    let mut seed_exprs = Vec::new();
-                    let mut deps = Vec::new();
-                    let mut all_derivable = true;
+            if let Some(ref seeds_expr) = attrs.seeds {
+                // Client-side PDA derivation only works when we can
+                // inspect individual seed expressions — requires the
+                // array-bracket form `seeds = [...]`. Expression-form
+                // seeds (e.g. `seeds = my_fn()`) are opaque to the
+                // macro and fall through to FieldKind::Required.
+                if let syn::Expr::Array(arr) = seeds_expr {
+                    if attrs.seeds_program.is_none() {
+                        let mut seed_exprs = Vec::new();
+                        let mut deps = Vec::new();
+                        let mut all_derivable = true;
 
-                    for seed in seeds {
-                        if let Some(bytes) = pda::seed_as_const_bytes(seed) {
-                            let lits: Vec<_> = bytes.iter().map(|b| quote! { #b }).collect();
-                            seed_exprs.push(quote! { &[#(#lits),*] as &[u8] });
-                        } else if let Some(ref root) = idl::receiver_root_ident_str(seed) {
-                            if raw_field_names.contains(root) {
-                                let ident = syn::Ident::new(root, proc_macro2::Span::call_site());
-                                seed_exprs.push(quote! { #ident.as_ref() });
-                                deps.push(root.clone());
+                        for seed in &arr.elems {
+                            if let Some(bytes) = pda::seed_as_const_bytes(seed) {
+                                let lits: Vec<_> = bytes.iter().map(|b| quote! { #b }).collect();
+                                seed_exprs.push(quote! { &[#(#lits),*] as &[u8] });
+                            } else if let Some(ref root) = idl::receiver_root_ident_str(seed) {
+                                if raw_field_names.contains(root) {
+                                    let ident =
+                                        syn::Ident::new(root, proc_macro2::Span::call_site());
+                                    seed_exprs.push(quote! { #ident.as_ref() });
+                                    deps.push(root.clone());
+                                } else {
+                                    all_derivable = false;
+                                    break;
+                                }
                             } else {
                                 all_derivable = false;
                                 break;
                             }
-                        } else {
-                            all_derivable = false;
-                            break;
                         }
-                    }
 
-                    if all_derivable {
-                        return (f, FieldKind::Pda { seed_exprs, deps });
+                        if all_derivable {
+                            return (f, FieldKind::Pda { seed_exprs, deps });
+                        }
                     }
                 }
             }
@@ -644,7 +652,13 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                     .attrs,
             )
             .expect("parse_field already validated account attributes");
-            let seeds = attrs.seeds.as_ref()?;
+            let seeds_expr = attrs.seeds.as_ref()?;
+            // Expression-form seeds (e.g. `seeds = Counter::seeds()`) don't
+            // support client-side PDA helpers — skip.
+            let seed_arr = match seeds_expr {
+                syn::Expr::Array(arr) => arr,
+                _ => return None,
+            };
 
             let field_name = &f.name;
             let fn_name =
@@ -654,7 +668,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             let mut seed_exprs: Vec<TokenStream2> = Vec::new();
             let mut seen_params = std::collections::HashSet::new();
 
-            for seed_expr in seeds {
+            for seed_expr in &seed_arr.elems {
                 let root = idl::receiver_root_ident_str(seed_expr);
                 if let Some(ref root_name) = root {
                     if raw_field_names.contains(root_name) {

@@ -115,7 +115,7 @@ pub(crate) fn seed_as_const_bytes(expr: &syn::Expr) -> Option<Vec<u8>> {
 /// their decoded contents in order. Any non-literal seed (a field ref, a
 /// method call, a path expression) returns `None`, signalling that the
 /// optimization can't apply for this field.
-pub(crate) fn seeds_as_byte_literals(seeds: &[syn::Expr]) -> Option<Vec<Vec<u8>>> {
+pub(crate) fn seeds_as_byte_literals(seeds: &[&syn::Expr]) -> Option<Vec<Vec<u8>>> {
     seeds
         .iter()
         .map(|expr| match expr {
@@ -199,7 +199,8 @@ mod tests {
             syn::parse_str(r#"b"foo""#).unwrap(),
             syn::parse_str(r#"b"bar""#).unwrap(),
         ];
-        let decoded = seeds_as_byte_literals(&seeds).expect("all literal");
+        let refs: Vec<&syn::Expr> = seeds.iter().collect();
+        let decoded = seeds_as_byte_literals(&refs).expect("all literal");
         assert_eq!(decoded, vec![b"foo".to_vec(), b"bar".to_vec()]);
     }
 
@@ -209,7 +210,8 @@ mod tests {
             syn::parse_str(r#"b"foo""#).unwrap(),
             syn::parse_str("wallet").unwrap(),
         ];
-        assert!(seeds_as_byte_literals(&seeds).is_none());
+        let refs: Vec<&syn::Expr> = seeds.iter().collect();
+        assert!(seeds_as_byte_literals(&refs).is_none());
     }
 
     #[test]
@@ -218,6 +220,7 @@ mod tests {
             syn::parse_str(r#"b"vault""#).unwrap(),
             syn::parse_str("config.address().as_ref()").unwrap(),
         ];
-        assert!(seeds_as_byte_literals(&seeds).is_none());
+        let refs: Vec<&syn::Expr> = seeds.iter().collect();
+        assert!(seeds_as_byte_literals(&refs).is_none());
     }
 }
