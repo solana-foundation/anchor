@@ -187,20 +187,33 @@ pub struct CheckAddressCustomErr {
 }
 
 // 3. has_one = authority
-#[derive(Accounts)]
-pub struct CheckHasOne {
-    #[account(has_one = authority)]
-    pub data: Account<Data>,
-    pub authority: UncheckedAccount,
-}
+//
+// `has_one` is deprecated in v2 in favour of `#[account(address = ...)]`
+// on the referencing field. The derive-generated `TryAccounts` impl lives
+// as a sibling of the struct, so `#[expect(deprecated)]` must cover the
+// whole submodule to catch the warning emitted at the `has_one` keyword.
+#[expect(deprecated)]
+mod has_one_structs {
+    use super::*;
 
-// 4. has_one = authority @ MyErr::BadAuthority
-#[derive(Accounts)]
-pub struct CheckHasOneCustomErr {
-    #[account(has_one = authority @ MyErr::BadAuthority)]
-    pub data: Account<Data>,
-    pub authority: UncheckedAccount,
+    #[derive(Accounts)]
+    pub struct CheckHasOne {
+        #[account(has_one = authority)]
+        pub data: Account<Data>,
+        pub authority: UncheckedAccount,
+    }
+
+    // 4. has_one = authority @ MyErr::BadAuthority
+    #[derive(Accounts)]
+    pub struct CheckHasOneCustomErr {
+        #[account(has_one = authority @ MyErr::BadAuthority)]
+        pub data: Account<Data>,
+        pub authority: UncheckedAccount,
+    }
 }
+// Re-export everything so the `__client_accounts_*` modules the `#[program]`
+// macro references (via `super::__client_accounts_<name>`) resolve.
+pub use has_one_structs::*;
 
 // 5. owner = System
 #[derive(Accounts)]
@@ -303,3 +316,200 @@ pub struct CheckSigner {
 // this constraint is parked (see `CheckRentExempt` doc comment).
 #[allow(dead_code)]
 fn _rent_exempt_codegen_witness(_ctx: &mut Context<CheckRentExempt>) {}
+
+// -- IDL-only fixtures -------------------------------------------------------
+//
+// The structs below exist purely to exercise IDL emission — they are not
+// wired into `#[program]`, so they contribute no runtime surface. They
+// cover spellings the runtime fixtures above don't need (or don't reach):
+//
+//   - `address = <dotted field path>` — IDL-only here; the runtime
+//     fixture `CheckAddress` uses a const RHS.
+//   - `init_if_needed` without `seeds` — in the IDL this path sets
+//     `signer:true` on the fresh-keypair account (there is no PDA to
+//     derive). The runtime `DoInitIfNeeded` uses `seeds = [b"maybe"]`, so
+//     a dedicated struct is needed to hit the no-seeds branch.
+
+/// Fixture for the `address = <dotted path>` IDL test. The RHS walks a
+/// sibling account's field, which clients resolve at request time.
+#[derive(Accounts)]
+pub struct CheckAddressFieldPath {
+    pub data: Account<Data>,
+    #[account(address = data.authority)]
+    pub authority: UncheckedAccount,
+}
+
+/// Fixture for the `init_if_needed` no-seeds signer emission. The account
+/// is a fresh keypair rather than a PDA, so the IDL marks it `signer:true`.
+#[derive(Accounts)]
+pub struct InitIfNeededNoSeeds {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(init_if_needed, payer = payer)]
+    pub data: Account<Data>,
+    pub system_program: Program<System>,
+}
+
+// -- IDL emission tests ------------------------------------------------------
+//
+// Tests are parsed into the typed `anchor-lang-idl-spec` structs and
+// asserted structurally — no substring matching — so a shape change in
+// the derive's emitter fails the test at the impacted field rather than
+// with a "got {full-json-blob}" dump.
+//
+// Only constraints that influence the IDL surface get tests here:
+//   - `address = <expr>`        → `IdlInstructionAccount.address`
+//   - `has_one = <field>`       → `IdlInstructionAccount.relations` (on the target)
+//   - `init_if_needed` w/o seeds → `IdlInstructionAccount.signer`
+//
+// Constraints considered and intentionally skipped (runtime-only, no IDL
+// surface): `zeroed`, `owner`, `constraint`, `executable`, `rent_exempt`,
+// `close`. `seeds` / `seeds::program` are already covered structurally
+// by the `seeds` program fixture; adding a duplicate here would only
+// retest the shared `classify_seed` path.
+#[cfg(all(test, feature = "idl-build"))]
+mod idl_tests {
+    use {
+        super::*,
+        anchor_lang_idl_spec::{IdlInstructionAccount, IdlInstructionAccountItem},
+    };
+
+    /// Parse an `__idl_accounts()` JSON blob into the typed spec enum.
+    /// Panics with the raw JSON on parse failure so regressions in the
+    /// emitter surface as readable diagnostics.
+    fn parse(json: &str) -> Vec<IdlInstructionAccountItem> {
+        serde_json::from_str(json)
+            .unwrap_or_else(|e| panic!("failed to parse accounts JSON: {e}\njson: {json}"))
+    }
+
+    /// Unwrap a `Single` account at the given index or panic. `Composite`
+    /// would only appear for a `Nested<Inner>` field, which none of the
+    /// fixtures below use.
+    fn single(items: &[IdlInstructionAccountItem], idx: usize) -> &IdlInstructionAccount {
+        match &items[idx] {
+            IdlInstructionAccountItem::Single(a) => a,
+            IdlInstructionAccountItem::Composite(_) => {
+                panic!("expected Single at index {idx}, got Composite")
+            }
+        }
+    }
+
+    mod idl_address {
+        use super::*;
+
+        #[test]
+        fn const_path_rhs_emits_address_verbatim() {
+            let items = parse(&CheckAddress::__idl_accounts());
+            let account = single(&items, 0);
+            assert_eq!(account.name, "pinned");
+            assert_eq!(account.address.as_deref(), Some("PINNED_ADDRESS"));
+        }
+
+        #[test]
+        fn const_path_rhs_with_custom_err_emits_address_verbatim() {
+            // The `@ MyErr::BadAddress` error override is a runtime
+            // concern; the IDL output for this spelling must match the
+            // plain `address = PINNED_ADDRESS` variant exactly.
+            let items = parse(&CheckAddressCustomErr::__idl_accounts());
+            let account = single(&items, 0);
+            assert_eq!(account.name, "pinned");
+            assert_eq!(account.address.as_deref(), Some("PINNED_ADDRESS"));
+        }
+
+        #[test]
+        fn dotted_field_path_rhs_emits_dotted_address() {
+            // `address = data.authority` — the v2 replacement for
+            // `has_one = authority` on the `data` field. The dotted
+            // path is a client-side resolution instruction, not a
+            // compile-time pubkey.
+            let items = parse(&CheckAddressFieldPath::__idl_accounts());
+            // `data` (the source account) carries no `address`.
+            let data = single(&items, 0);
+            assert_eq!(data.name, "data");
+            assert_eq!(data.address, None);
+            // `authority` (the referencing field) carries the dotted path.
+            let authority = single(&items, 1);
+            assert_eq!(authority.name, "authority");
+            assert_eq!(authority.address.as_deref(), Some("data.authority"));
+        }
+    }
+
+    mod idl_has_one {
+        use super::*;
+
+        #[test]
+        fn has_one_emits_relation_on_target_field() {
+            // `has_one = authority` on the `data` field produces an
+            // inverse mapping: the `authority` account lists `data` in
+            // its `relations[]`. Clients use this to know which sibling
+            // to look up the authority pubkey on.
+            let items = parse(&CheckHasOne::__idl_accounts());
+            let data = single(&items, 0);
+            assert_eq!(data.name, "data");
+            // The source of the relation carries no `relations` entry.
+            assert!(
+                data.relations.is_empty(),
+                "expected no relations on source field `data`, got {:?}",
+                data.relations
+            );
+            let authority = single(&items, 1);
+            assert_eq!(authority.name, "authority");
+            assert_eq!(
+                authority.relations,
+                vec!["data".to_string()],
+                "expected `relations:[\"data\"]` on the has_one target",
+            );
+        }
+
+        #[test]
+        fn has_one_with_custom_err_emits_same_relation() {
+            // The `@ MyErr::BadAuthority` override is a runtime-only
+            // concern; it must not change the IDL shape.
+            let items = parse(&CheckHasOneCustomErr::__idl_accounts());
+            let authority = single(&items, 1);
+            assert_eq!(authority.name, "authority");
+            assert_eq!(authority.relations, vec!["data".to_string()]);
+        }
+    }
+
+    mod idl_init_if_needed {
+        use super::*;
+
+        #[test]
+        fn init_if_needed_without_seeds_marks_account_as_signer() {
+            // With no `seeds`, the fresh account must be signed by a
+            // keypair the client generates at request time. The IDL
+            // surfaces that as `signer:true` so the client builder
+            // knows to add the signature.
+            let items = parse(&InitIfNeededNoSeeds::__idl_accounts());
+            let data = single(&items, 1);
+            assert_eq!(data.name, "data");
+            assert!(
+                data.signer,
+                "expected `signer:true` on fresh-keypair init_if_needed account",
+            );
+            assert!(
+                data.pda.is_none(),
+                "expected no `pda` entry on seedless init_if_needed account",
+            );
+        }
+
+        #[test]
+        fn init_if_needed_with_seeds_does_not_mark_signer() {
+            // Control case: when `seeds` is present the account is a
+            // PDA, and PDAs cannot sign. The IDL must leave `signer`
+            // unset so the client doesn't attempt to add a signature.
+            let items = parse(&DoInitIfNeeded::__idl_accounts());
+            let data = single(&items, 1);
+            assert_eq!(data.name, "data");
+            assert!(
+                !data.signer,
+                "expected `signer:false` on PDA init_if_needed account",
+            );
+            assert!(
+                data.pda.is_some(),
+                "expected `pda` entry to be populated from seeds",
+            );
+        }
+    }
+}
