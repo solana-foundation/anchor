@@ -1,6 +1,6 @@
 use {
     proc_macro2::TokenStream as TokenStream2,
-    quote::quote,
+    quote::{quote, quote_spanned},
     syn::{
         ext::IdentExt,
         parse::ParseStream,
@@ -40,7 +40,10 @@ pub struct AccountAttrs {
     pub seeds: Option<Expr>,
     /// Override program_id for PDA derivation: `seeds::program = expr`
     pub seeds_program: Option<Expr>,
-    pub has_one: Vec<(Ident, Option<Expr>)>,
+    /// `(keyword_span, target, error_expr)`. `keyword_span` is the span of
+    /// the `has_one` keyword itself so the deprecation warning emitted by
+    /// the codegen can underline the original attribute.
+    pub has_one: Vec<(proc_macro2::Span, Ident, Option<Expr>)>,
     pub address: Option<Expr>,
     pub address_error: Option<Expr>,
     pub owner: Option<Expr>,
@@ -170,6 +173,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                     // `seeds` arm without a peek check would eat the `seeds`
                     // ident and then fail to parse the following `::`.
                     "has_one" => {
+                        let keyword_span = ident.span();
                         input.parse::<Token![=]>()?;
                         let target: Ident = input.parse()?;
                         let err = if input.peek(Token![@]) {
@@ -178,7 +182,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                         } else {
                             None
                         };
-                        result.has_one.push((target, err));
+                        result.has_one.push((keyword_span, target, err));
                     }
                     "address" => {
                         input.parse::<Token![=]>()?;
@@ -700,7 +704,11 @@ pub fn parse_field(
     // `IdlAccountType::__IDL_IS_SIGNER` at runtime.
     let idl_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
     let idl_writable = attrs.is_mut;
-    let idl_has_one: Vec<String> = attrs.has_one.iter().map(|(i, _)| i.to_string()).collect();
+    let idl_has_one: Vec<String> = attrs
+        .has_one
+        .iter()
+        .map(|(_, i, _)| i.to_string())
+        .collect();
     // Stringified RHS of `#[account(address = <expr>)]`, emitted as the
     // account's `address` in the IDL JSON. Constant paths (`crate::ID`,
     // `MY_CONST`) and zero-arg calls (`crate::id()`) serialize to a form
@@ -1071,13 +1079,26 @@ pub fn parse_field(
     }
 
     // has_one
-    for (ho, ho_err) in &attrs.has_one {
+    //
+    // This syntax is supported, but deprecated in favor of `address`.
+    for (ho_span, ho, ho_err) in &attrs.has_one {
         let err = if let Some(ref e) = ho_err {
             quote! { core::convert::Into::into(#e) }
         } else {
             quote! { anchor_lang_v2::ErrorCode::ConstraintHasOne.into() }
         };
+        let deprecation = quote_spanned! { *ho_span =>
+            {
+                #[deprecated(
+                    note = "`has_one` is deprecated; on the sibling field, use \
+                            `#[account(address = owner.field)]` instead."
+                )]
+                fn __deprecated_has_one() {}
+                __deprecated_has_one();
+            }
+        };
         constraints.push(quote! {
+            #deprecation
             if AsRef::<[u8]>::as_ref(&#field_name.#ho) != AsRef::<[u8]>::as_ref(#ho.account().address()) {
                 return Err(#err);
             }
