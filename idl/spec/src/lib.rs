@@ -64,6 +64,10 @@ pub struct IdlInstruction {
     pub discriminator: IdlDiscriminator,
     pub accounts: Vec<IdlInstructionAccountItem>,
     pub args: Vec<IdlField>,
+    /// When `true`, instruction data after the discriminator is passed through as raw bytes
+    /// (not Borsh-encoded arguments). Omitted or `false` in IDLs for normal instructions.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub raw: bool,
     #[serde(skip_serializing_if = "is_default")]
     pub returns: Option<IdlType>,
 }

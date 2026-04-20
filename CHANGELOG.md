@@ -12,6 +12,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+- lang, idl, ts: Add `#[raw]` instruction handlers that receive instruction data after the 8-byte discriminator as `&[u8]` or `&mut [u8]` (skipping Borsh instruction deserialization); extend IDL with `raw` on instructions; TypeScript client encodes/decodes opaque payloads only when `raw` is true ([#4220](https://github.com/solana-foundation/anchor/pull/4220)).
 - ts: Add `decodeIdlAccountRaw` ([#4375](https://github.com/solana-foundation/anchor/pull/4375)).
 - cli: Add `--stdout` flag to the `expand` command ([#4400](https://github.com/solana-foundation/anchor/pull/4400)).
 - client: Add versioned tx support ([#4207](https://github.com/solana-foundation/anchor/pull/4207)).

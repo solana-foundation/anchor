@@ -31,11 +31,9 @@ export class BorshInstructionCoder implements InstructionCoder {
   public constructor(private idl: Idl) {
     const ixLayouts = idl.instructions.map((ix) => {
       const name = ix.name;
-      // Check if this is a raw instruction (single "data" arg of type "bytes")
-      const isRaw =
-        ix.args.length === 1 &&
-        ix.args[0].name === "data" &&
-        ix.args[0].type === "bytes";
+      // Only `idl.raw === true` marks opaque payload; do not infer from arg name/type (collides with
+      // normal `Vec<u8>` / `bytes` instructions, which use Borsh length-prefixed encoding).
+      const isRaw = ix.raw === true;
 
       let layout: Layout;
       if (isRaw) {

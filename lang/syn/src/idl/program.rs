@@ -93,6 +93,7 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
                 _ => quote! { None },
             };
 
+            let is_raw = ix.is_raw;
             Ok((
                 quote! {
                     #(#cfgs)*
@@ -105,6 +106,7 @@ pub fn gen_idl_print_fn_program(program: &Program) -> TokenStream {
                             &mut types,
                         ),
                         args: vec![#(#args),*],
+                        raw: #is_raw,
                         returns: #returns,
                     }
                 },

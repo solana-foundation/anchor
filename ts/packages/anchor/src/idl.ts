@@ -45,6 +45,11 @@ export type IdlInstruction = {
   discriminator: IdlDiscriminator;
   accounts: IdlInstructionAccountItem[];
   args: IdlField[];
+  /**
+   * When true, bytes after the 8-byte discriminator are opaque payload (not Borsh-encoded ix args).
+   * Must be set explicitly; omit/false keeps legacy Borsh encoding for `bytes` args (e.g. `Vec<u8>`).
+   */
+  raw?: boolean;
   returns?: IdlType;
 };
 

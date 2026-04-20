@@ -80,6 +80,7 @@ describe("raw-instruction", () => {
     expect(rawHandlerIx!.args.length).to.equal(1);
     expect(rawHandlerIx!.args[0].name).to.equal("data");
     expect(rawHandlerIx!.args[0].type).to.equal("bytes");
+    expect(rawHandlerIx!.raw).to.equal(true);
   });
 
   it("Rejects empty buffer", async () => {

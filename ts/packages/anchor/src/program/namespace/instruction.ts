@@ -54,11 +54,7 @@ export default class InstructionNamespaceFactory {
         console.log("Outgoing account metas:", keys);
       }
 
-      // Check if this is a raw instruction
-      const isRawInstruction =
-        idlIx.args.length === 1 &&
-        idlIx.args[0].name === "data" &&
-        idlIx.args[0].type === "bytes";
+      const isRawInstruction = idlIx.raw === true;
 
       let instructionData: Buffer;
       if (isRawInstruction) {

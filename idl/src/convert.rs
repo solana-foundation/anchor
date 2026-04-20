@@ -337,6 +337,7 @@ mod legacy {
                 docs: value.docs.unwrap_or_default(),
                 accounts: value.accounts.into_iter().map(Into::into).collect(),
                 args: value.args.into_iter().map(Into::into).collect(),
+                raw: false,
                 returns: value.returns.map(|r| r.into()),
             }
         }

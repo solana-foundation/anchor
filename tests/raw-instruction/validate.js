@@ -20,6 +20,11 @@ if (arg.name !== "data" || arg.type !== "bytes") {
   process.exit(1);
 }
 
+if (rawIx.raw !== true) {
+  console.error("raw_handler must have raw: true in IDL");
+  process.exit(1);
+}
+
 if (!rawIx.accounts || rawIx.accounts.length === 0) {
   console.error("raw_handler missing accounts");
   process.exit(1);
