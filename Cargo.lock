@@ -1622,6 +1622,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
 
 [[package]]
+name = "constraints"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang-v2",
+ "bytemuck",
+ "pinocchio",
+ "pinocchio-system",
+ "solana-program-error",
+ "wincode 0.5.2",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7874,9 +7886,11 @@ dependencies = [
  "borsh-realloc",
  "callee",
  "caller",
+ "constraints",
  "dup-mut",
  "litesvm",
  "seeds",
+ "solana-account",
  "solana-keypair",
  "solana-message",
  "solana-pubkey 3.0.0",

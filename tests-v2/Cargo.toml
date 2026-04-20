@@ -12,9 +12,11 @@ anchor-lang-v2 = { path = "../lang-v2" }
 borsh-realloc = { path = "programs/borsh-realloc", features = ["cpi"] }
 callee = { path = "programs/callee", features = ["cpi"] }
 caller = { path = "programs/caller", features = ["cpi"] }
+constraints = { path = "programs/constraints" }
 dup-mut = { path = "programs/dup-mut" }
 seeds = { path = "programs/seeds" }
 litesvm = "0.11.0"
+solana-account = "3.2.0"
 solana-keypair = "3.0.1"
 solana-message = "3.0.1"
 solana-pubkey = "3.0"
