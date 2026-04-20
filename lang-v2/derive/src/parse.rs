@@ -382,6 +382,18 @@ pub struct AccountField {
     pub has_bump: bool,
     /// True when the field type is `Option<T>` (optional account).
     pub is_optional: bool,
+    /// Offset expression for this field within the enclosing struct's
+    /// views slice (a compile-time usize). Retained so the trait-impl
+    /// emitter can fold direct-mut fields into `MUT_MASK` at the right
+    /// bit position and shift each `Nested<U>` child's `MUT_MASK` by
+    /// this offset.
+    pub offset_expr: TokenStream2,
+    /// `true` iff this field contributes a `1` to the enclosing struct's
+    /// `MUT_MASK`: a non-`Option<_>` mut field without `unsafe(dup)`.
+    /// `Option<T>` mut fields are excluded because a `None` slot (the
+    /// client sends `program_id` as the address) should still silence the
+    /// dup check; the derive keeps the gated per-field `get()` for those.
+    pub contributes_mut_bit: bool,
     // IDL metadata
     pub idl_writable: bool,
     /// True when this is a fresh-keypair init site (attrs: `init` or
@@ -852,6 +864,11 @@ pub fn parse_field(
             exit,
             has_bump: false,
             is_optional: false,
+            offset_expr,
+            // Nested children contribute via their own `MUT_MASK` shifted
+            // into the parent's; they don't set a bit at the nested field's
+            // own offset.
+            contributes_mut_bit: false,
             idl_writable: false,
             idl_init_signer: false,
             idl_has_one: vec![],
@@ -1313,11 +1330,17 @@ pub fn parse_field(
         None
     };
 
-    // Dup-check emission: stored separately from `constraints` so the
-    // struct-level codegen can aggregate all mut fields' dup checks under a
-    // single outer `if let Some(__dups) = __duplicates { ... }` gate. That
-    // way non-dup txs pay one Option-tag branch regardless of field count.
-    let dup_check = if attrs.is_mut && !attrs.is_dup {
+    // Dup-check emission: only `Option<_>` mut fields keep a gated
+    // per-field `get()` check — a `None` slot (the client encodes
+    // `program_id` as the address) must stay silent even when that slot
+    // is also the dup target of another account, and the
+    // `if let Some(...)` wrapper built below preserves that. Non-`Option`
+    // mut fields are folded into the enclosing struct's `MUT_MASK` const
+    // and checked once per dispatch by `run_handler`. Stored separately
+    // from `constraints` so the struct-level codegen can aggregate all
+    // mut fields' dup checks under a single outer
+    // `if let Some(__dups) = __duplicates { ... }` gate.
+    let dup_check = if attrs.is_mut && !attrs.is_dup && is_optional {
         Some(quote! {
             if __dups.get((__base_offset + #offset_expr) as u8) {
                 return Err(anchor_lang_v2::ErrorCode::ConstraintDuplicateMutableAccount.into());
@@ -1397,6 +1420,8 @@ pub fn parse_field(
         (constraints, exit)
     };
 
+    let contributes_mut_bit = attrs.is_mut && !attrs.is_dup && !is_optional;
+
     Ok(AccountField {
         name: field_name.clone(),
         ty: field.ty.clone(),
@@ -1406,6 +1431,8 @@ pub fn parse_field(
         exit,
         has_bump,
         is_optional,
+        offset_expr,
+        contributes_mut_bit,
         idl_writable,
         idl_init_signer,
         idl_has_one,

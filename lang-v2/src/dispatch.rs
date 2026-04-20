@@ -21,6 +21,16 @@ use {
 pub trait TryAccounts: Bumps + Sized {
     const HEADER_SIZE: usize;
 
+    /// Bit `i` is set iff account-view index `i` (global, across nested
+    /// children) is a non-`Option` mut field without `unsafe(dup)`. The
+    /// dispatcher AND's this against the walked `AccountBitvec` once per
+    /// `run_handler` call — a single 4-word test replaces N per-field
+    /// `get()` checks across the whole struct tree. `Option<T>` mut
+    /// fields are excluded here and keep their gated per-field check so
+    /// a `None` slot (encoded as `program_id`) stays silent the way it
+    /// does today.
+    const MUT_MASK: [u64; 4];
+
     /// `base_offset` is the index of the first view in the global bitvec.
     /// Top-level callers pass 0; `Nested<T>` passes its field's offset so
     /// the inner struct's duplicate-mutable-account checks hit the correct
@@ -56,6 +66,18 @@ pub fn run_handler<'a, T: TryAccounts>(
     let (ctx_accounts, bumps) = {
         let mut loader = AccountLoader::new(program_id, cursor);
         let (views, duplicates) = loader.walk_n(T::HEADER_SIZE);
+        // Single AND+test across the whole struct tree — replaces the
+        // per-mut-field `__duplicates.get()` checks the derive used to
+        // emit at each field site. `MUT_MASK == [0; 4]` (no mut fields
+        // anywhere) const-folds the intersect away at inline time. The
+        // outer `Some` guard short-circuits when the walker didn't need
+        // to materialize a bitvec (no account appeared twice), so the
+        // no-dup path pays a single Option-tag test.
+        if let Some(dups) = duplicates {
+            if dups.intersects(&T::MUT_MASK) {
+                return Err(crate::ErrorCode::ConstraintDuplicateMutableAccount.into());
+            }
+        }
         T::try_accounts(program_id, views, duplicates, 0, ix_data)?
     };
     let remaining_num = (num_accounts - T::HEADER_SIZE) as u8;

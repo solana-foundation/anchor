@@ -318,6 +318,46 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
     };
 
+    // Compile-time `MUT_MASK` composition:
+    //   - bit at `offset` per direct mut field (non-Option, non-`unsafe(dup)`)
+    //   - `<Inner as TryAccounts>::MUT_MASK << child_offset` per `Nested<Inner>`
+    // Folded into a single `const` expression so LLVM sees a literal at
+    // `run_handler`'s inline site — zero runtime composition cost, and the
+    // `intersects(&T::MUT_MASK)` call const-folds away entirely when the
+    // resulting mask is all-zero.
+    let mut_mask_steps: Vec<proc_macro2::TokenStream> = fields
+        .iter()
+        .filter_map(|f| {
+            let offset = &f.offset_expr;
+            if f.contributes_mut_bit {
+                Some(quote! {
+                    __mask = anchor_lang_v2::mut_mask_set_bit(__mask, #offset);
+                })
+            } else if let Some(inner_ty) = parse::extract_nested_inner_type(&f.ty) {
+                Some(quote! {
+                    __mask = anchor_lang_v2::mut_mask_or_shifted(
+                        __mask,
+                        <#inner_ty as anchor_lang_v2::TryAccounts>::MUT_MASK,
+                        #offset,
+                    );
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+    let mut_mask_expr = if mut_mask_steps.is_empty() {
+        quote::quote! { [0u64; 4] }
+    } else {
+        quote::quote! {
+            {
+                let mut __mask = [0u64; 4];
+                #(#mut_mask_steps)*
+                __mask
+            }
+        }
+    };
+
     // IDL collection — the accounts-JSON emission is a runtime function
     // (not a `&'static str` const) so it can read
     // `<FieldTy as IdlAccountType>::__IDL_IS_SIGNER / __IDL_ADDRESS` off
@@ -813,6 +853,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
         impl anchor_lang_v2::TryAccounts for #name {
             const HEADER_SIZE: usize = #header_size_expr;
+            const MUT_MASK: [u64; 4] = #mut_mask_expr;
 
             #[inline]
             fn try_accounts(

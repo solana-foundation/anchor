@@ -129,7 +129,7 @@ pub use {
         find_program_address, verify_program_address,
     },
     context_cpi::CpiContext,
-    cursor::{AccountBitvec, AccountCursor},
+    cursor::{mut_mask_or_shifted, mut_mask_set_bit, AccountBitvec, AccountCursor},
     dispatch::{run_handler, TryAccounts},
     event::{sol_log_data, Event},
     hash::sha256,
