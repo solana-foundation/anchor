@@ -421,9 +421,11 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> Deref for Account<'_, T> 
 
 impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable {
-            crate::solana_program::msg!("The given Account is not mutable");
+            crate::solana_program::msg!(
+                "Error: Tried to write to a immutable account. This account will not be \
+                 serialized back on exit"
+            );
             panic!();
         }
         &mut self.account
