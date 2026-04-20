@@ -584,3 +584,12 @@ This implementation is functionally equivalent to the previous example. The
 Here is a reference program on
 [Solana Playground](https://beta.solpg.io/github.com/ZYJLiu/doc-examples/tree/main/cpi-pda)
 which includes both examples.
+
+## Unchecked CPI helpers
+
+For Anchor-generated CPI into another program (`declare_program!` or a callee
+with the `cpi` feature), each instruction exposes `foo` and `foo_unchecked`,
+where `_unchecked` uses `invoke_signed_unchecked` instead of `invoke_signed`.
+
+Use `_unchecked` only when your caller already supplies correct account metas and
+infos for the callee.

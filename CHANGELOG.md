@@ -12,6 +12,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
+- lang: Generate `{instruction}_unchecked` CPI helpers that call `invoke_signed_unchecked` for lower compute usage when the caller already guarantees correct account metas and infos; available for `#[program]` (`cpi` feature) and `declare_program!` ([#4217](https://github.com/solana-foundation/anchor/pull/4217)).
 - ts: Add `decodeIdlAccountRaw` ([#4375](https://github.com/solana-foundation/anchor/pull/4375)).
 - cli: Add `--stdout` flag to the `expand` command ([#4400](https://github.com/solana-foundation/anchor/pull/4400)).
 - client: Add versioned tx support ([#4207](https://github.com/solana-foundation/anchor/pull/4207)).
