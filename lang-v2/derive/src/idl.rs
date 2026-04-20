@@ -168,6 +168,12 @@ pub struct AccountsJsonField<'a> {
     /// The wrapper `Type` (post-`Option` unwrap) whose trait consts we
     /// dispatch on at runtime. Should match `AccountField::idl_field_ty`.
     pub field_ty: &'a Option<Type>,
+    /// Stringified RHS of `#[account(address = <expr>)]`. When `Some`,
+    /// takes precedence over `IdlAccountType::__IDL_ADDRESS` at emission.
+    /// Holds either a resolvable constant path / const-fn call (which the
+    /// Anchor CLI can turn into a base58 pubkey) or a dotted field path
+    /// like `data.authority` that clients walk at resolution time.
+    pub address_override: Option<&'a str>,
     /// Set when this field is a `Nested<Inner>`, carrying the inner
     /// struct type. The emission splices the inner struct's own
     /// `__idl_accounts()` into the outer array instead of producing a
@@ -241,8 +247,30 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                 .as_ref()
                 .map(|p| format!(",\"pda\":{p}"))
                 .unwrap_or_default();
+            // `#[account(address = <expr>)]` override, pre-formatted as a
+            // JSON fragment. When set, takes precedence over the wrapper
+            // type's `__IDL_ADDRESS` — emitted at macro time so no runtime
+            // branch is needed to pick one.
+            let address_override_json = f
+                .address_override
+                .map(|s| format!(",\"address\":\"{s}\""))
+                .unwrap_or_default();
             let init_signer = f.init_signer;
             if let Some(ty) = f.field_ty {
+                let addr_json_expr = if f.address_override.is_some() {
+                    quote! {
+                        let __addr_json: anchor_lang_v2::__alloc::string::String =
+                            anchor_lang_v2::__alloc::string::String::from(#address_override_json);
+                    }
+                } else {
+                    quote! {
+                        let __addr = <#ty as anchor_lang_v2::IdlAccountType>::__IDL_ADDRESS;
+                        let __addr_json: anchor_lang_v2::__alloc::string::String = match __addr {
+                            Some(a) => anchor_lang_v2::__alloc::format!(",\"address\":\"{}\"", a),
+                            None => anchor_lang_v2::__alloc::string::String::new(),
+                        };
+                    }
+                };
                 quote! {
                     {
                         // Trait-const OR compile-time init_signer flag.
@@ -250,12 +278,8 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                         // combo still renders exactly one `"signer":true`.
                         let __signer = <#ty as anchor_lang_v2::IdlAccountType>::__IDL_IS_SIGNER
                             || #init_signer;
-                        let __addr = <#ty as anchor_lang_v2::IdlAccountType>::__IDL_ADDRESS;
                         let __signer_json: &str = if __signer { ",\"signer\":true" } else { "" };
-                        let __addr_json: anchor_lang_v2::__alloc::string::String = match __addr {
-                            Some(a) => anchor_lang_v2::__alloc::format!(",\"address\":\"{}\"", a),
-                            None => anchor_lang_v2::__alloc::string::String::new(),
-                        };
+                        #addr_json_expr
                         anchor_lang_v2::__alloc::format!(
                             "{{\"name\":\"{}\"{}{}{}{}{}{}{}}}",
                             #name,
@@ -276,10 +300,11 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                 let signer_json = if init_signer { ",\"signer\":true" } else { "" };
                 quote! {
                     anchor_lang_v2::__alloc::format!(
-                        "{{\"name\":\"{}\"{}{}{}{}{}{}}}",
+                        "{{\"name\":\"{}\"{}{}{}{}{}{}{}}}",
                         #name,
                         #writable_json,
                         #signer_json,
+                        #address_override_json,
                         #optional_json,
                         #relations_json,
                         #docs_json,

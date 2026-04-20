@@ -391,6 +391,12 @@ pub struct AccountField {
     /// *another* field, so we need to keep them addressable per-source to
     /// build the inverse mapping (matches v1's `get_relations`).
     pub idl_has_one: Vec<String>,
+    /// Stringified RHS of `#[account(address = <expr>)]`. Emitted verbatim
+    /// as the `address` key of this field in the accounts JSON. `None` when
+    /// the attr is absent; wrapper types that carry a compile-time address
+    /// via `IdlAccountType::__IDL_ADDRESS` still emit the trait value when
+    /// this override is `None` (fields like `Program<System>`).
+    pub idl_address: Option<String>,
     /// Extracted `#[doc = "..."]` lines on the field, in source order.
     /// Emitted as `"docs":[...]` in the accounts JSON. Matches
     /// `IdlInstructionAccount.docs` (`idl/spec/src/lib.rs:83`).
@@ -405,6 +411,17 @@ pub struct AccountField {
     /// can't appear as accounts (defensive — this path shouldn't trigger in
     /// practice).
     pub idl_field_ty: Option<syn::Type>,
+}
+
+/// Turn the RHS of `#[account(address = <expr>)]` into the string form the
+/// IDL emits. Whitespace from `quote!`'s token reassembly is stripped so
+/// `crate :: ID` → `crate::ID`, `data . authority` → `data.authority`, and
+/// `crate :: id ()` → `crate::id()` — matching what a user would hand-write
+/// and what downstream tooling (the Anchor CLI resolver, TS client path
+/// walkers) expect to parse.
+fn stringify_address_expr(expr: &Expr) -> String {
+    let s = quote!(#expr).to_string();
+    s.split_whitespace().collect()
 }
 
 /// Rewrite a single seed expression so that a bare field-name identifier
@@ -684,6 +701,14 @@ pub fn parse_field(
     let idl_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
     let idl_writable = attrs.is_mut;
     let idl_has_one: Vec<String> = attrs.has_one.iter().map(|(i, _)| i.to_string()).collect();
+    // Stringified RHS of `#[account(address = <expr>)]`, emitted as the
+    // account's `address` in the IDL JSON. Constant paths (`crate::ID`,
+    // `MY_CONST`) and zero-arg calls (`crate::id()`) serialize to a form
+    // the Anchor CLI can resolve to a base58 pubkey at IDL-build time;
+    // dynamic field-accesses (`data.authority`) serialize as a dotted
+    // path clients evaluate against sibling accounts. Either way, the
+    // IDL carries the user's intent instead of silently dropping it.
+    let idl_address: Option<String> = attrs.address.as_ref().map(stringify_address_expr);
     let idl_docs = crate::idl::extract_doc_lines(&field.attrs);
     let idl_pda = attrs.seeds.as_ref().map(|seeds_expr| {
         let seed_entries = if let Expr::Array(arr) = seeds_expr {
@@ -756,6 +781,7 @@ pub fn parse_field(
             idl_writable: false,
             idl_init_signer: false,
             idl_has_one: vec![],
+            idl_address: None,
             idl_docs: vec![],
             idl_pda: None,
             idl_field_ty: None,
@@ -1295,6 +1321,7 @@ pub fn parse_field(
         idl_writable,
         idl_init_signer,
         idl_has_one,
+        idl_address,
         idl_docs,
         idl_pda,
         idl_field_ty,

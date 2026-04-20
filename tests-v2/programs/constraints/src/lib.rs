@@ -187,33 +187,20 @@ pub struct CheckAddressCustomErr {
 }
 
 // 3. has_one = authority
-//
-// `has_one` is deprecated in v2 in favour of `#[account(address = ...)]`
-// on the referencing field. The derive-generated `TryAccounts` impl lives
-// as a sibling of the struct, so `#[expect(deprecated)]` must cover the
-// whole submodule to catch the warning emitted at the `has_one` keyword.
-#[expect(deprecated)]
-mod has_one_structs {
-    use super::*;
-
-    #[derive(Accounts)]
-    pub struct CheckHasOne {
-        #[account(has_one = authority)]
-        pub data: Account<Data>,
-        pub authority: UncheckedAccount,
-    }
-
-    // 4. has_one = authority @ MyErr::BadAuthority
-    #[derive(Accounts)]
-    pub struct CheckHasOneCustomErr {
-        #[account(has_one = authority @ MyErr::BadAuthority)]
-        pub data: Account<Data>,
-        pub authority: UncheckedAccount,
-    }
+#[derive(Accounts)]
+pub struct CheckHasOne {
+    #[account(has_one = authority)]
+    pub data: Account<Data>,
+    pub authority: UncheckedAccount,
 }
-// Re-export everything so the `__client_accounts_*` modules the `#[program]`
-// macro references (via `super::__client_accounts_<name>`) resolve.
-pub use has_one_structs::*;
+
+// 4. has_one = authority @ MyErr::BadAuthority
+#[derive(Accounts)]
+pub struct CheckHasOneCustomErr {
+    #[account(has_one = authority @ MyErr::BadAuthority)]
+    pub data: Account<Data>,
+    pub authority: UncheckedAccount,
+}
 
 // 5. owner = System
 #[derive(Accounts)]

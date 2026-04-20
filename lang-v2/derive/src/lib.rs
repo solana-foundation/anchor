@@ -370,6 +370,7 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 docs: &f.idl_docs,
                 pda_json: pda_jsons[i].clone(),
                 field_ty: &f.idl_field_ty,
+                address_override: f.idl_address.as_deref(),
                 // `Nested<Inner>` flattens at IDL emission time by calling
                 // into `Inner::__idl_accounts()`. Grab the inner `Type` so
                 // the emitter can synthesize that call.
