@@ -147,9 +147,23 @@ impl AccountCursor {
             let data_len = (*account).data_len as usize;
             self.ptr = self.ptr.add(STATIC_ACCOUNT_DATA);
             self.ptr = self.ptr.add(data_len);
-            // Align to the next 8-byte boundary.
-            self.ptr = (((self.ptr as usize) + (BPF_ALIGN_OF_U128 - 1)) & !(BPF_ALIGN_OF_U128 - 1))
-                as *mut u8;
+            // Align to the next 8-byte boundary. The intuitive form —
+            //   self.ptr = (((self.ptr as usize) + 7) & !7) as *mut u8
+            // — is sound on the current compiler + SBF, but the
+            // int-to-ptr round-trip strips the derivation chain from
+            // the original allocation. Under Rust's strict-provenance
+            // rules (enforced by Miri's Tree Borrows model, and a
+            // contract future optimizers are allowed to rely on), the
+            // resulting pointer would have "exposed" provenance and
+            // downstream accesses could, in principle, be misoptimized.
+            //
+            // `.addr()` gives the numeric address without dropping
+            // provenance; we compute the aligned delta from it and use
+            // `.add(delta)` on the original pointer. Same machine code,
+            // full provenance preserved.
+            let addr = self.ptr.addr();
+            let aligned = (addr + (BPF_ALIGN_OF_U128 - 1)) & !(BPF_ALIGN_OF_U128 - 1);
+            self.ptr = self.ptr.add(aligned - addr);
             AccountView::new_unchecked(account)
         } else {
             // Duplicate: look up the earlier slot. Safe because the
@@ -251,5 +265,73 @@ mod test {
             bv.set(i);
             assert!(bv.get(i));
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Kani model-checking proof harnesses.
+//
+// Covers `AccountBitvec` bit manipulation (pure math — no AccountView
+// involvement, so no scaffold needed).
+//
+// `AccountCursor::next` itself isn't harnessed here: its body reads
+// through the raw input pointer written by the SBF loader, which Kani
+// can't model directly (opaque to the solver). The same logic is
+// witnessed at runtime by `lang-v2/tests/miri_cursor_walk.rs`, which
+// uses the `SbfInputBuffer` mock in `tests/common/mod.rs`.
+// ---------------------------------------------------------------------------
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    // -- AccountBitvec --------------------------------------------------
+
+    #[kani::proof]
+    fn bitvec_default_is_empty() {
+        let bv = AccountBitvec::default();
+        let i: u8 = kani::any();
+        assert!(!bv.get(i));
+    }
+
+    // For any index i in u8, setting then reading returns true.
+    #[kani::proof]
+    fn bitvec_set_then_get_is_true() {
+        let i: u8 = kani::any();
+        let mut bv = AccountBitvec::default();
+        bv.set(i);
+        assert!(bv.get(i));
+    }
+
+    // Setting bit i does NOT affect any other bit j != i.
+    #[kani::proof]
+    fn bitvec_set_does_not_affect_other_bits() {
+        let i: u8 = kani::any();
+        let j: u8 = kani::any();
+        kani::assume(i != j);
+        let mut bv = AccountBitvec::default();
+        // First set an arbitrary initial state for bit j.
+        let j_initial: bool = kani::any();
+        if j_initial {
+            bv.set(j);
+        }
+        // Then set bit i.
+        bv.set(i);
+        // Bit j's state must be unchanged.
+        assert!(bv.get(j) == j_initial);
+    }
+
+    // Set is idempotent.
+    #[kani::proof]
+    fn bitvec_set_is_idempotent() {
+        let i: u8 = kani::any();
+        let mut bv_a = AccountBitvec::default();
+        let mut bv_b = AccountBitvec::default();
+        bv_a.set(i);
+        bv_b.set(i);
+        bv_b.set(i);
+        // After one set vs two sets, same bit reads true in both. Actually
+        // checking full-state equivalence directly is stronger:
+        assert!(bv_a.data == bv_b.data);
     }
 }

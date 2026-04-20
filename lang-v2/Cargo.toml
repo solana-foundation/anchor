@@ -71,7 +71,7 @@ sha2 = "0.10"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(target_os, values("solana"))']
+check-cfg = ['cfg(target_os, values("solana"))', 'cfg(kani)']
 
 # Integration tests that exercise `unsafe` paths via the `testing`
 # scaffold. Gated behind the `testing` feature so the mock types never

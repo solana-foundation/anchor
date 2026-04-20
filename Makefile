@@ -225,3 +225,103 @@ update-dictionary:
 	cat .new-dictionary-words $(DICTIONARY_FILE) | sort --ignore-case > .new-$(DICTIONARY_FILE)
 	mv .new-$(DICTIONARY_FILE) $(DICTIONARY_FILE)
 	rm -f .new-dictionary-words
+
+# ---------------------------------------------------------------------------
+# v2 verification targets
+#
+# Each target runs one verification layer against the v2 crates (lang-v2,
+# spl-v2).
+#
+# `make verify` runs them all sequentially. Individual targets are useful
+# when iterating on a specific layer.
+#
+# Toolchain pins — CI installs these exact versions. Local invocations
+# validate via `check-kani` / `check-miri` before running so version
+# drift surfaces with a clear message instead of a cryptic solver error.
+# ---------------------------------------------------------------------------
+
+KANI_VERSION := 0.67.0
+NIGHTLY_TOOLCHAIN := nightly
+
+SHELL := /usr/bin/env bash
+
+.PHONY: help-kani
+help-kani:
+	@echo "Local Kani verification is optional — CI runs it on every push"
+	@echo "to anchor-next. To run locally:"
+	@echo ""
+	@echo "  Install (one-shot):  make install-kani"
+	@echo "  Or manually:         cargo install --locked kani-verifier --version $(KANI_VERSION)"
+	@echo "                       cargo kani setup"
+	@echo "  Check version:       cargo kani --version"
+	@echo "  Run all harnesses:   make kani"
+
+.PHONY: install-kani
+install-kani:
+	@echo "Installing kani-verifier $(KANI_VERSION) (this may take a few minutes)..."
+	cargo install --locked kani-verifier --version $(KANI_VERSION)
+	@echo ""
+	@echo "Downloading solver bundle (~2 GB: CBMC, CaDiCaL, Z3)..."
+	cargo kani setup
+	@echo ""
+	@echo "Done. Try: make kani"
+
+.PHONY: install-miri
+install-miri:
+	@echo "Installing Rust $(NIGHTLY_TOOLCHAIN) + miri component..."
+	rustup toolchain install $(NIGHTLY_TOOLCHAIN) --component miri --profile minimal
+	cargo +$(NIGHTLY_TOOLCHAIN) miri setup
+	@echo ""
+	@echo "Done. Try: make miri"
+
+.PHONY: install-verify-tools
+install-verify-tools: install-kani install-miri
+	@echo ""
+	@echo "All verification tools installed. Run: make verify"
+
+.PHONY: check-kani
+check-kani:
+	@command -v cargo-kani >/dev/null 2>&1 || { \
+		echo "kani is not installed."; \
+		echo "Install with:  make install-kani"; \
+		echo "Or manually:   cargo install --locked kani-verifier --version $(KANI_VERSION) && cargo kani setup"; \
+		exit 1; \
+	}
+	@version="$$(cargo kani --version 2>/dev/null | awk '{print $$2}')"; \
+	if [[ "$$version" != "$(KANI_VERSION)" ]]; then \
+		echo "unexpected kani version: $$version"; \
+		echo "expected:                 $(KANI_VERSION)"; \
+		echo "CI uses Kani $(KANI_VERSION); local verification should match."; \
+		echo "Reinstall with: make install-kani"; \
+		exit 1; \
+	fi
+
+.PHONY: check-miri
+check-miri:
+	@rustup +$(NIGHTLY_TOOLCHAIN) component list --installed 2>/dev/null | grep -q '^miri-' || { \
+		echo "miri component not installed for $(NIGHTLY_TOOLCHAIN) toolchain."; \
+		echo "Install with:  make install-miri"; \
+		echo "Or manually:   rustup toolchain install $(NIGHTLY_TOOLCHAIN) --component miri"; \
+		exit 1; \
+	}
+
+.PHONY: kani
+kani: check-kani
+	@echo "== Kani (bounded model checking) =="
+	@cargo kani -p anchor-lang-v2 -p anchor-spl-v2 -j --output-format=terse
+
+.PHONY: miri
+miri: check-miri
+	@echo "== Miri (undefined behavior + Tree Borrows) =="
+	@MIRIFLAGS="-Zmiri-tree-borrows" cargo +$(NIGHTLY_TOOLCHAIN) miri test \
+	    -p anchor-lang-v2 -p anchor-spl-v2 --tests
+
+.PHONY: unit-v2
+unit-v2:
+	@echo "== Unit / integration tests (v2) =="
+	@cargo test -p anchor-lang-v2 -p anchor-spl-v2 --tests
+
+.PHONY: verify
+verify: kani miri unit-v2
+	@echo ""
+	@echo "All verification layers passed."

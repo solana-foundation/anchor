@@ -38,6 +38,10 @@ pub struct Mint {
 unsafe impl Pod for Mint {}
 unsafe impl Zeroable for Mint {}
 
+// Layout invariants — must match the SPL Token program's 82-byte Mint account.
+const _: () = assert!(core::mem::size_of::<Mint>() == 82);
+const _: () = assert!(core::mem::align_of::<Mint>() == 1);
+
 // Mint is defined by the SPL Token program, not by the user's program — its
 // layout is known to any SPL-aware client. Default `__IDL_TYPE = None` keeps
 // it out of the user's IDL `types[]` array (matches v1's `impl_idl_build!`
@@ -71,6 +75,7 @@ impl SlabSchema for Mint {
         Ok(())
     }
 }
+
 
 /// Init params for `#[account(init, mint::decimals = 6, mint::authority = ..., ...)]`.
 #[derive(Default)]

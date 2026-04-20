@@ -57,6 +57,10 @@ pub struct TokenAccount {
 unsafe impl Pod for TokenAccount {}
 unsafe impl Zeroable for TokenAccount {}
 
+// Layout invariants — must match the SPL Token program's 165-byte account.
+const _: () = assert!(core::mem::size_of::<TokenAccount>() == 165);
+const _: () = assert!(core::mem::align_of::<TokenAccount>() == 1);
+
 // TokenAccount is defined by the SPL Token program, not by the user's program
 // — its layout is known to any SPL-aware client. Default `__IDL_TYPE = None`
 // keeps it out of the user's IDL `types[]` array (matches v1's
@@ -562,14 +566,37 @@ pub mod cpi {
     const DISC_BURN_CHECKED: u8 = 15;
     const DISC_SYNC_NATIVE: u8 = 17;
 
+    // Encode an SPL Token instruction with layout `[disc u8][amount u64 LE]`.
+    //
+    // Extracted as a pure helper so the Kani harness below can verify the
+    // real encoder byte-for-byte. Without this extraction, harnesses would
+    // have to rebuild the layout inline, leaving the production encoders
+    // (`transfer`, `mint_to`, `burn`, `approve`) unverified — they bury the
+    // encoding inside functions whose ultimate `ctx.invoke` is opaque to
+    // CBMC.
+    #[inline]
+    fn encode_amount_ix(disc: u8, amount: u64) -> [u8; 9] {
+        let mut data = [0u8; 9];
+        data[0] = disc;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        data
+    }
+
+    // `*Checked` variants add a trailing `decimals` byte — same Kani rationale.
+    #[inline]
+    fn encode_amount_decimals_ix(disc: u8, amount: u64, decimals: u8) -> [u8; 10] {
+        let mut data = [0u8; 10];
+        data[0] = disc;
+        data[1..9].copy_from_slice(&amount.to_le_bytes());
+        data[9] = decimals;
+        data
+    }
+
     pub fn transfer<'a>(
         ctx: CpiContext<'a, accounts::Transfer<'a>>,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let mut data = [0u8; 9];
-        data[0] = DISC_TRANSFER;
-        data[1..9].copy_from_slice(&amount.to_le_bytes());
-        ctx.invoke(&data)
+        ctx.invoke(&encode_amount_ix(DISC_TRANSFER, amount))
     }
 
     pub fn transfer_checked<'a>(
@@ -577,21 +604,14 @@ pub mod cpi {
         amount: u64,
         decimals: u8,
     ) -> Result<(), ProgramError> {
-        let mut data = [0u8; 10];
-        data[0] = DISC_TRANSFER_CHECKED;
-        data[1..9].copy_from_slice(&amount.to_le_bytes());
-        data[9] = decimals;
-        ctx.invoke(&data)
+        ctx.invoke(&encode_amount_decimals_ix(DISC_TRANSFER_CHECKED, amount, decimals))
     }
 
     pub fn mint_to<'a>(
         ctx: CpiContext<'a, accounts::MintTo<'a>>,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let mut data = [0u8; 9];
-        data[0] = DISC_MINT_TO;
-        data[1..9].copy_from_slice(&amount.to_le_bytes());
-        ctx.invoke(&data)
+        ctx.invoke(&encode_amount_ix(DISC_MINT_TO, amount))
     }
 
     pub fn mint_to_checked<'a>(
@@ -599,21 +619,14 @@ pub mod cpi {
         amount: u64,
         decimals: u8,
     ) -> Result<(), ProgramError> {
-        let mut data = [0u8; 10];
-        data[0] = DISC_MINT_TO_CHECKED;
-        data[1..9].copy_from_slice(&amount.to_le_bytes());
-        data[9] = decimals;
-        ctx.invoke(&data)
+        ctx.invoke(&encode_amount_decimals_ix(DISC_MINT_TO_CHECKED, amount, decimals))
     }
 
     pub fn burn<'a>(
         ctx: CpiContext<'a, accounts::Burn<'a>>,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let mut data = [0u8; 9];
-        data[0] = DISC_BURN;
-        data[1..9].copy_from_slice(&amount.to_le_bytes());
-        ctx.invoke(&data)
+        ctx.invoke(&encode_amount_ix(DISC_BURN, amount))
     }
 
     pub fn burn_checked<'a>(
@@ -621,21 +634,14 @@ pub mod cpi {
         amount: u64,
         decimals: u8,
     ) -> Result<(), ProgramError> {
-        let mut data = [0u8; 10];
-        data[0] = DISC_BURN_CHECKED;
-        data[1..9].copy_from_slice(&amount.to_le_bytes());
-        data[9] = decimals;
-        ctx.invoke(&data)
+        ctx.invoke(&encode_amount_decimals_ix(DISC_BURN_CHECKED, amount, decimals))
     }
 
     pub fn approve<'a>(
         ctx: CpiContext<'a, accounts::Approve<'a>>,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let mut data = [0u8; 9];
-        data[0] = DISC_APPROVE;
-        data[1..9].copy_from_slice(&amount.to_le_bytes());
-        ctx.invoke(&data)
+        ctx.invoke(&encode_amount_ix(DISC_APPROVE, amount))
     }
 
     pub fn approve_checked<'a>(
@@ -643,11 +649,7 @@ pub mod cpi {
         amount: u64,
         decimals: u8,
     ) -> Result<(), ProgramError> {
-        let mut data = [0u8; 10];
-        data[0] = DISC_APPROVE_CHECKED;
-        data[1..9].copy_from_slice(&amount.to_le_bytes());
-        data[9] = decimals;
-        ctx.invoke(&data)
+        ctx.invoke(&encode_amount_decimals_ix(DISC_APPROVE_CHECKED, amount, decimals))
     }
 
     pub fn revoke<'a>(
@@ -707,4 +709,137 @@ pub mod cpi {
     ) -> Result<(), ProgramError> {
         ctx.invoke(&[DISC_SYNC_NATIVE])
     }
+
+    // -----------------------------------------------------------------------
+    // Kani proofs — SPL Token instruction wire format
+    //
+    // Lives inside `mod cpi` so the helpers and DISC_* constants are in
+    // scope. Each harness calls the real encoder helper (`encode_amount_ix`
+    // / `encode_amount_decimals_ix`) at the same discriminant constant the
+    // production entry-point uses, so a layout change in the helper or a
+    // wrong-constant wiring in the entry-point breaks the corresponding
+    // harness.
+    // -----------------------------------------------------------------------
+
+    #[cfg(kani)]
+    mod kani_wire_proofs {
+        use super::*;
+
+        // Concrete-value witnesses: pin the protocol-mandated discriminant
+        // for every SPL Token instruction. Without these, the layout
+        // harnesses below would pass even if someone swapped
+        // DISC_TRANSFER to 4 (both sides reference the same constant).
+        // The distinctness harness catches pairwise collision, not
+        // wrong-but-still-distinct values.
+
+        #[kani::proof]
+        fn spl_disc_transfer_is_three() { assert!(DISC_TRANSFER == 3); }
+
+        #[kani::proof]
+        fn spl_disc_approve_is_four() { assert!(DISC_APPROVE == 4); }
+
+        #[kani::proof]
+        fn spl_disc_revoke_is_five() { assert!(DISC_REVOKE == 5); }
+
+        #[kani::proof]
+        fn spl_disc_set_authority_is_six() { assert!(DISC_SET_AUTHORITY == 6); }
+
+        #[kani::proof]
+        fn spl_disc_mint_to_is_seven() { assert!(DISC_MINT_TO == 7); }
+
+        #[kani::proof]
+        fn spl_disc_burn_is_eight() { assert!(DISC_BURN == 8); }
+
+        #[kani::proof]
+        fn spl_disc_close_account_is_nine() { assert!(DISC_CLOSE_ACCOUNT == 9); }
+
+        #[kani::proof]
+        fn spl_disc_freeze_account_is_ten() { assert!(DISC_FREEZE_ACCOUNT == 10); }
+
+        #[kani::proof]
+        fn spl_disc_thaw_account_is_eleven() { assert!(DISC_THAW_ACCOUNT == 11); }
+
+        #[kani::proof]
+        fn spl_disc_transfer_checked_is_twelve() { assert!(DISC_TRANSFER_CHECKED == 12); }
+
+        #[kani::proof]
+        fn spl_disc_approve_checked_is_thirteen() { assert!(DISC_APPROVE_CHECKED == 13); }
+
+        #[kani::proof]
+        fn spl_disc_mint_to_checked_is_fourteen() { assert!(DISC_MINT_TO_CHECKED == 14); }
+
+        #[kani::proof]
+        fn spl_disc_burn_checked_is_fifteen() { assert!(DISC_BURN_CHECKED == 15); }
+
+        #[kani::proof]
+        fn spl_disc_sync_native_is_seventeen() { assert!(DISC_SYNC_NATIVE == 17); }
+
+        // amount-only instructions: [disc u8][amount u64 LE] → 9 bytes.
+        #[kani::proof]
+        fn spl_transfer_wire_format() {
+            let amount: u64 = kani::any();
+            let data = encode_amount_ix(DISC_TRANSFER, amount);
+            assert!(data[0] == DISC_TRANSFER);
+            assert!(u64::from_le_bytes(data[1..9].try_into().unwrap()) == amount);
+        }
+
+        #[kani::proof]
+        fn spl_mint_to_wire_format() {
+            let amount: u64 = kani::any();
+            let data = encode_amount_ix(DISC_MINT_TO, amount);
+            assert!(data[0] == DISC_MINT_TO);
+            assert!(u64::from_le_bytes(data[1..9].try_into().unwrap()) == amount);
+        }
+
+        #[kani::proof]
+        fn spl_burn_wire_format() {
+            let amount: u64 = kani::any();
+            let data = encode_amount_ix(DISC_BURN, amount);
+            assert!(data[0] == DISC_BURN);
+            assert!(u64::from_le_bytes(data[1..9].try_into().unwrap()) == amount);
+        }
+
+        // `*Checked` variants add a trailing decimals byte → 10 bytes.
+        #[kani::proof]
+        fn spl_transfer_checked_wire_format() {
+            let amount: u64 = kani::any();
+            let decimals: u8 = kani::any();
+            let data = encode_amount_decimals_ix(DISC_TRANSFER_CHECKED, amount, decimals);
+            assert!(data[0] == DISC_TRANSFER_CHECKED);
+            assert!(u64::from_le_bytes(data[1..9].try_into().unwrap()) == amount);
+            assert!(data[9] == decimals);
+        }
+
+        // No two instruction discriminants collide — a clash would silently
+        // mis-route a CPI to the wrong handler on the SPL Token program.
+        #[kani::proof]
+        fn spl_discriminants_are_all_distinct() {
+            let discs: [u8; 14] = [
+                DISC_TRANSFER,
+                DISC_APPROVE,
+                DISC_REVOKE,
+                DISC_SET_AUTHORITY,
+                DISC_MINT_TO,
+                DISC_BURN,
+                DISC_CLOSE_ACCOUNT,
+                DISC_FREEZE_ACCOUNT,
+                DISC_THAW_ACCOUNT,
+                DISC_TRANSFER_CHECKED,
+                DISC_APPROVE_CHECKED,
+                DISC_MINT_TO_CHECKED,
+                DISC_BURN_CHECKED,
+                DISC_SYNC_NATIVE,
+            ];
+            let mut i = 0;
+            while i < discs.len() {
+                let mut j = i + 1;
+                while j < discs.len() {
+                    assert!(discs[i] != discs[j]);
+                    j += 1;
+                }
+                i += 1;
+            }
+        }
+    }
 }
+

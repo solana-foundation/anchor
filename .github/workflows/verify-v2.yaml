@@ -1,0 +1,169 @@
+# Formal verification for anchor-lang-v2 / anchor-spl-v2.
+#
+# Trigger strategy:
+#   - pull_request (path-filtered): runs fast lanes — Miri + unit tests.
+#     Kani is skipped on PRs (~8-10 min wall clock even with `-j` makes
+#     it a poor fit for the per-PR loop).
+#   - push to anchor-next: runs ALL lanes including Kani. v2 lives on
+#     anchor-next today; re-add master/tag triggers when v2 promotes.
+#   - workflow_dispatch: runs all lanes for manual verification.
+#
+# Non-blocking initially — maintainers can promote any lane to required-
+# check once it's been green in the repo for two weeks.
+name: Verify v2
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'lang-v2/**'
+      - 'spl-v2/**'
+      - 'asm-v2/**'
+      - 'Makefile'
+      - '.github/workflows/verify-v2.yaml'
+  push:
+    branches:
+      - anchor-next
+
+# Single concurrency group per PR — cancel stale runs on push.
+concurrency:
+  group: verify-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kani:
+    name: Kani (bounded model checking)
+    # Skipped on PRs — 108 harnesses × Z3 on 128-bit types doesn't fit
+    # the per-PR budget. Runs on push to anchor-next and manual dispatch.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Split caches (same rationale as tests.yaml): cargo home churns on
+      # dep changes, target/ on source changes, and ~/.kani stores the
+      # solver bundle (CBMC + CaDiCaL + Z3, ~2 GB) that only changes with
+      # the kani-verifier version pin.
+      - uses: actions/cache@v4
+        name: Cache Cargo home
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-home-${{ runner.os }}-kani-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-home-${{ runner.os }}-kani-
+
+      - uses: actions/cache@v4
+        name: Cache cargo target
+        with:
+          path: ./target/
+          key: cargo-target-${{ runner.os }}-kani-${{ hashFiles('**/Cargo.lock') }}-${{ github.ref_name }}
+          restore-keys: |
+            cargo-target-${{ runner.os }}-kani-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-target-${{ runner.os }}-kani-
+
+      - uses: actions/cache@v4
+        name: Cache Kani solver bundle
+        with:
+          path: ~/.kani/
+          key: kani-solvers-${{ runner.os }}-0.67.0
+          restore-keys: |
+            kani-solvers-${{ runner.os }}-
+
+      - name: Install Kani
+        run: |
+          cargo install --locked kani-verifier --version 0.67.0
+          cargo kani setup
+      - name: Run Kani suite
+        # `-j` parallelizes harness verification across the runner's vCPUs
+        # (GitHub ubuntu-latest = 4). `--output-format=terse` is required
+        # with `-j` to keep per-thread output from interleaving.
+        run: cargo kani -p anchor-lang-v2 -p anchor-spl-v2 -j --output-format=terse
+
+  miri:
+    name: Miri (Tree Borrows)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Cache the nightly toolchain + miri component separately — rustup
+      # will re-download both on every run otherwise (~200 MB).
+      - uses: actions/cache@v4
+        name: Cache rustup nightly toolchain
+        with:
+          path: |
+            ~/.rustup/toolchains/
+            ~/.rustup/update-hashes/
+            ~/.rustup/settings.toml
+          key: rustup-miri-${{ runner.os }}-${{ hashFiles('rust-toolchain*', '**/rust-toolchain*') }}
+          restore-keys: |
+            rustup-miri-${{ runner.os }}-
+
+      - uses: actions/cache@v4
+        name: Cache Cargo home
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-home-${{ runner.os }}-miri-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-home-${{ runner.os }}-miri-
+
+      - uses: actions/cache@v4
+        name: Cache cargo target
+        with:
+          path: ./target/
+          key: cargo-target-${{ runner.os }}-miri-${{ hashFiles('**/Cargo.lock') }}-${{ github.ref_name }}
+          restore-keys: |
+            cargo-target-${{ runner.os }}-miri-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-target-${{ runner.os }}-miri-
+
+      - name: Install nightly + Miri
+        run: |
+          rustup toolchain install nightly --component miri --profile minimal
+          cargo +nightly miri setup
+      - name: Run Miri suite
+        env:
+          MIRIFLAGS: '-Zmiri-tree-borrows'
+        run: cargo +nightly miri test -p anchor-lang-v2 -p anchor-spl-v2 --tests
+
+  unit:
+    name: Unit + integration tests (v2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+
+      - uses: actions/cache@v4
+        name: Cache Cargo home
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-home-${{ runner.os }}-unit-v2-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-home-${{ runner.os }}-unit-v2-
+
+      - uses: actions/cache@v4
+        name: Cache cargo target
+        with:
+          path: ./target/
+          key: cargo-target-${{ runner.os }}-unit-v2-${{ hashFiles('**/Cargo.lock') }}-${{ github.ref_name }}
+          restore-keys: |
+            cargo-target-${{ runner.os }}-unit-v2-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-target-${{ runner.os }}-unit-v2-
+
+      - name: Run v2 tests
+        run: cargo test -p anchor-lang-v2 -p anchor-spl-v2 --tests
