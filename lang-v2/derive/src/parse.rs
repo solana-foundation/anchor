@@ -1,6 +1,6 @@
 use {
     proc_macro2::TokenStream as TokenStream2,
-    quote::quote,
+    quote::{quote, quote_spanned},
     syn::{
         ext::IdentExt,
         parse::ParseStream,
@@ -40,7 +40,10 @@ pub struct AccountAttrs {
     pub seeds: Option<Expr>,
     /// Override program_id for PDA derivation: `seeds::program = expr`
     pub seeds_program: Option<Expr>,
-    pub has_one: Vec<(Ident, Option<Expr>)>,
+    /// `(keyword_span, target, error_expr)`. `keyword_span` is the span of
+    /// the `has_one` keyword itself so the deprecation warning emitted by
+    /// the codegen can underline the original attribute.
+    pub has_one: Vec<(proc_macro2::Span, Ident, Option<Expr>)>,
     pub address: Option<Expr>,
     pub address_error: Option<Expr>,
     pub owner: Option<Expr>,
@@ -170,6 +173,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                     // `seeds` arm without a peek check would eat the `seeds`
                     // ident and then fail to parse the following `::`.
                     "has_one" => {
+                        let keyword_span = ident.span();
                         input.parse::<Token![=]>()?;
                         let target: Ident = input.parse()?;
                         let err = if input.peek(Token![@]) {
@@ -178,7 +182,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                         } else {
                             None
                         };
-                        result.has_one.push((target, err));
+                        result.has_one.push((keyword_span, target, err));
                     }
                     "address" => {
                         input.parse::<Token![=]>()?;
@@ -393,10 +397,22 @@ pub struct AccountField {
     pub idl_has_one: Vec<String>,
     /// Stringified RHS of `#[account(address = <expr>)]`. Emitted verbatim
     /// as the `address` key of this field in the accounts JSON. `None` when
-    /// the attr is absent; wrapper types that carry a compile-time address
-    /// via `IdlAccountType::__IDL_ADDRESS` still emit the trait value when
-    /// this override is `None` (fields like `Program<System>`).
+    /// the attr is absent *or* when the RHS was v1-encodable (see
+    /// `idl_address_v1_source`) — in that case the constraint is surfaced
+    /// through `relations` instead, matching v1's IDL shape. Wrapper types
+    /// that carry a compile-time address via `IdlAccountType::__IDL_ADDRESS`
+    /// still emit the trait value when this override is `None`
+    /// (fields like `Program<System>`).
     pub idl_address: Option<String>,
+    /// Set when `#[account(address = <sibling>.<self_name>)]` was used,
+    /// i.e. the same relationship `#[has_one = <self_name>]` on `<sibling>`
+    /// would have expressed. The outer derive turns this into an inverse
+    /// `relations` entry on self (mirroring what v1 emits), so clients
+    /// that already handle `has_one` transparently pick up the v2 spelling.
+    /// `None` for the non-v1-encodable case (RHS is a constant path, a
+    /// call, or a sibling-field access whose subfield name differs from
+    /// self's field name).
+    pub idl_address_v1_source: Option<String>,
     /// Extracted `#[doc = "..."]` lines on the field, in source order.
     /// Emitted as `"docs":[...]` in the accounts JSON. Matches
     /// `IdlInstructionAccount.docs` (`idl/spec/src/lib.rs:83`).
@@ -422,6 +438,49 @@ pub struct AccountField {
 fn stringify_address_expr(expr: &Expr) -> String {
     let s = quote!(#expr).to_string();
     s.split_whitespace().collect()
+}
+
+/// If `expr` is the v1-encodable shape `<sibling>.<field>` where both:
+///   - `<sibling>` is a sibling field name, and
+///   - `<field>` matches `self_name` (the field carrying this constraint),
+/// returns `Some(<sibling>)`. Otherwise `None`.
+///
+/// This is exactly the constraint v1 expressed as
+/// `#[has_one = <self_name>]` on `<sibling>`. Matching the shape lets the
+/// derive emit the same IDL (`relations: [...]` on self) for both
+/// spellings, so tooling that already understands v1 has_one output
+/// keeps working unchanged.
+fn address_v1_relation_source(
+    expr: &Expr,
+    self_name: &str,
+    field_names: &[String],
+) -> Option<String> {
+    let fa = if let Expr::Field(fa) = expr {
+        fa
+    } else {
+        return None;
+    };
+    // Subfield must match self's ident, or v1 has_one couldn't express it.
+    let subfield = match &fa.member {
+        syn::Member::Named(ident) if ident == self_name => ident,
+        _ => return None,
+    };
+    let _ = subfield; // silence unused — we only needed it for the match guard
+    // Base must be a bare sibling ident (not a method call, not a path).
+    let base = if let Expr::Path(ep) = &*fa.base {
+        ep
+    } else {
+        return None;
+    };
+    if base.qself.is_some() || base.path.leading_colon.is_some() || base.path.segments.len() != 1 {
+        return None;
+    }
+    let seg = &base.path.segments[0];
+    if !seg.arguments.is_empty() {
+        return None;
+    }
+    let sibling = seg.ident.to_string();
+    field_names.contains(&sibling).then_some(sibling)
 }
 
 /// Rewrite a single seed expression so that a bare field-name identifier
@@ -700,15 +759,30 @@ pub fn parse_field(
     // `IdlAccountType::__IDL_IS_SIGNER` at runtime.
     let idl_init_signer = (attrs.is_init || attrs.is_init_if_needed) && attrs.seeds.is_none();
     let idl_writable = attrs.is_mut;
-    let idl_has_one: Vec<String> = attrs.has_one.iter().map(|(i, _)| i.to_string()).collect();
-    // Stringified RHS of `#[account(address = <expr>)]`, emitted as the
-    // account's `address` in the IDL JSON. Constant paths (`crate::ID`,
-    // `MY_CONST`) and zero-arg calls (`crate::id()`) serialize to a form
-    // the Anchor CLI can resolve to a base58 pubkey at IDL-build time;
-    // dynamic field-accesses (`data.authority`) serialize as a dotted
-    // path clients evaluate against sibling accounts. Either way, the
-    // IDL carries the user's intent instead of silently dropping it.
-    let idl_address: Option<String> = attrs.address.as_ref().map(stringify_address_expr);
+    let idl_has_one: Vec<String> = attrs
+        .has_one
+        .iter()
+        .map(|(_, i, _)| i.to_string())
+        .collect();
+    // Classify the `#[account(address = <expr>)]` RHS for IDL emission:
+    //
+    //   * `<sibling>.<self_name>` — v1-encodable as `has_one = <self_name>`
+    //     on `<sibling>`. Surface as a `relations` entry so tooling that
+    //     already speaks v1 output sees the same shape for both spellings.
+    //     `idl_address` stays `None` to avoid double-encoding the same
+    //     check.
+    //   * Anything else — constant path, const-fn call, or a field access
+    //     whose subfield doesn't match self's ident. Emit verbatim under
+    //     the `address` key; the Anchor CLI resolves constants to base58
+    //     pubkeys at IDL-build time, and dotted paths flow through as
+    //     client-side resolution hints.
+    let (idl_address, idl_address_v1_source) = match attrs.address.as_ref() {
+        Some(addr) => match address_v1_relation_source(addr, &field_name.to_string(), field_names) {
+            Some(sibling) => (None, Some(sibling)),
+            None => (Some(stringify_address_expr(addr)), None),
+        },
+        None => (None, None),
+    };
     let idl_docs = crate::idl::extract_doc_lines(&field.attrs);
     let idl_pda = attrs.seeds.as_ref().map(|seeds_expr| {
         let seed_entries = if let Expr::Array(arr) = seeds_expr {
@@ -782,6 +856,7 @@ pub fn parse_field(
             idl_init_signer: false,
             idl_has_one: vec![],
             idl_address: None,
+            idl_address_v1_source: None,
             idl_docs: vec![],
             idl_pda: None,
             idl_field_ty: None,
@@ -1071,13 +1146,26 @@ pub fn parse_field(
     }
 
     // has_one
-    for (ho, ho_err) in &attrs.has_one {
+    //
+    // This syntax is supported, but deprecated in favor of `address`.
+    for (ho_span, ho, ho_err) in &attrs.has_one {
         let err = if let Some(ref e) = ho_err {
             quote! { core::convert::Into::into(#e) }
         } else {
             quote! { anchor_lang_v2::ErrorCode::ConstraintHasOne.into() }
         };
+        let deprecation = quote_spanned! { *ho_span =>
+            {
+                #[deprecated(
+                    note = "`has_one` is deprecated; on the sibling field, use \
+                            `#[account(address = owner.field)]` instead."
+                )]
+                fn __deprecated_has_one() {}
+                __deprecated_has_one();
+            }
+        };
         constraints.push(quote! {
+            #deprecation
             if AsRef::<[u8]>::as_ref(&#field_name.#ho) != AsRef::<[u8]>::as_ref(#ho.account().address()) {
                 return Err(#err);
             }
@@ -1322,6 +1410,7 @@ pub fn parse_field(
         idl_init_signer,
         idl_has_one,
         idl_address,
+        idl_address_v1_source,
         idl_docs,
         idl_pda,
         idl_field_ty,

@@ -283,6 +283,48 @@ fn has_one_custom_err_mismatch_surfaces_custom() {
     assert_custom(&result, ERR_BAD_AUTHORITY);
 }
 
+// ---- 3b. address = <sibling>.<self> (v2 replacement for `has_one`) -------
+//
+// Same runtime invariant as handler 3's `has_one`, reached via the
+// `address` codegen branch. Worth testing independently because the
+// paths share neither emission nor error surface.
+
+#[test]
+fn address_field_path_match_ok() {
+    let (mut svm, payer, authority) = setup();
+    let data = init_data(&mut svm, &payer, &authority.pubkey());
+    call(
+        &mut svm,
+        &payer,
+        15,
+        vec![
+            AccountMeta::new_readonly(data, false),
+            AccountMeta::new_readonly(authority.pubkey(), false),
+        ],
+        &[],
+    )
+    .expect("address = data.authority match");
+}
+
+#[test]
+fn address_field_path_mismatch_rejected() {
+    let (mut svm, payer, authority) = setup();
+    let data = init_data(&mut svm, &payer, &authority.pubkey());
+    let wrong = Pubkey::new_unique();
+    let result = call_raw(
+        &mut svm,
+        &payer,
+        15,
+        vec![
+            AccountMeta::new_readonly(data, false),
+            AccountMeta::new_readonly(wrong, false),
+        ],
+        &[],
+    );
+    // Default `ConstraintAddress` -> `ProgramError::InvalidAccountData`.
+    assert_err_contains(&result, "InvalidAccountData");
+}
+
 // ---- 5. owner = expr -------------------------------------------------------
 
 #[test]
