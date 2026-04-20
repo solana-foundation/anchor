@@ -156,6 +156,17 @@ pub mod constraints {
     pub fn check_signer(_ctx: &mut Context<CheckSigner>) -> Result<()> {
         Ok(())
     }
+
+    /// `#[account(address = <sibling>.<field>)]` — the v2 spelling that
+    /// replaces `has_one` on the sibling account. Runtime check runs on
+    /// the `authority` field; same semantics as handler 3's `has_one`
+    /// path but reached via the `address` codegen branch.
+    #[discrim = 15]
+    pub fn check_address_field_path(
+        _ctx: &mut Context<CheckAddressFieldPath>,
+    ) -> Result<()> {
+        Ok(())
+    }
 }
 
 // -- Accounts structs --------------------------------------------------------
@@ -186,21 +197,35 @@ pub struct CheckAddressCustomErr {
     pub pinned: UncheckedAccount,
 }
 
-// 3. has_one = authority
-#[derive(Accounts)]
-pub struct CheckHasOne {
-    #[account(has_one = authority)]
-    pub data: Account<Data>,
-    pub authority: UncheckedAccount,
-}
+// 3+4. has_one = authority [@ MyErr::BadAuthority]
+//
+// `has_one` is deprecated, so the derive emits a `deprecated` warning at
+// each usage site. Wrapping the structs in a submodule gated by
+// `#[expect(deprecated)]` both silences the warnings AND turns the
+// expectation into a compile error if the derive ever stops emitting
+// the deprecation — a free compile-time regression check. The
+// `__client_accounts_*` helper modules the `#[program]` macro references
+// are also inside the submodule, so the glob re-export below hoists
+// everything back to crate root for the handler resolution.
+#[expect(deprecated)]
+mod has_one_structs {
+    use super::*;
 
-// 4. has_one = authority @ MyErr::BadAuthority
-#[derive(Accounts)]
-pub struct CheckHasOneCustomErr {
-    #[account(has_one = authority @ MyErr::BadAuthority)]
-    pub data: Account<Data>,
-    pub authority: UncheckedAccount,
+    #[derive(Accounts)]
+    pub struct CheckHasOne {
+        #[account(has_one = authority)]
+        pub data: Account<Data>,
+        pub authority: UncheckedAccount,
+    }
+
+    #[derive(Accounts)]
+    pub struct CheckHasOneCustomErr {
+        #[account(has_one = authority @ MyErr::BadAuthority)]
+        pub data: Account<Data>,
+        pub authority: UncheckedAccount,
+    }
 }
+pub use has_one_structs::*;
 
 // 5. owner = System
 #[derive(Accounts)]
@@ -317,13 +342,27 @@ fn _rent_exempt_codegen_witness(_ctx: &mut Context<CheckRentExempt>) {}
 //     derive). The runtime `DoInitIfNeeded` uses `seeds = [b"maybe"]`, so
 //     a dedicated struct is needed to hit the no-seeds branch.
 
-/// Fixture for the `address = <dotted path>` IDL test. The RHS walks a
-/// sibling account's field, which clients resolve at request time.
+/// Fixture for the v1-encodable `address = <sibling>.<self_name>` shape:
+/// the subfield name (`authority`) matches the field holding the
+/// constraint (`authority`), so v1's `has_one = authority` on `data`
+/// expresses exactly the same check. IDL surfaces it as `relations`, not
+/// `address`.
 #[derive(Accounts)]
 pub struct CheckAddressFieldPath {
     pub data: Account<Data>,
     #[account(address = data.authority)]
     pub authority: UncheckedAccount,
+}
+
+/// Fixture for the non-v1-encodable dotted-path shape: the subfield name
+/// (`authority`) differs from the field holding the constraint
+/// (`owner`), so no `has_one` spelling can express the check. IDL
+/// surfaces the path verbatim under `address`.
+#[derive(Accounts)]
+pub struct CheckAddressFieldPathRenamed {
+    pub data: Account<Data>,
+    #[account(address = data.authority)]
+    pub owner: UncheckedAccount,
 }
 
 /// Fixture for the `init_if_needed` no-seeds signer emission. The account
@@ -404,20 +443,41 @@ mod idl_tests {
         }
 
         #[test]
-        fn dotted_field_path_rhs_emits_dotted_address() {
-            // `address = data.authority` — the v2 replacement for
-            // `has_one = authority` on the `data` field. The dotted
-            // path is a client-side resolution instruction, not a
-            // compile-time pubkey.
+        fn v1_encodable_field_path_emits_relation_not_address() {
+            // `address = data.authority` on field `authority` — the
+            // subfield name matches the field's own ident, so v1's
+            // `has_one = authority` on `data` expresses the same check.
+            // Emitter routes it through `relations` for shape parity.
             let items = parse(&CheckAddressFieldPath::__idl_accounts());
-            // `data` (the source account) carries no `address`.
             let data = single(&items, 0);
             assert_eq!(data.name, "data");
-            assert_eq!(data.address, None);
-            // `authority` (the referencing field) carries the dotted path.
+            // The source of the relation carries no `relations` entry.
+            assert!(data.relations.is_empty());
             let authority = single(&items, 1);
             assert_eq!(authority.name, "authority");
-            assert_eq!(authority.address.as_deref(), Some("data.authority"));
+            assert_eq!(authority.address, None);
+            assert_eq!(
+                authority.relations,
+                vec!["data".to_string()],
+                "expected v1-encodable address to surface as a relation"
+            );
+        }
+
+        #[test]
+        fn non_v1_encodable_field_path_emits_dotted_address() {
+            // `address = data.authority` on field `owner` — the subfield
+            // name (`authority`) doesn't match the field's ident, which
+            // no `has_one` spelling in v1 can express. The path falls
+            // through to the `address` key verbatim for client-side
+            // resolution.
+            let items = parse(&CheckAddressFieldPathRenamed::__idl_accounts());
+            let data = single(&items, 0);
+            assert_eq!(data.name, "data");
+            assert!(data.relations.is_empty());
+            let owner = single(&items, 1);
+            assert_eq!(owner.name, "owner");
+            assert!(owner.relations.is_empty());
+            assert_eq!(owner.address.as_deref(), Some("data.authority"));
         }
     }
 

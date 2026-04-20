@@ -329,6 +329,14 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
     // Build the inverse has_one mapping: relations on field `X` lists every
     // sibling whose `has_one = X` chain targets X. Mirrors v1's
     // `get_relations` — relations live on the target, not the source.
+    //
+    // Two sources feed this map:
+    //   * `has_one = X` on field `f` → push `f` to `X.relations`.
+    //   * `address = <sibling>.<f>` on `f` (the v1-encodable shape) →
+    //     same inverse as if `<sibling>` had written `has_one = f`: push
+    //     `<sibling>` to `f.relations`. The non-encodable shapes (const
+    //     paths, subfield name ≠ `f`) leave `idl_address_v1_source = None`
+    //     and land in the `address` JSON key instead.
     let relations_by_target: std::collections::HashMap<String, Vec<String>> = {
         let mut m: std::collections::HashMap<String, Vec<String>> =
             std::collections::HashMap::new();
@@ -336,6 +344,9 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             let src = f.name.to_string();
             for target in &f.idl_has_one {
                 m.entry(target.clone()).or_default().push(src.clone());
+            }
+            if let Some(sibling) = &f.idl_address_v1_source {
+                m.entry(src.clone()).or_default().push(sibling.clone());
             }
         }
         m
