@@ -167,3 +167,200 @@ fn test_borsh_realloc_shrink() {
     let items = read_items(&svm, &pda);
     assert_eq!(items, small_items, "data should be [1,2] after shrink");
 }
+
+#[test]
+fn test_borsh_realloc_shrink_to_empty() {
+    let (mut svm, payer) = setup();
+    let pda = data_pda();
+
+    // Initialize with [1, 2, 3]
+    let init_data = borsh_realloc::instruction::Initialize {}.data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        init_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("initialize");
+    assert_eq!(read_items(&svm, &pda), vec![1, 2, 3]);
+
+    // Shrink to empty vec
+    let shrink_data = borsh_realloc::instruction::Shrink {
+        new_items: vec![],
+    }
+    .data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        shrink_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("shrink to empty");
+
+    let items = read_items(&svm, &pda);
+    assert!(items.is_empty(), "items should be empty after shrink to zero");
+
+    // Verify account size: disc(8) + vec_len(4) + 0 data = 12
+    let account = svm.get_account(&pda).unwrap();
+    assert_eq!(account.data.len(), 12, "account should be exactly 12 bytes");
+}
+
+#[test]
+fn test_borsh_realloc_grow_shrink_grow_roundtrip() {
+    let (mut svm, payer) = setup();
+    let pda = data_pda();
+
+    // Initialize with [1, 2, 3]
+    let init_data = borsh_realloc::instruction::Initialize {}.data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        init_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("initialize");
+
+    // Grow to [1..=20]
+    let big: Vec<u8> = (1..=20).collect();
+    let grow_data = borsh_realloc::instruction::Grow {
+        new_items: big.clone(),
+    }
+    .data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        grow_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("grow to 20");
+    assert_eq!(read_items(&svm, &pda), big);
+
+    // Shrink to [10, 20]
+    let small: Vec<u8> = vec![10, 20];
+    let shrink_data = borsh_realloc::instruction::Shrink {
+        new_items: small.clone(),
+    }
+    .data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        shrink_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("shrink to 2");
+    assert_eq!(read_items(&svm, &pda), small);
+
+    // Grow again to [100..=110]
+    let regrown: Vec<u8> = (100..=110).collect();
+    let grow2_data = borsh_realloc::instruction::Grow {
+        new_items: regrown.clone(),
+    }
+    .data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        grow2_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("re-grow to 11");
+    assert_eq!(read_items(&svm, &pda), regrown, "data should survive grow-shrink-grow roundtrip");
+}
+
+#[test]
+fn test_borsh_realloc_grow_from_empty() {
+    let (mut svm, payer) = setup();
+    let pda = data_pda();
+
+    // Initialize with [1, 2, 3]
+    let init_data = borsh_realloc::instruction::Initialize {}.data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        init_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("initialize");
+
+    // Shrink to empty
+    let shrink_data = borsh_realloc::instruction::Shrink {
+        new_items: vec![],
+    }
+    .data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        shrink_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("shrink to empty");
+    assert!(read_items(&svm, &pda).is_empty());
+
+    // Grow from empty to [42, 43, 44, 45, 46]
+    let items: Vec<u8> = vec![42, 43, 44, 45, 46];
+    let grow_data = borsh_realloc::instruction::Grow {
+        new_items: items.clone(),
+    }
+    .data();
+    send_instruction(
+        &mut svm,
+        program_id(),
+        grow_data,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(pda, false),
+            AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+        ],
+        &payer,
+        &[],
+    )
+    .expect("grow from empty");
+    assert_eq!(read_items(&svm, &pda), items, "should grow correctly from empty state");
+}

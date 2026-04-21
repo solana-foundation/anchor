@@ -445,6 +445,189 @@ fn token_authority_constraint_accepts_matching() {
         .expect("token::authority match should pass");
 }
 
+// ---- CPI negative tests ---------------------------------------------------
+
+#[test]
+fn transfer_checked_rejects_wrong_decimals() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mint-auth");
+    let owner = keypair_for("owner");
+    let recipient = keypair_for("recipient");
+
+    let (mint, from) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 1000);
+    let to = Keypair::new();
+    do_init_token_account(&mut svm, &payer, &mint, &to, &recipient.pubkey());
+
+    // Pass decimals=9 when mint has decimals=6
+    let mut data = vec![4];
+    data.extend_from_slice(&100u64.to_le_bytes());
+    data.push(9); // wrong
+    let metas = vec![
+        AccountMeta::new(from, false),
+        AccountMeta::new_readonly(mint, false),
+        AccountMeta::new(to.pubkey(), false),
+        AccountMeta::new_readonly(owner.pubkey(), true),
+        AccountMeta::new_readonly(token_program_id(), false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), data, metas, &payer, &[&owner]);
+    assert!(result.is_err(), "wrong decimals should be rejected by SPL token program");
+}
+
+#[test]
+fn transfer_rejects_insufficient_balance() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mint-auth");
+    let owner = keypair_for("owner");
+    let recipient = keypair_for("recipient");
+
+    let (mint, from) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 100);
+    let to = Keypair::new();
+    do_init_token_account(&mut svm, &payer, &mint, &to, &recipient.pubkey());
+
+    // Try to transfer 200 when only 100 available
+    let mut data = vec![3];
+    data.extend_from_slice(&200u64.to_le_bytes());
+    let metas = vec![
+        AccountMeta::new(from, false),
+        AccountMeta::new(to.pubkey(), false),
+        AccountMeta::new_readonly(owner.pubkey(), true),
+        AccountMeta::new_readonly(token_program_id(), false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), data, metas, &payer, &[&owner]);
+    assert!(result.is_err(), "overdraft should be rejected");
+}
+
+#[test]
+fn mint_to_rejects_wrong_authority() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mint-auth");
+    let impostor = keypair_for("impostor");
+    svm.airdrop(&impostor.pubkey(), 1_000_000_000).unwrap();
+    let owner = keypair_for("owner");
+
+    let (mint, token) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 0);
+
+    let mut data = vec![2];
+    data.extend_from_slice(&500u64.to_le_bytes());
+    let metas = vec![
+        AccountMeta::new(mint, false),
+        AccountMeta::new(token, false),
+        AccountMeta::new_readonly(impostor.pubkey(), true),
+        AccountMeta::new_readonly(token_program_id(), false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), data, metas, &payer, &[&impostor]);
+    assert!(result.is_err(), "wrong mint authority should be rejected");
+
+    // Verify nothing was minted
+    let state = SplTokenAccount::unpack(&svm.get_account(&token).unwrap().data).unwrap();
+    assert_eq!(state.amount, 0, "balance should be unchanged after failed mint");
+}
+
+#[test]
+fn burn_rejects_wrong_authority() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mint-auth");
+    let owner = keypair_for("owner");
+    let impostor = keypair_for("impostor");
+    svm.airdrop(&impostor.pubkey(), 1_000_000_000).unwrap();
+
+    let (mint, token) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 500);
+
+    let mut data = vec![5];
+    data.extend_from_slice(&100u64.to_le_bytes());
+    let metas = vec![
+        AccountMeta::new(token, false),
+        AccountMeta::new(mint, false),
+        AccountMeta::new_readonly(impostor.pubkey(), true),
+        AccountMeta::new_readonly(token_program_id(), false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), data, metas, &payer, &[&impostor]);
+    assert!(result.is_err(), "wrong burn authority should be rejected");
+
+    let state = SplTokenAccount::unpack(&svm.get_account(&token).unwrap().data).unwrap();
+    assert_eq!(state.amount, 500, "balance should be unchanged after failed burn");
+}
+
+#[test]
+fn close_account_rejects_non_zero_balance() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mint-auth");
+    let owner = keypair_for("owner");
+    let (_mint, token) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 500);
+
+    let dest = keypair_for("dest");
+    let metas = vec![
+        AccountMeta::new(token, false),
+        AccountMeta::new(dest.pubkey(), false),
+        AccountMeta::new_readonly(owner.pubkey(), true),
+        AccountMeta::new_readonly(token_program_id(), false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![8], metas, &payer, &[&owner]);
+    assert!(result.is_err(), "closing account with non-zero balance should be rejected");
+}
+
+// ---- Constraint negative tests --------------------------------------------
+
+#[test]
+fn mint_decimals_constraint_rejects_mismatch() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("mint-auth");
+
+    // Create a normal mint with decimals=6 via our program
+    let mint = Keypair::new();
+    do_init_mint(&mut svm, &payer, &mint, &authority.pubkey());
+
+    // Mutate the on-chain data to change decimals from 6 to 9.
+    // Mint layout: [authority_flag:4][authority:32][supply:8][decimals:1][is_init:1][...]
+    // decimals is at byte offset 44.
+    let mut account = svm.get_account(&mint.pubkey()).expect("mint exists");
+    assert_eq!(account.data[44], 6, "sanity: original decimals should be 6");
+    account.data[44] = 9;
+    svm.set_account(mint.pubkey(), account).unwrap();
+
+    // check_mint_decimals (discrim=11) expects decimals=6
+    let metas = vec![AccountMeta::new(mint.pubkey(), false)];
+    let result = send_instruction(&mut svm, program_id(), vec![11], metas, &payer, &[]);
+    assert!(result.is_err(), "mint with decimals=9 should fail decimals=6 constraint");
+}
+
+#[test]
+fn token_mint_constraint_rejects_mismatch() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mint-auth");
+    let owner = keypair_for("owner");
+
+    // Create two different mints
+    let (mint_a, _token_a) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 0);
+    let (_mint_b, token_b) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 0);
+
+    // check_token_mint (discrim=13) with mint_a but token_b (which belongs to mint_b)
+    let metas = vec![
+        AccountMeta::new_readonly(mint_a, false),
+        AccountMeta::new(token_b, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![13], metas, &payer, &[]);
+    assert!(result.is_err(), "token::mint mismatch should be rejected");
+}
+
+#[test]
+fn token_authority_constraint_rejects_mismatch() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mint-auth");
+    let owner = keypair_for("owner");
+    let wrong = keypair_for("wrong-auth");
+
+    let (_mint, token) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 0);
+
+    // check_token_authority (discrim=14) with wrong expected authority
+    let metas = vec![
+        AccountMeta::new_readonly(wrong.pubkey(), false),
+        AccountMeta::new(token, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![14], metas, &payer, &[]);
+    assert!(result.is_err(), "token::authority mismatch should be rejected");
+}
+
 // ---- ATA derivation --------------------------------------------------------
 
 #[test]

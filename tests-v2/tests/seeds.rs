@@ -5,11 +5,13 @@
 //! bare-bump (runtime find) and explicit stored-bump variants.
 
 use {
-    anchor_lang_v2::solana_program::instruction::AccountMeta,
-    litesvm::LiteSVM,
+    anchor_lang_v2::solana_program::instruction::{AccountMeta, Instruction},
+    litesvm::{types::TransactionResult, LiteSVM},
     solana_keypair::Keypair,
+    solana_message::{Message, VersionedMessage},
     solana_pubkey::Pubkey,
     solana_signer::Signer,
+    solana_transaction::versioned::VersionedTransaction,
     tests_v2::{build_program, keypair_for, send_instruction},
 };
 
@@ -171,4 +173,78 @@ fn wrong_pda_rejected() {
         AccountMeta::new_readonly(wrong, false),
     ]);
     assert!(result.is_err(), "wrong PDA should be rejected");
+}
+
+fn call_raw(
+    svm: &mut LiteSVM,
+    payer: &Keypair,
+    disc: u8,
+    accounts: Vec<AccountMeta>,
+) -> TransactionResult {
+    let ix = Instruction::new_with_bytes(program_id(), &[disc], accounts);
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
+    let signers: Vec<&dyn solana_signer::Signer> = vec![payer];
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &signers).unwrap();
+    svm.send_transaction(tx)
+}
+
+#[test]
+fn wrong_bump_value_rejected() {
+    let (mut svm, payer) = setup();
+    let data = data_pda();
+
+    // Init the PDA — stores canonical bump in data.bump (byte offset 16)
+    call(&mut svm, &payer, 0, vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(data, false),
+        AccountMeta::new_readonly(Pubkey::default(), false),
+    ]).expect("init_literal");
+
+    // Read the canonical bump and corrupt it
+    let mut account = svm.get_account(&data).expect("data exists");
+    let original_bump = account.data[16];
+    account.data[16] = original_bump.wrapping_add(1); // off-by-one
+    svm.set_account(data, account).unwrap();
+
+    // check_literal_explicit_bump (discrim=2) uses `bump = data.bump`
+    // — the corrupted bump won't match the PDA derivation
+    let result = call_raw(&mut svm, &payer, 2, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(data, false),
+    ]);
+    assert!(result.is_err(), "off-by-one bump should be rejected");
+    let err = format!("{:?}", result.unwrap_err().err);
+    assert!(
+        err.contains("InvalidSeeds") || err.contains("Custom("),
+        "expected InvalidSeeds error, got: {err}"
+    );
+}
+
+#[test]
+fn mixed_seeds_wrong_order_rejected() {
+    let (mut svm, payer) = setup();
+
+    // Derive PDA with reversed seed order: [payer, b"user"] instead of [b"user", payer]
+    let wrong_pda = Pubkey::find_program_address(
+        &[payer.pubkey().as_ref(), b"user"],
+        &program_id(),
+    ).0;
+
+    // Init the correct PDA first so the program is deployed
+    let correct_pda = user_pda(&payer.pubkey());
+    call(&mut svm, &payer, 7, vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(correct_pda, false),
+        AccountMeta::new_readonly(Pubkey::default(), false),
+    ]).expect("init_mixed");
+
+    svm.expire_blockhash();
+
+    // check_mixed (discrim=8) with the reversed-seed PDA
+    let result = call_raw(&mut svm, &payer, 8, vec![
+        AccountMeta::new_readonly(payer.pubkey(), true),
+        AccountMeta::new_readonly(wrong_pda, false),
+    ]);
+    assert!(result.is_err(), "PDA from wrong seed order should be rejected");
 }
