@@ -74,9 +74,28 @@ coverage-v2-host:
 		--output-path $(COVERAGE_DIR)/host.lcov \
 		--ignore-filename-regex='(\.cargo|target/debug/build|/runner/work/)'
 
-# Merge the two LCOV files into one. The sbf tool already filters to files
-# that exist on disk, so phantom dep paths are gone. We just drop stdlib and
-# registry paths from the host LCOV.
+# Merge the two LCOV files into one.
+#
+# `cargo-llvm-cov` instruments every line of every file it compiles, including
+# SBF-runtime code pulled in as a path dep of `tests-v2` (lang-v2/src/*.rs,
+# spl-v2/src/*.rs). Those files never execute host-side, so every line comes
+# through host.lcov as `DA:N,0`. When merged naively, those zeros pollute
+# lines that SBF's DWARF traces couldn't pin down (typically the signature
+# and closing-brace of `#[inline(always)]` helpers that got partially erased
+# by LLVM), displaying them as "uncovered" despite the body running.
+#
+# The filter:
+#   - For each file that appears in sbf.lcov (meaning SBF has some coverage
+#     for it): drop host's `DA:N,0` entries. Those 0s are artifacts of
+#     host-side instrumentation of code that only runs in the VM.
+#   - For files NOT in sbf.lcov (genuinely untested — no test program ever
+#     loaded that code): keep host entries as-is so the "uncovered"
+#     signal survives.
+#
+# Side effect: for SBF-tested files, lines SBF couldn't pin down via DWARF
+# go from "red/uncovered" to "gray/uninstrumented" in the report — a
+# cosmetic accuracy win since those lines often have no machine code at
+# all after `#[inline(always)]` erasure.
 .PHONY: coverage-v2-merge
 coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 	@echo "==> Merging coverage"
@@ -84,7 +103,22 @@ coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 		echo "lcov not installed. Run: brew install lcov  (or apt install lcov)"; \
 		exit 1; \
 	}
-	lcov -a $(COVERAGE_DIR)/sbf.lcov -a $(COVERAGE_DIR)/host.lcov \
+	awk ' \
+		FNR == NR { \
+			if ($$0 ~ /^SF:/) { f=$$0; sub("^SF:", "", f); sbf[f]=1 } \
+			next \
+		} \
+		/^SF:/ { f=$$0; sub("^SF:", "", f); in_sbf = (f in sbf); print; next } \
+		in_sbf && /^DA:/ { split($$0, a, ","); if (a[2]+0 == 0) next } \
+		{ print } \
+		' $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov \
+		> $(COVERAGE_DIR)/host.filtered.lcov
+	# Recompute LF/LH for files we mutated — lcov -a keeps the original
+	# counts if they don't agree with the DA lines. Drop stale summary
+	# lines and let lcov rebuild them on load.
+	sed -i.bak '/^LF:/d;/^LH:/d' $(COVERAGE_DIR)/host.filtered.lcov
+	rm -f $(COVERAGE_DIR)/host.filtered.lcov.bak
+	lcov -a $(COVERAGE_DIR)/sbf.lcov -a $(COVERAGE_DIR)/host.filtered.lcov \
 		-o $(COVERAGE_DIR)/combined.lcov
 	lcov --remove $(COVERAGE_DIR)/combined.lcov \
 		'/Users/runner/*' '/home/runner/*' '*/.cargo/*' '*/target/*' \
