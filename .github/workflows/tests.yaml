@@ -146,11 +146,9 @@ jobs:
         run: cargo +nightly miri test -p anchor-lang-v2 -p anchor-spl-v2 --tests
 
       # Kani — bounded model checking on Pod arithmetic, AccountBitvec,
-      # rent math, and System-program Transfer wire format. `-j
-      # --output-format=terse` parallelises across the runner's vCPUs
-      # (required together — Kani rejects `-j` without terse output).
-      # Caches the solver bundle (~2 GB: CBMC, CaDiCaL, Z3) keyed on
-      # Kani's pinned version so bumping kani-verifier invalidates.
+      # rent math, and System-program Transfer wire format. Caches the
+      # solver bundle (~2 GB: CBMC, CaDiCaL, Z3) keyed on Kani's pinned
+      # version so bumping kani-verifier invalidates.
       - uses: actions/cache@v4
         name: Cache Kani solver bundle
         with:
@@ -162,8 +160,11 @@ jobs:
         run: |
           cargo install --locked kani-verifier --version 0.67.0
           cargo kani setup
+      # Serial. kani-driver 0.67.0 panics on an unrecognized `ERROR`
+      # status that CBMC emits when Z3 flakes under `-j` contention on
+      # the runner. Locally all 132 harnesses pass in ~20s.
       - name: Kani harnesses for anchor-lang-v2 + anchor-spl-v2
-        run: cargo kani -p anchor-lang-v2 -p anchor-spl-v2 -j --output-format=terse
+        run: cargo kani -p anchor-lang-v2 -p anchor-spl-v2 --output-format=terse
 
       # CLI: unit-test + build sanity only. No anchor-binary install,
       # no `anchor build`/`anchor test` flows, no tests/* integration.
