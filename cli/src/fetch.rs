@@ -14,7 +14,7 @@ use {
     },
     solana_signature::Signature,
     solana_transaction_status_client_types::*,
-    std::{io::Read, str::FromStr},
+    std::{io::Read, path::PathBuf, str::FromStr},
 };
 
 // IDL Historical Fetch - Type Definitions and Constants
@@ -399,17 +399,9 @@ fn decompress_and_validate(compressed_data: &[u8]) -> Result<Vec<u8>> {
 }
 
 fn output_idl_data(idl_data: &[u8], slot: u64, out_dir: Option<String>) -> Result<()> {
-    if let Some(out_dir) = out_dir {
-        std::fs::create_dir_all(&out_dir)?;
-        output_idl(
-            idl_data,
-            IdlOutputDestination::File {
-                path: format!("{}/idl_{}.json", out_dir, slot),
-            },
-        )?;
-    } else {
-        output_idl(idl_data, IdlOutputDestination::Stdout { slot })?;
-    }
+    let out_dir = resolve_idl_output_dir(out_dir.as_deref())?;
+    std::fs::create_dir_all(&out_dir)?;
+    output_idl(idl_data, &single_idl_output_path(slot, &out_dir))?;
     Ok(())
 }
 
@@ -587,49 +579,42 @@ fn output_idls(
     idls: Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>,
     out_dir: Option<String>,
 ) -> Result<()> {
-    if let Some(ref out_dir) = out_dir {
-        std::fs::create_dir_all(out_dir)?;
-    }
+    let out_dir = resolve_idl_output_dir(out_dir.as_deref())?;
+    std::fs::create_dir_all(&out_dir)?;
 
     for (i, (sig, idl_data)) in idls.iter().enumerate() {
-        let destination = if let Some(ref out_dir) = out_dir {
-            IdlOutputDestination::File {
-                path: format!("{}/idl_v{}_{}.json", out_dir, i + 1, sig.slot),
-            }
-        } else {
-            IdlOutputDestination::Stdout { slot: sig.slot }
-        };
-        output_idl(idl_data, destination)?;
+        output_idl(
+            idl_data,
+            &historical_idl_output_path(i + 1, sig.slot, &out_dir),
+        )?;
     }
 
     Ok(())
 }
 
-enum IdlOutputDestination {
-    Stdout { slot: u64 },
-    File { path: String },
-}
-
-fn output_idl(idl_data: &[u8], destination: IdlOutputDestination) -> Result<()> {
-    match destination {
-        IdlOutputDestination::Stdout { slot } => {
-            println!("\nIDL at slot {}:", slot);
-            println!("{}", format_idl_for_stdout(idl_data)?);
-        }
-        IdlOutputDestination::File { path } => {
-            std::fs::write(&path, idl_data)?;
-            println!("Saved IDL to: {}", path);
-        }
-    }
-
+fn output_idl(idl_data: &[u8], path: &PathBuf) -> Result<()> {
+    std::fs::write(path, idl_data)?;
+    println!("Saved IDL to: {}", path.display());
     Ok(())
 }
 
-fn format_idl_for_stdout(idl_data: &[u8]) -> Result<String> {
-    match serde_json::from_slice::<serde_json::Value>(idl_data) {
-        Ok(idl) => Ok(serde_json::to_string_pretty(&idl)?),
-        Err(_) => Ok(String::from_utf8_lossy(idl_data).into_owned()),
-    }
+// Resolve the output directory for the IDL.
+// If no output directory is provided, use the current directory.
+fn resolve_idl_output_dir(out_dir: Option<&str>) -> Result<PathBuf> {
+    out_dir.map(PathBuf::from).map_or_else(
+        || std::env::current_dir().map_err(Into::into),
+        |path| Ok(path),
+    )
+}
+
+// Generate the output path for a single IDL.
+fn single_idl_output_path(slot: u64, out_dir: &std::path::Path) -> PathBuf {
+    out_dir.join(format!("idl_{}.json", slot))
+}
+
+// Generate the output path for a historical IDL. Format: idl_v{version}_{slot}.json
+fn historical_idl_output_path(version: usize, slot: u64, out_dir: &std::path::Path) -> PathBuf {
+    out_dir.join(format!("idl_v{}_{}.json", version, slot))
 }
 
 fn extract_chunks_from_transaction(

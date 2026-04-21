@@ -721,7 +721,7 @@ pub enum IdlCommand {
         /// Fetch IDL after this date (YYYY-MM-DD)
         #[clap(long, conflicts_with = "all")]
         after: Option<String>,
-        /// Output directory for fetched versions (stdout if not specified)
+        /// Output directory for fetched versions (defaults to the current directory)
         #[clap(long)]
         out_dir: Option<String>,
     },
