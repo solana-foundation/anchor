@@ -4,8 +4,12 @@ use {
     quote::{quote, quote_spanned, ToTokens},
     std::collections::VecDeque,
     syn::{
-        parse::ParseStream, parse_macro_input, punctuated::Punctuated, token::Comma, Attribute,
-        DeriveInput, Field, Fields, GenericArgument, PathArguments, Type, TypeArray,
+        parse::{Parse, ParseStream},
+        parse_macro_input,
+        punctuated::Punctuated,
+        token::Comma,
+        Attribute, DeriveInput, Expr, Field, Fields, GenericArgument, PathArguments, Type,
+        TypeArray,
     },
 };
 
