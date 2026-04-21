@@ -788,3 +788,263 @@ impl<T: bytemuck::Pod, const MAX: usize> Default for PodVec<T, MAX> {
         unsafe { core::mem::zeroed() }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    extern crate alloc;
+    use {super::*, alloc::format};
+
+    // ---- Unsigned integer Pod types ---------------------------------------
+
+    #[test]
+    fn pod_u64_round_trips_through_native() {
+        let p = PodU64::from(42u64);
+        assert_eq!(p.get(), 42);
+        let back: u64 = p.into();
+        assert_eq!(back, 42);
+    }
+
+    #[test]
+    fn pod_unsigned_constants_match_native_bounds() {
+        assert_eq!(PodU64::ZERO.get(), 0);
+        assert_eq!(PodU64::MAX.get(), u64::MAX);
+        assert_eq!(PodU64::MIN.get(), u64::MIN);
+        assert_eq!(PodU32::MAX.get(), u32::MAX);
+        assert_eq!(PodU16::MAX.get(), u16::MAX);
+        assert_eq!(PodU128::MAX.get(), u128::MAX);
+    }
+
+    #[test]
+    fn pod_is_zero_reflects_underlying_value() {
+        assert!(PodU64::ZERO.is_zero());
+        assert!(!PodU64::from(1u64).is_zero());
+    }
+
+    #[test]
+    fn pod_arithmetic_ops_match_native() {
+        let a = PodU64::from(10u64);
+        let b = PodU64::from(3u64);
+        assert_eq!((a + b).get(), 13);
+        assert_eq!((a - b).get(), 7);
+        assert_eq!((a * b).get(), 30);
+        assert_eq!((a / b).get(), 3);
+        assert_eq!((a % b).get(), 1);
+
+        // Mixed native rhs.
+        assert_eq!((a + 5u64).get(), 15);
+        assert_eq!((a - 5u64).get(), 5);
+        assert_eq!((a * 2u64).get(), 20);
+        assert_eq!((a / 2u64).get(), 5);
+        assert_eq!((a % 3u64).get(), 1);
+    }
+
+    #[test]
+    fn pod_assign_ops_mutate_in_place() {
+        let mut x = PodU64::from(5u64);
+        x += 3u64;
+        assert_eq!(x.get(), 8);
+        x -= 2u64;
+        assert_eq!(x.get(), 6);
+        x *= 4u64;
+        assert_eq!(x.get(), 24);
+        x /= 3u64;
+        assert_eq!(x.get(), 8);
+        x %= 5u64;
+        assert_eq!(x.get(), 3);
+
+        // Pod-rhs variants.
+        let mut y = PodU64::from(100u64);
+        y += PodU64::from(10u64);
+        assert_eq!(y.get(), 110);
+        y -= PodU64::from(5u64);
+        assert_eq!(y.get(), 105);
+        y *= PodU64::from(2u64);
+        assert_eq!(y.get(), 210);
+        y /= PodU64::from(7u64);
+        assert_eq!(y.get(), 30);
+        y %= PodU64::from(7u64);
+        assert_eq!(y.get(), 2);
+    }
+
+    #[test]
+    fn pod_checked_arith_detects_overflow() {
+        let max = PodU64::MAX;
+        assert_eq!(max.checked_add(1u64), None);
+        assert_eq!(PodU64::ZERO.checked_sub(1u64), None);
+        assert_eq!(max.checked_mul(2u64), None);
+        assert_eq!(PodU64::from(10u64).checked_div(0u64), None);
+
+        assert_eq!(PodU64::from(10u64).checked_add(5u64).unwrap().get(), 15);
+        assert_eq!(PodU64::from(10u64).checked_sub(3u64).unwrap().get(), 7);
+        assert_eq!(PodU64::from(10u64).checked_mul(3u64).unwrap().get(), 30);
+        assert_eq!(PodU64::from(10u64).checked_div(3u64).unwrap().get(), 3);
+    }
+
+    #[test]
+    fn pod_saturating_arith_caps_at_bounds() {
+        assert_eq!(PodU64::MAX.saturating_add(1u64), PodU64::MAX);
+        assert_eq!(PodU64::ZERO.saturating_sub(1u64), PodU64::ZERO);
+        assert_eq!(PodU64::MAX.saturating_mul(2u64), PodU64::MAX);
+
+        assert_eq!(PodU64::from(10u64).saturating_add(5u64).get(), 15);
+        assert_eq!(PodU64::from(10u64).saturating_sub(3u64).get(), 7);
+        assert_eq!(PodU64::from(10u64).saturating_mul(3u64).get(), 30);
+    }
+
+    #[test]
+    fn pod_comparisons_match_native_ordering() {
+        let a = PodU64::from(5u64);
+        let b = PodU64::from(10u64);
+
+        assert!(a < b);
+        assert!(b > a);
+        assert!(a <= PodU64::from(5u64));
+        assert!(a >= PodU64::from(5u64));
+        assert_eq!(a, PodU64::from(5u64));
+        assert_ne!(a, b);
+
+        // Mixed native-rhs comparisons.
+        assert_eq!(a, 5u64);
+        assert!(a < 10u64);
+
+        // Ord.
+        assert_eq!(a.cmp(&b), core::cmp::Ordering::Less);
+    }
+
+    #[test]
+    fn pod_display_and_debug_format_as_native() {
+        let p = PodU64::from(42u64);
+        assert_eq!(format!("{p}"), "42");
+        assert_eq!(format!("{p:?}"), "PodU64(42)");
+    }
+
+    // ---- Signed integer Pod types -----------------------------------------
+
+    #[test]
+    fn pod_signed_handles_negative_values() {
+        let p = PodI64::from(-42i64);
+        assert_eq!(p.get(), -42);
+
+        let a = PodI64::from(10i64);
+        let b = PodI64::from(-3i64);
+        assert_eq!((a + b).get(), 7);
+        assert_eq!((a - b).get(), 13);
+        assert_eq!((a * b).get(), -30);
+    }
+
+    #[test]
+    fn pod_signed_neg_flips_sign() {
+        let p = PodI32::from(7i32);
+        assert_eq!((-p).get(), -7);
+        assert_eq!((-(-p)).get(), 7);
+    }
+
+    #[test]
+    fn pod_signed_min_max_roundtrip() {
+        assert_eq!(PodI64::MAX.get(), i64::MAX);
+        assert_eq!(PodI64::MIN.get(), i64::MIN);
+    }
+
+    // ---- PodBool ----------------------------------------------------------
+
+    #[test]
+    fn pod_bool_any_nonzero_byte_is_true() {
+        assert!(!PodBool::from(false).get());
+        assert!(PodBool::from(true).get());
+        let back: bool = PodBool::from(true).into();
+        assert!(back);
+    }
+
+    #[test]
+    fn pod_bool_not_flips_value() {
+        assert!((!PodBool::from(false)).get());
+        assert!(!(!PodBool::from(true)).get());
+    }
+
+    #[test]
+    fn pod_bool_equality_and_display() {
+        assert_eq!(PodBool::from(true), PodBool::from(true));
+        assert_ne!(PodBool::from(true), PodBool::from(false));
+        assert_eq!(PodBool::from(true), true);
+        assert_eq!(format!("{}", PodBool::from(true)), "true");
+        assert_eq!(format!("{:?}", PodBool::from(false)), "PodBool(false)");
+    }
+
+    // ---- PodVec -----------------------------------------------------------
+
+    #[test]
+    fn pod_vec_default_is_empty() {
+        let v: PodVec<PodU32, 8> = PodVec::default();
+        assert_eq!(v.len(), 0);
+        assert!(v.is_empty());
+        assert!(!v.is_full());
+        assert_eq!(v.as_slice().len(), 0);
+    }
+
+    #[test]
+    fn pod_vec_push_pop_roundtrip() {
+        let mut v: PodVec<PodU64, 4> = PodVec::default();
+        v.push(PodU64::from(1u64));
+        v.push(PodU64::from(2u64));
+        v.push(PodU64::from(3u64));
+        assert_eq!(v.len(), 3);
+        assert_eq!(v.first().unwrap().get(), 1);
+        assert_eq!(v.last().unwrap().get(), 3);
+        assert_eq!(v.get(1).unwrap().get(), 2);
+
+        assert_eq!(v.pop().unwrap().get(), 3);
+        assert_eq!(v.len(), 2);
+    }
+
+    #[test]
+    fn pod_vec_try_push_returns_err_at_capacity() {
+        let mut v: PodVec<PodU32, 2> = PodVec::default();
+        v.try_push(PodU32::from(1u32)).unwrap();
+        v.try_push(PodU32::from(2u32)).unwrap();
+        assert!(v.is_full());
+        assert!(v.try_push(PodU32::from(3u32)).is_err());
+    }
+
+    #[test]
+    fn pod_vec_clear_and_truncate() {
+        let mut v: PodVec<PodU32, 8> = PodVec::default();
+        for i in 0..5u32 {
+            v.push(PodU32::from(i));
+        }
+        assert_eq!(v.len(), 5);
+
+        v.truncate(2);
+        assert_eq!(v.len(), 2);
+
+        v.clear();
+        assert_eq!(v.len(), 0);
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn pod_vec_iter_yields_pushed_elements() {
+        let mut v: PodVec<PodU16, 4> = PodVec::default();
+        v.push(PodU16::from(10u16));
+        v.push(PodU16::from(20u16));
+        v.push(PodU16::from(30u16));
+
+        let collected: alloc::vec::Vec<u16> = v.iter().map(|p| p.get()).collect();
+        assert_eq!(collected, alloc::vec![10, 20, 30]);
+
+        // Mutating iteration.
+        for item in v.iter_mut() {
+            *item = PodU16::from(item.get() * 2);
+        }
+        let doubled: alloc::vec::Vec<u16> = (&v).into_iter().map(|p| p.get()).collect();
+        assert_eq!(doubled, alloc::vec![20, 40, 60]);
+    }
+
+    #[test]
+    fn pod_vec_get_out_of_bounds_returns_none() {
+        let mut v: PodVec<PodU64, 4> = PodVec::default();
+        v.push(PodU64::from(1u64));
+        assert!(v.get(0).is_some());
+        assert!(v.get(1).is_none());
+        assert!(v.get_mut(1).is_none());
+    }
+}
