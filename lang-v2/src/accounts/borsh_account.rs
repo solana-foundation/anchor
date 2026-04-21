@@ -30,6 +30,11 @@ pub struct BorshAccount<T: BorshDeserialize + BorshSerialize + Owner + Discrimin
     view: AccountView,
     data: T,
     borrow: BorshBorrow,
+    /// Owner snapshotted at load time. `reacquire_borrow_mut` re-checks
+    /// `view.owned_by(&expected_owner)` because a released-window CPI
+    /// could transfer the account away from `T::owner(program_id)` while
+    /// leaving the discriminator + Borsh-compatible payload in place.
+    expected_owner: Address,
 }
 
 // Forward `Space::INIT_SPACE` from the inner type and add 8 for the
@@ -66,10 +71,53 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
         self.borrow = BorshBorrow::Released;
     }
 
-    /// Re-acquire a mutable borrow after a `release_borrow()` + resize/CPI.
-    /// The underlying buffer may have changed size — any subsequent exit()
-    /// will serialize through the fresh RefMut.
+    /// Re-acquire a mutable borrow after a `release_borrow()` + CPI.
+    ///
+    /// Re-runs the full load-time invariants (owner / size /
+    /// discriminator) and re-deserializes `self.data` from the live
+    /// buffer, so CPI-induced changes are picked up and a CPI that
+    /// reassigned the account or swapped its disc is rejected. Any
+    /// in-memory modifications to `self.data` made before
+    /// `release_borrow` are dropped — re-apply them after this call
+    /// if needed.
+    ///
+    /// Returns `IllegalOwner` / `AccountDataTooSmall` /
+    /// `InvalidAccountData` if the account no longer validates as `T`.
     pub fn reacquire_borrow_mut(&mut self) -> Result<(), ProgramError> {
+        // Re-run the load-time invariants. A CPI in the release window
+        // could have mutated owner, discriminator, or payload in any
+        // combination — without re-checking, we'd accept an account that
+        // no longer validates as `T`.
+        if !self.view.owned_by(&self.expected_owner) {
+            return Err(ProgramError::IllegalOwner);
+        }
+        let mut view_mut = self.view;
+        let data_ref = view_mut.try_borrow_mut()?;
+        if data_ref.len() < DISC_LEN {
+            return Err(ProgramError::AccountDataTooSmall);
+        }
+        if &data_ref[..DISC_LEN] != T::DISCRIMINATOR {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        self.data = T::deserialize(&mut &data_ref[DISC_LEN..])
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
+        self.borrow = BorshBorrow::Mutable { guard };
+        Ok(())
+    }
+
+    /// Refresh only the borrow guard without touching `self.data`. Used
+    /// after a scope-local buffer resize — the `realloc` account
+    /// constraint emits this after `realloc_account`, and `exit()`'s
+    /// stale-size path calls it too — where the user's in-memory
+    /// modifications to `self.data` must be preserved for the subsequent
+    /// serialize. Re-deserializing here would read the pre-resize bytes
+    /// still on disk, which fails in the shrink case where the stored
+    /// Borsh length prefix now exceeds the post-resize buffer.
+    ///
+    /// For post-CPI use (where CPI may have mutated owner, disc, or
+    /// payload), use [`reacquire_borrow_mut`] instead.
+    pub fn reacquire_guard_only(&mut self) -> Result<(), ProgramError> {
         let mut view_mut = self.view;
         let data_ref = view_mut.try_borrow_mut()?;
         let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
@@ -115,6 +163,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
             view,
             data,
             borrow: BorshBorrow::Immutable { _guard: guard },
+            expected_owner: T::owner(program_id),
         })
     }
 
@@ -141,6 +190,7 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
             view,
             data,
             borrow: BorshBorrow::Mutable { guard },
+            expected_owner: T::owner(program_id),
         })
     }
 
@@ -189,7 +239,11 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         let stale = matches!(&self.borrow, BorshBorrow::Mutable { guard } if guard.len() != self.view.data_len());
         if stale {
             self.release_borrow();
-            self.reacquire_borrow_mut()?;
+            // Use reacquire_guard_only here — we do NOT want to re-read
+            // self.data from the (potentially just-resized) buffer.
+            // The user's in-memory modifications to self.data are what
+            // we're about to serialize.
+            self.reacquire_guard_only()?;
         }
         if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
             self.data
@@ -283,6 +337,7 @@ where
             view: *account,
             data,
             borrow: BorshBorrow::Mutable { guard },
+            expected_owner: T::owner(program_id),
         })
     }
 }
