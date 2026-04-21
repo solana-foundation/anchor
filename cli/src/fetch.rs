@@ -1,17 +1,21 @@
-use crate::cluster_url;
-use crate::config::{get_solana_cfg_url, Config, ConfigOverride};
-use anyhow::{anyhow, Result};
-use flate2::read::ZlibDecoder;
-use indicatif::{ProgressBar, ProgressStyle};
-use solana_commitment_config::CommitmentConfig;
-use solana_pubkey::Pubkey;
-use solana_rpc_client::rpc_client::RpcClient;
-use solana_rpc_client_api::config::RpcTransactionConfig;
-use solana_rpc_client_api::response::RpcConfirmedTransactionStatusWithSignature;
-use solana_signature::Signature;
-use solana_transaction_status_client_types::*;
-use std::io::Read;
-use std::str::FromStr;
+use {
+    crate::{
+        cluster_url,
+        config::{get_solana_cfg_url, Config, ConfigOverride},
+    },
+    anyhow::{anyhow, Result},
+    flate2::read::ZlibDecoder,
+    indicatif::{ProgressBar, ProgressStyle},
+    solana_commitment_config::CommitmentConfig,
+    solana_pubkey::Pubkey,
+    solana_rpc_client::rpc_client::RpcClient,
+    solana_rpc_client_api::{
+        config::RpcTransactionConfig, response::RpcConfirmedTransactionStatusWithSignature,
+    },
+    solana_signature::Signature,
+    solana_transaction_status_client_types::*,
+    std::{io::Read, str::FromStr},
+};
 
 // IDL Historical Fetch - Type Definitions and Constants
 const FULL_CHUNK_THRESHOLD: usize = 1000;
@@ -36,7 +40,8 @@ impl<'a> IdlFetcher<'a> {
         let current_slot = self.client.get_slot()?;
         if target_slot > current_slot {
             return Err(anyhow::format_err!(
-                "Target slot {} is greater than the current slot {}. Cannot fetch IDL from a future slot.",
+                "Target slot {} is greater than the current slot {}. Cannot fetch IDL from a \
+                 future slot.",
                 target_slot,
                 current_slot
             ));
@@ -266,7 +271,10 @@ pub fn idl_fetch_at_slot(
     let pb = ProgressBar::new(total_sigs as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} transactions ({eta})")
+            .template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} \
+                 transactions ({eta})",
+            )
             .unwrap()
             .progress_chars("#>-"),
     );
@@ -440,7 +448,10 @@ pub fn idl_fetch_historical(
     let pb = ProgressBar::new(filtered_signatures.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} transactions ({eta})")
+            .template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} \
+                 transactions ({eta})",
+            )
             .unwrap()
             .progress_chars("#>-"),
     );
