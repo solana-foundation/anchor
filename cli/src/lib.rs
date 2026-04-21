@@ -100,9 +100,9 @@ pub enum Command {
         /// Don't install JavaScript dependencies
         #[clap(long)]
         no_install: bool,
-        /// Package Manager to use (auto-detects bun, pnpm, npm if not specified)
-        #[clap(value_enum, long)]
-        package_manager: Option<PackageManager>,
+        /// Package Manager to use (defaults to yarn if not specified)
+        #[clap(value_enum, long, default_value = "yarn")]
+        package_manager: PackageManager,
         /// Don't initialize git
         #[clap(long)]
         no_git: bool,
@@ -1357,13 +1357,12 @@ fn is_package_manager_available(pm: &PackageManager) -> bool {
         .is_ok()
 }
 
-
 fn init(
     cfg_override: &ConfigOverride,
     name: String,
     javascript: bool,
     no_install: bool,
-    package_manager: Option<PackageManager>,
+    package_manager: PackageManager,
     no_git: bool,
     template: ProgramTemplate,
     test_template: TestTemplate,
@@ -1394,23 +1393,11 @@ fn init(
         ));
     }
 
-    // Resolve package manager before touching the filesystem
-    let package_manager = match package_manager {
-        Some(pm) => {
-            if !is_package_manager_available(&pm) {
-                return Err(anyhow!("{pm} not found. Install it or pass a different --package-manager."));
-            }
-            pm
-        }
-        None => {
-            if !is_package_manager_available(&PackageManager::Yarn) {
-                return Err(anyhow!(
-                    "Default package manager yarn not found. Install it or pass --package-manager <pm>."
-                ));
-            }
-            PackageManager::Yarn
-        }
-    };
+    if !is_package_manager_available(&package_manager) {
+        return Err(anyhow!(
+            "Package manager {package_manager} not found. Install it or pass --package-manager <pm>."
+        ));
+    }
 
     if force {
         fs::create_dir_all(&project_name)?;
@@ -1418,7 +1405,6 @@ fn init(
         fs::create_dir(&project_name)?;
     }
 
-    let _parent_dir = std::env::current_dir()?;
     std::env::set_current_dir(&project_name)?;
     fs::create_dir_all("app")?;
 
@@ -5340,7 +5326,7 @@ mod tests {
             "await".to_string(),
             true,
             true,
-            None,
+            PackageManager::default(),
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -5362,7 +5348,7 @@ mod tests {
             "fn".to_string(),
             true,
             true,
-            None,
+            PackageManager::default(),
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
@@ -5384,7 +5370,7 @@ mod tests {
             "1project".to_string(),
             true,
             true,
-            None,
+            PackageManager::default(),
             false,
             ProgramTemplate::default(),
             TestTemplate::default(),
