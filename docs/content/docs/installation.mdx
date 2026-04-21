@@ -29,8 +29,8 @@ After installation, you should see output similar to the following:
 ```
 Installed Versions:
 Rust: rustc 1.85.0 (4d91de4e4 2025-02-17)
-Solana CLI: solana-cli 2.1.15 (src:53545685; feat:3271415109, client:Agave)
-Anchor CLI: anchor-cli 0.32.1
+Solana CLI: solana-cli 3.1.10 (src:7bc9c805; feat:1620780344, client:Agave)
+Anchor CLI: anchor-cli 1.0.0
 Node.js: v23.9.0
 Yarn: 1.22.1
 
@@ -335,7 +335,7 @@ Anchor versions on your system and easily update Anchor versions in the future.
 Install AVM with the following command:
 
 ```shell title="Terminal"
-cargo install --git https://github.com/coral-xyz/anchor avm --force
+cargo install --git https://github.com/solana-foundation/anchor avm --force
 ```
 
 Check that AVM was installed successfully:
@@ -355,8 +355,8 @@ Alternatively, you can install a specific version of Anchor CLI by specifying
 the version number:
 
 ```shell title="Terminal"
-avm install 0.32.1
-avm use 0.32.1
+avm install 1.0.0
+avm use 1.0.0
 ```
 
 <Callout type="info">
@@ -365,7 +365,7 @@ Don't forget to run the `avm use` command to declare which Anchor CLI version
 should be used on your system.
 
 - If you installed the `latest` version, run `avm use latest`.
-- If you installed the version `0.32.1`, run `avm use 0.32.1`.
+- If you installed the version `1.0.0`, run `avm use 1.0.0`.
 
 </Callout>
 
@@ -376,7 +376,7 @@ should be used on your system.
 Install a specific version of the Anchor CLI with the following command:
 
 ```shell title="Terminal"
-cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli
+cargo install --git https://github.com/solana-foundation/anchor --tag v1.0.0 anchor-cli
 ```
 
 </Tab>
@@ -391,7 +391,7 @@ anchor --version
 You should see output similar to the following:
 
 ```
-anchor-cli 0.32.1
+anchor-cli 1.0.0
 ```
 
 <Callout type="warn">
@@ -413,9 +413,11 @@ If you see this error message, follow these steps:
 
 #### Node.js and Yarn
 
-Node.js and Yarn are required to run the default Anchor project test file
-(TypeScript) created with the `anchor init` command. (Rust test template is also
-available using `anchor init --test-template rust`)
+Node.js and Yarn are required for project initialization and when using
+a TypeScript-based test template (`mocha`, `jest`). The default test template
+(`litesvm`) does not run TypeScript tests, so they are not needed for
+day-to-day development once initialization is complete. They are expected to
+become fully optional in a future release.
 
 <Accordions>
 <Accordion title="Node Installation">
@@ -512,7 +514,7 @@ You can fix this by changing the version field of `Cargo.lock` file from 4 to 3:
 +version = 3
 ```
 
-See [this issue](https://github.com/coral-xyz/anchor/issues/3392) for more
+See [this issue](https://github.com/solana-foundation/anchor/issues/3392) for more
 information.
 
 </Accordion>
@@ -684,7 +686,7 @@ Alternatively, you can get devnet SOL using the
 ### Run Local Validator
 
 The Solana CLI comes with the
-[test validator](https://docs.solanalabs.com/cli/examples/test-validator)
+[test validator](https://docs.anza.xyz/cli/examples/test-validator)
 built-in. Running a local validator will allow you to deploy and test your
 programs locally.
 
@@ -727,8 +729,13 @@ anchor init my-project
 ```
 
 This command creates a new directory with the project name and initializes a new
-Anchor project with a modular Rust program structure and TypeScript test
-template.
+Anchor project with a modular Rust program structure. By default, tests are
+written in Rust using the [LiteSVM](https://github.com/LiteSVM/litesvm) crate.
+Use `--test-template` to choose a different template (`mollusk`, `mocha`, `jest`, etc):
+
+```shell title="Terminal"
+anchor init my-project --test-template mollusk
+```
 
 <Callout type="info">
 

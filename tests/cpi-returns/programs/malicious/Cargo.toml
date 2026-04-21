@@ -1,0 +1,20 @@
+[package]
+name = "malicious"
+version = "0.1.0"
+description = "PoC: Malicious program that spoofs CPI return data"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "malicious"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = { path = "../../../../lang", features = ["init-if-needed"] }

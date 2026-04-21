@@ -1,8 +1,9 @@
-use anchor_lang_idl::types::{Idl, IdlInstructionAccountItem, IdlInstructionAccounts};
-use heck::CamelCase;
-use quote::{format_ident, quote};
-
-use super::common::{get_all_instruction_accounts, get_canonical_program_id};
+use {
+    super::common::{get_all_instruction_accounts, get_canonical_program_id},
+    anchor_lang_idl::types::{Idl, IdlInstructionAccountItem, IdlInstructionAccounts},
+    heck::CamelCase,
+    quote::{format_ident, quote},
+};
 
 pub fn gen_parsers_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let account = gen_account(idl);
@@ -172,6 +173,7 @@ fn gen_instruction(idl: &Idl) -> proc_macro2::TokenStream {
                 }
                 IdlInstructionAccountItem::Composite(accs) => {
                     let name = format_ident!("{}", accs.name);
+                    #[allow(clippy::expect_used, reason = "accounts are guaranteed to exist by prior deduplication pass")]
                     let accounts = all_ix_accs
                         .iter()
                         .find(|a| a.accounts == accs.accounts)

@@ -1,7 +1,11 @@
-use crate::accounts_codegen::constraints::OptionalCheckScope;
-use crate::codegen::accounts::{generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct, Ty};
-use quote::quote;
+use {
+    crate::{
+        accounts_codegen::constraints::OptionalCheckScope,
+        codegen::accounts::{generics, ParsedGenerics},
+        AccountField, AccountsStruct, Ty,
+    },
+    quote::quote,
+};
 
 // Generates the `Exit` trait implementation.
 pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
@@ -29,6 +33,10 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 let ident = &f.ident;
                 let name_str = ident.to_string();
                 if f.constraints.is_close() {
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "is_close() guarantees close constraint is Some"
+                    )]
                     let close_target = &f.constraints.close.as_ref().unwrap().sol_dest;
                     let close_target_optional_check =
                         OptionalCheckScope::new(accs).generate_check(close_target);

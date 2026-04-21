@@ -16,6 +16,30 @@ pub fn test_account_parser() {
     // Correct discriminator and valid data
     match Account::parse(&[DISC, &[1, 0, 0, 0]].concat()) {
         Ok(Account::MyAccount(my_account)) => assert_eq!(my_account.field, 1),
+        Ok(_) => panic!("Expected MyAccount account variant"),
+        Err(e) => panic!("Expected Ok result, got error: {:?}", e),
+    }
+
+    // Unsafe zero-copy account
+    let packed_account = external::accounts::PackedAccount {
+        a: [1; 8],
+        b: [2; 8],
+    };
+    const PACKED_DISC: &[u8] = external::accounts::PackedAccount::DISCRIMINATOR;
+    match Account::parse(
+        &[
+            PACKED_DISC,
+            anchor_lang::__private::bytemuck::bytes_of(&packed_account),
+        ]
+        .concat(),
+    ) {
+        Ok(Account::PackedAccount(packed_account)) => {
+            let a = packed_account.a;
+            let b = packed_account.b;
+            assert_eq!(a, [1; 8]);
+            assert_eq!(b, [2; 8]);
+        }
+        Ok(_) => panic!("Expected PackedAccount account variant"),
         Err(e) => panic!("Expected Ok result, got error: {:?}", e),
     }
 }
@@ -40,8 +64,10 @@ pub fn test_event_parser() {
 
 #[test]
 pub fn test_instruction_parser() {
-    use anchor_lang::solana_program::instruction::Instruction as SolanaInstruction;
-    use external::parsers::Instruction;
+    use {
+        anchor_lang::solana_program::instruction::Instruction as SolanaInstruction,
+        external::parsers::Instruction,
+    };
 
     // Incorrect program
     assert!(Instruction::parse(&SolanaInstruction::new_with_bytes(
@@ -281,8 +307,8 @@ pub fn test_instruction_parser() {
 #[test]
 #[cfg(not(feature = "idl-build"))]
 pub fn test_errors() {
-    use external::errors::ProgramError;
+    use external::error::ExternalError;
 
-    assert_eq!(ProgramError::MyNormalError as u32, 6000);
-    assert_eq!(ProgramError::MyErrorWithSpecialOffset as u32, 6500);
+    assert_eq!(ExternalError::MyNormalError as u32, 6000);
+    assert_eq!(ExternalError::MyErrorWithSpecialOffset as u32, 6500);
 }

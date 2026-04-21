@@ -1,52 +1,62 @@
-use crate::config::{
-    get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
-    Manifest, PackageManager, ProgramArch, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
-    SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
-    STARTUP_WAIT, SURFPOOL_HOST,
+use {
+    crate::config::{
+        get_default_ledger_path, BootstrapMode, BuildConfig, Config, ConfigOverride, HookType,
+        Manifest, PackageManager, ProgramDeployment, ProgramWorkspace, ScriptsConfig,
+        SurfnetInfoResponse, SurfpoolConfig, TestValidator, ValidatorType, WithPath, SHUTDOWN_WAIT,
+        STARTUP_WAIT, SURFPOOL_HOST,
+    },
+    abs_path::AbsolutePath,
+    anchor_cli_macros::AbsolutePath,
+    anchor_client::Cluster,
+    anchor_lang::{
+        prelude::UpgradeableLoaderState, solana_program::bpf_loader_upgradeable, AnchorDeserialize,
+    },
+    anchor_lang_idl::{
+        convert::convert_idl,
+        types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy},
+    },
+    anyhow::{anyhow, bail, Context, Result},
+    checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow},
+    clap::{CommandFactory, Parser},
+    dirs::home_dir,
+    heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase},
+    regex::{Regex, RegexBuilder},
+    rust_template::{ProgramTemplate, TestTemplate},
+    semver::{Version, VersionReq},
+    serde_json::{json, Map, Value as JsonValue},
+    solana_cli_config::Config as SolanaCliConfig,
+    solana_commitment_config::CommitmentConfig,
+    solana_compute_budget_interface::ComputeBudgetInstruction,
+    solana_instruction::Instruction,
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_pubsub_client::pubsub_client::{PubsubClient, PubsubClientSubscription},
+    solana_rpc_client::rpc_client::RpcClient,
+    solana_rpc_client_api::{
+        config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter},
+        request::RpcRequest,
+        response::{Response as RpcResponse, RpcLogsResponse},
+    },
+    solana_signer::{EncodableKey, Signer},
+    std::{
+        collections::{BTreeMap, HashMap, HashSet},
+        ffi::OsString,
+        fs::{self, File},
+        io::prelude::*,
+        path::{Path, PathBuf},
+        process::{Child, ExitStatus, Stdio},
+        string::ToString,
+        sync::LazyLock,
+    },
 };
-use anchor_client::Cluster;
-use anchor_lang::prelude::UpgradeableLoaderState;
-use anchor_lang::solana_program::bpf_loader_upgradeable;
-use anchor_lang::AnchorDeserialize;
-use anchor_lang_idl::convert::convert_idl;
-use anchor_lang_idl::types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy};
-use anyhow::{anyhow, bail, Context, Result};
-use checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow};
-use clap::{CommandFactory, Parser};
-use dirs::home_dir;
-use heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use regex::{Regex, RegexBuilder};
-use rust_template::{ProgramTemplate, TestTemplate};
-use semver::{Version, VersionReq};
-use serde_json::{json, Map, Value as JsonValue};
-use solana_cli_config::Config as SolanaCliConfig;
-use solana_commitment_config::CommitmentConfig;
-use solana_compute_budget_interface::ComputeBudgetInstruction;
-use solana_instruction::Instruction;
-use solana_keypair::Keypair;
-use solana_pubkey::Pubkey;
-use solana_pubsub_client::pubsub_client::{PubsubClient, PubsubClientSubscription};
-use solana_rpc_client::rpc_client::RpcClient;
-use solana_rpc_client_api::config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter};
-use solana_rpc_client_api::request::RpcRequest;
-use solana_rpc_client_api::response::{Response as RpcResponse, RpcLogsResponse};
-use solana_signer::{EncodableKey, Signer};
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::ffi::OsString;
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command as ProcessCommand, Stdio};
-use std::string::ToString;
-use std::sync::LazyLock;
 
+mod abs_path;
 mod account;
 mod checks;
 pub mod config;
 pub mod fetch;
 mod keygen;
+mod metadata;
 mod program;
 pub mod rust_template;
 
@@ -69,7 +79,7 @@ pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
     }
 });
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 #[clap(version = VERSION)]
 pub struct Opts {
     #[clap(flatten)]
@@ -78,7 +88,7 @@ pub struct Opts {
     pub command: Command,
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum Command {
     /// Initializes a workspace.
     Init {
@@ -100,11 +110,14 @@ pub enum Command {
         #[clap(value_enum, short, long, default_value = "multiple")]
         template: ProgramTemplate,
         /// Test template to use
-        #[clap(value_enum, long, default_value = "mocha")]
+        #[clap(value_enum, long, default_value = "litesvm")]
         test_template: TestTemplate,
         /// Initialize even if there are files
         #[clap(long, action)]
         force: bool,
+        /// Install Solana agent skills
+        #[clap(long)]
+        install_agent_skills: bool,
     },
     /// Builds the workspace.
     #[clap(name = "build", alias = "b")]
@@ -150,9 +163,6 @@ pub enum Command {
         /// Suppress doc strings in IDL output
         #[clap(long)]
         no_docs: bool,
-        /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "sbf")]
-        arch: ProgramArch,
     },
     /// Expands macros (wrapper around cargo expand)
     ///
@@ -164,6 +174,9 @@ pub enum Command {
         /// Expand only this program
         #[clap(short, long)]
         program_name: Option<String>,
+        /// Write to stdout
+        #[clap(long)]
+        stdout: bool,
         /// Arguments to pass to the underlying `cargo expand` command
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
@@ -215,9 +228,6 @@ pub enum Command {
         /// Do not build the IDL
         #[clap(long)]
         no_idl: bool,
-        /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "sbf")]
-        arch: ProgramArch,
         /// Flag to keep the local validator running after tests
         /// to be able to check the transactions.
         #[clap(long)]
@@ -263,7 +273,7 @@ pub enum Command {
         program_name: Option<String>,
         /// Keypair of the program (filepath) (requires program-name)
         #[clap(long, requires = "program_name")]
-        program_keypair: Option<String>,
+        program_keypair: Option<PathBuf>,
         /// If true, deploy from path target/verifiable
         #[clap(short, long)]
         verifiable: bool,
@@ -286,7 +296,7 @@ pub enum Command {
         #[clap(short, long)]
         program_id: Pubkey,
         /// Filepath to the new program binary.
-        program_filepath: String,
+        program_filepath: PathBuf,
         /// Max times to retry on failure.
         #[clap(long, default_value = "0")]
         max_retries: u32,
@@ -344,9 +354,6 @@ pub enum Command {
         /// Skip checking for program ID mismatch between keypair and declare_id
         #[clap(long)]
         ignore_keys: bool,
-        /// Architecture to use when building the program
-        #[clap(value_enum, long, default_value = "sbf")]
-        arch: ProgramArch,
         /// Validator type to use for local testing
         #[clap(value_enum, long, default_value = "surfpool")]
         validator: ValidatorType,
@@ -363,9 +370,9 @@ pub enum Command {
         account_type: String,
         /// Address of the account to deserialize
         address: Pubkey,
-        /// IDL to use (defaults to workspace IDL)
+        /// Path of IDL to use (defaults to workspace IDL)
         #[clap(long)]
-        idl: Option<String>,
+        idl: Option<PathBuf>,
     },
     /// Generates shell completions.
     Completions {
@@ -413,13 +420,13 @@ pub enum Command {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum KeygenCommand {
     /// Generate a new keypair
     New {
         /// Path to generated keypair file
         #[clap(short = 'o', long)]
-        outfile: Option<String>,
+        outfile: Option<PathBuf>,
         /// Overwrite the output file if it exists
         #[clap(short, long)]
         force: bool,
@@ -436,13 +443,13 @@ pub enum KeygenCommand {
     /// Display the pubkey for a given keypair
     Pubkey {
         /// Keypair filepath
-        keypair: Option<String>,
+        keypair: Option<PathBuf>,
     },
     /// Recover a keypair from a seed phrase
     Recover {
         /// Path to recovered keypair file
         #[clap(short = 'o', long)]
-        outfile: Option<String>,
+        outfile: Option<PathBuf>,
         /// Overwrite the output file if it exists
         #[clap(short, long)]
         force: bool,
@@ -458,11 +465,11 @@ pub enum KeygenCommand {
         /// Public key to verify
         pubkey: Pubkey,
         /// Keypair filepath (defaults to configured wallet)
-        keypair: Option<String>,
+        keypair: Option<PathBuf>,
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum KeysCommand {
     /// List all of the program keys.
     List,
@@ -474,19 +481,19 @@ pub enum KeysCommand {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum ProgramCommand {
     /// Deploy an upgradeable program
     Deploy {
         /// Program filepath (e.g., target/deploy/my_program.so).
         /// If not provided, discovers programs from workspace
-        program_filepath: Option<String>,
+        program_filepath: Option<PathBuf>,
         /// Program name to deploy (from workspace). Used when program_filepath is not provided
         #[clap(short, long)]
         program_name: Option<String>,
         /// Program keypair filepath (defaults to target/deploy/{program_name}-keypair.json)
         #[clap(long)]
-        program_keypair: Option<String>,
+        program_keypair: Option<PathBuf>,
         /// Upgrade authority keypair (defaults to configured wallet)
         #[clap(long)]
         upgrade_authority: Option<String>,
@@ -513,7 +520,7 @@ pub enum ProgramCommand {
     WriteBuffer {
         /// Program filepath (e.g., target/deploy/my_program.so).
         /// If not provided, discovers program from workspace using program_name
-        program_filepath: Option<String>,
+        program_filepath: Option<PathBuf>,
         /// Program name to write (from workspace). Used when program_filepath is not provided
         #[clap(short, long)]
         program_name: Option<String>,
@@ -576,7 +583,7 @@ pub enum ProgramCommand {
         program_id: Pubkey,
         /// Program filepath (e.g., target/deploy/my_program.so). If not provided, discovers from workspace
         #[clap(long)]
-        program_filepath: Option<String>,
+        program_filepath: Option<PathBuf>,
         /// Program name to upgrade (from workspace). Used when program_filepath is not provided
         #[clap(short, long)]
         program_name: Option<String>,
@@ -631,25 +638,39 @@ pub enum ProgramCommand {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum IdlCommand {
     /// Initializes a program's IDL account. Can only be run once.
     Init {
+        /// Program id to initialize IDL for.
+        /// If not provided, discovers program ID from IDL.
+        program_id: Option<Pubkey>,
         #[clap(short, long)]
-        filepath: String,
+        filepath: PathBuf,
         #[clap(long)]
         priority_fee: Option<u64>,
         /// Create non-canonical metadata account (third-party metadata)
         #[clap(long)]
         non_canonical: bool,
+        /// Allow running against a localnet cluster (disabled by default)
+        #[clap(long)]
+        #[cfg(feature = "idl-localnet-testing")]
+        allow_localnet: bool,
     },
     /// Upgrades the IDL to the new file. An alias for first writing and then
     /// then setting the idl buffer account.
     Upgrade {
+        /// Program id to upgrade IDL for.
+        /// If not provided, discovers program ID from IDL.
+        program_id: Option<Pubkey>,
         #[clap(short, long)]
-        filepath: String,
+        filepath: PathBuf,
         #[clap(long)]
         priority_fee: Option<u64>,
+        /// Allow running against a localnet cluster (disabled by default)
+        #[clap(long)]
+        #[cfg(feature = "idl-localnet-testing")]
+        allow_localnet: bool,
     },
     /// Generates the IDL for the program using the compilation method.
     #[clap(alias = "b")]
@@ -673,10 +694,9 @@ pub enum IdlCommand {
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
     },
-    /// Fetches an IDL for the given address from a cluster.
-    /// The address can be a program, IDL account, or IDL buffer.
+    /// Fetches an IDL for the given program from a cluster.
     Fetch {
-        address: Pubkey,
+        program_id: Pubkey,
         /// Output file for the IDL (stdout if not specified).
         #[clap(short, long)]
         out: Option<String>,
@@ -702,21 +722,22 @@ pub enum IdlCommand {
     /// Convert legacy IDLs (pre Anchor 0.30) to the new IDL spec
     Convert {
         /// Path to the IDL file
-        path: String,
+        path: PathBuf,
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
-        out: Option<String>,
-        /// Address to use (defaults to `metadata.address` value)
+        out: Option<PathBuf>,
+        /// Program id to initialize IDL for.
+        /// If not provided, discovers program ID from IDL.
         #[clap(short, long)]
         program_id: Option<Pubkey>,
     },
     /// Generate TypeScript type for the IDL
     Type {
         /// Path to the IDL file
-        path: String,
+        path: PathBuf,
         /// Output file for the IDL (stdout if not specified)
         #[clap(short, long)]
-        out: Option<String>,
+        out: Option<PathBuf>,
     },
     /// Close a metadata account and recover rent
     Close {
@@ -733,7 +754,7 @@ pub enum IdlCommand {
     CreateBuffer {
         /// Path to the metadata file
         #[clap(short, long)]
-        filepath: String,
+        filepath: PathBuf,
         /// Priority fees in micro-lamports per compute unit
         #[clap(long)]
         priority_fee: Option<u64>,
@@ -768,13 +789,13 @@ pub enum IdlCommand {
     },
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum ClusterCommand {
     /// Prints common cluster urls.
     List,
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub enum ConfigCommand {
     /// Get configuration settings from the local Anchor.toml
     Get,
@@ -785,13 +806,13 @@ pub enum ConfigCommand {
         url: Option<String>,
         /// Path to wallet keypair file to update the Anchor.toml file with
         #[clap(short = 'k', long = "keypair")]
-        keypair: Option<String>,
+        keypair: Option<PathBuf>,
     },
 }
 
-fn get_keypair(path: &str) -> Result<Keypair> {
+fn get_keypair(path: &Path) -> Result<Keypair> {
     solana_keypair::read_keypair_file(path)
-        .map_err(|_| anyhow!("Unable to read keypair file ({path})"))
+        .map_err(|_| anyhow!("Unable to read keypair file ({})", path.display()))
 }
 
 /// Format lamports as SOL with trailing zeros removed
@@ -860,25 +881,29 @@ fn get_cluster_and_wallet(cfg_override: &ConfigOverride) -> Result<(String, Stri
     Ok((final_cluster, wallet_path))
 }
 
-/// Get the recommended priority fee from the RPC client
-pub fn get_recommended_micro_lamport_fee(client: &RpcClient) -> Result<u64> {
-    let mut fees = client.get_recent_prioritization_fees(&[])?;
-    if fees.is_empty() {
-        // Fees may be empty, e.g. on localnet
-        return Ok(0);
-    }
+/// Get the recommended priority fee from the RPC client, falling back to 0 if unavailable
+pub fn get_recommended_micro_lamport_fee(client: &RpcClient) -> u64 {
+    let mut fees = match client.get_recent_prioritization_fees(&[]) {
+        // Fees may be empty or query may fail, e.g. on localnet
+        Err(e) => {
+            eprintln!("Warning: failed to fetch prioritization fees, defaulting to 0: {e}");
+            return 0;
+        }
+        Ok(f) if f.is_empty() => {
+            return 0;
+        }
+        Ok(f) => f,
+    };
 
     // Get the median fee from the most recent 150 slots' prioritization fee
     fees.sort_unstable_by_key(|fee| fee.prioritization_fee);
     let median_index = fees.len() / 2;
 
-    let median_priority_fee = if fees.len() % 2 == 0 {
+    if fees.len() % 2 == 0 {
         (fees[median_index - 1].prioritization_fee + fees[median_index].prioritization_fee) / 2
     } else {
         fees[median_index].prioritization_fee
-    };
-
-    Ok(median_priority_fee)
+    }
 }
 
 /// Prepend a compute unit ix, if the priority fee is greater than 0.
@@ -886,11 +911,8 @@ pub fn prepend_compute_unit_ix(
     instructions: Vec<Instruction>,
     client: &RpcClient,
     priority_fee: Option<u64>,
-) -> Result<Vec<Instruction>> {
-    let priority_fee = match priority_fee {
-        Some(fee) => fee,
-        None => get_recommended_micro_lamport_fee(client)?,
-    };
+) -> Vec<Instruction> {
+    let priority_fee = priority_fee.unwrap_or_else(|| get_recommended_micro_lamport_fee(client));
 
     if priority_fee > 0 {
         let mut instructions_appended = instructions.clone();
@@ -898,13 +920,15 @@ pub fn prepend_compute_unit_ix(
             0,
             ComputeBudgetInstruction::set_compute_unit_price(priority_fee),
         );
-        Ok(instructions_appended)
+        instructions_appended
     } else {
-        Ok(instructions)
+        instructions
     }
 }
 
 pub fn entry(opts: Opts) -> Result<()> {
+    let opts = opts.absolute();
+
     let restore_cbs = override_toolchain(&opts.cfg_override)?;
     let result = process_command(opts);
     restore_toolchain(restore_cbs)?;
@@ -956,7 +980,7 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                 // binaries in various commands.
                 fn override_solana_version(version: String) -> Result<bool> {
                     // There is a deprecation warning message starting with `1.18.19` which causes
-                    // parsing problems https://github.com/coral-xyz/anchor/issues/3147
+                    // parsing problems https://github.com/solana-foundation/anchor/issues/3147
                     let (cmd_name, domain) =
                         if Version::parse(&version)? < Version::parse("1.18.19")? {
                             ("solana-install", "solana.com")
@@ -1029,8 +1053,8 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         }
                     })),
                     false => eprintln!(
-                        "Failed to override `solana` version to {solana_version}, \
-                        using {current_version} instead"
+                        "Failed to override `solana` version to {solana_version}, using \
+                         {current_version} instead"
                     ),
                 }
             }
@@ -1144,6 +1168,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
+            install_agent_skills,
         } => init(
             &opts.cfg_override,
             name,
@@ -1154,6 +1179,7 @@ fn process_command(opts: Opts) -> Result<()> {
             template,
             test_template,
             force,
+            install_agent_skills,
         ),
         Command::New {
             name,
@@ -1174,7 +1200,6 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_lint,
             ignore_keys,
             no_docs,
-            arch,
         } => build(
             &opts.cfg_override,
             no_idl,
@@ -1192,7 +1217,6 @@ fn process_command(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             no_docs,
-            arch,
         ),
         Command::Verify {
             program_id,
@@ -1232,8 +1256,9 @@ fn process_command(opts: Opts) -> Result<()> {
         }
         Command::Expand {
             program_name,
+            stdout,
             cargo_args,
-        } => expand(&opts.cfg_override, program_name, &cargo_args),
+        } => expand(&opts.cfg_override, program_name, stdout, &cargo_args),
         #[allow(deprecated)]
         Command::Upgrade {
             program_id,
@@ -1267,7 +1292,6 @@ fn process_command(opts: Opts) -> Result<()> {
             env,
             cargo_args,
             skip_lint,
-            arch,
         } => test(
             &opts.cfg_override,
             program_name,
@@ -1282,7 +1306,6 @@ fn process_command(opts: Opts) -> Result<()> {
             args,
             env,
             cargo_args,
-            arch,
         ),
         Command::Airdrop { amount, pubkey } => airdrop(&opts.cfg_override, amount, pubkey),
         Command::Cluster { subcmd } => cluster(subcmd),
@@ -1301,7 +1324,6 @@ fn process_command(opts: Opts) -> Result<()> {
             validator,
             env,
             cargo_args,
-            arch,
         } => localnet(
             &opts.cfg_override,
             skip_build,
@@ -1311,7 +1333,6 @@ fn process_command(opts: Opts) -> Result<()> {
             validator,
             env,
             cargo_args,
-            arch,
         ),
         Command::Account {
             account_type,
@@ -1352,6 +1373,7 @@ fn init(
     template: ProgramTemplate,
     test_template: TestTemplate,
     force: bool,
+    install_agent_skills: bool,
 ) -> Result<()> {
     if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
@@ -1423,11 +1445,7 @@ fn init(
     }
 
     // Build the program.
-    rust_template::create_program(
-        &project_name,
-        template,
-        TestTemplate::Mollusk == test_template,
-    )?;
+    rust_template::create_program(&project_name, template, Some(&test_template))?;
 
     // Build the migrations directory.
     let migrations_path = Path::new("migrations");
@@ -1480,9 +1498,62 @@ fn init(
         }
     }
 
+    if install_agent_skills {
+        install_solana_skill();
+    }
+
     println!("{project_name} initialized");
 
     Ok(())
+}
+
+fn install_solana_skill() {
+    const SKILL_REPO: &str = "https://github.com/solana-foundation/solana-dev-skill";
+    const SKILL_NAME: &str = "solana-dev";
+
+    // Skip if globally installed (active across all projects already)
+    if home_dir().is_some_and(|home| {
+        home.join(".agents")
+            .join("skills")
+            .join(SKILL_NAME)
+            .exists()
+    }) {
+        return;
+    }
+
+    // Skip if already project-scoped (could be anchor init --force on existing folder)
+    let project_path = Path::new(".agents").join("skills").join(SKILL_NAME);
+    if project_path.exists() {
+        return;
+    }
+
+    println!("Installing Solana dev skill for Agents from {SKILL_REPO}");
+
+    let status = std::process::Command::new("npx")
+        .args([
+            "--yes",
+            "skills@1.4.4",
+            "add",
+            SKILL_REPO,
+            "--skill",
+            "*",
+            "-y",
+        ])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            println!("Solana dev skill installed successfully");
+        }
+        _ => {
+            eprintln!(
+                "Warning: Failed to install Solana dev skill. Install manually with:\n  npx \
+                 skills add {SKILL_REPO}"
+            );
+        }
+    }
 }
 
 fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
@@ -1529,7 +1600,7 @@ fn new(
                     fs::remove_dir_all(std::env::current_dir()?.join("programs").join(&name))?;
                 }
 
-                rust_template::create_program(&name, template, false)?;
+                rust_template::create_program(&name, template, None)?;
 
                 programs.insert(
                     name.clone(),
@@ -1557,8 +1628,14 @@ pub type Files = Vec<(PathBuf, String)>;
 ///
 /// # Example
 ///
-/// ```ignore
-/// crate_files(vec![("programs/my_program/src/lib.rs".into(), "// Content".into())])?;
+/// ```rust,no_run
+/// # use anchor_cli::create_files;
+/// # use std::path::PathBuf;
+/// # fn main() -> anyhow::Result<()> {
+/// let files = vec![(PathBuf::from("programs/my_program/src/lib.rs"), "// Content".to_string())];
+/// create_files(&files)?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn create_files(files: &Files) -> Result<()> {
     for (path, content) in files {
@@ -1587,8 +1664,14 @@ pub fn create_files(files: &Files) -> Result<()> {
 ///
 /// # Example
 ///
-/// ```ignore
-/// override_or_create_files(vec![("programs/my_program/src/lib.rs".into(), "// Content".into())])?;
+/// ```rust,no_run
+/// # use anchor_cli::override_or_create_files;
+/// # use std::path::PathBuf;
+/// # fn main() -> anyhow::Result<()> {
+/// let files = vec![(PathBuf::from("test.rs"), "// Content".to_string())];
+/// override_or_create_files(&files)?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn override_or_create_files(files: &Files) -> Result<()> {
     for (path, content) in files {
@@ -1612,6 +1695,7 @@ pub fn override_or_create_files(files: &Files) -> Result<()> {
 pub fn expand(
     cfg_override: &ConfigOverride,
     program_name: Option<String>,
+    stdout: bool,
     cargo_args: &[String],
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
@@ -1629,16 +1713,17 @@ pub fn expand(
 
     match cargo {
         // No Cargo.toml found, expand entire workspace
-        None => expand_all(&workspace_cfg, expansions_path, cargo_args),
+        None => expand_all(&workspace_cfg, expansions_path, stdout, cargo_args),
         // Cargo.toml is at root of workspace, expand entire workspace
         Some(cargo) if cargo.path().parent() == workspace_cfg.path().parent() => {
-            expand_all(&workspace_cfg, expansions_path, cargo_args)
+            expand_all(&workspace_cfg, expansions_path, stdout, cargo_args)
         }
         // Reaching this arm means Cargo.toml belongs to a single package. Expand it.
         Some(cargo) => expand_program(
             // If we found Cargo.toml, it must be in a directory so unwrap is safe
             cargo.path().parent().unwrap().to_path_buf(),
             expansions_path,
+            stdout,
             cargo_args,
         ),
     }
@@ -1647,11 +1732,12 @@ pub fn expand(
 fn expand_all(
     workspace_cfg: &WithPath<Config>,
     expansions_path: PathBuf,
+    stdout: bool,
     cargo_args: &[String],
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     for p in workspace_cfg.get_rust_program_list()? {
-        expand_program(p, expansions_path.clone(), cargo_args)?;
+        expand_program(p, expansions_path.clone(), stdout, cargo_args)?;
     }
     std::env::set_current_dir(cur_dir)?;
     Ok(())
@@ -1660,48 +1746,55 @@ fn expand_all(
 fn expand_program(
     program_path: PathBuf,
     expansions_path: PathBuf,
+    stdout: bool,
     cargo_args: &[String],
 ) -> Result<()> {
     let cargo = Manifest::from_path(program_path.join("Cargo.toml"))
         .map_err(|_| anyhow!("Could not find Cargo.toml for program"))?;
-
-    let target_dir_arg = {
-        let mut target_dir_arg = OsString::from("--target-dir=");
-        target_dir_arg.push(expansions_path.join("expand-target"));
-        target_dir_arg
-    };
-
     let package_name = &cargo
         .package
         .as_ref()
         .ok_or_else(|| anyhow!("Cargo config is missing a package"))?
         .name;
-    let program_expansions_path = expansions_path.join(package_name);
-    fs::create_dir_all(&program_expansions_path)?;
 
-    let exit = std::process::Command::new("cargo")
-        .arg("expand")
-        .arg(target_dir_arg)
-        .arg(format!("--package={package_name}"))
-        .args(cargo_args)
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| anyhow::format_err!("{}", e))?;
-    if !exit.status.success() {
-        eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
-        std::process::exit(exit.status.code().unwrap_or(1));
+    let mut cmd = std::process::Command::new("cargo");
+    cmd.arg("expand")
+        .arg("--target-dir")
+        .arg(expansions_path.join("expand-target"))
+        .arg("--package")
+        .arg(package_name)
+        .args(cargo_args);
+
+    let handle_err = |err| anyhow!("Failed to run `cargo expand`: {err}");
+    let exit_on_err = |exit_status: ExitStatus| {
+        if !exit_status.success() {
+            eprintln!("'anchor expand' failed. Perhaps you have not installed 'cargo-expand'? https://github.com/dtolnay/cargo-expand#installation");
+            std::process::exit(exit_status.code().unwrap_or(1));
+        }
+    };
+
+    if stdout {
+        let status = cmd.status().map_err(handle_err)?;
+        exit_on_err(status);
+    } else {
+        let output = cmd.stderr(Stdio::inherit()).output().map_err(handle_err)?;
+        exit_on_err(output.status);
+
+        let program_expansions_path = expansions_path.join(package_name);
+        fs::create_dir_all(&program_expansions_path)?;
+
+        let version = cargo.version();
+        let time = chrono::Utc::now().to_string().replace(' ', "_");
+        let file_path = program_expansions_path.join(format!("{package_name}-{version}-{time}.rs"));
+        fs::write(&file_path, &output.stdout)?;
+
+        println!(
+            "Expanded {} into file {}\n",
+            package_name,
+            file_path.to_string_lossy()
+        );
     }
 
-    let version = cargo.version();
-    let time = chrono::Utc::now().to_string().replace(' ', "_");
-    let file_path = program_expansions_path.join(format!("{package_name}-{version}-{time}.rs"));
-    fs::write(&file_path, &exit.stdout).map_err(|e| anyhow::format_err!("{}", e))?;
-
-    println!(
-        "Expanded {} into file {}\n",
-        package_name,
-        file_path.to_string_lossy()
-    );
     Ok(())
 }
 
@@ -1723,7 +1816,6 @@ pub fn build(
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     no_docs: bool,
-    arch: ProgramArch,
 ) -> Result<()> {
     // Change to the workspace member directory, if needed.
     if let Some(program_name) = program_name.as_ref() {
@@ -1788,7 +1880,6 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
-            arch,
         )?,
         // If the Cargo.toml is at the root, build the entire workspace.
         Some(cargo) if cargo.path().parent() == cfg.path().parent() => build_all(
@@ -1804,7 +1895,6 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
-            arch,
         )?,
         // Cargo.toml represents a single package. Build it.
         Some(cargo) => build_rust_cwd(
@@ -1820,7 +1910,6 @@ pub fn build(
             cargo_args,
             skip_lint,
             no_docs,
-            &arch,
         )?,
     }
     cfg.run_hooks(HookType::PostBuild)?;
@@ -1844,7 +1933,6 @@ fn build_all(
     cargo_args: Vec<String>,
     skip_lint: bool,
     no_docs: bool,
-    arch: ProgramArch,
 ) -> Result<()> {
     let cur_dir = std::env::current_dir()?;
     let r = match cfg_path.parent() {
@@ -1864,7 +1952,6 @@ fn build_all(
                     cargo_args.clone(),
                     skip_lint,
                     no_docs,
-                    &arch,
                 )?;
             }
             Ok(())
@@ -1889,7 +1976,6 @@ fn build_rust_cwd(
     cargo_args: Vec<String>,
     skip_lint: bool,
     no_docs: bool,
-    arch: &ProgramArch,
 ) -> Result<()> {
     match cargo_toml.parent() {
         None => return Err(anyhow!("Unable to find parent")),
@@ -1897,7 +1983,7 @@ fn build_rust_cwd(
     };
     match build_config.verifiable {
         false => _build_rust_cwd(
-            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, arch, cargo_args,
+            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, cargo_args,
         ),
         true => build_cwd_verifiable(
             cfg,
@@ -1909,7 +1995,6 @@ fn build_rust_cwd(
             env_vars,
             cargo_args,
             no_docs,
-            arch,
         ),
     }
 }
@@ -1927,7 +2012,6 @@ fn build_cwd_verifiable(
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
     no_docs: bool,
-    arch: &ProgramArch,
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
@@ -1951,7 +2035,6 @@ fn build_cwd_verifiable(
         stderr,
         env_vars,
         cargo_args.clone(),
-        arch,
     );
 
     match &result {
@@ -2008,7 +2091,6 @@ fn docker_build(
     stderr: Option<File>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
-    arch: &ProgramArch,
 ) -> Result<()> {
     let binary_name = Manifest::from_path(&cargo_toml)?.lib_name()?;
 
@@ -2063,7 +2145,6 @@ fn docker_build(
             stderr,
             env_vars,
             cargo_args,
-            arch,
         )
     });
 
@@ -2128,7 +2209,6 @@ fn docker_build_bpf(
     stderr: Option<File>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
-    arch: &ProgramArch,
 ) -> Result<()> {
     let manifest_path =
         pathdiff::diff_paths(cargo_toml.canonicalize()?, cfg_parent.canonicalize()?)
@@ -2144,22 +2224,19 @@ fn docker_build_bpf(
         .args([
             "exec",
             "--env",
-            "PATH=/root/.local/share/solana/install/active_release/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "PATH=/root/.local/share/solana/install/active_release/bin:/root/.cargo/bin:/usr/\
+             local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         ])
-        .args(env_vars
-            .iter()
-            .map(|x| ["--env", x.as_str()])
-            .collect::<Vec<[&str; 2]>>()
-            .concat())
-        .args([
-            container_name,
-            "cargo",
-        ])
-        .args(arch.build_subcommand())
-        .args([
-            "--manifest-path",
-            &manifest_path.display().to_string(),
-        ])
+        .args(
+            env_vars
+                .iter()
+                .map(|x| ["--env", x.as_str()])
+                .collect::<Vec<[&str; 2]>>()
+                .concat(),
+        )
+        .args([container_name, "cargo"])
+        .args(BUILD_SUBCOMMAND)
+        .args(["--manifest-path", &manifest_path.display().to_string()])
         .args(cargo_args)
         .stdout(match stdout {
             None => Stdio::inherit(),
@@ -2254,11 +2331,10 @@ fn _build_rust_cwd(
     idl_ts_out: Option<PathBuf>,
     skip_lint: bool,
     no_docs: bool,
-    arch: &ProgramArch,
     cargo_args: Vec<String>,
 ) -> Result<()> {
     let exit = std::process::Command::new("cargo")
-        .args(arch.build_subcommand())
+        .args(BUILD_SUBCOMMAND)
         .args(cargo_args.clone())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -2307,6 +2383,9 @@ fn _build_rust_cwd(
 
     Ok(())
 }
+
+/// Subcommand and any arguments to be passed to cargo
+const BUILD_SUBCOMMAND: &[&str] = &["build-sbf", "--tools-version", "v1.52"];
 
 pub fn verify(
     program_id: Pubkey,
@@ -2401,14 +2480,45 @@ fn cd_member(cfg_override: &ConfigOverride, program_name: &str) -> Result<()> {
 fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     match subcmd {
         IdlCommand::Init {
+            program_id,
             filepath,
             priority_fee,
             non_canonical,
-        } => idl_init(cfg_override, filepath, priority_fee, non_canonical),
+            #[cfg(feature = "idl-localnet-testing")]
+            allow_localnet,
+        } => {
+            #[cfg(feature = "idl-localnet-testing")]
+            let allow_localnet = allow_localnet;
+            #[cfg(not(feature = "idl-localnet-testing"))]
+            let allow_localnet = false;
+            idl_init(
+                program_id,
+                cfg_override,
+                filepath,
+                priority_fee,
+                non_canonical,
+                allow_localnet,
+            )
+        }
         IdlCommand::Upgrade {
+            program_id,
             filepath,
             priority_fee,
-        } => idl_upgrade(cfg_override, filepath, priority_fee),
+            #[cfg(feature = "idl-localnet-testing")]
+            allow_localnet,
+        } => {
+            #[cfg(feature = "idl-localnet-testing")]
+            let allow_localnet = allow_localnet;
+            #[cfg(not(feature = "idl-localnet-testing"))]
+            let allow_localnet = false;
+            idl_upgrade(
+                program_id,
+                cfg_override,
+                filepath,
+                priority_fee,
+                allow_localnet,
+            )
+        }
         IdlCommand::Build {
             program_name,
             out,
@@ -2426,7 +2536,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             cargo_args,
         ),
         IdlCommand::Fetch {
-            address,
+            program_id: address,
             out,
             all,
             slot,
@@ -2488,63 +2598,52 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
     }
 }
 
-fn rpc_url(cfg_override: &ConfigOverride) -> Result<String> {
-    let cfg = Config::discover(cfg_override)?.expect("Not in workspace");
-    Ok(cluster_url(&cfg, &cfg.test_validator, &cfg.surfpool_config))
-}
-
 fn idl_init(
+    program_id: Option<Pubkey>,
     cfg_override: &ConfigOverride,
-    idl_filepath: String,
+    idl_filepath: PathBuf,
     priority_fee: Option<u64>,
     non_canonical: bool,
+    allow_localnet: bool,
 ) -> Result<()> {
     // Get cluster URL and wallet path from Anchor config
     let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
 
-    // Skip IDL initialization on localnet
     let is_localnet = cluster_url.contains("localhost") || cluster_url.contains("127.0.0.1");
-    if is_localnet {
+    if is_localnet && !allow_localnet {
+        #[cfg(feature = "idl-localnet-testing")]
+        println!(
+            "Skipping IDL initialization on localnet. To deploy on localnet, use --allow-localnet"
+        );
+        #[cfg(not(feature = "idl-localnet-testing"))]
         println!("Skipping IDL initialization on localnet");
         return Ok(());
     }
 
-    let program_id_str = {
-        let idl = fs::read(&idl_filepath)?;
-        let idl = convert_idl(&idl)?;
-        idl.address
+    let program_id = match program_id {
+        Some(id) => id.to_string(),
+        _ => {
+            let idl = fs::read(&idl_filepath)?;
+            let idl = convert_idl(&idl)?;
+            idl.address
+        }
     };
 
-    // Build args with global options first, then command and command args
-    let mut args = vec!["--keypair", &wallet_path, "--rpc", &cluster_url];
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::Write {
+            program_id,
+            idl_filepath: idl_filepath
+                .to_str()
+                .ok_or_else(|| anyhow!("IDL filepath is not valid UTF-8"))?
+                .to_string(),
+            non_canonical,
+        },
+    );
 
-    // Global option: priority fees
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    // Command: write
-    args.push("write");
-    args.push("idl");
-    args.push(&program_id_str);
-    args.push(&idl_filepath);
-
-    // Command option: non-canonical
-    if non_canonical {
-        args.push("--non-canonical");
-    }
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to initialize IDL"));
     }
 
@@ -2552,52 +2651,49 @@ fn idl_init(
     Ok(())
 }
 
+// Currently identical to `idl_init`, other than not accepting `non_canonical`
 fn idl_upgrade(
+    program_id: Option<Pubkey>,
     cfg_override: &ConfigOverride,
-    idl_filepath: String,
+    idl_filepath: PathBuf,
     priority_fee: Option<u64>,
+    allow_localnet: bool,
 ) -> Result<()> {
     // Get cluster URL and wallet path from Anchor config
     let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
 
-    // Skip IDL upgrade on localnet
     let is_localnet = cluster_url.contains("localhost") || cluster_url.contains("127.0.0.1");
-    if is_localnet {
+    if is_localnet && !allow_localnet {
+        #[cfg(feature = "idl-localnet-testing")]
+        println!("Skipping IDL upgrade on localnet. To deploy on localnet, use --allow-localnet");
+        #[cfg(not(feature = "idl-localnet-testing"))]
         println!("Skipping IDL upgrade on localnet");
         return Ok(());
     }
 
-    let program_id_str = {
-        let idl = fs::read(&idl_filepath)?;
-        let idl = convert_idl(&idl)?;
-        idl.address
+    let program_id = match program_id {
+        Some(id) => id.to_string(),
+        _ => {
+            let idl = fs::read(&idl_filepath)?;
+            let idl = convert_idl(&idl)?;
+            idl.address
+        }
     };
 
-    // Build args with global options first, then command and command args
-    let mut args = vec!["--keypair", &wallet_path, "--rpc", &cluster_url];
-
-    // Global option: priority fees
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    // Command: write
-    args.push("write");
-    args.push("idl");
-    args.push(&program_id_str);
-    args.push(&idl_filepath);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::Write {
+            program_id,
+            idl_filepath: idl_filepath
+                .to_str()
+                .ok_or_else(|| anyhow!("IDL filepath is not valid UTF-8"))?
+                .to_string(),
+            non_canonical: false,
+        },
+    );
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to upgrade IDL"));
     }
 
@@ -2672,36 +2768,23 @@ fn idl_fetch(
     out: Option<String>,
     non_canonical: bool,
 ) -> Result<()> {
-    // The address parameter is the program ID
-    // Program Metadata CLI expects: fetch <seed> <program>
-    // For IDL, the seed is "idl"
-    let program_id_str = address.to_string();
-    let mut args = vec!["fetch", "idl", &program_id_str];
+    let (cluster_url, _) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::unfunded(
+        cluster_url,
+        metadata::UnfundedIdlSubcommand::Fetch {
+            program_id: address.to_string(),
+            out,
+            non_canonical,
+        },
+    );
 
-    if non_canonical {
-        args.push("--non-canonical");
-    }
-
-    if let Some(out) = &out {
-        args.push("-o");
-        args.push(out);
-    }
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to fetch IDL"));
     }
     Ok(())
 }
 
-fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) -> Result<()> {
+fn idl_convert(path: PathBuf, out: Option<PathBuf>, program_id: Option<Pubkey>) -> Result<()> {
     let idl = fs::read(path)?;
 
     // Set the `metadata.address` field based on the given `program_id`
@@ -2722,12 +2805,12 @@ fn idl_convert(path: String, out: Option<String>, program_id: Option<Pubkey>) ->
     let idl = convert_idl(&idl)?;
     let out = match out {
         None => OutFile::Stdout,
-        Some(out) => OutFile::File(PathBuf::from(out)),
+        Some(out) => OutFile::File(out),
     };
     write_idl(&idl, out)
 }
 
-fn idl_type(path: String, out: Option<String>) -> Result<()> {
+fn idl_type(path: PathBuf, out: Option<PathBuf>) -> Result<()> {
     let idl = fs::read(path)?;
     let idl = convert_idl(&idl)?;
     let types = idl_ts(&idl)?;
@@ -2744,28 +2827,18 @@ fn idl_close_metadata(
     seed: String,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let program_id_str = program_id.to_string();
-    let mut args = vec!["close", &seed, &program_id_str];
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::Close {
+            program_id: program_id.to_string(),
+            seed,
+        },
+    );
 
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to close metadata account"));
     }
 
@@ -2775,30 +2848,23 @@ fn idl_close_metadata(
 
 fn idl_create_buffer(
     cfg_override: &ConfigOverride,
-    filepath: String,
+    filepath: PathBuf,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let mut args = vec!["create-buffer", &filepath];
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::CreateBuffer {
+            filepath: filepath
+                .to_str()
+                .ok_or_else(|| anyhow!("IDL filepath is not valid UTF-8"))?
+                .to_string(),
+        },
+    );
 
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to create buffer"));
     }
 
@@ -2812,34 +2878,18 @@ fn idl_set_buffer_authority(
     new_authority: Pubkey,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let buffer_str = buffer.to_string();
-    let new_authority_str = new_authority.to_string();
-    let mut args = vec![
-        "set-buffer-authority",
-        &buffer_str,
-        "--new-authority",
-        &new_authority_str,
-    ];
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::SetBufferAuthority {
+            buffer: buffer.to_string(),
+            new_authority: new_authority.to_string(),
+        },
+    );
 
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to set buffer authority"));
     }
 
@@ -2855,33 +2905,20 @@ fn idl_write_buffer_metadata(
     close_buffer: bool,
     priority_fee: Option<u64>,
 ) -> Result<()> {
-    let program_id_str = program_id.to_string();
-    let buffer_str = buffer.to_string();
-    let mut args = vec!["write", &seed, &program_id_str, "--buffer", &buffer_str];
+    let (cluster_url, wallet_path) = get_cluster_and_wallet(cfg_override)?;
+    let command = metadata::IdlCommand::funded(
+        cluster_url,
+        wallet_path,
+        priority_fee,
+        metadata::FundedIdlSubcommand::WriteBuffer {
+            program_id: program_id.to_string(),
+            buffer: buffer.to_string(),
+            seed,
+            close_buffer,
+        },
+    );
 
-    if close_buffer {
-        args.push("--close-buffer");
-    }
-
-    let priority_fee_str;
-    if let Some(priority_fee) = priority_fee {
-        priority_fee_str = priority_fee.to_string();
-        args.push("--priority-fees");
-        args.push(&priority_fee_str);
-    }
-
-    let url = rpc_url(cfg_override)?;
-    args.push("--rpc");
-    args.push(&url);
-
-    let status = ProcessCommand::new("npx")
-        .arg("@solana-program/program-metadata")
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
+    if !command.status()?.success() {
         return Err(anyhow!("Failed to write metadata using buffer"));
     }
 
@@ -2937,7 +2974,7 @@ fn account(
     cfg_override: &ConfigOverride,
     account_type: String,
     address: Pubkey,
-    idl_filepath: Option<String>,
+    idl_filepath: Option<PathBuf>,
 ) -> Result<()> {
     let (program_name, account_type_name) = account_type
         .split_once('.') // Split at first occurrence of dot
@@ -2951,7 +2988,12 @@ fn account(
     let idl = idl_filepath.map_or_else(
         || {
             Config::discover(cfg_override)?
-                .ok_or_else(|| anyhow!("The 'anchor account' command requires an Anchor workspace with Anchor.toml for IDL type generation."))?
+                .ok_or_else(|| {
+                    anyhow!(
+                        "The 'anchor account' command requires an Anchor workspace with \
+                         Anchor.toml for IDL type generation."
+                    )
+                })?
                 .read_all_programs()
                 .expect("Workspace must contain atleast one program.")
                 .into_iter()
@@ -3207,7 +3249,6 @@ fn test(
     extra_args: Vec<String>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
-    arch: ProgramArch,
 ) -> Result<()> {
     let test_paths = tests_to_run
         .iter()
@@ -3241,7 +3282,6 @@ fn test(
                 env_vars,
                 cargo_args,
                 false,
-                arch,
             )?;
         }
 
@@ -3562,7 +3602,8 @@ fn validator_flags(
                         create_client(url)
                     } else {
                         return Err(anyhow!(
-                            "Validator url for Solana's JSON RPC should be provided in order to clone accounts from it"
+                            "Validator url for Solana's JSON RPC should be provided in order to \
+                             clone accounts from it"
                         ));
                     };
 
@@ -3981,8 +4022,9 @@ fn start_surfpool_validator(
 
     if count >= ms_wait {
         eprintln!(
-            "Unable to get latest blockhash. Surfpool validator does not look started. \
-            Check .surfpool/logs/ directory for errors. Consider increasing [surfpool.startup_wait] in Anchor.toml."
+            "Unable to get latest blockhash. Surfpool validator does not look started. Check \
+             .surfpool/logs/ directory for errors. Consider increasing [surfpool.startup_wait] in \
+             Anchor.toml."
         );
         validator_handle.kill()?;
         std::process::exit(1);
@@ -4090,8 +4132,9 @@ fn start_solana_test_validator(
     }
     if count >= ms_wait {
         eprintln!(
-            "Unable to get latest blockhash. Test validator does not look started. \
-            Check {test_ledger_log_filename:?} for errors. Consider increasing [test.startup_wait] in Anchor.toml."
+            "Unable to get latest blockhash. Test validator does not look started. Check \
+             {test_ledger_log_filename:?} for errors. Consider increasing [test.startup_wait] in \
+             Anchor.toml."
         );
         validator_handle.kill()?;
         std::process::exit(1);
@@ -4226,7 +4269,7 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
 fn deploy(
     cfg_override: &ConfigOverride,
     program_name: Option<String>,
-    program_keypair: Option<String>,
+    program_keypair: Option<PathBuf>,
     verifiable: bool,
     no_idl: bool,
     solana_args: Vec<String>,
@@ -4246,14 +4289,14 @@ fn deploy(
         println!("Upgrade authority: {keypair}");
 
         for program in cfg.get_programs(program_name)? {
-            let binary_path = program.binary_path(verifiable).display().to_string();
+            let binary_path = program.binary_path(verifiable);
 
             println!("Deploying program {:?}...", program.lib_name);
-            println!("Program path: {binary_path}...");
+            println!("Program path: {}...", binary_path.display());
 
-            let program_keypair_filepath = match &program_keypair {
+            let program_keypair_filepath = match program_keypair.as_ref() {
                 Some(path) => path.clone(),
-                None => program.keypair_file()?.path().display().to_string(),
+                None => program.keypair_file()?.path().clone(),
             };
 
             // Deploy using our native implementation
@@ -4282,7 +4325,7 @@ fn deploy(
 fn upgrade(
     cfg_override: &ConfigOverride,
     program_id: Pubkey,
-    program_filepath: String,
+    program_filepath: PathBuf,
     max_retries: u32,
     solana_args: Vec<String>,
 ) -> Result<()> {
@@ -4384,7 +4427,10 @@ fn set_workspace_dir_or_exit() {
 
             let cargo_toml_path = current_dir.join("Cargo.toml");
             if !cargo_toml_path.exists() {
-                println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                println!(
+                    "Not in a Solana workspace. This command requires either Anchor.toml or a \
+                     Cargo workspace with Solana programs."
+                );
                 std::process::exit(1);
             }
 
@@ -4395,7 +4441,10 @@ fn set_workspace_dir_or_exit() {
                     // (already in the right place)
                 }
                 _ => {
-                    println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                    println!(
+                        "Not in a Solana workspace. This command requires either Anchor.toml or a \
+                         Cargo workspace with Solana programs."
+                    );
                     std::process::exit(1);
                 }
             }
@@ -4408,7 +4457,10 @@ fn set_workspace_dir_or_exit() {
                 }
                 Some(parent) => {
                     if std::env::set_current_dir(parent).is_err() {
-                        println!("Not in a Solana workspace. This command requires either Anchor.toml or a Cargo workspace with Solana programs.");
+                        println!(
+                            "Not in a Solana workspace. This command requires either Anchor.toml \
+                             or a Cargo workspace with Solana programs."
+                        );
                         std::process::exit(1);
                     }
                 }
@@ -4486,7 +4538,7 @@ fn config_get(cfg_override: &ConfigOverride) -> Result<()> {
 fn config_set(
     cfg_override: &ConfigOverride,
     url: Option<String>,
-    keypair: Option<String>,
+    keypair: Option<PathBuf>,
 ) -> Result<()> {
     // Find the Anchor.toml file
     let anchor_toml_path = match Config::discover(cfg_override)? {
@@ -4524,7 +4576,7 @@ fn config_set(
 
     // Update wallet path if provided
     if let Some(keypair_path) = keypair {
-        let expanded_path = shellexpand::tilde(&keypair_path).to_string();
+        let expanded_path = shellexpand::tilde(&keypair_path.to_string_lossy()).to_string();
 
         // Check if the wallet file exists
         if !Path::new(&expanded_path).exists() {
@@ -4717,7 +4769,10 @@ fn keys_sync(cfg_override: &ConfigOverride, program_name: Option<String>) -> Res
                     }
 
                     if deployment.address.to_string() != actual_program_id {
-                        println!("Found incorrect program id declaration in Anchor.toml for the program `{name}`");
+                        println!(
+                            "Found incorrect program id declaration in Anchor.toml for the \
+                             program `{name}`"
+                        );
 
                         // Update the program id
                         deployment.address = Pubkey::try_from(actual_program_id.as_str()).unwrap();
@@ -4769,10 +4824,9 @@ fn check_program_id_mismatch(cfg: &WithPath<Config>, program_name: Option<String
             if let Some(program_id_match) = incorrect_program_id {
                 let declared_id = program_id_match.as_str();
                 return Err(anyhow!(
-                    "Program ID mismatch detected for program '{}':\n  \
-                    Keypair file has: {}\n  \
-                    Source code has:  {}\n\n\
-                    Please run 'anchor keys sync' to update the program ID in your source code or use the '--ignore-keys' flag to skip this check.",
+                    "Program ID mismatch detected for program '{}':\n  Keypair file has: {}\n  \
+                     Source code has:  {}\n\nPlease run 'anchor keys sync' to update the program \
+                     ID in your source code or use the '--ignore-keys' flag to skip this check.",
                     program.lib_name,
                     actual_program_id,
                     declared_id
@@ -4794,7 +4848,6 @@ fn localnet(
     validator_type: ValidatorType,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
-    arch: ProgramArch,
 ) -> Result<()> {
     with_workspace(cfg_override, |cfg| -> Result<()> {
         // Build if needed.
@@ -4816,7 +4869,6 @@ fn localnet(
                 env_vars,
                 cargo_args,
                 false,
-                arch,
             )?;
         }
 
@@ -4939,7 +4991,7 @@ fn add_recommended_deployment_solana_args(
 
     // If no priority fee is provided, calculate a recommended fee based on recent txs.
     if !args.contains(&"--with-compute-unit-price".to_string()) {
-        let priority_fee = get_recommended_micro_lamport_fee(client)?;
+        let priority_fee = get_recommended_micro_lamport_fee(client);
         augmented_args.push("--with-compute-unit-price".to_string());
         augmented_args.push(priority_fee.to_string());
     }
@@ -4987,9 +5039,8 @@ fn get_node_dns_option() -> Result<&'static str> {
 // a local filesystem path. Removing the workspace prefix handles most/all cases
 // of spaces in keypair/binary paths, but this should be fixed in the Solana CLI
 // and removed here.
-fn strip_workspace_prefix(absolute_path: String) -> String {
-    let workspace_prefix =
-        std::env::current_dir().unwrap().display().to_string() + std::path::MAIN_SEPARATOR_STR;
+fn strip_workspace_prefix(absolute_path: PathBuf) -> PathBuf {
+    let workspace_prefix = std::env::current_dir().unwrap();
     absolute_path
         .strip_prefix(&workspace_prefix)
         .unwrap_or(&absolute_path)
@@ -5271,6 +5322,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }
@@ -5292,6 +5344,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }
@@ -5313,6 +5366,7 @@ mod tests {
             ProgramTemplate::default(),
             TestTemplate::default(),
             false,
+            true,
         )
         .unwrap();
     }

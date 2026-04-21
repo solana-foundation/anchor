@@ -1,13 +1,18 @@
-use anchor_lang_idl::types::Idl;
-use quote::{format_ident, quote};
-
-use super::common::{convert_idl_type_def_to_ts, gen_discriminator};
+use {
+    super::common::{convert_idl_type_def_to_ts, gen_discriminator},
+    anchor_lang_idl::types::Idl,
+    quote::{format_ident, quote},
+};
 
 pub fn gen_events_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let events = idl.events.iter().map(|ev| {
         let name = format_ident!("{}", ev.name);
         let discriminator = gen_discriminator(&ev.discriminator);
 
+        #[allow(
+            clippy::expect_used,
+            reason = "IDL event types are guaranteed to exist in types array"
+        )]
         let ty_def = idl
             .types
             .iter()

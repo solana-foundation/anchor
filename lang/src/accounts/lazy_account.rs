@@ -1,11 +1,12 @@
 //! Like [`Account`](crate::Account), but deserializes on-demand.
 
-use std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc};
-
-use crate::{
-    error::{Error, ErrorCode},
-    AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key, Owner,
-    Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        error::{Error, ErrorCode},
+        AccountInfo, AccountMeta, AccountSerialize, Accounts, AccountsClose, Discriminator, Key,
+        Owner, Pubkey, Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+    },
+    std::{cell::RefCell, collections::BTreeSet, fmt, mem::MaybeUninit, rc::Rc},
 };
 
 /// Deserialize account data lazily (on-demand).
@@ -56,7 +57,7 @@ use crate::{
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use anchor_lang::prelude::*;
 ///
 /// declare_id!("LazyAccount11111111111111111111111111111111");
@@ -292,7 +293,7 @@ where
     T: AccountSerialize + Discriminator + Owner + Clone,
 {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
-        crate::common::close(self.to_account_info(), sol_destination)
+        crate::common::close(self.as_ref(), sol_destination.as_ref())
     }
 }
 

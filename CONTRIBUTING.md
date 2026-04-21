@@ -7,8 +7,8 @@ adding documentation, fixing bugs, creating examples, and implementing features.
 ## Finding issues to work on
 
 If you're looking to get started,
-check out [good first issues](https://github.com/coral-xyz/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-or issues where [help is wanted](https://github.com/coral-xyz/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+check out [good first issues](https://github.com/solana-foundation/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+or issues where [help is wanted](https://github.com/solana-foundation/anchor/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 PRs that only correct typos or make minor wording adjustments will be rejected. Fixing typos alongside other non-trivial engineering work is welcome.
 
 If you're considering larger changes or self motivated features, please file an issue
@@ -19,6 +19,13 @@ and engage with the maintainers in [Discord](https://discord.gg/NHHGSXAnXk).
 If you'd like to contribute, please claim an issue by commenting, forking, and
 opening a pull request, even if empty. This allows the maintainers to track who
 is working on what issue as to not overlap work.
+
+## Branch Targeting
+
+Pull requests should usually target `master`.
+
+If your change is breaking, open the pull request against `anchor-next`
+instead of `master`.
 
 ## Issue Guidelines
 

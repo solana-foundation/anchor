@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 if [ $# -eq 0 ]; then
     echo "Usage $0 VERSION"
@@ -10,7 +10,17 @@ fi
 old_version=$(cat VERSION)
 version=$1
 
-echo "Bumping versions to $version"
+if [[ "$version" == v* ]]; then
+    echo "The version number must not contain the v[...] prefix"
+    exit 1
+fi
+
+is_prerelease=0
+if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-.+ ]]; then
+    is_prerelease=1
+fi
+
+echo "Bumping versions to $version (is_prerelease=$is_prerelease)"
 
 # GNU/BSD compat
 sedi=(-i)
@@ -19,28 +29,46 @@ case "$(uname)" in
   Darwin*) sedi=(-i "")
 esac
 
+# Bump all rust crates that have `publish` enabled
+cargo release version $version \
+    --workspace \
+    $(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.publish == []) | "--exclude " + .name') \
+    --no-confirm \
+    --execute
+
 # Only replace version with the following globs
-allow_globs=":**/Cargo.toml **/Makefile client/src/lib.rs lang/attribute/program/src/lib.rs"
+allow_globs="**/Makefile client/src/lib.rs lang/attribute/program/src/lib.rs"
 git grep -l $old_version -- $allow_globs |
     xargs sed "${sedi[@]}" \
     -e "s/$old_version/$version/g"
 
-# Separately handle docs because blindly replacing the old version with the new
-# might break certain examples/links
-pushd docs/content/docs
-git grep -l $old_version -- "./*.md*" | \
-    xargs sed "${sedi[@]}" \
-    -e "s/\"$old_version\"/\"$version\"/g"
-allow_globs="installation.mdx quickstart/local.mdx references/verifiable-builds.mdx"
-git grep -l $old_version -- $allow_globs |
-    xargs sed "${sedi[@]}" \
-    -e "s/$old_version/$version/g"
-# Replace `solana_version` with the current version
-solana_version=$(solana --version | awk '{print $2;}')
-sed $sedi "s/solana_version.*\"/solana_version = \"$solana_version\"/g" references/anchor-toml.mdx
-# Keep release notes and changelog the same
-git restore updates
-popd
+# Avoid updating the docs for pre-release builds
+if [[ "$is_prerelease" -eq 0 ]]; then
+    latest_stable_version=$(
+        git tag --sort=-version:refname | \
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
+            head -n1 | \
+            sed 's/^v//'
+    )
+    echo "Latest stable version for documentation was $latest_stable_version..."
+
+    # Separately handle docs because blindly replacing the old version with the new
+    # might break certain examples/links
+    pushd docs/content/docs
+    git grep -l $latest_stable_version -- "./*.md*" | \
+        xargs sed "${sedi[@]}" \
+        -e "s/\"$latest_stable_version\"/\"$version\"/g"
+    allow_globs="installation.mdx quickstart/local.mdx references/verifiable-builds.mdx"
+    git grep -l $latest_stable_version -- $allow_globs |
+        xargs sed "${sedi[@]}" \
+        -e "s/$latest_stable_version/$version/g"
+    # Replace `solana_version` with the current version
+    solana_version=$(solana --version | awk '{print $2;}')
+    sed $sedi "s/solana_version.*\"/solana_version = \"$solana_version\"/g" references/anchor-toml.mdx
+    # Keep release notes and changelog the same
+    git restore updates
+    popd
+fi
 
 # Potential for collisions in `package.json` files, handle those separately
 # Replace only matching "version": "x.xx.x" and "@anchor-lang/core": "x.xx.x"
@@ -55,12 +83,30 @@ sed "${sedi[@]}" -e \
     CHANGELOG.md
 
 # Update lock files
-pushd ts && yarn && popd
-pushd tests && yarn && popd
-pushd examples && yarn && pushd tutorial && yarn && popd && popd
+# Cannot use --frozen-lockfile: package.json versions were just bumped, so refresh the lockfiles.
+# Only workspace versions changed above; if lockfile diffs look like broad third-party churn, investigate before tagging.
+pushd ts
+yarn install
+popd
 
-# Bump benchmark files
-pushd tests/bench && anchor run bump-version -- --anchor-version $version && popd
+pushd tests
+yarn install
+popd
+
+pushd examples
+yarn install
+pushd tutorial
+yarn install
+popd
+popd
+
+# Avoid updating the benchmarks for pre-release builds
+if [[ "$is_prerelease" -eq 0 ]]; then
+    # Bump benchmark files
+    pushd tests/bench
+    anchor run bump-version -- --anchor-version $version
+    popd
+fi
 
 echo $version > VERSION
 

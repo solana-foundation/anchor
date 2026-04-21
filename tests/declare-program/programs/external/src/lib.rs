@@ -65,7 +65,7 @@ pub mod external {
         Ok(())
     }
 
-    // Test the issue described in https://github.com/coral-xyz/anchor/issues/3274
+    // Test the issue described in https://github.com/solana-foundation/anchor/issues/3274
     pub fn update_non_instruction_composite(
         ctx: Context<UpdateNonInstructionComposite>,
         value: u32,
@@ -74,7 +74,7 @@ pub mod external {
         Ok(())
     }
 
-    // Test the issue described in https://github.com/coral-xyz/anchor/issues/3349
+    // Test the issue described in https://github.com/solana-foundation/anchor/issues/3349
     pub fn update_non_instruction_composite2(
         ctx: Context<UpdateNonInstructionComposite2>,
         value: u32,
@@ -107,6 +107,13 @@ pub mod external {
         Ok(())
     }
 
+    // Compilation test for unsafe zero-copy accounts generated via `declare_program!`
+    pub fn test_compilation_packed_account(
+        _ctx: Context<TestCompilationPackedAccount>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     // Compilation test for an instruction with no accounts
     pub fn test_compilation_no_accounts(_ctx: Context<TestCompilationNoAccounts>) -> Result<()> {
         Ok(())
@@ -130,6 +137,11 @@ pub enum ExternalProgramError {
 #[derive(Accounts)]
 pub struct TestCompilation<'info> {
     pub signer: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct TestCompilationPackedAccount<'info> {
+    pub packed_account: AccountLoader<'info, PackedAccount>,
 }
 
 #[derive(Accounts)]
@@ -201,6 +213,14 @@ pub struct UpdateWithOptional<'info> {
 #[account]
 pub struct MyAccount {
     pub field: u32,
+}
+
+// Regression test for `declare_program!` codegen on `#[account(zero_copy(unsafe))]`
+// https://github.com/solana-foundation/anchor/issues/4072
+#[account(zero_copy(unsafe))]
+pub struct PackedAccount {
+    pub a: [u8; 8],
+    pub b: [u16; 8],
 }
 
 #[event]
