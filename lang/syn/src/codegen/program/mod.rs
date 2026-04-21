@@ -1,5 +1,4 @@
-use crate::Program;
-use quote::quote;
+use {crate::Program, quote::quote};
 
 mod accounts;
 pub mod common;
@@ -7,7 +6,7 @@ mod cpi;
 mod dispatch;
 mod entry;
 mod handlers;
-mod idl;
+
 mod instruction;
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
@@ -37,15 +36,5 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         }
     };
 
-    #[cfg(feature = "idl-build")]
-    {
-        let idl_build_impl = crate::idl::gen_idl_print_fn_program(program);
-        return quote! {
-            #ret
-            #idl_build_impl
-        };
-    };
-
-    #[allow(unreachable_code)]
     ret
 }

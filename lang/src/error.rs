@@ -1,8 +1,12 @@
-use crate::solana_program::{program_error::ProgramError, pubkey::Pubkey};
-use anchor_lang::error_code;
-use borsh::maybestd::io::Error as BorshIoError;
-use std::fmt::{Debug, Display};
-use std::num::TryFromIntError;
+use {
+    crate::solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    anchor_lang::error_code,
+    borsh::io::Error as BorshIoError,
+    std::{
+        fmt::{Debug, Display},
+        num::TryFromIntError,
+    },
+};
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
@@ -34,16 +38,7 @@ pub enum ErrorCode {
     #[msg("The program could not serialize the given instruction")]
     InstructionDidNotSerialize,
 
-    // IDL instructions
-    /// 1000 - The program was compiled without idl instructions
-    #[msg("The program was compiled without idl instructions")]
-    IdlInstructionStub = 1000,
-    /// 1001 - Invalid program given to the IDL instruction
-    #[msg("Invalid program given to the IDL instruction")]
-    IdlInstructionInvalidProgram,
-    /// 1002 - IDL Account must be empty in order to resize
-    #[msg("IDL account must be empty in order to resize, try closing first")]
-    IdlAccountNotEmpty,
+    // Legacy IDL instructions have been removed in favor of Program Metadata
 
     // Event instructions
     /// 1500 - The program was compiled without `event-cpi` feature
@@ -177,6 +172,17 @@ pub enum ErrorCode {
     /// 2039 - A transfer hook extension transfer hook program id constraint was violated
     #[msg("A transfer hook extension transfer hook program id constraint was violated")]
     ConstraintMintTransferHookExtensionProgramId,
+    /// 2040 - A duplicate mutable account constraint was violated
+    #[msg("A duplicate mutable account constraint was violated")]
+    ConstraintDuplicateMutableAccount,
+
+    // Migration errors
+    /// 2041 - Account is already migrated
+    #[msg("Account is already migrated")]
+    AccountAlreadyMigrated,
+    /// 2042 - Account must be migrated before exiting
+    #[msg("Account must be migrated before exiting")]
+    AccountNotMigrated,
 
     // Require
     /// 2500 - A require expression was violated
@@ -326,6 +332,12 @@ impl From<TryFromIntError> for Error {
     }
 }
 
+impl From<std::convert::Infallible> for Error {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!("Infallible has no inhabitants")
+    }
+}
+
 impl Error {
     pub fn log(&self) {
         match self {
@@ -420,7 +432,8 @@ impl ProgramErrorWithOrigin {
             }
             Some(ErrorOrigin::Source(source)) => {
                 anchor_lang::solana_program::msg!(
-                    "ProgramError thrown in {}:{}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
+                    "ProgramError thrown in {}:{}. Error Code: {:?}. Error Number: {}. Error \
+                     Message: {}.",
                     source.filename,
                     source.line,
                     self.program_error,
@@ -431,7 +444,8 @@ impl ProgramErrorWithOrigin {
             Some(ErrorOrigin::AccountName(account_name)) => {
                 // using sol_log because msg! wrongly interprets 5 inputs as u64
                 anchor_lang::solana_program::log::sol_log(&format!(
-                    "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. Error Message: {}.",
+                    "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. \
+                     Error Message: {}.",
                     account_name,
                     self.program_error,
                     u64::from(self.program_error.clone()),
@@ -507,7 +521,8 @@ impl AnchorError {
             }
             Some(ErrorOrigin::Source(source)) => {
                 anchor_lang::solana_program::msg!(
-                    "AnchorError thrown in {}:{}. Error Code: {}. Error Number: {}. Error Message: {}.",
+                    "AnchorError thrown in {}:{}. Error Code: {}. Error Number: {}. Error \
+                     Message: {}.",
                     source.filename,
                     source.line,
                     self.error_name,
@@ -517,11 +532,9 @@ impl AnchorError {
             }
             Some(ErrorOrigin::AccountName(account_name)) => {
                 anchor_lang::solana_program::log::sol_log(&format!(
-                    "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error Message: {}.",
-                    account_name,
-                    self.error_name,
-                    self.error_code_number,
-                    self.error_msg
+                    "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error \
+                     Message: {}.",
+                    account_name, self.error_name, self.error_code_number, self.error_msg
                 ));
             }
         }

@@ -1,12 +1,14 @@
-use anchor_lang::solana_program::account_info::AccountInfo;
-use anchor_lang::solana_program::program_pack::Pack;
-use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::Result;
-use anchor_lang::{context::CpiContext, Accounts};
-use std::ops::Deref;
-
-pub use spl_token;
-pub use spl_token::ID;
+// Avoiding AccountInfo deprecated msg in anchor context
+#![allow(deprecated)]
+use {
+    anchor_lang::{
+        context::CpiContext,
+        solana_program::{account_info::AccountInfo, program_pack::Pack, pubkey::Pubkey},
+        Accounts, Result,
+    },
+    std::ops::Deref,
+};
+pub use {spl_token::ID, spl_token_interface as spl_token};
 
 pub fn transfer<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, Transfer<'info>>,

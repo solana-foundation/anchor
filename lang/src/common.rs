@@ -1,9 +1,13 @@
-use crate::prelude::{Id, System};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::system_program;
-use crate::Result;
+use crate::{
+    prelude::{Id, System},
+    solana_program::{account_info::AccountInfo, system_program},
+    Result,
+};
 
-pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info>) -> Result<()> {
+pub(crate) fn close<'info>(
+    info: &AccountInfo<'info>,
+    sol_destination: &AccountInfo<'info>,
+) -> Result<()> {
     // Transfer tokens from the account to the sol_destination.
     let dest_starting_lamports = sol_destination.lamports();
     **sol_destination.lamports.borrow_mut() =

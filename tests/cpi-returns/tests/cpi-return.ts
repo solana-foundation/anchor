@@ -1,9 +1,10 @@
 import assert from "assert";
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import * as borsh from "borsh";
-import { Program } from "@coral-xyz/anchor";
+import { Program } from "@anchor-lang/core";
 import { Callee } from "../target/types/callee";
 import { Caller } from "../target/types/caller";
+import { Malicious } from "../target/types/malicious";
 import { ConfirmOptions } from "@solana/web3.js";
 
 const { SystemProgram } = anchor.web3;
@@ -14,6 +15,7 @@ describe("CPI return", () => {
 
   const callerProgram = anchor.workspace.Caller as Program<Caller>;
   const calleeProgram = anchor.workspace.Callee as Program<Callee>;
+  const maliciousProgram = anchor.workspace.Malicious as Program<Malicious>;
 
   const getReturnLog = (confirmedTransaction) => {
     const prefix = "Program return: ";
@@ -28,7 +30,12 @@ describe("CPI return", () => {
 
   const cpiReturn = anchor.web3.Keypair.generate();
 
-  const confirmOptions: ConfirmOptions = { commitment: "confirmed" };
+  const confirmOptions: ConfirmOptions = {
+    commitment: "confirmed",
+    preflightCommitment: "confirmed",
+    skipPreflight: true,
+    maxRetries: 3,
+  };
 
   it("can initialize", async () => {
     await calleeProgram.methods
@@ -52,6 +59,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -76,6 +84,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
     const [key, , buffer] = getReturnLog(t);
     assert.equal(key, calleeProgram.programId);
@@ -93,6 +102,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -131,6 +141,7 @@ describe("CPI return", () => {
       .rpc(confirmOptions);
     let t = await provider.connection.getTransaction(tx, {
       commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
     });
 
     const [key, data, buffer] = getReturnLog(t);
@@ -222,6 +233,92 @@ describe("CPI return", () => {
         .view();
     } catch (e) {
       assert(e.message.includes("Method does not support views"));
+    }
+  });
+
+  // === VULNERABILITY PoC: Return data spoofing ===
+
+  it("VULNERABILITY: get_unchecked() reads spoofed return data (old behavior)", async () => {
+    // This demonstrates what happened BEFORE the fix.
+    // get_unchecked() preserves the old behavior for backward compatibility,
+    // showing that a malicious program can spoof return data.
+    const tx = await callerProgram.methods
+      .cpiCallReturnU64Spoofed()
+      .accounts({
+        authority: provider.wallet.publicKey,
+        cpiReturn: cpiReturn.publicKey,
+        cpiReturnProgram: calleeProgram.programId,
+        maliciousProgram: maliciousProgram.programId,
+      })
+      .rpc(confirmOptions);
+
+    let t = await provider.connection.getTransaction(tx, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+
+    // Find the "Program data:" log emitted by the caller
+    const dataPrefix = "Program data: ";
+    const dataLogs = t.meta.logMessages.filter((log) =>
+      log.startsWith(dataPrefix)
+    );
+    const lastDataLog = dataLogs[dataLogs.length - 1];
+    const b64Data = lastDataLog.slice(dataPrefix.length);
+    const buffer = Buffer.from(b64Data, "base64");
+
+    const reader = new borsh.BinaryReader(buffer);
+    const spoofedValue = reader.readU64().toNumber();
+
+    // Callee returned 10, but malicious program overwrote with 999.
+    // get_unchecked() (old behavior) happily returns the spoofed value.
+    assert.notEqual(
+      spoofedValue,
+      10,
+      "Expected spoofed value, not the real callee value"
+    );
+    assert.equal(
+      spoofedValue,
+      999,
+      "Malicious program successfully spoofed return data"
+    );
+
+    console.log(`\n  VULNERABILITY CONFIRMED (get_unchecked / old behavior):`);
+    console.log(`    Callee returned: 10`);
+    console.log(`    Malicious spoofed: 999`);
+    console.log(`    Caller received: ${spoofedValue} (SPOOFED!)\n`);
+  });
+
+  it("FIX: get() rejects spoofed return data with program_id validation", async () => {
+    // After the fix, get() validates the program_id from get_return_data()
+    // against the expected program. This should FAIL because the return data
+    // was set by the malicious program, not the callee.
+    try {
+      await callerProgram.methods
+        .cpiCallReturnU64SpoofedRejected()
+        .accounts({
+          authority: provider.wallet.publicKey,
+          cpiReturn: cpiReturn.publicKey,
+          cpiReturnProgram: calleeProgram.programId,
+          maliciousProgram: maliciousProgram.programId,
+        })
+        .rpc(confirmOptions);
+
+      // If we get here, the fix didn't work
+      assert.fail("Expected transaction to fail due to program_id mismatch");
+    } catch (e) {
+      // Verify the error is specifically from the program_id validation,
+      // not some unrelated failure.
+      const errStr = JSON.stringify(e);
+      assert(
+        errStr.includes("program_id mismatch") ||
+          errStr.includes("ProgramFailedToComplete"),
+        `Expected program_id mismatch error, got: ${e.message?.substring(
+          0,
+          200
+        )}`
+      );
+      console.log(`\n  FIX CONFIRMED: get() rejected spoofed return data`);
+      console.log(`    Error: ${e.message?.substring(0, 100)}...\n`);
     }
   });
 });

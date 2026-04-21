@@ -1,6 +1,10 @@
-use crate::solana_program::program_memory::sol_memcpy;
-use std::cmp;
-use std::io::{self, Write};
+use {
+    crate::solana_program::program_memory::sol_memcpy,
+    std::{
+        cmp,
+        io::{self, Write},
+    },
+};
 
 #[derive(Debug, Default)]
 pub struct BpfWriter<T> {
@@ -16,15 +20,16 @@ impl<T> BpfWriter<T> {
 
 impl Write for BpfWriter<&mut [u8]> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if self.pos >= self.inner.len() as u64 {
-            return Ok(0);
-        }
+        let remaining_inner = match self.inner.get_mut(self.pos as usize..) {
+            Some(buf) if !buf.is_empty() => buf,
+            _ => return Ok(0),
+        };
 
-        let amt = cmp::min(
-            self.inner.len().saturating_sub(self.pos as usize),
-            buf.len(),
-        );
-        sol_memcpy(&mut self.inner[(self.pos as usize)..], buf, amt);
+        let amt = cmp::min(remaining_inner.len(), buf.len());
+        // SAFETY: `amt` is guarenteed by the above line to be in bounds for both slices
+        unsafe {
+            sol_memcpy(remaining_inner, buf, amt);
+        }
         self.pos += amt as u64;
         Ok(amt)
     }

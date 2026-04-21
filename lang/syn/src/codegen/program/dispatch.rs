@@ -1,11 +1,13 @@
-use crate::Program;
-use heck::CamelCase;
-use quote::quote;
+use {crate::Program, heck::CamelCase, quote::quote};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Dispatch all global instructions.
     let global_ixs = program.ixs.iter().map(|ix| {
         let ix_method_name = &ix.raw_method.sig.ident;
+        #[allow(
+            clippy::expect_used,
+            reason = "camelCase of a valid Rust identifier is always a valid TokenStream"
+        )]
         let ix_name_camel: proc_macro2::TokenStream = ix_method_name
             .to_string()
             .to_camel_case()
@@ -72,26 +74,14 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// If no match is found, the fallback function is executed if it exists, or an error is
         /// returned if it doesn't exist.
         fn dispatch<'info>(
-            program_id: &Pubkey,
+            program_id: &'info Pubkey,
             accounts: &'info [AccountInfo<'info>],
-            data: &[u8],
+            data: &'info [u8],
         ) -> anchor_lang::Result<()> {
             #(#global_ixs)*
 
-            // Dispatch IDL instructions
-            if data.starts_with(anchor_lang::idl::IDL_IX_TAG_LE) {
-                // If the method identifier is the IDL tag, then execute an IDL
-                // instruction, injected into all Anchor programs unless they have
-                // `no-idl` feature enabled
-                #[cfg(not(feature = "no-idl"))]
-                return __private::__idl::__idl_dispatch(
-                    program_id,
-                    accounts,
-                    &data[anchor_lang::idl::IDL_IX_TAG_LE.len()..],
-                );
-                #[cfg(feature = "no-idl")]
-                return Err(anchor_lang::error::ErrorCode::IdlInstructionStub.into());
-            }
+            // Legacy IDL instructions have been removed in favor of Program Metadata
+            // No IDL instructions are injected into programs anymore
 
             // Dispatch Event CPI instruction
             if data.starts_with(anchor_lang::event::EVENT_IX_TAG_LE) {

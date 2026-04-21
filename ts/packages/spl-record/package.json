@@ -1,12 +1,12 @@
 {
-  "name": "@coral-xyz/spl-record",
+  "name": "@anchor-lang/spl-record",
   "description": "Anchor client for Solana Program Library Record Program",
   "version": "0.1.0",
   "author": "acheron <acheroncrypto@gmail.com>",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/coral-xyz/anchor.git"
+    "url": "https://github.com/solana-foundation/anchor.git"
   },
   "files": [
     "dist"
@@ -16,7 +16,7 @@
   "browser": "./dist/browser/index.js",
   "types": "./dist/cjs/index.d.ts",
   "scripts": {
-    "init:yarn": "yarn && yarn lint:fix && yarn build:yarn",
+    "init:yarn": "yarn --frozen-lockfile && yarn lint:fix && yarn build:yarn",
     "init:npm": "npm i && npm run lint:fix && npm run build:npm",
     "build:yarn": "rimraf dist/ && yarn build:node && yarn build:browser",
     "build:npm": "rimraf dist/ && npm run build:node && npm run build:browser",
@@ -27,7 +27,7 @@
     "watch": "tsc -p tsconfig.cjs.json --watch"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "=0.31.1",
+    "@anchor-lang/core": "=1.0.0",
     "@native-to-anchor/buffer-layout": "=0.1.0"
   },
   "devDependencies": {

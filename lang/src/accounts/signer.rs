@@ -1,11 +1,12 @@
 //! Type validating that the account signed the transaction
-use crate::error::ErrorCode;
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas};
-use std::collections::BTreeSet;
-use std::ops::Deref;
+use {
+    crate::{
+        error::ErrorCode,
+        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, AccountsExit, Key, Result, ToAccountInfos, ToAccountMetas,
+    },
+    std::{collections::BTreeSet, ops::Deref},
+};
 
 /// Type validating that the account signed the transaction. No other ownership
 /// or type checks are done. If this is used, one should not try to access the
@@ -25,7 +26,7 @@ use std::ops::Deref;
 ///
 /// #[derive(Accounts)]
 /// pub struct Example<'info> {
-///     #[account(init, payer = payer)]
+///     #[account(init, payer = payer, space = 8 + 8)]
 ///     pub my_acc: Account<'info, MyData>,
 ///     #[account(mut)]
 ///     pub payer: Signer<'info>,

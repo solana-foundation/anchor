@@ -1,9 +1,10 @@
-use anyhow::{anyhow, Result};
-use proc_macro2::TokenStream;
-use quote::quote;
-
-use super::common::{get_idl_module_path, get_no_docs};
-use crate::parser::docs;
+use {
+    super::common::{get_idl_module_path, get_no_docs},
+    crate::parser::docs,
+    proc_macro2::TokenStream,
+    quote::quote,
+    syn::{spanned::Spanned, Result},
+};
 
 /// Generate `IdlBuild` impl for a struct.
 pub fn impl_idl_build_struct(item: &syn::ItemStruct) -> TokenStream {
@@ -22,7 +23,7 @@ pub fn impl_idl_build_union(item: &syn::ItemUnion) -> TokenStream {
     impl_idl_build(
         &item.ident,
         &item.generics,
-        Err(anyhow!("Unions are not supported")),
+        Err(syn::Error::new_spanned(item, "Unions are not supported")),
     )
 }
 
@@ -33,10 +34,11 @@ fn impl_idl_build(
     type_def: Result<(TokenStream, Vec<syn::TypePath>)>,
 ) -> TokenStream {
     let idl = get_idl_module_path();
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let idl_build_trait = quote!(anchor_lang::idl::build::IdlBuild);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let (idl_type_def, insert_defined) = match type_def {
+        Err(e) => return e.into_compile_error(),
         Ok((ts, defined)) => (
             quote! { Some(#ts) },
             quote! {
@@ -48,7 +50,6 @@ fn impl_idl_build(
                 );*
             },
         ),
-        _ => (quote! { None }, quote! {}),
     };
 
     quote! {
@@ -491,19 +492,69 @@ pub fn gen_idl_type(
 
             // Handle type aliases and external types
             {
-                use super::{common::find_path, external::get_external_type};
-                use crate::parser::context::CrateContext;
-                use quote::ToTokens;
+                use {
+                    super::{common::find_path, external::get_external_type},
+                    crate::parser::context::CrateContext,
+                    quote::ToTokens,
+                    std::{
+                        collections::{HashMap, HashSet},
+                        sync::OnceLock,
+                    },
+                };
+
+                struct CachedCrateData {
+                    /// Names of all structs and enums defined in the crate
+                    defined_names: HashSet<String>,
+                    /// Type aliases stored as (name, source_text) for re-parsing
+                    type_aliases: HashMap<String, String>,
+                }
+
+                static CRATE_DATA_CACHE: OnceLock<
+                    std::result::Result<CachedCrateData, anyhow::Error>,
+                > = OnceLock::new();
 
                 // If no path was found, just return an empty path and let the find_path function handle it
                 let source_path = proc_macro2::Span::call_site()
-                    .unwrap()
                     .local_file()
                     .unwrap_or_default();
 
-                if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
+                if let Ok(lib_path) = find_path("lib.rs", &source_path) {
                     let name = path.path.segments.last().unwrap().ident.to_string();
-                    let alias = ctx.type_aliases().find(|ty| ty.ident == name);
+
+                    let cache = CRATE_DATA_CACHE.get_or_init(|| {
+                        CrateContext::parse(&lib_path).map(|ctx| {
+                            let defined_names: HashSet<String> = ctx
+                                .structs()
+                                .map(|s| s.ident.to_string())
+                                .chain(ctx.enums().map(|e| e.ident.to_string()))
+                                .collect();
+                            let type_aliases: HashMap<String, String> = ctx
+                                .type_aliases()
+                                .map(|ty| (ty.ident.to_string(), ty.to_token_stream().to_string()))
+                                .collect();
+                            CachedCrateData {
+                                defined_names,
+                                type_aliases,
+                            }
+                        })
+                    });
+
+                    let cache = match cache {
+                        Ok(data) => data,
+                        Err(e) => {
+                            return Err(syn::Error::new(
+                                path.span(),
+                                format!("Failed to parse crate: {e}"),
+                            ));
+                        }
+                    };
+
+                    let alias_src = cache.type_aliases.get(&name).cloned();
+                    let is_external = !cache.defined_names.contains(&name);
+
+                    let alias: Option<syn::ItemType> =
+                        alias_src.and_then(|src| syn::parse_str(&src).ok());
+
                     if let Some(alias) = alias {
                         if let Some(segment) = path.path.segments.last() {
                             if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
@@ -564,12 +615,6 @@ pub fn gen_idl_type(
                     }
 
                     // Handle external types
-                    let is_external = ctx
-                        .structs()
-                        .map(|s| s.ident.to_string())
-                        .chain(ctx.enums().map(|e| e.ident.to_string()))
-                        .find(|defined| defined == &name)
-                        .is_none();
                     if is_external {
                         if let Ok(Some(ty)) = get_external_type(&name, source_path) {
                             return gen_idl_type(&ty, generic_params);
@@ -596,7 +641,7 @@ pub fn gen_idl_type(
                             //
                             // As a workaround, we're manually checking to see if it *looks* like a
                             // constant identifier to fix the issue mentioned in
-                            // https://github.com/coral-xyz/anchor/issues/3520
+                            // https://github.com/solana-foundation/anchor/issues/3520
                             syn::GenericArgument::Type(syn::Type::Path(p))
                                 if p.path
                                     .segments
@@ -612,7 +657,12 @@ pub fn gen_idl_type(
                                 defined.extend(def);
                                 quote! { #idl::IdlGenericArg::Type { ty: #ty } }
                             }
-                            _ => return Err(anyhow!("Unsupported generic argument: {arg:#?}")),
+                            _ => {
+                                return Err(syn::Error::new(
+                                    arg.span(),
+                                    "Unsupported generic argument",
+                                ))
+                            }
                         };
                         generics.push(generic);
                     }
@@ -635,7 +685,7 @@ pub fn gen_idl_type(
             }
             _ => gen_idl_type(&reference.elem, generic_params),
         },
-        _ => Err(anyhow!("Unknown type: {ty:#?}")),
+        _ => Err(syn::Error::new_spanned(ty, "Unsupported type")),
     }
 }
 

@@ -1,7 +1,11 @@
-use crate::codegen::program::common::{generate_ix_variant, generate_ix_variant_name};
-use crate::Program;
-use heck::SnakeCase;
-use quote::{quote, ToTokens};
+use {
+    crate::{
+        codegen::program::common::{generate_ix_variant, generate_ix_variant_name},
+        Program,
+    },
+    heck::SnakeCase,
+    quote::{quote, ToTokens},
+};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Generate cpi methods for global methods.
@@ -9,16 +13,26 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         .ixs
         .iter()
         .map(|ix| {
+            #[allow(clippy::unwrap_used, reason = "computed from valid Rust identifier as module path")]
             let accounts_ident: proc_macro2::TokenStream = format!("crate::cpi::accounts::{}", &ix.anchor_ident.to_string()).parse().unwrap();
             let cpi_method = {
                 let name = &ix.raw_method.sig.ident;
                 let name_str = name.to_string();
-                let ix_variant = generate_ix_variant(&name_str, &ix.args);
+                let ix_variant = match generate_ix_variant(&name_str, &ix.args) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        let err = e.to_string();
+                        return quote! { compile_error!(concat!("error generating ix variant: `", #err, "`")) };
+                    }
+                };
                 let method_name = &ix.ident;
                 let args: Vec<&syn::PatType> = ix.args.iter().map(|arg| &arg.raw_arg).collect();
-                let discriminator = {
-                    let name = generate_ix_variant_name(&name_str);
-                    quote! { <instruction::#name as anchor_lang::Discriminator>::DISCRIMINATOR }
+                let discriminator = match generate_ix_variant_name(&name_str) {
+                    Ok(name) => quote! { <instruction::#name as anchor_lang::Discriminator>::DISCRIMINATOR },
+                    Err(e) => {
+                        let err = e.to_string();
+                        return quote! { compile_error!(concat!("error generating ix variant name: `", #err, "`")) };
+                    }
                 };
                 let ret_type = &ix.returns.ty.to_token_stream();
                 let ix_cfgs = &ix.cfgs;
@@ -26,7 +40,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     "()" => (quote! {anchor_lang::Result<()> }, quote! { Ok(()) }),
                     _ => (
                         quote! { anchor_lang::Result<crate::cpi::Return::<#ret_type>> },
-                        quote! { Ok(crate::cpi::Return::<#ret_type> { phantom: crate::cpi::PhantomData }) }
+                        quote! { Ok(crate::cpi::Return::<#ret_type> { phantom: crate::cpi::PhantomData, program_id: ctx.program_id }) }
                     )
                 };
 
@@ -44,7 +58,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                                 .map_err(|_| anchor_lang::error::ErrorCode::InstructionDidNotSerialize)?;
                             let accounts = ctx.to_account_metas(None);
                             anchor_lang::solana_program::instruction::Instruction {
-                                program_id: ctx.program.key(),
+                                program_id: ctx.program_id,
                                 accounts,
                                 data,
                             }
@@ -77,11 +91,24 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
 
             pub struct Return<T> {
-                phantom: std::marker::PhantomData<T>
+                phantom: std::marker::PhantomData<T>,
+                program_id: anchor_lang::solana_program::pubkey::Pubkey,
             }
 
             impl<T: AnchorDeserialize> Return<T> {
                 pub fn get(&self) -> T {
+                    let (key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
+                    if key != self.program_id {
+                        anchor_lang::solana_program::log::sol_log("CPI return data program_id mismatch");
+                        panic!();
+                    }
+                    T::try_from_slice(&data).unwrap()
+                }
+
+                /// Read return data without validating the program_id.
+                /// Use this only when you intentionally need to read return data
+                /// from a different program than the one that was CPI'd into.
+                pub fn get_unchecked(&self) -> T {
                     let (_key, data) = anchor_lang::solana_program::program::get_return_data().unwrap();
                     T::try_from_slice(&data).unwrap()
                 }
@@ -113,6 +140,10 @@ pub fn generate_accounts(program: &Program) -> proc_macro2::TokenStream {
     let account_structs: Vec<proc_macro2::TokenStream> = accounts
         .iter()
         .map(|(macro_name, cfgs)| {
+            #[allow(
+                clippy::unwrap_used,
+                reason = "computed from valid Rust identifier via snake_case"
+            )]
             let macro_name: proc_macro2::TokenStream = macro_name.parse().unwrap();
             quote! {
                 #(#cfgs)*

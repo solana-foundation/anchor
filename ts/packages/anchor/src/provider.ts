@@ -150,9 +150,15 @@ export class AnchorProvider implements Provider {
       }
     } else {
       tx.feePayer = tx.feePayer ?? this.wallet.publicKey;
-      tx.recentBlockhash = (
-        await this.connection.getLatestBlockhash(opts.preflightCommitment)
-      ).blockhash;
+
+      if (
+        !tx.recentBlockhash ||
+        tx.recentBlockhash === "11111111111111111111111111111111"
+      ) {
+        tx.recentBlockhash = (
+          await this.connection.getLatestBlockhash(opts.preflightCommitment)
+        ).blockhash;
+      }
 
       if (signers) {
         for (const signer of signers) {

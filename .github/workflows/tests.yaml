@@ -5,12 +5,13 @@ on:
     branches:
       - master
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   pull_request:
     branches:
       - master
+      - anchor-next
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 jobs:
   tests:
@@ -18,7 +19,8 @@ jobs:
     uses: ./.github/workflows/reusable-tests.yaml
     with:
       cache: true
-      solana_cli_version: 2.1.0
+      solana_version: 3.1.10
       node_version: 20.18.0
       cargo_profile: debug
       anchor_binary_name: anchor-binary
+      surfpool_cli_version: 1.1.1

@@ -1,8 +1,12 @@
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
-use std::collections::BTreeSet;
+// Avoiding AccountInfo deprecated msg in anchor context
+#![allow(deprecated)]
+use {
+    crate::{
+        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, Result, ToAccountInfos, ToAccountMetas,
+    },
+    std::collections::BTreeSet,
+};
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
@@ -37,10 +41,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::solana_program::clock::Epoch;
-    use crate::solana_program::pubkey::Pubkey;
-
-    use super::*;
+    use {super::*, crate::solana_program::pubkey::Pubkey};
 
     #[derive(Accounts)]
     pub struct Test<'info> {
@@ -56,29 +57,13 @@ mod tests {
         let mut lamports1 = 0;
         let mut data1 = vec![0; 10];
         let owner = Pubkey::default();
-        let account1 = AccountInfo::new(
-            &key,
-            true,
-            true,
-            &mut lamports1,
-            &mut data1,
-            &owner,
-            false,
-            Epoch::default(),
-        );
+        let account1 =
+            AccountInfo::new(&key, true, true, &mut lamports1, &mut data1, &owner, false);
 
         let mut lamports2 = 0;
         let mut data2 = vec![0; 10];
-        let account2 = AccountInfo::new(
-            &key,
-            true,
-            true,
-            &mut lamports2,
-            &mut data2,
-            &owner,
-            false,
-            Epoch::default(),
-        );
+        let account2 =
+            AccountInfo::new(&key, true, true, &mut lamports2, &mut data2, &owner, false);
         let mut bumps = TestBumps::default();
         let mut reallocs = std::collections::BTreeSet::new();
         let mut accounts = &[account1, account2][..];

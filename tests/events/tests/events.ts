@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { assert } from "chai";
 
 import { Events } from "../target/types/events";
@@ -7,6 +7,12 @@ describe("Events", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.Events as anchor.Program<Events>;
+  const confirmOptions: anchor.web3.ConfirmOptions = {
+    commitment: "confirmed",
+    preflightCommitment: "confirmed",
+    skipPreflight: true,
+    maxRetries: 3,
+  };
 
   type Event = anchor.IdlEvents<typeof program["idl"]>;
   const getEvent = async <E extends keyof Event>(
@@ -46,13 +52,26 @@ describe("Events", () => {
   });
 
   describe("CPI event", () => {
+    const config = {
+      commitment: "confirmed",
+      preflightCommitment: "confirmed",
+      skipPreflight: true,
+      maxRetries: 3,
+    } as const;
+
     it("Works without accounts being specified", async () => {
       const tx = await program.methods.testEventCpi().transaction();
-      const config = { commitment: "confirmed" } as const;
-      const txHash = await program.provider.sendAndConfirm(tx, [], config);
+      const txHash = await program.provider.sendAndConfirm(
+        tx,
+        [],
+        confirmOptions
+      );
       const txResult = await program.provider.connection.getTransaction(
         txHash,
-        config
+        {
+          ...confirmOptions,
+          maxSupportedTransactionVersion: 0,
+        }
       );
 
       const ixData = anchor.utils.bytes.bs58.decode(
@@ -91,7 +110,7 @@ describe("Events", () => {
       );
 
       try {
-        await program.provider.sendAndConfirm(tx, []);
+        await program.provider.sendAndConfirm(tx, [], confirmOptions);
       } catch (e) {
         if (e.logs.some((log) => log.includes("ConstraintSigner"))) return;
         console.log(e);

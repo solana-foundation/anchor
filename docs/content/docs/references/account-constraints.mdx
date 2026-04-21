@@ -7,7 +7,7 @@ Minimal reference examples for Anchor account
 [constraints](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html).
 
 See the account constraints
-[source code](https://github.com/coral-xyz/anchor/blob/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/syn/src/codegen/accounts/constraints.rs)
+[source code](https://github.com/solana-foundation/anchor/blob/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/lang/syn/src/codegen/accounts/constraints.rs)
 for implementation details.
 
 ## Normal Constraints
@@ -36,6 +36,37 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 ```rust title="attribute"
 #[account(mut)]
 #[account(mut @ <custom_error>)]
+```
+
+### `#[account(dup)]`
+
+Description: By default, Anchor prevents duplicate mutable accounts to avoid
+potential security issues and unintended behavior. The `dup` constraint
+explicitly allows this for cases where it's intentional and safe.
+
+**Note**: This constraint only applies to mutable account (`mut`) types that
+serialize on exit. Other types like `UncheckedAccount`, `Signer`,
+`SystemAccount`, `AccountLoader`, `Program`, and `Interface` naturally allow
+duplicates as they don't serialize data on exit.
+
+```rust title="attribute"
+#[account(mut, dup)]
+#[account(mut, dup @ <custom_error>)]
+```
+
+```rust title="snippet"
+#[derive(Accounts)]
+pub struct AllowsDuplicateMutable<'info> {
+    #[account(mut)]
+    pub account1: Account<'info, Counter>,
+    // This account can be the same as account1
+    #[account(mut, dup)]
+    pub account2: Account<'info, Counter>,
+}
+
+pub fn allows_duplicate_mutable(ctx: Context<AllowsDuplicateMutable>) -> Result<()> {
+    Ok(())
+}
 ```
 
 ### `#[account(init)]`
@@ -202,7 +233,7 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 ### `#[account(realloc)]`
 
 Description: Used to realloc program account space at the beginning of an
-instruction.  
+instruction.
 Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/realloc)
 |
 [Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/realloc)
@@ -213,6 +244,20 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
     realloc::payer = <target>,
     realloc::zero = <bool>
 )]
+```
+
+### `#[account(discriminator = discrim)]`
+
+Description: Used to override the discriminator for an account. All constant expressions are supported,
+but [all-zero](/docs/footguns#zeroed-discriminators) discriminators are not.
+
+In versions of Anchor before 1.0, program-owned accounts with zeroed discriminators (for example, by manually
+initializing an `AccountInfo`, or as preparation for `#[zero]` initialization) can be taken over via IDL instructions.
+
+```rust title="attribute"
+#[account(discriminator = 12)]
+#[account(discriminator = [1, 2, 3, 4])]
+#[account(discriminator = MY_CONST_DISCRIMINATOR)]
 ```
 
 ## SPL Constraints
@@ -240,7 +285,7 @@ Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/mai
 
 ### `#[account(mint::*)]`
 
-Description: Create or validate mint accounts with specified parameters.  
+Description: Create or validate mint accounts with specified parameters.
 Examples: [Github](https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/mint)
 |
 [Solpg](https://beta.solpg.io/https://github.com/solana-developers/anchor-examples/tree/main/account-constraints/mint)
@@ -303,7 +348,8 @@ Description: Create or validate close authority extension on the mint account.
 
 ### `#[account(extensions::permanent_delegate::*)]`
 
-Description: Create or validate permanent delegate extension on the mint account.
+Description: Create or validate permanent delegate extension on the mint
+account.
 
 ```rust title="attribute"
 #[account(
@@ -335,7 +381,8 @@ Description: Create or validate group pointer extension on the mint account.
 
 ### `#[account(extensions::group_member_pointer::*)]`
 
-Description: Create or validate group member pointer extension on the mint account.
+Description: Create or validate group member pointer extension on the mint
+account.
 
 ```rust title="attribute"
 #[account(

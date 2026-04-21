@@ -1,35 +1,70 @@
-use crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT};
-use anchor_client::Cluster;
-use anchor_lang_idl::types::Idl;
-use anyhow::{anyhow, Context, Error, Result};
-use clap::{Parser, ValueEnum};
-use dirs::home_dir;
-use heck::ToSnakeCase;
-use reqwest::Url;
-use serde::de::{self, MapAccess, Visitor};
-use serde::ser::SerializeMap;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use solana_cli_config::{Config as SolanaConfig, CONFIG_FILE};
-use solana_sdk::clock::Slot;
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::signature::{Keypair, Signer};
-use std::collections::{BTreeMap, HashMap};
-use std::convert::TryFrom;
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::marker::PhantomData;
-use std::ops::Deref;
-use std::path::Path;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::{fmt, io};
-use walkdir::WalkDir;
+use {
+    crate::{get_keypair, is_hidden, keys_sync, AbsolutePath, DEFAULT_RPC_PORT},
+    anchor_client::Cluster,
+    anchor_lang_idl::types::Idl,
+    anyhow::{anyhow, bail, Context, Error, Result},
+    clap::{Parser, ValueEnum},
+    dirs::home_dir,
+    heck::ToSnakeCase,
+    reqwest::Url,
+    serde::{
+        de::{self, MapAccess, Visitor},
+        ser::SerializeMap,
+        Deserialize, Deserializer, Serialize, Serializer,
+    },
+    solana_cli_config::{Config as SolanaConfig, CONFIG_FILE},
+    solana_clock::Slot,
+    solana_commitment_config::CommitmentLevel,
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    std::{
+        collections::{BTreeMap, HashMap},
+        convert::TryFrom,
+        fmt,
+        fs::{self, File},
+        io::{self, prelude::*},
+        marker::PhantomData,
+        ops::Deref,
+        path::{Path, PathBuf},
+        process::Command,
+        str::FromStr,
+    },
+    walkdir::WalkDir,
+};
+
+pub const SURFPOOL_HOST: &str = "127.0.0.1";
+/// Wrapper around CommitmentLevel to support case-insensitive parsing
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AbsolutePath)]
+pub struct CaseInsensitiveCommitmentLevel(pub CommitmentLevel);
+
+impl FromStr for CaseInsensitiveCommitmentLevel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Convert to lowercase for case-insensitive matching
+        let lowercase = s.to_lowercase();
+        let commitment = CommitmentLevel::from_str(&lowercase).map_err(|_| {
+            format!(
+                "Invalid commitment level '{}'. Valid values are: processed, confirmed, finalized",
+                s
+            )
+        })?;
+        Ok(CaseInsensitiveCommitmentLevel(commitment))
+    }
+}
+
+impl From<CaseInsensitiveCommitmentLevel> for CommitmentLevel {
+    fn from(val: CaseInsensitiveCommitmentLevel) -> Self {
+        val.0
+    }
+}
 
 pub trait Merge: Sized {
     fn merge(&mut self, _other: Self) {}
 }
 
-#[derive(Default, Debug, Parser)]
+#[derive(Default, Debug, Parser, AbsolutePath)]
 pub struct ConfigOverride {
     /// Cluster override.
     #[clap(global = true, long = "provider.cluster")]
@@ -37,6 +72,9 @@ pub struct ConfigOverride {
     /// Wallet override.
     #[clap(global = true, long = "provider.wallet")]
     pub wallet: Option<WalletPath>,
+    /// Commitment override (valid values: processed, confirmed, finalized).
+    #[clap(global = true, long = "commitment")]
+    pub commitment: Option<CaseInsensitiveCommitmentLevel>,
 }
 
 #[derive(Debug)]
@@ -270,6 +308,16 @@ impl WithPath<Config> {
     }
 }
 
+impl WalletPath {
+    fn resolve_relative_to(self, base: &Path) -> Self {
+        if self.0.is_relative() {
+            Self(base.join(self.0))
+        } else {
+            self
+        }
+    }
+}
+
 impl<T> std::ops::Deref for WithPath<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -287,18 +335,27 @@ impl<T> std::ops::DerefMut for WithPath<T> {
 pub struct Config {
     pub toolchain: ToolchainConfig,
     pub features: FeaturesConfig,
-    pub registry: RegistryConfig,
     pub provider: ProviderConfig,
     pub programs: ProgramsConfig,
     pub scripts: ScriptsConfig,
+    pub hooks: HooksConfig,
     pub workspace: WorkspaceConfig,
     // Separate entry next to test_config because
     // "anchor localnet" only has access to the Anchor.toml,
     // not the Test.toml files
+    pub validator: Option<ValidatorType>,
     pub test_validator: Option<TestValidator>,
     pub test_config: Option<TestConfig>,
+    pub surfpool_config: Option<SurfpoolConfig>,
 }
 
+#[derive(ValueEnum, Parser, Clone, Copy, PartialEq, Eq, Debug, AbsolutePath)]
+pub enum ValidatorType {
+    /// Use Surfpool validator (default)
+    Surfpool,
+    /// Use Solana test validator
+    Legacy,
+}
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct ToolchainConfig {
     pub anchor_version: Option<String>,
@@ -307,7 +364,9 @@ pub struct ToolchainConfig {
 }
 
 /// Package manager to use for the project.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize, AbsolutePath,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
@@ -361,19 +420,6 @@ impl Default for FeaturesConfig {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RegistryConfig {
-    pub url: String,
-}
-
-impl Default for RegistryConfig {
-    fn default() -> Self {
-        Self {
-            url: "https://api.apr.dev".to_string(),
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct ProviderConfig {
     pub cluster: Cluster,
@@ -383,6 +429,49 @@ pub struct ProviderConfig {
 pub type ScriptsConfig = BTreeMap<String, String>;
 
 pub type ProgramsConfig = BTreeMap<Cluster, BTreeMap<String, ProgramDeployment>>;
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HooksConfig {
+    #[serde(alias = "pre-build")]
+    pre_build: Option<Hook>,
+    #[serde(alias = "post-build")]
+    post_build: Option<Hook>,
+    #[serde(alias = "pre-test")]
+    pre_test: Option<Hook>,
+    #[serde(alias = "post-test")]
+    post_test: Option<Hook>,
+    #[serde(alias = "pre-deploy")]
+    pre_deploy: Option<Hook>,
+    #[serde(alias = "post-deploy")]
+    post_deploy: Option<Hook>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+enum Hook {
+    Single(String),
+    List(Vec<String>),
+}
+
+impl Hook {
+    pub fn hooks(&self) -> &[String] {
+        match self {
+            Self::Single(h) => std::slice::from_ref(h),
+            Self::List(l) => l.as_slice(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HookType {
+    PreBuild,
+    PostBuild,
+    PreTest,
+    PostTest,
+    PreDeploy,
+    PostDeploy,
+}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct WorkspaceConfig {
@@ -394,24 +483,10 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum BootstrapMode {
     None,
     Debian,
-}
-
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
-pub enum ProgramArch {
-    Bpf,
-    Sbf,
-}
-impl ProgramArch {
-    pub fn build_subcommand(&self) -> &str {
-        match self {
-            Self::Bpf => "build-bpf",
-            Self::Sbf => "build-sbf",
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -471,15 +546,17 @@ impl Config {
                     .path();
                 if let Some(filename) = p.file_name() {
                     if filename.to_str() == Some("Anchor.toml") {
+                        let config_dir = p.parent().unwrap();
                         // Make sure the program id is correct (only on the initial build)
                         let mut cfg = Config::from_path(&p)?;
-                        let deploy_dir = p.parent().unwrap().join("target").join("deploy");
+                        let deploy_dir = config_dir.join("target").join("deploy");
                         if !deploy_dir.exists() && !cfg.programs.contains_key(&Cluster::Localnet) {
                             println!("Updating program ids...");
                             fs::create_dir_all(deploy_dir)?;
                             keys_sync(&ConfigOverride::default(), None)?;
                             cfg = Config::from_path(&p)?;
                         }
+                        cfg.provider.wallet = cfg.provider.wallet.resolve_relative_to(config_dir);
 
                         return Ok(Some(WithPath::new(cfg, p)));
                     }
@@ -499,7 +576,33 @@ impl Config {
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
-        get_keypair(&self.provider.wallet.to_string())
+        get_keypair(Path::new(&self.provider.wallet.0))
+    }
+
+    pub fn run_hooks(&self, hook_type: HookType) -> Result<()> {
+        let hooks = match hook_type {
+            HookType::PreBuild => &self.hooks.pre_build,
+            HookType::PostBuild => &self.hooks.post_build,
+            HookType::PreTest => &self.hooks.pre_test,
+            HookType::PostTest => &self.hooks.post_test,
+            HookType::PreDeploy => &self.hooks.pre_deploy,
+            HookType::PostDeploy => &self.hooks.post_deploy,
+        };
+        let cmds = hooks.as_ref().map(Hook::hooks).unwrap_or_default();
+        for cmd in cmds {
+            let status = Command::new("bash")
+                .arg("-c")
+                .arg(cmd)
+                .status()
+                .with_context(|| format!("failed to execute `{cmd}`"))?;
+            if !status.success() {
+                match status.code() {
+                    Some(code) => bail!("`{cmd}` failed with exit code {code}"),
+                    None => bail!("`{cmd}` killed by signal"),
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -508,11 +611,12 @@ struct _Config {
     toolchain: Option<ToolchainConfig>,
     features: Option<FeaturesConfig>,
     programs: Option<BTreeMap<String, BTreeMap<String, serde_json::Value>>>,
-    registry: Option<RegistryConfig>,
     provider: Provider,
     workspace: Option<WorkspaceConfig>,
     scripts: Option<ScriptsConfig>,
+    hooks: Option<HooksConfig>,
     test: Option<_TestValidator>,
+    surfpool: Option<_SurfpoolConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -600,7 +704,6 @@ impl fmt::Display for Config {
         let cfg = _Config {
             toolchain: Some(self.toolchain.clone()),
             features: Some(self.features.clone()),
-            registry: Some(self.registry.clone()),
             provider: Provider {
                 cluster: self.provider.cluster.clone(),
                 wallet: self.provider.wallet.stringify_with_tilde(),
@@ -610,9 +713,11 @@ impl fmt::Display for Config {
                 true => None,
                 false => Some(self.scripts.clone()),
             },
+            hooks: Some(self.hooks.clone()),
             programs,
             workspace: (!self.workspace.members.is_empty() || !self.workspace.exclude.is_empty())
                 .then(|| self.workspace.clone()),
+            surfpool: self.surfpool_config.clone().map(Into::into),
         };
 
         let cfg = toml::to_string(&cfg).expect("Must be well formed");
@@ -629,16 +734,18 @@ impl FromStr for Config {
         Ok(Config {
             toolchain: cfg.toolchain.unwrap_or_default(),
             features: cfg.features.unwrap_or_default(),
-            registry: cfg.registry.unwrap_or_default(),
             provider: ProviderConfig {
                 cluster: cfg.provider.cluster,
                 wallet: shellexpand::tilde(&cfg.provider.wallet).parse()?,
             },
             scripts: cfg.scripts.unwrap_or_default(),
+            hooks: cfg.hooks.unwrap_or_default(),
+            validator: None, // Will be set based on CLI flags
             test_validator: cfg.test.map(Into::into),
             test_config: None,
             programs: cfg.programs.map_or(Ok(BTreeMap::new()), deser_programs)?,
             workspace: cfg.workspace.unwrap_or_default(),
+            surfpool_config: cfg.surfpool.map(Into::into),
         })
     }
 }
@@ -724,6 +831,23 @@ pub struct TestValidator {
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct SurfpoolConfig {
+    pub startup_wait: i32,
+    pub shutdown_wait: i32,
+    pub rpc_port: u16,
+    pub ws_port: Option<u16>,
+    pub host: String,
+    pub online: Option<bool>,
+    pub datasource_rpc_url: Option<String>,
+    pub airdrop_addresses: Option<Vec<String>>,
+    pub manifest_file_path: Option<String>,
+    pub runbooks: Option<Vec<String>>,
+    pub slot_time: Option<u16>,
+    pub log_level: Option<String>,
+    pub block_production_mode: Option<String>,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct _TestValidator {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genesis: Option<Vec<GenesisEntry>>,
@@ -737,6 +861,75 @@ pub struct _TestValidator {
     pub upgradeable: Option<bool>,
 }
 
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct _SurfpoolConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub startup_wait: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shutdown_wait: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rpc_port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ws_port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub online: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub datasource_rpc_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub airdrop_addresses: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub manifest_file_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runbooks: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slot_time: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_level: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_production_mode: Option<String>,
+}
+
+impl From<_SurfpoolConfig> for SurfpoolConfig {
+    fn from(_surfpool_config: _SurfpoolConfig) -> Self {
+        Self {
+            startup_wait: _surfpool_config.startup_wait.unwrap_or(STARTUP_WAIT),
+            shutdown_wait: _surfpool_config.shutdown_wait.unwrap_or(SHUTDOWN_WAIT),
+            rpc_port: _surfpool_config.rpc_port.unwrap_or(DEFAULT_RPC_PORT),
+            host: _surfpool_config.host.unwrap_or(SURFPOOL_HOST.to_string()),
+            ws_port: _surfpool_config.ws_port,
+            online: _surfpool_config.online,
+            datasource_rpc_url: _surfpool_config.datasource_rpc_url,
+            airdrop_addresses: _surfpool_config.airdrop_addresses,
+            manifest_file_path: _surfpool_config.manifest_file_path,
+            runbooks: _surfpool_config.runbooks,
+            slot_time: _surfpool_config.slot_time,
+            log_level: _surfpool_config.log_level,
+            block_production_mode: _surfpool_config.block_production_mode,
+        }
+    }
+}
+
+impl From<SurfpoolConfig> for _SurfpoolConfig {
+    fn from(surfpool_config: SurfpoolConfig) -> Self {
+        Self {
+            startup_wait: Some(surfpool_config.startup_wait),
+            shutdown_wait: Some(surfpool_config.shutdown_wait),
+            rpc_port: Some(surfpool_config.rpc_port),
+            ws_port: surfpool_config.ws_port,
+            host: Some(surfpool_config.host),
+            online: surfpool_config.online,
+            datasource_rpc_url: surfpool_config.datasource_rpc_url,
+            airdrop_addresses: surfpool_config.airdrop_addresses,
+            manifest_file_path: surfpool_config.manifest_file_path,
+            runbooks: surfpool_config.runbooks,
+            slot_time: surfpool_config.slot_time,
+            log_level: surfpool_config.log_level,
+            block_production_mode: surfpool_config.block_production_mode,
+        }
+    }
+}
 pub const STARTUP_WAIT: i32 = 5000;
 pub const SHUTDOWN_WAIT: i32 = 2000;
 
@@ -860,7 +1053,8 @@ fn canonicalize_filepath_from_origin(
     let result = fs::canonicalize(&file_path)
         .with_context(|| {
             format!(
-                "Error reading (possibly relative) path: {}. If relative, this is the path that was used as the current path: {}",
+                "Error reading (possibly relative) path: {}. If relative, this is the path that \
+                 was used as the current path: {}",
                 &file_path.as_ref().display(),
                 &origin.as_ref().display()
             )
@@ -1000,7 +1194,7 @@ pub struct _Validator {
     // Load all the accounts from the JSON files found in the specified DIRECTORY
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_dir: Option<Vec<AccountDirEntry>>,
-    // IP address to bind the validator ports. [default: 0.0.0.0]
+    // IP address to bind the validator ports. [default: 127.0.0.1]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bind_address: Option<String>,
     // Copy an account from the cluster referenced by the url argument.
@@ -1145,7 +1339,7 @@ pub fn get_default_ledger_path() -> PathBuf {
     Path::new(".anchor").join("test-ledger")
 }
 
-const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
+const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
 
 impl Merge for _Validator {
     fn merge(&mut self, other: Self) {
@@ -1251,7 +1445,7 @@ impl Program {
 
     pub fn keypair(&self) -> Result<Keypair> {
         let file = self.keypair_file()?;
-        get_keypair(file.path().to_str().unwrap())
+        get_keypair(file.path())
     }
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
@@ -1354,27 +1548,40 @@ impl AnchorPackage {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SurfnetInfoResponse {
+    pub runbook_executions: Vec<RunbookExecution>,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunbookExecution {
+    #[serde(rename = "startedAt")]
+    pub started_at: u32,
+    #[serde(rename = "completedAt")]
+    pub completed_at: Option<u32>,
+    #[serde(rename = "runbookId")]
+    pub runbook_id: String,
+    pub errors: Option<Vec<String>>,
+}
+
 #[macro_export]
 macro_rules! home_path {
     ($my_struct:ident, $path:literal) => {
-        #[derive(Clone, Debug)]
-        pub struct $my_struct(String);
+        #[derive(Clone, Debug, AbsolutePath)]
+        pub struct $my_struct(::std::path::PathBuf);
 
         impl Default for $my_struct {
             fn default() -> Self {
-                $my_struct(
-                    home_dir()
-                        .unwrap()
-                        .join($path.replace('/', std::path::MAIN_SEPARATOR_STR))
-                        .display()
-                        .to_string(),
-                )
+                $my_struct(home_dir().unwrap().join($path))
             }
         }
 
         impl $my_struct {
             fn stringify_with_tilde(&self) -> String {
                 self.0
+                    .display()
+                    .to_string()
                     .replacen(home_dir().unwrap().to_str().unwrap(), "~", 1)
             }
         }
@@ -1383,13 +1590,13 @@ macro_rules! home_path {
             type Err = anyhow::Error;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Ok(Self(s.to_owned()))
+                Ok(Self(::std::path::PathBuf::from(s)))
             }
         }
 
         impl fmt::Display for $my_struct {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}", self.0)
+                write!(f, "{}", self.0.display())
             }
         }
     };

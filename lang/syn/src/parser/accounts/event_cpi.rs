@@ -52,7 +52,6 @@ pub fn add_event_cpi_accounts(
 
     let authority = EventAuthority::get();
     let authority_name = authority.name_token_stream();
-    let authority_seeds = authority.seeds;
 
     let accounts_struct = quote! {
         #(#attrs)*
@@ -60,10 +59,10 @@ pub fn add_event_cpi_accounts(
             #(#fields,)*
 
             /// CHECK: Only the event authority can invoke self-CPI
-            #[account(seeds = [#authority_seeds], bump)]
-            pub #authority_name: AccountInfo<#info_lifetime>,
+            #[account(address = crate::EVENT_AUTHORITY_AND_BUMP.0)]
+            pub #authority_name: UncheckedAccount<#info_lifetime>,
             /// CHECK: Self-CPI will fail if the program is not the current program
-            pub program: AccountInfo<#info_lifetime>,
+            pub program: UncheckedAccount<#info_lifetime>,
         }
     };
     syn::parse2(accounts_struct)

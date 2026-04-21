@@ -10,8 +10,7 @@ use {
         },
     },
     anchor_spl::{
-        associated_token::{spl_associated_token_account, AssociatedToken},
-        metadata::mpl_token_metadata,
+        associated_token::AssociatedToken,
         token::{
             spl_token::{
                 self,
@@ -21,6 +20,8 @@ use {
         },
     },
 };
+
+declare_program!(mpl_token_metadata);
 
 declare_id!("hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk");
 
@@ -34,8 +35,8 @@ const ZERO: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 pub mod auction_house {
     use super::*;
 
-    pub fn create_auction_house<'info>(
-        ctx: Context<'_, '_, '_, 'info, CreateAuctionHouse<'info>>,
+    pub fn create_auction_house(
+        ctx: Context<CreateAuctionHouse>,
         seller_fee_basis_points: u16,
         requires_sign_off: bool,
         can_change_sale_price: bool,
@@ -126,10 +127,7 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn deposit<'info>(
-        ctx: Context<'_, '_, '_, 'info, Deposit<'info>>,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         let wallet = &ctx.accounts.wallet;
         let payment_account = &ctx.accounts.payment_account;
         let transfer_authority = &ctx.accounts.transfer_authority;
@@ -221,10 +219,7 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn withdraw<'info>(
-        ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         let wallet = &ctx.accounts.wallet;
         let receipt_account = &ctx.accounts.receipt_account;
         let escrow_payment_account = &ctx.accounts.escrow_payment_account;
@@ -297,7 +292,7 @@ pub mod auction_house {
                 &treasury_mint.key(),
             )?;
 
-            // make sure you cant get rugged
+            // make sure you can't get rugged
             if rec_acct.delegate.is_some() {
                 return err!(ErrorCode::BuyerATACannotHaveDelegate);
             }
@@ -340,11 +335,7 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn sell<'info>(
-        ctx: Context<'_, '_, '_, 'info, Sell<'info>>,
-        buyer_price: u64,
-        token_size: u64,
-    ) -> Result<()> {
+    pub fn sell(ctx: Context<Sell>, buyer_price: u64, token_size: u64) -> Result<()> {
         let wallet = &ctx.accounts.wallet;
         let token_account = &ctx.accounts.token_account;
         let metadata = &ctx.accounts.metadata;
@@ -458,11 +449,7 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn cancel<'info>(
-        ctx: Context<'_, '_, '_, 'info, Cancel<'info>>,
-        _buyer_price: u64,
-        _token_size: u64,
-    ) -> Result<()> {
+    pub fn cancel(ctx: Context<Cancel>, _buyer_price: u64, _token_size: u64) -> Result<()> {
         let wallet = &ctx.accounts.wallet;
         let token_account = &ctx.accounts.token_account;
         let authority = &ctx.accounts.authority;
@@ -520,11 +507,7 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn buy<'info>(
-        ctx: Context<'_, '_, '_, 'info, Buy<'info>>,
-        buyer_price: u64,
-        token_size: u64,
-    ) -> Result<()> {
+    pub fn buy(ctx: Context<Buy>, buyer_price: u64, token_size: u64) -> Result<()> {
         let wallet = &ctx.accounts.wallet;
         let payment_account = &ctx.accounts.payment_account;
         let transfer_authority = &ctx.accounts.transfer_authority;
@@ -666,7 +649,7 @@ pub mod auction_house {
     }
 
     pub fn execute_sale<'info>(
-        ctx: Context<'_, '_, '_, 'info, ExecuteSale<'info>>,
+        ctx: Context<'info, ExecuteSale<'info>>,
         buyer_price: u64,
         token_size: u64,
     ) -> Result<()> {
@@ -773,7 +756,7 @@ pub mod auction_house {
             &[auction_house.bump],
         ];
 
-        // with the native account, the escrow is it's own owner,
+        // with the native account, the escrow is its own owner,
         // whereas with token, it is the auction house that is owner.
         let signer_seeds_for_royalties = if is_native {
             escrow_signer_seeds
@@ -832,7 +815,7 @@ pub mod auction_house {
                 &treasury_mint.key(),
             )?;
 
-            // make sure you cant get rugged
+            // make sure you can't get rugged
             if seller_rec_acct.delegate.is_some() {
                 return err!(ErrorCode::SellerATACannotHaveDelegate);
             }
@@ -947,10 +930,7 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn withdraw_from_fee<'info>(
-        ctx: Context<'_, '_, '_, 'info, WithdrawFromFee<'info>>,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn withdraw_from_fee(ctx: Context<WithdrawFromFee>, amount: u64) -> Result<()> {
         let auction_house_fee_account = &ctx.accounts.auction_house_fee_account;
         let fee_withdrawal_destination = &ctx.accounts.fee_withdrawal_destination;
         let auction_house = &ctx.accounts.auction_house;
@@ -981,10 +961,7 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn withdraw_from_treasury<'info>(
-        ctx: Context<'_, '_, '_, 'info, WithdrawFromTreasury<'info>>,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn withdraw_from_treasury(ctx: Context<WithdrawFromTreasury>, amount: u64) -> Result<()> {
         let treasury_mint = &ctx.accounts.treasury_mint;
         let treasury_withdrawal_destination = &ctx.accounts.treasury_withdrawal_destination;
         let auction_house_treasury = &ctx.accounts.auction_house_treasury;
@@ -1044,8 +1021,8 @@ pub mod auction_house {
         Ok(())
     }
 
-    pub fn update_auction_house<'info>(
-        ctx: Context<'_, '_, '_, 'info, UpdateAuctionHouse<'info>>,
+    pub fn update_auction_house(
+        ctx: Context<UpdateAuctionHouse>,
         seller_fee_basis_points: Option<u16>,
         requires_sign_off: Option<bool>,
         can_change_sale_price: Option<bool>,

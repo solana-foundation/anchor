@@ -126,7 +126,7 @@ pub mod lockup {
         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
         token::transfer(cpi_ctx, amount)?;
 
-        // Bookeeping.
+        // Bookkeeping.
         let vesting = &mut ctx.accounts.vesting;
         vesting.outstanding -= amount;
 
@@ -134,8 +134,8 @@ pub mod lockup {
     }
 
     // Sends funds from the lockup program to a whitelisted program.
-    pub fn whitelist_withdraw<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, WhitelistWithdraw<'info>>,
+    pub fn whitelist_withdraw(
+        ctx: Context<WhitelistWithdraw>,
         instruction_data: Vec<u8>,
         amount: u64,
     ) -> Result<()> {
@@ -161,8 +161,8 @@ pub mod lockup {
     }
 
     // Sends funds from a whitelisted program back to the lockup program.
-    pub fn whitelist_deposit<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, WhitelistDeposit<'info>>,
+    pub fn whitelist_deposit(
+        ctx: Context<WhitelistDeposit>,
         instruction_data: Vec<u8>,
     ) -> Result<()> {
         let before_amount = ctx.accounts.transfer.vault.amount;

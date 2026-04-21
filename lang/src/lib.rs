@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! Anchor ⚓ is a framework for Solana's Sealevel runtime providing several
 //! convenient developer tools.
@@ -19,18 +19,20 @@
 //!
 //! For detailed tutorials and examples on how to use Anchor, see the guided
 //! [tutorials](https://anchor-lang.com) or examples in the GitHub
-//! [repository](https://github.com/coral-xyz/anchor).
+//! [repository](https://github.com/solana-foundation/anchor).
 //!
 //! Presented here are the Rust primitives for building on Solana.
 
 extern crate self as anchor_lang;
 
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::program_error::ProgramError;
-use crate::solana_program::pubkey::Pubkey;
-use bytemuck::{Pod, Zeroable};
-use std::{collections::BTreeSet, fmt::Debug, io::Write};
+use {
+    crate::solana_program::{
+        account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
+        pubkey::Pubkey,
+    },
+    bytemuck::{Pod, Zeroable},
+    std::{collections::BTreeSet, fmt::Debug, io::Write},
+};
 
 mod account_meta;
 pub mod accounts;
@@ -49,30 +51,34 @@ mod vec;
 #[cfg(feature = "lazy-account")]
 mod lazy;
 
-pub use crate::bpf_upgradeable_state::*;
-pub use anchor_attribute_access_control::access_control;
-pub use anchor_attribute_account::{account, declare_id, pubkey, zero_copy};
-pub use anchor_attribute_constant::constant;
-pub use anchor_attribute_error::*;
-pub use anchor_attribute_event::{emit, event};
-pub use anchor_attribute_program::{declare_program, instruction, program};
-pub use anchor_derive_accounts::Accounts;
-pub use anchor_derive_serde::{AnchorDeserialize, AnchorSerialize};
-pub use anchor_derive_space::InitSpace;
-
 /// Borsh is the default serialization format for instructions and accounts.
 pub use borsh::de::BorshDeserialize as AnchorDeserialize;
-pub use borsh::ser::BorshSerialize as AnchorSerialize;
-pub mod solana_program {
-    pub use solana_feature_gate_interface as feature;
+pub use {
+    crate::bpf_upgradeable_state::*,
+    anchor_attribute_access_control::access_control,
+    anchor_attribute_account::{account, declare_id, pubkey, zero_copy},
+    anchor_attribute_constant::constant,
+    anchor_attribute_error::*,
+    anchor_attribute_event::{emit, event},
+    anchor_attribute_program::{declare_program, instruction, program},
+    anchor_derive_accounts::Accounts,
+    anchor_derive_serde::{__erase, AnchorDeserialize, AnchorSerialize},
+    anchor_derive_space::InitSpace,
+    borsh::ser::BorshSerialize as AnchorSerialize,
+    const_crypto::ed25519::derive_program_address,
+};
 
+pub mod solana_program {
     pub use {
-        solana_account_info as account_info, solana_clock as clock, solana_cpi as program,
-        solana_msg::msg, solana_program_entrypoint as entrypoint,
-        solana_program_entrypoint::entrypoint, solana_program_error as program_error,
-        solana_program_memory as program_memory, solana_program_option as program_option,
-        solana_program_pack as program_pack, solana_pubkey as pubkey,
-        solana_sdk_ids::system_program, solana_system_interface::instruction as system_instruction,
+        solana_account_info as account_info, solana_clock as clock,
+        solana_feature_gate_interface as feature,
+        solana_msg::msg,
+        solana_program_entrypoint::{self as entrypoint, entrypoint},
+        solana_program_error as program_error, solana_program_memory as program_memory,
+        solana_program_option as program_option, solana_program_pack as program_pack,
+        solana_pubkey as pubkey,
+        solana_sdk_ids::system_program,
+        solana_system_interface::instruction as system_instruction,
     };
     pub mod instruction {
         pub use solana_instruction::*;
@@ -93,6 +99,12 @@ pub mod solana_program {
     }
     pub mod rent {
         pub use solana_sysvar::rent::*;
+    }
+    pub mod program {
+        pub use {
+            solana_cpi::*,
+            solana_invoke::{invoke, invoke_signed, invoke_signed_unchecked, invoke_unchecked},
+        };
     }
 
     pub mod bpf_loader_upgradeable {
@@ -129,44 +141,26 @@ pub mod solana_program {
     }
     pub mod sysvar {
         pub use solana_sysvar_id::{declare_deprecated_sysvar_id, declare_sysvar_id, SysvarId};
-        #[deprecated(since = "2.2.0", note = "Use `solana-sysvar` crate instead")]
-        #[allow(deprecated)]
-        pub use {
-            solana_sdk_ids::sysvar::{check_id, id, ID},
-            solana_sysvar::{
-                clock, epoch_rewards, epoch_schedule, fees, is_sysvar_id, last_restart_slot,
-                recent_blockhashes, rent, rewards, slot_hashes, slot_history, stake_history,
-                Sysvar, ALL_IDS,
-            },
-        };
         pub mod instructions {
             pub use solana_instruction::{BorrowedAccountMeta, BorrowedInstruction};
             #[cfg(not(target_os = "solana"))]
             pub use solana_instructions_sysvar::construct_instructions_data;
-            #[deprecated(
-                since = "2.2.0",
-                note = "Use solana-instructions-sysvar crate instead"
-            )]
-            pub use solana_instructions_sysvar::{
-                get_instruction_relative, load_current_index_checked, load_instruction_at_checked,
-                store_current_index_checked, Instructions,
-            };
-            #[deprecated(since = "2.2.0", note = "Use solana-sdk-ids crate instead")]
-            pub use solana_sdk_ids::sysvar::instructions::{check_id, id, ID};
         }
     }
 }
 
 #[cfg(feature = "event-cpi")]
 pub use anchor_attribute_event::{emit_cpi, event_cpi};
-
 #[cfg(feature = "idl-build")]
 pub use idl::IdlBuild;
 
-#[cfg(feature = "interface-instructions")]
-pub use anchor_attribute_program::interface;
-
 pub type Result<T> = std::result::Result<T, error::Error>;
+
+// Deprecated message for AccountInfo usage in Accounts struct
+#[deprecated(
+    note = "Use `UncheckedAccount` instead of `AccountInfo` for safer unchecked accounts."
+)]
+pub fn deprecated_account_info_usage() {}
 
 /// A data structure of validated accounts that can be deserialized from the
 /// input to a Solana program. Implementations of this trait should perform any
@@ -232,6 +226,13 @@ pub trait AccountsExit<'info>: ToAccountMetas + ToAccountInfos<'info> {
         // no-op
         Ok(())
     }
+}
+
+/// Returns the pubkeys of mutable accounts that serialize on exit.
+/// Used by the duplicate mutable account validation to check across
+/// composite (nested) account struct boundaries.
+pub trait DuplicateMutableAccountKeys {
+    fn duplicate_mutable_account_keys(&self) -> Vec<Pubkey>;
 }
 
 /// The close procedure to initiate garabage collection of an account, allowing
@@ -380,7 +381,7 @@ pub trait InstructionData: Discriminator + AnchorSerialize {
 
     /// Clears `data` and writes instruction data to it.
     ///
-    /// We use a `Vec<u8>`` here because of the additional flexibility of re-allocation (only if
+    /// We use a `Vec<u8>` here because of the additional flexibility of re-allocation (only if
     /// necessary), and because the data field in `Instruction` expects a `Vec<u8>`.
     fn write_to(&self, mut data: &mut Vec<u8>) {
         data.clear();
@@ -419,6 +420,63 @@ pub trait Discriminator {
 /// Defines the space of an account for initialization.
 pub trait Space {
     const INIT_SPACE: usize;
+}
+
+// Implement Space for primitive types
+impl Space for bool {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for u8 {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for u16 {
+    const INIT_SPACE: usize = 2;
+}
+
+impl Space for u32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for u64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for u128 {
+    const INIT_SPACE: usize = 16;
+}
+
+impl Space for i8 {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for i16 {
+    const INIT_SPACE: usize = 2;
+}
+
+impl Space for i32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for i64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for i128 {
+    const INIT_SPACE: usize = 16;
+}
+
+impl Space for f32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for f64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for Pubkey {
+    const INIT_SPACE: usize = 32;
 }
 
 /// Bump seed for program derived addresses.
@@ -493,63 +551,66 @@ impl Key for Pubkey {
 /// The prelude contains all commonly used components of the crate.
 /// All programs should include it via `anchor_lang::prelude::*;`.
 pub mod prelude {
-    pub use super::{
-        access_control, account, accounts::account::Account,
-        accounts::account_loader::AccountLoader, accounts::interface::Interface,
-        accounts::interface_account::InterfaceAccount, accounts::program::Program,
-        accounts::signer::Signer, accounts::system_account::SystemAccount,
-        accounts::sysvar::Sysvar, accounts::unchecked_account::UncheckedAccount, constant,
-        context::Context, context::CpiContext, declare_id, declare_program, emit, err, error,
-        event, instruction, program, pubkey, require, require_eq, require_gt, require_gte,
-        require_keys_eq, require_keys_neq, require_neq,
-        solana_program::bpf_loader_upgradeable::UpgradeableLoaderState, source,
-        system_program::System, zero_copy, AccountDeserialize, AccountSerialize, Accounts,
-        AccountsClose, AccountsExit, AnchorDeserialize, AnchorSerialize, Discriminator, Id,
-        InitSpace, Key, Lamports, Owner, ProgramData, Result, Space, ToAccountInfo, ToAccountInfos,
-        ToAccountMetas,
-    };
-    pub use crate::solana_program::account_info::{next_account_info, AccountInfo};
-    pub use crate::solana_program::instruction::AccountMeta;
-    pub use crate::solana_program::msg;
-    pub use crate::solana_program::program_error::ProgramError;
-    pub use crate::solana_program::pubkey::Pubkey;
-    pub use crate::solana_program::sysvar::clock::Clock;
-    pub use crate::solana_program::sysvar::epoch_schedule::EpochSchedule;
-    pub use crate::solana_program::sysvar::instructions::Instructions;
-    pub use crate::solana_program::sysvar::rent::Rent;
-    pub use crate::solana_program::sysvar::rewards::Rewards;
-    pub use crate::solana_program::sysvar::slot_hashes::SlotHashes;
-    pub use crate::solana_program::sysvar::slot_history::SlotHistory;
-    pub use crate::solana_program::sysvar::stake_history::StakeHistory;
-    pub use crate::solana_program::sysvar::Sysvar as SolanaSysvar;
-    pub use anchor_attribute_error::*;
-    pub use borsh;
-    pub use error::*;
-    pub use thiserror;
-
-    #[cfg(feature = "event-cpi")]
-    pub use super::{emit_cpi, event_cpi};
-
-    #[cfg(feature = "idl-build")]
-    pub use super::idl::IdlBuild;
-
-    #[cfg(feature = "interface-instructions")]
-    pub use super::interface;
-
     #[cfg(feature = "lazy-account")]
     pub use super::accounts::lazy_account::LazyAccount;
+    #[cfg(feature = "idl-build")]
+    pub use super::idl::IdlBuild;
+    #[cfg(feature = "event-cpi")]
+    pub use super::{emit_cpi, event_cpi};
+    // Re-export the crate as anchor_lang for declare_program! macro
+    pub use crate as anchor_lang;
+    pub use {
+        super::{
+            access_control, account,
+            accounts::{
+                account::Account, account_loader::AccountLoader, interface::Interface,
+                interface_account::InterfaceAccount, migration::Migration, program::Program,
+                signer::Signer, system_account::SystemAccount, sysvar::Sysvar,
+                unchecked_account::UncheckedAccount,
+            },
+            constant,
+            context::{Context, CpiContext},
+            declare_id, declare_program, emit, err, error, event, instruction, program, pubkey,
+            require, require_eq, require_gt, require_gte, require_keys_eq, require_keys_neq,
+            require_neq,
+            solana_program::bpf_loader_upgradeable::UpgradeableLoaderState,
+            source,
+            system_program::System,
+            zero_copy, AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit,
+            AnchorDeserialize, AnchorSerialize, Discriminator, DuplicateMutableAccountKeys, Id,
+            InitSpace, Key, Lamports, Owner, Owners, ProgramData, Result, Space, ToAccountInfo,
+            ToAccountInfos, ToAccountMetas,
+        },
+        crate::solana_program::{
+            account_info::{next_account_info, AccountInfo},
+            instruction::AccountMeta,
+            program_error::ProgramError,
+            pubkey::Pubkey,
+            *,
+        },
+        anchor_attribute_error::*,
+        borsh,
+        error::*,
+        solana_clock::Clock,
+        solana_instructions_sysvar::Instructions,
+        solana_stake_interface::stake_history::StakeHistory,
+        solana_sysvar::{
+            epoch_schedule::EpochSchedule, rent::Rent, rewards::Rewards, slot_hashes::SlotHashes,
+            slot_history::SlotHistory, Sysvar as SolanaSysvar,
+        },
+        thiserror,
+    };
 }
 
 /// Internal module used by macros and unstable apis.
 #[doc(hidden)]
 pub mod __private {
-    pub use anchor_attribute_account::ZeroCopyAccessor;
-    pub use base64;
-    pub use bytemuck;
-
-    pub use crate::{bpf_writer::BpfWriter, common::is_closed};
-
     use crate::solana_program::pubkey::Pubkey;
+    pub use {
+        crate::{bpf_writer::BpfWriter, common::is_closed},
+        anchor_attribute_account::ZeroCopyAccessor,
+        base64, bytemuck,
+    };
 
     // Used to calculate the maximum between two expressions.
     // It is necessary for the calculation of the enum space.
@@ -579,6 +640,19 @@ pub mod __private {
     pub use crate::lazy::Lazy;
     #[cfg(feature = "lazy-account")]
     pub use anchor_derive_serde::Lazy;
+
+    /// Trait for compile-time type equality checking.
+    /// Used to enforce that instruction argument types match the `#[instruction(...)]` attribute types.
+    #[doc(hidden)]
+    #[diagnostic::on_unimplemented(
+        message = "instruction handler argument type `{Self}` does not match \
+                   `#[instruction(...)]` attribute type `{T}`",
+        label = "expected `{T}` here based on `#[instruction(...)]` attribute, found `{Self}`",
+        note = "ensure `#[instruction(..)]` argument types match those of the instruction handler"
+    )]
+    pub trait IsSameType<T> {}
+
+    impl<T> IsSameType<T> for T {}
 }
 
 /// Ensures a condition is true, otherwise returns with the given error.
@@ -823,6 +897,9 @@ macro_rules! require_gte {
 /// pub enum MyError {
 ///     SomeError
 /// }
+///
+/// #[derive(Accounts)]
+/// pub struct Example {}
 /// ```
 #[macro_export]
 macro_rules! err {

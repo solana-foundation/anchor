@@ -1,51 +1,75 @@
-use crate::{
-    config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
-    VERSION,
-};
-use anyhow::Result;
-use clap::{Parser, ValueEnum};
-use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use solana_sdk::{
-    pubkey::Pubkey,
-    signature::{read_keypair_file, write_keypair_file, Keypair},
-    signer::Signer,
-};
-use std::{
-    fmt::Write as _,
-    fs::{self, File},
-    io::Write as _,
-    path::Path,
-    process::Stdio,
+use {
+    crate::{
+        config::ProgramWorkspace, create_files, override_or_create_files, AbsolutePath, Files,
+        PackageManager, VERSION,
+    },
+    anyhow::Result,
+    clap::{Parser, ValueEnum},
+    heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase},
+    solana_keypair::{read_keypair_file, write_keypair_file, Keypair},
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    std::{
+        fmt::Write as _,
+        fs::{self, File},
+        io::Write as _,
+        path::Path,
+        process::Stdio,
+    },
 };
 
+const ANCHOR_MSRV: &str = "1.89.0";
+
 /// Program initialization template
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, AbsolutePath)]
 pub enum ProgramTemplate {
-    /// Program with a single `lib.rs` file
-    #[default]
+    /// Program with a single `lib.rs` file (not recommended for production)
     Single,
-    /// Program with multiple files for instructions, state...
+    /// Program with multiple files for instructions, state... (recommended)
+    #[default]
     Multiple,
 }
 
 /// Create a program from the given name and template.
-pub fn create_program(name: &str, template: ProgramTemplate, with_mollusk: bool) -> Result<()> {
+pub fn create_program(
+    name: &str,
+    template: ProgramTemplate,
+    test_template: Option<&TestTemplate>,
+) -> Result<()> {
     let program_path = Path::new("programs").join(name);
     let common_files = vec![
-        ("Cargo.toml".into(), workspace_manifest().into()),
+        ("Cargo.toml".into(), workspace_manifest()),
+        ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
-            cargo_toml(name, with_mollusk),
+            cargo_toml(name, test_template),
         ),
         // Note: Xargo.toml is no longer needed for modern Solana builds using SBF
     ];
 
     let template_files = match template {
-        ProgramTemplate::Single => create_program_template_single(name, &program_path),
+        ProgramTemplate::Single => {
+            println!(
+                "Note: Using single-file template. For better code organization and \
+                 maintainability, consider using --template multiple (default)."
+            );
+            create_program_template_single(name, &program_path)
+        }
         ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
     };
 
     create_files(&[common_files, template_files].concat())
+}
+
+/// Helper to create a rust-toolchain.toml at the workspace root
+fn rust_toolchain_toml() -> String {
+    format!(
+        r#"[toolchain]
+channel = "{ANCHOR_MSRV}"
+components = ["rustfmt","clippy"]
+profile = "minimal"
+"#
+    )
 }
 
 /// Create a program with a single `lib.rs` file.
@@ -131,7 +155,7 @@ pub enum ErrorCode {
             .into(),
         ),
         (
-            src_path.join("instructions").join("mod.rs"),
+            src_path.join("instructions.rs"),
             r#"pub mod initialize;
 
 pub use initialize::*;
@@ -152,16 +176,21 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
 "#
             .into(),
         ),
-        (src_path.join("state").join("mod.rs"), r#""#.into()),
+        (src_path.join("state.rs"), r#""#.into()),
     ]
 }
 
-const fn workspace_manifest() -> &'static str {
-    r#"[workspace]
+fn workspace_manifest() -> String {
+    format!(
+        r#"[workspace]
 members = [
     "programs/*"
 ]
 resolver = "2"
+
+[workspace.package]
+edition = "2021"
+rust-version = "{ANCHOR_MSRV}"
 
 [profile.release]
 overflow-checks = true
@@ -172,17 +201,32 @@ opt-level = 3
 incremental = false
 codegen-units = 1
 "#
+    )
 }
 
-fn cargo_toml(name: &str, with_mollusk: bool) -> String {
-    let test_sbf_feature = if with_mollusk { r#"test-sbf = []"# } else { "" };
-    let dev_dependencies = if with_mollusk {
-        r#"
+fn cargo_toml(name: &str, test_template: Option<&TestTemplate>) -> String {
+    let test_sbf_feature = match test_template {
+        Some(TestTemplate::Mollusk) => r#"test-sbf = []"#,
+        _ => "",
+    };
+    let dev_dependencies = match test_template {
+        Some(TestTemplate::Mollusk) => {
+            r#"
 [dev-dependencies]
-mollusk-svm = "~0.4"
+mollusk-svm = "~0.10"
 "#
-    } else {
-        ""
+        }
+        Some(TestTemplate::Litesvm) => {
+            r#"
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.1"
+"#
+        }
+        _ => "",
     };
 
     format!(
@@ -190,7 +234,8 @@ mollusk-svm = "~0.4"
 name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -238,18 +283,10 @@ pub fn get_or_create_program_id(name: &str) -> Pubkey {
         .pubkey()
 }
 
-pub fn credentials(token: &str) -> String {
-    format!(
-        r#"[registry]
-token = "{token}"
-"#
-    )
-}
-
 pub fn deploy_js_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
         r#"
-const anchor = require('@coral-xyz/anchor');
+const anchor = require('@anchor-lang/core');
 
 // Deploy script defined by the user.
 const userScript = require("{script_path}");
@@ -272,7 +309,7 @@ main();
 
 pub fn deploy_ts_script_host(cluster_url: &str, script_path: &str) -> String {
     format!(
-        r#"import * as anchor from '@coral-xyz/anchor';
+        r#"import * as anchor from '@anchor-lang/core';
 
 // Deploy script defined by the user.
 const userScript = require("{script_path}");
@@ -298,7 +335,7 @@ pub fn deploy_script() -> &'static str {
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
-const anchor = require("@coral-xyz/anchor");
+const anchor = require("@anchor-lang/core");
 
 module.exports = async function (provider) {
   // Configure client to use the provider.
@@ -314,7 +351,7 @@ pub fn ts_deploy_script() -> &'static str {
 // single deploy script that's invoked from the CLI, injecting a provider
 // configured from the workspace's Anchor.toml.
 
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 
 module.exports = async function (provider: anchor.AnchorProvider) {
   // Configure client to use the provider.
@@ -327,7 +364,7 @@ module.exports = async function (provider: anchor.AnchorProvider) {
 
 pub fn mocha(name: &str) -> String {
     format!(
-        r#"const anchor = require("@coral-xyz/anchor");
+        r#"const anchor = require("@anchor-lang/core");
 
 describe("{}", () => {{
   // Configure the client to use the local cluster.
@@ -346,9 +383,9 @@ describe("{}", () => {{
     )
 }
 
-pub fn jest(name: &str) -> String {
+pub fn js_jest(name: &str) -> String {
     format!(
-        r#"const anchor = require("@coral-xyz/anchor");
+        r#"const anchor = require("@anchor-lang/core");
 
 describe("{}", () => {{
   // Configure the client to use the local cluster.
@@ -377,7 +414,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "jest": "^29.0.3",
@@ -395,7 +432,7 @@ pub fn package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "chai": "^4.3.4",
@@ -418,7 +455,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "@types/bn.js": "^5.1.0",
@@ -440,7 +477,7 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
     "lint": "prettier */*.js \"*/**/*{{.js,.ts}}\" --check"
   }},
   "dependencies": {{
-    "@coral-xyz/anchor": "^{VERSION}"
+    "@anchor-lang/core": "^{VERSION}"
   }},
   "devDependencies": {{
     "chai": "^4.3.4",
@@ -460,8 +497,8 @@ pub fn ts_package_json(jest: bool, license: String) -> String {
 
 pub fn ts_mocha(name: &str) -> String {
     format!(
-        r#"import * as anchor from "@coral-xyz/anchor";
-import {{ Program }} from "@coral-xyz/anchor";
+        r#"import * as anchor from "@anchor-lang/core";
+import {{ Program }} from "@anchor-lang/core";
 import {{ {} }} from "../target/types/{}";
 
 describe("{}", () => {{
@@ -487,8 +524,8 @@ describe("{}", () => {{
 
 pub fn ts_jest(name: &str) -> String {
     format!(
-        r#"import * as anchor from "@coral-xyz/anchor";
-import {{ Program }} from "@coral-xyz/anchor";
+        r#"import * as anchor from "@anchor-lang/core";
+import {{ Program }} from "@anchor-lang/core";
 import {{ {} }} from "../target/types/{}";
 
 describe("{}", () => {{
@@ -548,6 +585,7 @@ target
 node_modules
 test-ledger
 .yarn
+.surfpool
 "#
 }
 
@@ -569,7 +607,7 @@ pub fn node_shell(
 ) -> Result<String> {
     let mut eval_string = format!(
         r#"
-const anchor = require('@coral-xyz/anchor');
+const anchor = require('@anchor-lang/core');
 const web3 = anchor.web3;
 const PublicKey = anchor.web3.PublicKey;
 const Keypair = anchor.web3.Keypair;
@@ -612,10 +650,9 @@ anchor.workspace.{} = new anchor.Program({}, provider);
 }
 
 /// Test initialization template
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, AbsolutePath)]
 pub enum TestTemplate {
     /// Generate template for Mocha unit-test
-    #[default]
     Mocha,
     /// Generate template for Jest unit-test
     Jest,
@@ -623,6 +660,9 @@ pub enum TestTemplate {
     Rust,
     /// Generate template for Mollusk Rust unit-test
     Mollusk,
+    /// Generate template for LiteSVM rust unit-test
+    #[default]
+    Litesvm,
 }
 
 impl TestTemplate {
@@ -651,7 +691,7 @@ impl TestTemplate {
                     format!("{pkg_manager_exec_cmd} jest --preset ts-jest")
                 }
             }
-            Self::Rust => "cargo test".to_owned(),
+            Self::Rust | Self::Litesvm => "cargo test".to_owned(),
             Self::Mollusk => "cargo test-sbf".to_owned(),
         }
     }
@@ -674,8 +714,13 @@ impl TestTemplate {
                 // Build the test suite.
                 fs::create_dir_all("tests")?;
 
-                let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
-                test.write_all(jest(project_name).as_bytes())?;
+                if js {
+                    let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
+                    test.write_all(js_jest(project_name).as_bytes())?;
+                } else {
+                    let mut test = File::create(format!("tests/{}.test.ts", &project_name))?;
+                    test.write_all(ts_jest(project_name).as_bytes())?;
+                }
             }
             Self::Rust => {
                 // Do not initialize git repo
@@ -687,7 +732,7 @@ impl TestTemplate {
                     .arg("tests")
                     .stderr(Stdio::inherit())
                     .output()
-                    .map_err(|e| anyhow::format_err!("{}", e.to_string()))?;
+                    .map_err(|e| anyhow::format_err!("{}", e))?;
                 if !exit.status.success() {
                     eprintln!("'cargo new --lib tests' failed");
                     std::process::exit(exit.status.code().unwrap_or(1));
@@ -719,6 +764,18 @@ impl TestTemplate {
                 ));
                 override_or_create_files(&files)?;
             }
+
+            Self::Litesvm => {
+                let tests_path_str = format!("programs/{}/tests", &project_name);
+                let tests_path = Path::new(&tests_path_str);
+                fs::create_dir_all(tests_path)?;
+                let mut files = Vec::new();
+                files.extend(create_program_template_litesvm_test(
+                    project_name,
+                    tests_path,
+                ));
+                override_or_create_files(&files)?;
+            }
         }
 
         Ok(())
@@ -732,11 +789,14 @@ name = "tests"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
+rust-version = "{ANCHOR_MSRV}"
 
 [dependencies]
 anchor-client = "{VERSION}"
 {name} = {{ version = "0.1.0", path = "../programs/{name}" }}
-"#,
+solana-keypair = "3.0.0"
+solana-pubkey = "3.0.0"
+"#
     )
 }
 
@@ -754,14 +814,12 @@ mod test_initialize;
         (
             src_path.join("test_initialize.rs"),
             format!(
-                r#"use std::str::FromStr;
-
-use anchor_client::{{
-    solana_sdk::{{
-        commitment_config::CommitmentConfig, pubkey::Pubkey, signature::read_keypair_file,
-    }},
+                r#"use anchor_client::{{
+    CommitmentConfig,
     Client, Cluster,
 }};
+use solana_keypair::{{read_keypair_file}};
+use solana_pubkey::Pubkey;
 
 #[test]
 fn test_initialize() {{
@@ -770,7 +828,7 @@ fn test_initialize() {{
     let payer = read_keypair_file(&anchor_wallet).unwrap();
 
     let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
-    let program_id = Pubkey::from_str(program_id).unwrap();
+    let program_id = Pubkey::try_from(program_id).unwrap();
     let program = client.program(program_id).unwrap();
 
     let tx = program
@@ -815,6 +873,49 @@ fn test_initialize() {{
     );
 
     mollusk.process_and_validate_instruction(&instruction, &[], &[Check::success()]);
+}}
+"#,
+            name.to_snake_case(),
+        ),
+    )]
+}
+
+/// Generate template for LiteSVM Rust unit-test
+fn create_program_template_litesvm_test(name: &str, tests_path: &Path) -> Files {
+    vec![(
+        tests_path.join("test_initialize.rs"),
+        format!(
+            r#"
+use {{
+    anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
+    litesvm::LiteSVM,
+    solana_message::{{Message, VersionedMessage}},
+    solana_signer::Signer,
+    solana_keypair::Keypair,
+    solana_transaction::versioned::VersionedTransaction,
+}};
+
+#[test]
+fn test_initialize() {{
+    let program_id = {0}::id();
+    let payer = Keypair::new();
+    let mut svm = LiteSVM::new();
+    let bytes = include_bytes!("../../../target/deploy/{0}.so");
+    svm.add_program(program_id, bytes).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &{0}::instruction::Initialize {{}}.data(),
+        {0}::accounts::Initialize {{}}.to_account_metas(None),
+    );
+
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
+
+    let res = svm.send_transaction(tx);
+    assert!(res.is_ok());
 }}
 "#,
             name.to_snake_case(),

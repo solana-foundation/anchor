@@ -1,6 +1,8 @@
-use proc_macro2::Literal;
-use quote::{format_ident, quote};
-use syn::{spanned::Spanned, Fields, Item};
+use {
+    proc_macro2::Literal,
+    quote::{format_ident, quote, ToTokens},
+    syn::{parse_quote, spanned::Spanned, Fields, Item},
+};
 
 pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let item = syn::parse::<Item>(input)?;
@@ -17,30 +19,39 @@ pub fn gen_lazy(input: proc_macro::TokenStream) -> syn::Result<proc_macro2::Toke
                 .fold(quote!(true), |acc, sized| quote! { #acc && #sized }),
         ),
         Item::Enum(enm) => {
+            // Each match arm checks the tag byte then shadows the `buf` variable with
+            // the remaining buffer. This allows `sum_fields` to operate on the correct buffer
             let arms = enm
                 .variants
                 .iter()
                 .map(|variant| sum_fields(&variant.fields))
                 .enumerate()
                 .map(|(i, size)| (Literal::usize_unsuffixed(i), size))
-                .map(|(i, size)| quote! { Some(#i) => { #size } });
-
+                .map(|(i, size)| quote! { Some((#i, buf)) => { #size } });
+            let sized = enm
+                .variants
+                .iter()
+                .all(|variant| matches!(variant.fields, Fields::Unit));
             (
                 &enm.ident,
                 &enm.generics,
                 quote! {
-                    1 + match buf.first() {
+                    1 + match buf.split_first() {
                         #(#arms,)*
                         _ => unreachable!(),
                     }
                 },
-                quote!(false),
+                sized.to_token_stream(),
             )
         }
         Item::Union(_) => return Err(syn::Error::new(item.span(), "Unions are not supported")),
         _ => unreachable!(),
     };
 
+    let mut generics = generics.clone();
+    for ty in generics.type_params_mut() {
+        ty.bounds.push(parse_quote!(anchor_lang::__private::Lazy));
+    }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     Ok(quote! {

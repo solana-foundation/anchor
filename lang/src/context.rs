@@ -1,10 +1,12 @@
 //! Data structures that are used to provide non-argument inputs to program endpoints
 
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{Accounts, Bumps, ToAccountInfos, ToAccountMetas};
-use std::fmt;
+use {
+    crate::{
+        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, Bumps, ToAccountInfos, ToAccountMetas,
+    },
+    std::fmt,
+};
 
 /// Provides non-argument inputs to the program.
 ///
@@ -21,14 +23,14 @@ use std::fmt;
 ///     Ok(())
 /// }
 /// ```
-pub struct Context<'a, 'b, 'c, 'info, T: Bumps> {
+pub struct Context<'info, T: Bumps> {
     /// Currently executing program id.
-    pub program_id: &'a Pubkey,
+    pub program_id: &'info Pubkey,
     /// Deserialized accounts.
-    pub accounts: &'b mut T,
+    pub accounts: &'info mut T,
     /// Remaining accounts given but not deserialized or validated.
     /// Be very careful when using this directly.
-    pub remaining_accounts: &'c [AccountInfo<'info>],
+    pub remaining_accounts: &'info [AccountInfo<'info>],
     /// Bump seeds found during constraint validation. This is provided as a
     /// convenience so that handlers don't have to recalculate bump seeds or
     /// pass them in as arguments.
@@ -36,7 +38,7 @@ pub struct Context<'a, 'b, 'c, 'info, T: Bumps> {
     pub bumps: T::Bumps,
 }
 
-impl<T> fmt::Debug for Context<'_, '_, '_, '_, T>
+impl<T> fmt::Debug for Context<'_, T>
 where
     T: fmt::Debug + Bumps,
 {
@@ -50,14 +52,14 @@ where
     }
 }
 
-impl<'a, 'b, 'c, 'info, T> Context<'a, 'b, 'c, 'info, T>
+impl<'info, T> Context<'info, T>
 where
     T: Bumps + Accounts<'info, T::Bumps>,
 {
     pub fn new(
-        program_id: &'a Pubkey,
-        accounts: &'b mut T,
-        remaining_accounts: &'c [AccountInfo<'info>],
+        program_id: &'info Pubkey,
+        accounts: &'info mut T,
+        remaining_accounts: &'info [AccountInfo<'info>],
         bumps: T::Bumps,
     ) -> Self {
         Self {
@@ -127,7 +129,7 @@ where
 /// pub mod caller {
 ///     use super::*;
 ///     pub fn do_cpi(ctx: Context<DoCpi>, data: u64) -> Result<()> {
-///         let callee_id = ctx.accounts.callee.to_account_info();
+///         let callee_id = ctx.accounts.callee.key();
 ///         let callee_accounts = callee::cpi::accounts::SetData {
 ///             data_acc: ctx.accounts.data_acc.to_account_info(),
 ///             authority: ctx.accounts.callee_authority.to_account_info(),
@@ -174,7 +176,7 @@ where
 {
     pub accounts: T,
     pub remaining_accounts: Vec<AccountInfo<'info>>,
-    pub program: AccountInfo<'info>,
+    pub program_id: Pubkey,
     pub signer_seeds: &'a [&'b [&'c [u8]]],
 }
 
@@ -182,10 +184,11 @@ impl<'a, 'b, 'c, 'info, T> CpiContext<'a, 'b, 'c, 'info, T>
 where
     T: ToAccountMetas + ToAccountInfos<'info>,
 {
-    pub fn new(program: AccountInfo<'info>, accounts: T) -> Self {
+    #[must_use]
+    pub fn new(program_id: Pubkey, accounts: T) -> Self {
         Self {
             accounts,
-            program,
+            program_id,
             remaining_accounts: Vec::new(),
             signer_seeds: &[],
         }
@@ -193,13 +196,13 @@ where
 
     #[must_use]
     pub fn new_with_signer(
-        program: AccountInfo<'info>,
+        program_id: Pubkey,
         accounts: T,
         signer_seeds: &'a [&'b [&'c [u8]]],
     ) -> Self {
         Self {
             accounts,
-            program,
+            program_id,
             signer_seeds,
             remaining_accounts: Vec::new(),
         }
@@ -224,7 +227,6 @@ impl<'info, T: ToAccountInfos<'info> + ToAccountMetas> ToAccountInfos<'info>
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
         let mut infos = self.accounts.to_account_infos();
         infos.extend_from_slice(&self.remaining_accounts);
-        infos.push(self.program.clone());
         infos
     }
 }

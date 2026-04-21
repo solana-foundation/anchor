@@ -1,7 +1,9 @@
 [package]
 name = "anchor-client"
-version = "0.31.1"
+version.workspace = true
+publish = true
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
+repository = "https://github.com/solana-foundation/anchor"
 edition = "2021"
 license = "Apache-2.0"
 description = "An RPC client to interact with Anchor programs"
@@ -16,14 +18,27 @@ debug = []
 mock = []
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "0.31.1" }
+anchor-lang = { path = "../lang", version = "1.0.0" }
 anyhow = "1"
 futures = "0.3"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
-solana-account-decoder = "2"
-solana-client = "2"
-solana-sdk = "2"
+solana-account.workspace = true
+solana-account-decoder.workspace = true
+solana-commitment-config.workspace = true
+solana-instruction.workspace = true
+solana-message.workspace = true
+solana-program.workspace = true
+solana-pubsub-client.workspace = true
+solana-rpc-client.workspace = true
+solana-rpc-client-api.workspace = true
+solana-signature.workspace = true
+solana-signer.workspace = true
+solana-transaction.workspace = true
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "sync"] }
 url = "2"
+
+[dev-dependencies]
+solana-keypair.workspace = true
+tokio-tungstenite = "0.28"

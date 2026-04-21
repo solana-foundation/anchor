@@ -1,21 +1,24 @@
 //! Account container that checks ownership on deserialization.
 
-use crate::bpf_writer::BpfWriter;
-use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::solana_program::system_program;
-use crate::{
-    AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
-    Result, ToAccountInfo, ToAccountInfos, ToAccountMetas,
+use {
+    crate::{
+        bpf_writer::BpfWriter,
+        error::{Error, ErrorCode},
+        solana_program::{
+            account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey, system_program,
+        },
+        AccountDeserialize, AccountSerialize, Accounts, AccountsClose, AccountsExit, Key, Owner,
+        Result, ToAccountInfos, ToAccountMetas,
+    },
+    std::{
+        collections::BTreeSet,
+        fmt,
+        ops::{Deref, DerefMut},
+    },
 };
-use std::collections::BTreeSet;
-use std::fmt;
-use std::ops::{Deref, DerefMut};
 
-/// Wrapper around [`AccountInfo`](crate::solana_program::account_info::AccountInfo)
-/// that verifies program ownership and deserializes underlying data into a Rust type.
+/// Wrapper around [`AccountInfo`] that verifies program ownership
+/// and deserializes underlying data into a Rust type.
 ///
 /// # Table of Contents
 /// - [Basic Functionality](#basic-functionality)
@@ -91,7 +94,7 @@ use std::ops::{Deref, DerefMut};
 /// functions `#[account]` generates. See the example below for the code you have
 /// to write.
 ///
-/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/coral-xyz/anchor/blob/master/spl/src/token.rs))
+/// The mint wrapper type that Anchor provides out of the box for the token program ([source](https://github.com/solana-foundation/anchor/blob/master/spl/src/token.rs))
 /// ```ignore
 /// #[derive(Clone)]
 /// pub struct Mint(spl_token::state::Mint);
@@ -264,14 +267,6 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
         Ok(())
     }
 
-    /// Reloads the account from storage. This is useful, for example, when
-    /// observing side effects after CPI.
-    pub fn reload(&mut self) -> Result<()> {
-        let mut data: &[u8] = &self.info.try_borrow_data()?;
-        self.account = T::try_deserialize(&mut data)?;
-        Ok(())
-    }
-
     pub fn into_inner(self) -> T {
         self.account
     }
@@ -298,6 +293,22 @@ impl<'a, T: AccountSerialize + AccountDeserialize + Clone> Account<'a, T> {
 }
 
 impl<'a, T: AccountSerialize + AccountDeserialize + Owner + Clone> Account<'a, T> {
+    /// Reloads the account from storage. This is useful, for example, when
+    /// observing side effects after CPI.
+    ///
+    /// This method also re-validates that the program owner has not
+    /// changed since the initial validation
+    pub fn reload(&mut self) -> Result<()> {
+        if self.info.owner != &T::owner() {
+            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
+                .with_pubkeys((*self.info.owner, T::owner())));
+        }
+
+        let mut data: &[u8] = &self.info.try_borrow_data()?;
+        self.account = T::try_deserialize(&mut data)?;
+        Ok(())
+    }
+
     /// Deserializes the given `info` into a `Account`.
     #[inline(never)]
     pub fn try_from(info: &'a AccountInfo<'a>) -> Result<Account<'a, T>> {
@@ -363,7 +374,7 @@ impl<'info, T: AccountSerialize + AccountDeserialize + Clone> AccountsClose<'inf
     for Account<'info, T>
 {
     fn close(&self, sol_destination: AccountInfo<'info>) -> Result<()> {
-        crate::common::close(self.to_account_info(), sol_destination)
+        crate::common::close(self.as_ref(), sol_destination.as_ref())
     }
 }
 
@@ -412,7 +423,7 @@ impl<T: AccountSerialize + AccountDeserialize + Clone> DerefMut for Account<'_, 
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[cfg(feature = "anchor-debug")]
         if !self.info.is_writable {
-            solana_program::msg!("The given Account is not mutable");
+            crate::solana_program::msg!("The given Account is not mutable");
             panic!();
         }
         &mut self.account

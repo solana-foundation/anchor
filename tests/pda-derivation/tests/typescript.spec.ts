@@ -1,7 +1,7 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import BN from "bn.js";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { Program } from "@coral-xyz/anchor";
+import { Program } from "@anchor-lang/core";
 import { PdaDerivation } from "../target/types/pda_derivation";
 import { expect } from "chai";
 const encode = anchor.utils.bytes.utf8.encode;
@@ -119,7 +119,7 @@ describe("typescript", () => {
 
   // TODO: Support more expressions in the IDL e.g. math operations?
   it("Can use unsupported expressions", () => {
-    // Compilation test to fix issues like https://github.com/coral-xyz/anchor/issues/2933
+    // Compilation test to fix issues like https://github.com/solana-foundation/anchor/issues/2933
   });
 
   it("Includes the unresolved accounts if resolution fails", async () => {

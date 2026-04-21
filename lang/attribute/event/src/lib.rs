@@ -2,9 +2,11 @@ extern crate proc_macro;
 
 #[cfg(feature = "event-cpi")]
 use anchor_syn::parser::accounts::event_cpi::{add_event_cpi_accounts, EventAuthority};
-use anchor_syn::{codegen::program::common::gen_discriminator, Overrides};
-use quote::quote;
-use syn::parse_macro_input;
+use {
+    anchor_syn::{codegen::program::common::gen_discriminator, Overrides},
+    quote::{quote, ToTokens},
+    syn::parse_macro_input,
+};
 
 /// The event attribute allows a struct to be used with
 /// [emit!](./macro.emit.html) so that programs can log significant events in
@@ -39,6 +41,7 @@ pub fn event(
 
     let discriminator = args
         .discriminator
+        .map(|d| d.to_token_stream())
         .unwrap_or_else(|| gen_discriminator("event", event_name));
 
     let ret = quote! {
@@ -164,7 +167,6 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     proc_macro::TokenStream::from(quote! {
         {
             let authority_info = ctx.accounts.#authority_name.to_account_info();
-            let authority_bump = ctx.bumps.#authority_name;
 
             let disc = anchor_lang::event::EVENT_IX_TAG_LE;
             let inner_data = anchor_lang::Event::data(&#event_struct);
@@ -187,7 +189,7 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             anchor_lang::solana_program::program::invoke_signed(
                 &ix,
                 &[authority_info],
-                &[&[#authority_seeds, &[authority_bump]]],
+                &[&[#authority_seeds, &[crate::EVENT_AUTHORITY_AND_BUMP.1]]],
             )
             .map_err(anchor_lang::error::Error::from)?;
         }
@@ -201,6 +203,8 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// # Example
 ///
 /// ```ignore
+/// use anchor_lang::prelude::*;
+///
 /// #[event_cpi]
 /// #[derive(Accounts)]
 /// pub struct MyInstruction<'info> {
@@ -211,14 +215,16 @@ pub fn emit_cpi(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// The code above will be expanded to:
 ///
 /// ```ignore
+/// use anchor_lang::prelude::*;
+///
 /// #[derive(Accounts)]
 /// pub struct MyInstruction<'info> {
 ///    pub signer: Signer<'info>,
 ///    /// CHECK: Only the event authority can invoke self-CPI
-///    #[account(seeds = [b"__event_authority"], bump)]
-///    pub event_authority: AccountInfo<'info>,
+///    #[account(address = crate::EVENT_AUTHORITY_AND_BUMP.0)]
+///    pub event_authority: UncheckedAccount<'info>,
 ///    /// CHECK: Self-CPI will fail if the program is not the current program
-///    pub program: AccountInfo<'info>,
+///    pub program: UncheckedAccount<'info>,
 /// }
 /// ```
 ///
@@ -232,6 +238,10 @@ pub fn event_cpi(
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let accounts_struct = parse_macro_input!(input as syn::ItemStruct);
+    #[allow(
+        clippy::unwrap_used,
+        reason = "quote-generated struct tokens always parse"
+    )]
     let accounts_struct = add_event_cpi_accounts(&accounts_struct).unwrap();
     proc_macro::TokenStream::from(quote! {#accounts_struct})
 }
