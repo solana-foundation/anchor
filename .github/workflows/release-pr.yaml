@@ -9,6 +9,13 @@ on:
       - .github/workflows/publish-crates.yaml
       - .github/workflows/publish-npmjs.yaml
       - .github/scripts/publish-npmjs.sh
+      # Package manifests
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "ts/**/package.json"
+      - "ts/**/yarn.lock"
+      - "!tests/**"
+      - "!examples/**"
 
   workflow_dispatch:
 
