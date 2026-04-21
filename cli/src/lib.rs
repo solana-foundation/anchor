@@ -51,6 +51,7 @@ use {
 mod account;
 mod checks;
 pub mod config;
+pub mod coverage;
 pub mod debugger;
 mod flamegraph;
 mod keygen;
@@ -287,6 +288,29 @@ pub enum Command {
         /// Forwarded to the underlying `anchor test` invocation.
         #[clap(long)]
         skip_lint: bool,
+        /// Arguments to pass to the underlying `cargo build-sbf` command.
+        #[clap(required = false, last = true)]
+        cargo_args: Vec<String>,
+    },
+    /// Generate source-level code coverage from SBF register traces.
+    ///
+    /// Builds programs with DWARF debug info, runs the test suite with
+    /// litesvm register tracing enabled, then maps executed PCs to source
+    /// lines via addr2line and outputs LCOV.
+    Coverage {
+        /// Skip the build+test phase and generate coverage from existing
+        /// traces in `SBF_TRACE_DIR`.
+        #[clap(long)]
+        skip_run: bool,
+        /// Skip `cargo build-sbf`. Use when the `.so` is already up to date.
+        #[clap(long)]
+        skip_build: bool,
+        /// Output path for the LCOV file.
+        #[clap(long, default_value = "target/coverage/sbf.lcov")]
+        output: String,
+        /// Directory containing register trace files.
+        #[clap(long, default_value = "target/coverage/traces")]
+        trace_dir: String,
         /// Arguments to pass to the underlying `cargo build-sbf` command.
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
@@ -1336,6 +1360,20 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_run,
             skip_build,
             skip_lint,
+            cargo_args,
+        ),
+        Command::Coverage {
+            skip_run,
+            skip_build,
+            output,
+            trace_dir,
+            cargo_args,
+        } => run_coverage(
+            &opts.cfg_override,
+            skip_run,
+            skip_build,
+            &output,
+            &trace_dir,
             cargo_args,
         ),
         Command::Airdrop { amount, pubkey } => airdrop(&opts.cfg_override, amount, pubkey),
@@ -3749,6 +3787,111 @@ fn debugger_loose(
         Some(&ws.cwd),
         test_name.as_deref(),
     )
+}
+
+fn run_coverage(
+    _cfg_override: &ConfigOverride,
+    skip_run: bool,
+    skip_build: bool,
+    output: &str,
+    trace_dir: &str,
+    cargo_args: Vec<String>,
+) -> Result<()> {
+    let cwd = std::env::current_dir().context("read current directory")?;
+    let ws = debugger::loose::LooseWorkspace::discover(cwd)?;
+
+    let trace_path = ws.root.join(trace_dir);
+    let output_path = ws.root.join(output);
+
+    if !skip_run {
+        // Force DWARF into the SBF release profile so addr2line can resolve
+        // PC → (file, line). Scoped to `CARGO_PROFILE_*` so only the SBF
+        // build sees it — host-mode `cargo test` is unaffected.
+        std::env::set_var("CARGO_PROFILE_RELEASE_DEBUG", "2");
+
+        // Solana's cargo passes `-Zremap-cwd-prefix=` (empty) which strips
+        // `DW_AT_comp_dir`, making DWARF paths ambiguous when multiple
+        // crates share filenames like `src/lib.rs`. The wrapper rewrites
+        // the flag to `-Zremap-cwd-prefix=$CWD` so paths stay absolute.
+        //
+        // Stays set through `cargo test` below because tests-v2's
+        // `build_program()` spawns `cargo build-sbf` from within the test
+        // harness — those subprocess builds must inherit the wrapper to
+        // produce DWARF with preserved paths.
+        let anchor_exe = std::env::current_exe()
+            .context("resolve anchor binary path for RUSTC_WRAPPER")?;
+        std::env::set_var("RUSTC_WRAPPER", &anchor_exe);
+        std::env::set_var(debugger::rustc_wrapper::WRAPPER_SENTINEL, "1");
+
+        if !skip_build {
+            let build_cwd = ws.cargo_invocation_dir();
+            eprintln!("building programs with DWARF...");
+            cargo_build_sbf(Some(build_cwd), &cargo_args)?;
+        }
+
+        // Clear previous traces.
+        if trace_path.exists() {
+            fs::remove_dir_all(&trace_path)?;
+        }
+        fs::create_dir_all(&trace_path)?;
+
+        // Two register-tracing paths are in play, distinguished by whether
+        // the current crate declares a `profile` feature that flips on
+        // `anchor-v2-testing/profile`:
+        //
+        //   - With profile feature (anchor init template, bench programs):
+        //     `anchor_v2_testing::svm()` installs the TestNameCallback that
+        //     writes per-test nested traces under `ANCHOR_PROFILE_DIR`.
+        //     Same pipeline that `anchor debugger` consumes.
+        //   - Without (tests-v2): litesvm's stock register-tracing, enabled
+        //     in Cargo.toml, fires when `SBF_TRACE_DIR` is set. Flat
+        //     hash-keyed trace files in one dir.
+        //
+        // The coverage tool reads `.regs`/`.program_id` files recursively,
+        // so both layouts work.
+        let profile_feature = ws.detect_profile_feature().ok();
+        eprintln!("running tests with register tracing...");
+        let mut cmd = std::process::Command::new("cargo");
+        cmd.current_dir(ws.cargo_invocation_dir()).arg("test");
+        if let Some(feature) = &profile_feature {
+            cmd.env("ANCHOR_PROFILE_DIR", &trace_path)
+                .arg("--features")
+                .arg(feature);
+        } else {
+            cmd.env("SBF_TRACE_DIR", &trace_path);
+        }
+        if let Some(pkg) = &ws.current_package {
+            cmd.arg("-p").arg(pkg);
+        }
+        let status = cmd.status().context("spawn cargo test")?;
+        if !status.success() {
+            return Err(anyhow::anyhow!("cargo test failed"));
+        }
+    }
+
+    if !trace_path.exists() {
+        return Err(anyhow::anyhow!(
+            "no traces at {}. Run without --skip-run first.",
+            trace_path.display()
+        ));
+    }
+
+    // Discover program_id → deployed .so via declare_id! source scan
+    // (same as debugger). The unstripped .so is resolved automatically per
+    // program by walking up to its workspace root.
+    let programs = debugger::loose::discover_programs(&ws.root, ws.current_package.as_deref())?;
+    if programs.is_empty() {
+        return Err(anyhow::anyhow!(
+            "no programs found. Ensure declare_id!() is present in source.",
+        ));
+    }
+
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    coverage::generate_lcov(&trace_path, &programs, Some(&ws.root), &output_path)?;
+
+    Ok(())
 }
 
 /// Walks the per-test trace directories left behind by
