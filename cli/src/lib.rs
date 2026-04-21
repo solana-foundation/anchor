@@ -1357,21 +1357,6 @@ fn is_package_manager_available(pm: &PackageManager) -> bool {
         .is_ok()
 }
 
-fn detect_package_manager() -> Result<PackageManager> {
-    for pm in [
-        PackageManager::Yarn,
-        PackageManager::Bun,
-        PackageManager::PNPM,
-        PackageManager::NPM,
-    ] {
-        if is_package_manager_available(&pm) {
-            return Ok(pm);
-        }
-    }
-    Err(anyhow!(
-        "No supported package manager found. Install yarn, bun, pnpm, or npm and retry, or pass --package-manager <pm>."
-    ))
-}
 
 fn init(
     cfg_override: &ConfigOverride,
@@ -1413,21 +1398,17 @@ fn init(
     let package_manager = match package_manager {
         Some(pm) => {
             if !is_package_manager_available(&pm) {
-                return Err(anyhow!(
-                    "{pm} not found. Install it or omit --package-manager to auto-detect."
-                ));
+                return Err(anyhow!("{pm} not found. Install it or pass a different --package-manager."));
             }
             pm
         }
         None => {
-            let detected = detect_package_manager()?;
-            if detected.to_string() != PackageManager::default().to_string() {
-                println!(
-                    "{} not found, using {detected} instead",
-                    PackageManager::default()
-                );
+            if !is_package_manager_available(&PackageManager::Yarn) {
+                return Err(anyhow!(
+                    "Default package manager yarn not found. Install it or pass --package-manager <pm>."
+                ));
             }
-            detected
+            PackageManager::Yarn
         }
     };
 
