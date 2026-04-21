@@ -28,13 +28,16 @@ async function getClusterTime(connection) {
   throw new Error("getBlockTime returned null for 20 consecutive slots");
 }
 
-// Poll the cluster clock until it reaches `targetUnixSecs`. Polls at 1s
-// granularity so tests don't busy-loop but also don't oversleep on a slow
-// validator.
+// Poll the cluster clock until it is *strictly past* `targetUnixSecs`.
+// Matches the semantics of the on-chain phase checks, which all use
+// `clock.unix_timestamp <= boundary` — a tx landing in a block whose
+// `unix_timestamp` equals the boundary still trips the check. Polling
+// to `now > target` ensures the next tx observes a strictly later
+// cluster clock.
 async function waitUntilClusterTime(connection, targetUnixSecs) {
   let now = await getClusterTime(connection);
-  while (now < targetUnixSecs) {
-    await sleep(Math.min(targetUnixSecs - now, 1) * 1000);
+  while (now <= targetUnixSecs) {
+    await sleep(Math.min(targetUnixSecs - now + 1, 1) * 1000);
     now = await getClusterTime(connection);
   }
 }

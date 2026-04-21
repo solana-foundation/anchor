@@ -562,7 +562,7 @@ describe("ido-pool", () => {
     // Wait until the escrow period is over on-chain.
     await waitUntilClusterTime(
       provider.connection,
-      idoTimes.endEscrow.toNumber() + 1
+      idoTimes.endEscrow.toNumber()
     );
 
     const [idoAccount] = await anchor.web3.PublicKey.findProgramAddress(
