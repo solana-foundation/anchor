@@ -8,7 +8,7 @@ use {
     anchor_lang_v2::{
         accounts::{Account, SlabInit, SlabSchema},
         programs::Token,
-        Constrain, Id,
+        AccountConstraint, Id,
     },
     bytemuck::{Pod, Zeroable},
     pinocchio::account::AccountView,
@@ -161,20 +161,22 @@ pub struct FreezeAuthorityConstraint;
 pub struct DecimalsConstraint;
 pub struct TokenProgramConstraint;
 
-impl Constrain<AuthorityConstraint> for Account<Mint> {
+impl AccountConstraint<Account<Mint>> for AuthorityConstraint {
+    type Value = Address;
     #[inline(always)]
-    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
-        match self.mint_authority() {
+    fn check(account: &Account<Mint>, expected: &Address) -> Result<(), ProgramError> {
+        match account.mint_authority() {
             Some(addr) if addr == expected => Ok(()),
             _ => Err(ProgramError::InvalidAccountData),
         }
     }
 }
 
-impl Constrain<FreezeAuthorityConstraint> for Account<Mint> {
+impl AccountConstraint<Account<Mint>> for FreezeAuthorityConstraint {
+    type Value = Address;
     #[inline(always)]
-    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
-        match self.freeze_authority() {
+    fn check(account: &Account<Mint>, expected: &Address) -> Result<(), ProgramError> {
+        match account.freeze_authority() {
             Some(addr) if addr == expected => Ok(()),
             _ => Err(ProgramError::InvalidAccountData),
         }
@@ -182,10 +184,11 @@ impl Constrain<FreezeAuthorityConstraint> for Account<Mint> {
 }
 
 /// `mint::Decimals = 6` — non-address constraint, compares u8.
-impl Constrain<DecimalsConstraint, u8> for Account<Mint> {
+impl AccountConstraint<Account<Mint>> for DecimalsConstraint {
+    type Value = u8;
     #[inline(always)]
-    fn constrain(&mut self, expected: &u8) -> Result<(), ProgramError> {
-        if self.decimals() != *expected {
+    fn check(account: &Account<Mint>, expected: &u8) -> Result<(), ProgramError> {
+        if account.decimals() != *expected {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())
@@ -194,10 +197,11 @@ impl Constrain<DecimalsConstraint, u8> for Account<Mint> {
 }
 
 /// `mint::TokenProgram = token_program` — check mint is owned by given program.
-impl Constrain<TokenProgramConstraint> for Account<Mint> {
+impl AccountConstraint<Account<Mint>> for TokenProgramConstraint {
+    type Value = Address;
     #[inline(always)]
-    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
-        if !AsRef::<AccountView>::as_ref(self).owned_by(expected) {
+    fn check(account: &Account<Mint>, expected: &Address) -> Result<(), ProgramError> {
+        if !AsRef::<AccountView>::as_ref(account).owned_by(expected) {
             Err(ProgramError::IllegalOwner)
         } else {
             Ok(())

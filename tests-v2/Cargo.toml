@@ -13,6 +13,7 @@ borsh-realloc = { path = "programs/borsh-realloc", features = ["cpi"] }
 callee = { path = "programs/callee", features = ["cpi"] }
 caller = { path = "programs/caller", features = ["cpi"] }
 constraints = { path = "programs/constraints" }
+custom-constraints = { path = "programs/custom-constraints", features = ["cpi"] }
 dup-mut = { path = "programs/dup-mut" }
 seeds = { path = "programs/seeds" }
 spl-test = { path = "programs/spl", features = ["cpi"] }
