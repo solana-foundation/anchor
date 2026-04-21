@@ -54,6 +54,28 @@ pub struct Profile {
     pub scores: alloc::vec::Vec<u64>,
 }
 
+// ---- #[event] -------------------------------------------------------------
+
+/// Default-mode event (wincode with a borsh-compatible wire format).
+/// `emit!` serializes via `Event::data()` and calls `sol_log_data`, which
+/// surfaces to clients as a `Program data: <base64>` log line.
+#[event]
+pub struct Bumped {
+    pub amount: u64,
+    pub step: i32,
+    pub flag: bool,
+}
+
+/// Bytemuck-mode event — zero-copy `copy_nonoverlapping` of a `repr(C)`
+/// struct. No dynamic sizing, but the cheapest emit path on SBF.
+#[event(bytemuck)]
+#[repr(C)]
+pub struct SnapshotTaken {
+    pub value: u64,
+    pub mode: u8,
+    pub _pad: [u8; 7],
+}
+
 // ---- Slab-backed account with pod integer fields --------------------------
 
 /// Zero-copy account using PodU64/PodI32/PodBool so the exit-time write-back
@@ -84,6 +106,8 @@ pub mod derives_test {
     }
 
     /// Exercises Pod arithmetic + PodBool + PodWrapper assignment on-chain.
+    /// Also emits a default-mode (wincode) event so the test can inspect the
+    /// `Program data:` log line.
     #[discrim = 1]
     pub fn bump(ctx: &mut Context<Bump>, amount: u64, step: i32) -> Result<()> {
         let c = &mut ctx.accounts.counter;
@@ -91,6 +115,23 @@ pub mod derives_test {
         c.delta = c.delta + step;
         c.active = PodBool::from(true);
         c.mode = PodMode::Active;
+        emit!(Bumped {
+            amount,
+            step,
+            flag: true,
+        });
+        Ok(())
+    }
+
+    /// Emits a bytemuck-mode event. Pure `sol_log_data` — no state changes.
+    #[discrim = 5]
+    pub fn snapshot(ctx: &mut Context<Bump>) -> Result<()> {
+        let c = &ctx.accounts.counter;
+        emit!(SnapshotTaken {
+            value: c.value.get(),
+            mode: c.mode.0,
+            _pad: [0; 7],
+        });
         Ok(())
     }
 

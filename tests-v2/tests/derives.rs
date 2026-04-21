@@ -257,3 +257,80 @@ fn init_profile_allocates_init_space_bytes() {
     let first_score = u64::from_le_bytes(account.data[8 + 37..8 + 45].try_into().unwrap());
     assert_eq!(first_score, 10);
 }
+
+// ---- #[event] + emit! ----------------------------------------------------
+
+/// Compute the 8-byte event discriminator the macro generates: first 8
+/// bytes of sha256(`"event:<StructName>"`).
+fn event_discriminator(name: &str) -> [u8; 8] {
+    use sha2::Digest;
+    let full = sha2::Sha256::digest(format!("event:{name}").as_bytes());
+    let mut out = [0u8; 8];
+    out.copy_from_slice(&full[..8]);
+    out
+}
+
+/// Decode a `Program data: <base64>` log line into its raw bytes.
+fn program_data_from_logs(logs: &[String]) -> Vec<u8> {
+    let line = logs
+        .iter()
+        .find(|l| l.starts_with("Program data: "))
+        .expect("should have a `Program data:` log line");
+    let b64 = line.trim_start_matches("Program data: ").trim();
+    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b64)
+        .expect("base64 decode")
+}
+
+#[test]
+fn emit_wincode_event_logs_program_data() {
+    let (mut svm, payer) = setup();
+    let counter = do_initialize(&mut svm, &payer);
+
+    // bump with amount=12345, step=-7. `emit!` inside the handler fires a
+    // wincode-serialized Bumped event.
+    let mut data = vec![1];
+    data.extend_from_slice(&12345u64.to_le_bytes());
+    data.extend_from_slice(&(-7i32).to_le_bytes());
+    let metas = vec![AccountMeta::new(counter, false)];
+    let meta = send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("bump should succeed");
+
+    let bytes = program_data_from_logs(&meta.logs);
+    assert!(bytes.len() >= 8, "event payload should include discriminator");
+    assert_eq!(&bytes[..8], &event_discriminator("Bumped"), "discriminator mismatch");
+
+    // Default-mode event uses wincode with a borsh-compatible wire format:
+    // u64 LE (8) + i32 LE (4) + bool (1 byte). Total = 21 including disc.
+    assert_eq!(bytes.len(), 21);
+    let amount = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
+    let step = i32::from_le_bytes(bytes[16..20].try_into().unwrap());
+    let flag = bytes[20];
+    assert_eq!(amount, 12345);
+    assert_eq!(step, -7);
+    assert_eq!(flag, 1);
+}
+
+#[test]
+fn emit_bytemuck_event_copies_repr_c_bytes() {
+    let (mut svm, payer) = setup();
+    let counter = do_initialize(&mut svm, &payer);
+    // Bump first so `value` and `mode` are non-zero when snapshot runs.
+    do_bump(&mut svm, &payer, counter, 99, 0);
+
+    // snapshot (discrim=5) emits a bytemuck-mode event.
+    let metas = vec![AccountMeta::new_readonly(counter, false)];
+    let meta = send_instruction(&mut svm, program_id(), vec![5], metas, &payer, &[])
+        .expect("snapshot should succeed");
+
+    let bytes = program_data_from_logs(&meta.logs);
+    assert_eq!(&bytes[..8], &event_discriminator("SnapshotTaken"), "discriminator mismatch");
+
+    // Bytemuck layout: repr(C) struct bytes verbatim.
+    // SnapshotTaken { value: u64 (8), mode: u8 (1), _pad: [u8; 7] (7) } = 16
+    // bytes. Total payload = 8 (disc) + 16 = 24.
+    assert_eq!(bytes.len(), 24);
+    let value = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
+    let mode = bytes[16];
+    assert_eq!(value, 99);
+    assert_eq!(mode, 1, "mode = PodMode::Active after bump");
+}

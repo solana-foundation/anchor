@@ -58,8 +58,17 @@ coverage-v2-host:
 		exit 1; \
 	}
 	cargo llvm-cov clean --workspace
+	# First pass: default feature set (covers runtime + derive codegen paths).
 	CARGO_PROFILE_RELEASE_DEBUG=2 \
 	cargo llvm-cov --no-report -p anchor-lang-v2 -p anchor-spl-v2 -p tests-v2
+	# Second pass: same crates with --features idl-build so the IDL-emission
+	# branches in derive/src/idl.rs and the program-level IDL assembler run.
+	# No `--no-clean` here — passing `--no-report` already preserves the
+	# profile data across passes; the merged report is assembled by the
+	# final `llvm-cov report` below.
+	CARGO_PROFILE_RELEASE_DEBUG=2 \
+	cargo llvm-cov --no-report --features idl-build \
+		-p anchor-lang-v2 -p anchor-spl-v2
 	cargo llvm-cov report \
 		--lcov \
 		--output-path $(COVERAGE_DIR)/host.lcov \
