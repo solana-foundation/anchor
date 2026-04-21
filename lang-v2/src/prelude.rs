@@ -57,7 +57,7 @@ pub use crate::{
     AnchorSerialize,
     Bumps,
     // Constraints
-    Constrain,
+    AccountConstraint,
     // Context
     Context,
     Discriminator,

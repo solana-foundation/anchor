@@ -1,0 +1,214 @@
+//! Third-party-style custom constraints exercising each of the four
+//! `AccountConstraint` methods (`init`, `check`, `update`, `exit`).
+//!
+//! The `counter_ns` module defines four constraint markers, each
+//! overriding exactly one method. Handlers drive each constraint via
+//! the `#[account(...)]` syntax, and the integration tests in
+//! `tests/custom_constraints.rs` assert the resulting on-chain state
+//! to pin down WHERE in the lifecycle the derive routes each call.
+
+extern crate alloc;
+
+use anchor_lang_v2::prelude::*;
+
+declare_id!("CC111111111111111111111111111111111111111111");
+
+#[program]
+pub mod custom_constraints {
+    use super::*;
+
+    /// `counter_ns::init_value = 5` on an `init` field.
+    /// `InitValueConstraint::init` stamps `counter.value = 5` after
+    /// BorshAccount creates + zero-fills the account.
+    pub fn handle_init(_ctx: &mut Context<HandleInit>) -> Result<()> {
+        Ok(())
+    }
+
+    /// `counter_ns::min_value = 10` on a non-init field.
+    /// `MinValueConstraint::check` asserts `counter.value >= 10`.
+    pub fn handle_check(_ctx: &mut Context<HandleCheck>) -> Result<()> {
+        Ok(())
+    }
+
+    /// `update(counter_ns::set_value = 42)` on a `mut` field.
+    /// `SetValueConstraint::update` writes `counter.value = 42`.
+    pub fn handle_update(_ctx: &mut Context<HandleUpdate>) -> Result<()> {
+        Ok(())
+    }
+
+    /// `counter_ns::bump_on_exit = 1` on a `mut` field.
+    /// `BumpOnExitConstraint::exit` adds 1 to `counter.value` during
+    /// `exit_accounts`. The integration test dispatches an otherwise
+    /// no-op handler and checks the persisted value afterwards.
+    pub fn handle_exit_bump(_ctx: &mut Context<HandleExitBump>) -> Result<()> {
+        Ok(())
+    }
+
+    /// `init_if_needed` with `counter_ns::init_value = 5` —
+    /// exercises that on the create branch, `init` fires, and on the
+    /// exist branch, `check` fires (no-op for this constraint but the
+    /// call is still emitted). Pairs with a separate non-init
+    /// constraint `counter_ns::min_value` to prove the check path is
+    /// reached.
+    pub fn handle_init_if_needed(_ctx: &mut Context<HandleInitIfNeeded>) -> Result<()> {
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Account data type — a plain Borsh-serialised counter.
+// ---------------------------------------------------------------------------
+
+#[account(borsh)]
+pub struct Counter {
+    pub value: u64,
+}
+
+// ---------------------------------------------------------------------------
+// Custom constraint namespace. Each marker overrides exactly one of the
+// four `AccountConstraint` methods to make routing observable.
+// ---------------------------------------------------------------------------
+
+pub mod counter_ns {
+    use {
+        super::Counter,
+        anchor_lang_v2::{accounts::BorshAccount, AccountConstraint},
+        solana_program_error::ProgramError,
+    };
+
+    /// `counter_ns::init_value = N` — stamps `counter.value = N`
+    /// during the init phase (fires on `init` and on the create branch
+    /// of `init_if_needed`).
+    pub struct InitValueConstraint;
+
+    impl AccountConstraint<BorshAccount<Counter>> for InitValueConstraint {
+        type Value = u64;
+
+        fn init(
+            account: &mut BorshAccount<Counter>,
+            value: &u64,
+        ) -> Result<(), ProgramError> {
+            account.value = *value;
+            Ok(())
+        }
+    }
+
+    /// `counter_ns::min_value = N` — asserts `counter.value >= N`.
+    pub struct MinValueConstraint;
+
+    impl AccountConstraint<BorshAccount<Counter>> for MinValueConstraint {
+        type Value = u64;
+
+        fn check(
+            account: &BorshAccount<Counter>,
+            min: &u64,
+        ) -> Result<(), ProgramError> {
+            if account.value < *min {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            Ok(())
+        }
+    }
+
+    /// `counter_ns::set_value = N` — writes `counter.value = N`.
+    /// Emitted only when paired with the `update(...)` wrapper.
+    pub struct SetValueConstraint;
+
+    impl AccountConstraint<BorshAccount<Counter>> for SetValueConstraint {
+        type Value = u64;
+
+        fn update(
+            account: &mut BorshAccount<Counter>,
+            value: &u64,
+        ) -> Result<(), ProgramError> {
+            account.value = *value;
+            Ok(())
+        }
+    }
+
+    /// `counter_ns::bump_on_exit = N` — adds `N` to `counter.value`
+    /// during `exit_accounts`. The exit hook runs only on successful
+    /// instructions, so a handler that errors must NOT see the bump.
+    pub struct BumpOnExitConstraint;
+
+    impl AccountConstraint<BorshAccount<Counter>> for BumpOnExitConstraint {
+        type Value = u64;
+
+        fn exit(
+            account: &mut BorshAccount<Counter>,
+            bump: &u64,
+        ) -> Result<(), ProgramError> {
+            account.value = account.value.saturating_add(*bump);
+            Ok(())
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Accounts structs
+// ---------------------------------------------------------------------------
+
+#[derive(Accounts)]
+pub struct HandleInit {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + 8, // disc + u64
+        seeds = [b"counter"],
+        bump,
+        counter_ns::init_value = 5u64,
+    )]
+    pub counter: BorshAccount<Counter>,
+    pub system_program: Program<System>,
+}
+
+#[derive(Accounts)]
+pub struct HandleCheck {
+    #[account(
+        seeds = [b"counter"],
+        bump,
+        counter_ns::min_value = 10u64,
+    )]
+    pub counter: BorshAccount<Counter>,
+}
+
+#[derive(Accounts)]
+pub struct HandleUpdate {
+    #[account(
+        mut,
+        seeds = [b"counter"],
+        bump,
+        update(counter_ns::set_value = 42u64),
+    )]
+    pub counter: BorshAccount<Counter>,
+}
+
+#[derive(Accounts)]
+pub struct HandleExitBump {
+    #[account(
+        mut,
+        seeds = [b"counter"],
+        bump,
+        counter_ns::bump_on_exit = 1u64,
+    )]
+    pub counter: BorshAccount<Counter>,
+}
+
+#[derive(Accounts)]
+pub struct HandleInitIfNeeded {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = 8 + 8,
+        seeds = [b"counter"],
+        bump,
+        counter_ns::init_value = 5u64,
+        counter_ns::min_value = 1u64,
+    )]
+    pub counter: BorshAccount<Counter>,
+    pub system_program: Program<System>,
+}

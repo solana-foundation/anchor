@@ -220,19 +220,108 @@ pub trait AccountInitialize: Sized {
     ) -> Result<Self, ProgramError>;
 }
 
-/// Constraint check on an account. `V` defaults to `Address`; override
-/// for non-address checks (e.g. `mint::DecimalsConstraint` uses `u8`).
-/// Unknown keys produce a compile error.
+// ---------------------------------------------------------------------------
+// Extensible constraint system
+// ---------------------------------------------------------------------------
+
+/// Trait implemented by each constraint marker type for every account
+/// type it applies to. Each method defaults to `Ok(())`, so CHECK-only
+/// constraints only need to override `check`, INIT-only constraints
+/// only override `init`, etc.
 ///
-/// There is deliberately **no blanket `impl<T: Constrain<C, V>> Constrain<C, V>
-/// for Option<T>`** mirroring the `Box<T>` forwarder in `accounts/boxed.rs`.
-/// Constraint checks on `Option<Field>` are emitted by the derive inline as
-/// `if let Some(ref inner) = self.maybe_x { … inline check … }` — they never
-/// dispatch through this trait — so adding the blanket impl would only paper
-/// over problems users don't actually hit, while giving the appearance of
-/// adding behavior that already works.
-pub trait Constrain<C, V = Address> {
-    fn constrain(&mut self, expected: &V) -> core::result::Result<(), ProgramError>;
+/// # Lifecycle mapping
+///
+/// | `#[account(...)]` spelling                         | Methods called        |
+/// |----------------------------------------------------|-----------------------|
+/// | `ns::key = v` (non-init field)                     | `check`               |
+/// | `init, ns::key = v`                                | `init`                |
+/// | `init_if_needed, ns::key = v` (creating)           | `init`, then `check`  |
+/// | `init_if_needed, ns::key = v` (already exists)     | `check`               |
+/// | `update(ns::key = v)`                              | `update`              |
+/// | Any of the above                                    | `exit` (exit phase)  |
+///
+/// There is deliberately **no blanket `impl<T: AccountConstraint<A>>
+/// AccountConstraint<Option<A>> for T`** mirroring the `Box<T>` forwarder
+/// in `accounts/boxed.rs`. Constraint calls on `Option<Field>` are emitted
+/// by the derive inline as `if let Some(ref inner) = self.maybe_x { …
+/// inline call … }` — they never dispatch through a blanket impl.
+///
+/// # Extending with third-party constraints
+///
+/// Any crate can define new constraint markers and implement
+/// `AccountConstraint<SomeAccount>` for them. The derive routes
+/// `ns::key = v`, `init`/`init_if_needed`-paired constraints, and the
+/// `update(...)` wrapper through the appropriate method.
+///
+/// ```ignore
+/// pub mod my_ns {
+///     use anchor_lang_v2::AccountConstraint;
+///     use pinocchio::program_error::ProgramError;
+///
+///     pub struct MinBalanceConstraint;
+///
+///     impl AccountConstraint<MyAccount> for MinBalanceConstraint {
+///         type Value = u64;
+///         fn check(account: &MyAccount, min: &u64) -> Result<(), ProgramError> {
+///             if account.account().lamports() < *min {
+///                 return Err(ProgramError::InsufficientFunds);
+///             }
+///             Ok(())
+///         }
+///     }
+/// }
+///
+/// #[derive(Accounts)]
+/// pub struct MyInstruction {
+///     #[account(mut, my_ns::min_balance = 1_000_000)]
+///     pub data: MyAccount,
+/// }
+/// ```
+pub trait AccountConstraint<A> {
+    /// The expected value type for this constraint. This is the type of
+    /// the RHS expression in `#[account(namespace::key = <expr>)]`.
+    ///
+    /// Common choices:
+    /// - `Address` for address comparisons (default for most constraints)
+    /// - `AccountView` for constraints that need the full account view
+    /// - `u8` / `u64` for numeric constraints
+    type Value;
+
+    /// Creation hook. Invoked on `init` and on the create branch of
+    /// `init_if_needed` — whenever the account is being freshly
+    /// produced by this instruction — after `AccountInitialize::
+    /// create_and_initialize` has run. Mutable access so the
+    /// constraint can stamp additional state.
+    #[inline(always)]
+    fn init(_account: &mut A, _value: &Self::Value) -> core::result::Result<(), ProgramError> {
+        Ok(())
+    }
+
+    /// Runtime validation. Invoked on non-init fields and on the
+    /// already-exists branch of `init_if_needed`. Read-only.
+    #[inline(always)]
+    fn check(_account: &A, _value: &Self::Value) -> core::result::Result<(), ProgramError> {
+        Ok(())
+    }
+
+    /// Mutating hook. Invoked only when the constraint is written
+    /// inside an `update(...)` wrapper, e.g.
+    /// `#[account(update(my_ns::field = value))]`. Intended for
+    /// constraints that set / rewrite on-chain state rather than
+    /// validating it.
+    #[inline(always)]
+    fn update(_account: &mut A, _value: &Self::Value) -> core::result::Result<(), ProgramError> {
+        Ok(())
+    }
+
+    /// Exit hook. Called during `AccountsExit::exit_accounts()` for
+    /// every constraint attached to the field, regardless of how the
+    /// field was introduced. Use for state that must be flushed on a
+    /// successful instruction.
+    #[inline(always)]
+    fn exit(_account: &mut A, _value: &Self::Value) -> core::result::Result<(), ProgramError> {
+        Ok(())
+    }
 }
 
 pub struct Nested<T>(pub T);

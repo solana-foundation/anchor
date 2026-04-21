@@ -7,7 +7,7 @@ use {
     anchor_lang_v2::{
         accounts::{Account, SlabInit, SlabSchema},
         programs::Token,
-        Constrain, Id,
+        AccountConstraint, Id,
     },
     bytemuck::{Pod, Zeroable},
     pinocchio::account::AccountView,
@@ -214,12 +214,11 @@ pub struct MintConstraint;
 pub struct AuthorityConstraint;
 pub struct TokenProgramConstraint;
 
-impl Constrain<MintConstraint> for Account<TokenAccount> {
+impl AccountConstraint<Account<TokenAccount>> for MintConstraint {
+    type Value = Address;
     #[inline(always)]
-    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
-        // `address_eq` is the chunked 4×u64 compare; faster than the
-        // default `PartialEq` derive on `[u8; 32]`. See lang-v2/src/lib.rs.
-        if !anchor_lang_v2::address_eq(self.mint(), expected) {
+    fn check(account: &Account<TokenAccount>, expected: &Address) -> Result<(), ProgramError> {
+        if !anchor_lang_v2::address_eq(account.mint(), expected) {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())
@@ -227,10 +226,11 @@ impl Constrain<MintConstraint> for Account<TokenAccount> {
     }
 }
 
-impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
+impl AccountConstraint<Account<TokenAccount>> for AuthorityConstraint {
+    type Value = Address;
     #[inline(always)]
-    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
-        if !anchor_lang_v2::address_eq(self.owner(), expected) {
+    fn check(account: &Account<TokenAccount>, expected: &Address) -> Result<(), ProgramError> {
+        if !anchor_lang_v2::address_eq(account.owner(), expected) {
             Err(ProgramError::InvalidAccountData)
         } else {
             Ok(())
@@ -239,10 +239,11 @@ impl Constrain<AuthorityConstraint> for Account<TokenAccount> {
 }
 
 /// `token::TokenProgram = token_program` — check account is owned by given program.
-impl Constrain<TokenProgramConstraint> for Account<TokenAccount> {
+impl AccountConstraint<Account<TokenAccount>> for TokenProgramConstraint {
+    type Value = Address;
     #[inline(always)]
-    fn constrain(&mut self, expected: &Address) -> Result<(), ProgramError> {
-        if !AsRef::<AccountView>::as_ref(self).owned_by(expected) {
+    fn check(account: &Account<TokenAccount>, expected: &Address) -> Result<(), ProgramError> {
+        if !AsRef::<AccountView>::as_ref(account).owned_by(expected) {
             Err(ProgramError::IllegalOwner)
         } else {
             Ok(())

@@ -8,11 +8,32 @@ use {
     },
 };
 
+/// snake_case → PascalCase + `Constraint` suffix, for looking up the
+/// marker type on the `AccountConstraint` trait. Shared by the top-level
+/// `namespace::key = value` parser and the `update(...)` parser.
+fn constraint_key_ident(key: &str) -> String {
+    let mut out = String::with_capacity(key.len() + "Constraint".len());
+    let mut upper_next = true;
+    for ch in key.chars() {
+        if ch == '_' {
+            upper_next = true;
+        } else if upper_next {
+            out.extend(ch.to_uppercase());
+            upper_next = false;
+        } else {
+            out.push(ch);
+        }
+    }
+    out.push_str("Constraint");
+    out
+}
+
 /// A namespaced constraint like `token::mint = expr`.
 pub struct NamespacedConstraint {
     /// e.g. "token"
     pub namespace: String,
-    /// e.g. "MintConstraint" (capitalized + suffixed for Constrain trait lookup)
+    /// e.g. "MintConstraint" (PascalCased key + `Constraint` suffix, used
+    /// to locate the marker on the `AccountConstraint` trait).
     pub key: String,
     /// e.g. "mint" (original lowercase key, used as init param field name)
     pub raw_key: String,
@@ -21,6 +42,10 @@ pub struct NamespacedConstraint {
     /// True if the RHS is a simple ident (field reference → call .account()).
     /// False if it's a literal or complex expression (pass directly).
     pub is_field_ref: bool,
+    /// True if parsed from inside an `update(...)` wrapper. Update
+    /// entries dispatch through `AccountConstraint::update` instead of
+    /// `check`, and skip the init-param thread-through.
+    pub is_update: bool,
 }
 
 pub struct AccountAttrs {
@@ -151,6 +176,37 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                             }
                         }
                     }
+                    "update" => {
+                        // `update(ns::key = val, ns2::key2 = val2, ...)` —
+                        // each inner entry is a namespaced constraint that
+                        // dispatches through `AccountConstraint::update`
+                        // instead of `check`. Implies `mut` since update
+                        // hooks mutate the account.
+                        let content;
+                        syn::parenthesized!(content in input);
+                        result.is_mut = true;
+                        while !content.is_empty() {
+                            let ns_ident: Ident = Ident::parse_any(&content)?;
+                            content.parse::<Token![::]>()?;
+                            let key_ident: Ident = Ident::parse_any(&content)?;
+                            content.parse::<Token![=]>()?;
+                            let is_field_ref = content.peek(syn::Ident);
+                            let value: Expr = content.parse()?;
+                            let raw_key = key_ident.to_string();
+                            let key = constraint_key_ident(&raw_key);
+                            result.namespaced.push(NamespacedConstraint {
+                                namespace: ns_ident.to_string(),
+                                key,
+                                raw_key,
+                                value,
+                                is_field_ref,
+                                is_update: true,
+                            });
+                            if !content.is_empty() {
+                                content.parse::<Token![,]>()?;
+                            }
+                        }
+                    }
                     "rent_exempt" => {
                         input.parse::<Token![=]>()?;
                         let val: Ident = input.parse()?;
@@ -246,40 +302,15 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                             // or a literal/expression (value).
                             let is_field_ref = input.peek(syn::Ident);
                             let value: Expr = input.parse()?;
-                            // snake_case → PascalCase + Constraint suffix:
-                            //   "mint"             → "MintConstraint"
-                            //   "freeze_authority" → "FreezeAuthorityConstraint"
-                            //   "min_stake"        → "MinStakeConstraint"
-                            // Previous behaviour only capitalised the first
-                            // char, which produced `Freeze_authorityConstraint`
-                            // — unusable as a Rust type name. External crates
-                            // following the spl-v2 pattern assume idiomatic
-                            // PascalCase, so snake-segment joining is the
-                            // correct resolution.
-                            let key = {
-                                let s = key_ident.to_string();
-                                let mut out = String::with_capacity(s.len() + "Constraint".len());
-                                let mut upper_next = true;
-                                for ch in s.chars() {
-                                    if ch == '_' {
-                                        upper_next = true;
-                                    } else if upper_next {
-                                        out.extend(ch.to_uppercase());
-                                        upper_next = false;
-                                    } else {
-                                        out.push(ch);
-                                    }
-                                }
-                                out.push_str("Constraint");
-                                out
-                            };
                             let raw_key = key_ident.to_string();
+                            let key = constraint_key_ident(&raw_key);
                             result.namespaced.push(NamespacedConstraint {
                                 namespace: ident.to_string(),
                                 key,
                                 raw_key,
                                 value,
                                 is_field_ref,
+                                is_update: false,
                             });
                         } else {
                             // No `::` follows — not a namespaced constraint.
@@ -310,12 +341,73 @@ pub fn field_ty_str(ty: &Type) -> String {
     String::new()
 }
 
-/// Namespaced constraints whose impls are runtime-only and should NOT be
-/// threaded as init-time `Params` fields. External crates add their own
-/// runtime-only namespaces here (e.g. `dynamic_account` from
-/// `anchor-dynamic`).
+/// Namespaced constraints whose values are threaded as init-time `Params`
+/// fields via `AccountInitialize::Params`. Only built-in namespaces that
+/// correspond to SPL account types belong here — every other namespace
+/// (including all third-party constraints) is runtime-only and dispatches
+/// through the `AccountConstraint` trait.
+fn has_init_params(ns: &str) -> bool {
+    matches!(ns, "token" | "mint" | "associated_token")
+}
+
+/// Returns `true` when the namespace is runtime-only: its values are
+/// applied via `AccountConstraint::{init, check, update, exit}` rather
+/// than being threaded as init-time `Params` fields.
+///
+/// Any namespace that is NOT a known init-param provider is runtime-only,
+/// so third-party crates can define arbitrary namespaced constraints
+/// (e.g. `my_ns::min_balance = 1_000_000`) without changes to this file.
 pub fn is_runtime_only_constraint_ns(ns: &str) -> bool {
-    matches!(ns, "dynamic_account")
+    !has_init_params(ns)
+}
+
+/// Wrap the `Result<Self>`-yielding `init_body` so that each runtime-only
+/// namespaced constraint's `AccountConstraint::init` fires against the
+/// freshly-typed value, then return the typed value. Producing this
+/// wrapper inline (rather than threading the calls through the outer
+/// constraints vec) keeps init hooks scoped to the actual create branch —
+/// on `init_if_needed`, an already-existing account skips this block and
+/// therefore skips every init hook.
+fn wrap_init_body_with_constraints(
+    field_ty: &Type,
+    attrs: &AccountAttrs,
+    init_body: &TokenStream2,
+) -> TokenStream2 {
+    let init_calls: Vec<TokenStream2> = attrs
+        .namespaced
+        .iter()
+        .filter(|nc| !nc.is_update && is_runtime_only_constraint_ns(&nc.namespace))
+        .map(|nc| {
+            let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
+            let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
+            let value = &nc.value;
+            let expected = if nc.is_field_ref {
+                quote! { AsRef::as_ref(&#value) }
+            } else {
+                quote! { &#value }
+            };
+            quote! {
+                <#ns::#key as anchor_lang_v2::AccountConstraint<_>>::init(
+                    &mut __init, #expected,
+                )?;
+            }
+        })
+        .collect();
+
+    if init_calls.is_empty() {
+        return quote! { #init_body };
+    }
+
+    // `init_body` is a sequence of `let` statements ending in the
+    // `create_and_initialize(...)?` expression — wrap it in a block so
+    // the sequence resolves to a value that can be bound to `__init`.
+    quote! {
+        {
+            let mut __init: #field_ty = { #init_body };
+            #(#init_calls)*
+            __init
+        }
+    }
 }
 
 pub fn is_nested_type(ty: &Type) -> bool {
@@ -963,14 +1055,20 @@ pub fn parse_field(
         }
     } else if attrs.is_init {
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names, false);
+        let init_body_with_constraints = wrap_init_body_with_constraints(
+            field_ty, &attrs, &init_body,
+        );
         quote! {
             let mut #field_name: #field_ty = {
                 let __target = __views[#offset_expr];
-                #init_body
+                #init_body_with_constraints
             };
         }
     } else if attrs.is_init_if_needed {
         let init_body = emit_init_body(field_name, field_ty, &attrs, field_names, false);
+        let init_body_with_constraints = wrap_init_body_with_constraints(
+            field_ty, &attrs, &init_body,
+        );
         quote! {
             let mut #field_name: #field_ty = {
                 let __target = __views[#offset_expr];
@@ -979,7 +1077,11 @@ pub fn parse_field(
                     // no other mutable reference to this account's data exists.
                     unsafe { <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)? }
                 } else {
-                    #init_body
+                    // Create branch: run `AccountConstraint::init` for every
+                    // runtime-only constraint AFTER the account's typed
+                    // creation. Gated to this branch so the init hook only
+                    // fires on actual creation, never on the exist branch.
+                    #init_body_with_constraints
                 }
             };
         }
@@ -1235,33 +1337,64 @@ pub fn parse_field(
         });
     }
 
-    // Namespaced constraints: usually skipped on init/init_if_needed
-    // because those constraints are instead threaded into
-    // `AccountInitialize::Params` at init time. Runtime-only namespaces
-    // (see `is_runtime_only_constraint_ns`) still need the `Constrain`
-    // call on init paths — they aren't init params.
+    // Namespaced constraints → `AccountConstraint` method dispatch.
+    //
+    //   | context                                       | method(s)              |
+    //   |-----------------------------------------------|------------------------|
+    //   | `update(ns::k = v)`                           | `update`               |
+    //   | `init, ns::k = v` (runtime-only ns)           | `init` (inside create) |
+    //   | `init_if_needed, ns::k = v` (runtime-only ns) | `init` + `check`       |
+    //   |     (init runs only on the create branch)     |                        |
+    //   | `init_if_needed, ns::k = v` (built-in ns)     | `check` (exist branch) |
+    //   | `ns::k = v` (non-init)                        | `check`                |
+    //   | `init, ns::k = v` (built-in ns)               | skipped — Params path  |
+    //
+    // The `init` dispatch is embedded inline into the init body by
+    // `wrap_init_body_with_constraints` above so the hook only fires on
+    // actual creation. Only `check` and `update` emit out here in the
+    // constraint phase.
+    //
+    // Field refs thread through `AsRef::as_ref` so the call-site's
+    // `V` is inferred from the `AccountConstraint::Value` associated
+    // type. Literals / expressions pass through verbatim.
     for nc in &attrs.namespaced {
-        let is_runtime_only = is_runtime_only_constraint_ns(&nc.namespace);
-        if (attrs.is_init || attrs.is_init_if_needed) && !is_runtime_only {
-            continue;
-        }
         let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
         let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
         let value = &nc.value;
-        // BYOC: marker path resolves via user's `use` imports. Field
-        // refs go through `AsRef::as_ref` with V inferred from the
-        // Constrain impl (wrappers impl both `AsRef<Address>` and
-        // `AsRef<AccountView>`). Literals pass through as `&value`.
         let expected = if nc.is_field_ref {
             quote! { AsRef::as_ref(&#value) }
         } else {
             quote! { &#value }
         };
-        constraints.push(quote! {
-            anchor_lang_v2::Constrain::<#ns::#key, _>::constrain(
-                &mut #field_name, #expected,
-            )?;
-        });
+
+        if nc.is_update {
+            // `update(...)` — fires regardless of init state.
+            constraints.push(quote! {
+                <#ns::#key as anchor_lang_v2::AccountConstraint<_>>::update(
+                    &mut #field_name, #expected,
+                )?;
+            });
+            continue;
+        }
+
+        // `check` fires for:
+        //   - non-init fields,
+        //   - init_if_needed fields (both runtime-only and built-in,
+        //     covering the already-exists branch where the Params path
+        //     never ran, and redundantly on the create branch after
+        //     init already stamped the state).
+        //
+        // Pure `init` fields do not emit `check`: runtime-only got
+        // `init` via `wrap_init_body_with_constraints`, built-in was
+        // handled by `AccountInitialize::Params`, and the values are
+        // authoritative by construction.
+        if !attrs.is_init {
+            constraints.push(quote! {
+                <#ns::#key as anchor_lang_v2::AccountConstraint<_>>::check(
+                    &#field_name, #expected,
+                )?;
+            });
+        }
     }
 
     // realloc
@@ -1306,6 +1439,34 @@ pub fn parse_field(
         });
     }
 
+    // Namespaced constraint exits: emit `AccountConstraint::exit` calls
+    // for every namespaced constraint in source order, routed through
+    // `self.<field>` so they run in `exit_accounts()` context. Field-ref
+    // RHS values are rewritten from bare `sibling` → `self.sibling`;
+    // literal / expression values pass through unchanged (callers that
+    // need self-qualified expression exits should spell the path in
+    // full).
+    let constraint_exits: Vec<TokenStream2> = attrs
+        .namespaced
+        .iter()
+        .map(|nc| {
+            let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
+            let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
+            let value = &nc.value;
+            let expected = if nc.is_field_ref {
+                quote! { AsRef::as_ref(&self.#value) }
+            } else {
+                quote! { &#value }
+            };
+            quote! {
+                <#ns::#key as anchor_lang_v2::AccountConstraint<_>>::exit(
+                    &mut self.#field_name, #expected,
+                )?;
+            }
+        })
+        .collect();
+    let has_constraint_exits = !constraint_exits.is_empty();
+
     // close (self-close prevention constraint + exit)
     let exit = if let Some(ref close_target) = attrs.close {
         constraints.push(quote! {
@@ -1317,6 +1478,7 @@ pub fn parse_field(
             }
         });
         Some(quote! {
+            #(#constraint_exits)*
             anchor_lang_v2::AnchorAccount::close(
                 &mut self.#field_name,
                 *self.#close_target.account(),
@@ -1324,7 +1486,15 @@ pub fn parse_field(
         })
     } else if attrs.is_mut {
         Some(quote! {
+            #(#constraint_exits)*
             anchor_lang_v2::AnchorAccount::exit(&mut self.#field_name)?;
+        })
+    } else if has_constraint_exits {
+        // Constraint exits even on read-only fields: callers can attach
+        // an exit hook to a non-mut field (e.g. a bookkeeping constraint
+        // that only needs to run post-instruction).
+        Some(quote! {
+            #(#constraint_exits)*
         })
     } else {
         None
@@ -1393,24 +1563,51 @@ pub fn parse_field(
             // `AnchorAccount::exit(&mut self.#field_name)`). For optional
             // fields we rebuild with the unwrapped inner so the trait call
             // dispatches on `T`, not `Option<T>`.
-            //
-            // The content of `e` is a fixed shape (either `close(...)?;` or
-            // `exit(...)?;`), so we don't need to parse/rewrite — we just
-            // regenerate from scratch based on which attr set it.
             let _ = e; // silence unused (shape decided below)
+
+            // Rebuild namespaced-constraint exits against the unwrapped
+            // inner `&mut T` bound as `__inner`.
+            let inner_constraint_exits: Vec<TokenStream2> = attrs
+                .namespaced
+                .iter()
+                .map(|nc| {
+                    let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
+                    let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
+                    let value = &nc.value;
+                    let expected = if nc.is_field_ref {
+                        quote! { AsRef::as_ref(&self.#value) }
+                    } else {
+                        quote! { &#value }
+                    };
+                    quote! {
+                        <#ns::#key as anchor_lang_v2::AccountConstraint<_>>::exit(
+                            __inner, #expected,
+                        )?;
+                    }
+                })
+                .collect();
+
             if let Some(ref close_target) = attrs.close {
                 quote! {
                     if let Some(__inner) = self.#field_name.as_mut() {
+                        #(#inner_constraint_exits)*
                         anchor_lang_v2::AnchorAccount::close(
                             __inner,
                             *self.#close_target.account(),
                         )?;
                     }
                 }
+            } else if attrs.is_mut {
+                quote! {
+                    if let Some(__inner) = self.#field_name.as_mut() {
+                        #(#inner_constraint_exits)*
+                        anchor_lang_v2::AnchorAccount::exit(__inner)?;
+                    }
+                }
             } else {
                 quote! {
                     if let Some(__inner) = self.#field_name.as_mut() {
-                        anchor_lang_v2::AnchorAccount::exit(__inner)?;
+                        #(#inner_constraint_exits)*
                     }
                 }
             }

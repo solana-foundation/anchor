@@ -1,7 +1,7 @@
 extern crate alloc;
 
 use {
-    crate::{AccountInitialize, AnchorAccount, Constrain, Discriminator, Space},
+    crate::{AccountConstraint, AccountInitialize, AnchorAccount, Discriminator, Space},
     alloc::boxed::Box,
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
@@ -89,11 +89,29 @@ impl<T: Discriminator> Discriminator for Box<T> {
     const DISCRIMINATOR: &'static [u8] = T::DISCRIMINATOR;
 }
 
-impl<T, C, V> Constrain<C, V> for Box<T>
+impl<C, T> AccountConstraint<Box<T>> for C
 where
-    T: Constrain<C, V>,
+    C: AccountConstraint<T>,
 {
-    fn constrain(&mut self, expected: &V) -> Result<(), ProgramError> {
-        (**self).constrain(expected)
+    type Value = <C as AccountConstraint<T>>::Value;
+
+    #[inline(always)]
+    fn init(account: &mut Box<T>, value: &Self::Value) -> Result<(), ProgramError> {
+        C::init(account.as_mut(), value)
+    }
+
+    #[inline(always)]
+    fn check(account: &Box<T>, value: &Self::Value) -> Result<(), ProgramError> {
+        C::check(account.as_ref(), value)
+    }
+
+    #[inline(always)]
+    fn update(account: &mut Box<T>, value: &Self::Value) -> Result<(), ProgramError> {
+        C::update(account.as_mut(), value)
+    }
+
+    #[inline(always)]
+    fn exit(account: &mut Box<T>, value: &Self::Value) -> Result<(), ProgramError> {
+        C::exit(account.as_mut(), value)
     }
 }
