@@ -1073,7 +1073,10 @@ pub fn parse_field(
             quote! {}
         };
         let post_realloc = if is_borsh_account {
-            quote! { #field_name.reacquire_borrow_mut()?; }
+            // Guard-only: realloc preserves owner/disc, and a full
+            // reacquire would re-deserialize the pre-resize buffer —
+            // fails on shrink.
+            quote! { #field_name.reacquire_guard_only()?; }
         } else {
             quote! {}
         };
