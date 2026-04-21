@@ -1395,7 +1395,8 @@ fn init(
 
     if !is_package_manager_available(&package_manager) {
         return Err(anyhow!(
-            "Package manager {package_manager} not found. Install it or pass --package-manager <pm>."
+            "Package manager {package_manager} not found. Install it or pass --package-manager \
+             <pm>."
         ));
     }
 
