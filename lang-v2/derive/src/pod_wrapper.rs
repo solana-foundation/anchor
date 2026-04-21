@@ -82,9 +82,8 @@ pub fn expand(item: TokenStream) -> TokenStream {
         }
     };
 
-    // Reject enums with payload-bearing variants: their Pod representation
-    // would need a tag byte plus per-variant layout, which this derive
-    // deliberately doesn't emit (it would change the enum's on-disk size).
+    // Reject enums with payload-bearing variants: would need a tag byte
+    // plus per-variant layout, which this derive doesn't emit.
     for v in &enm.variants {
         if !matches!(v.fields, Fields::Unit) {
             return TokenStream::from(
