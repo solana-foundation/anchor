@@ -149,8 +149,6 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
     }
 
     fn close(&mut self, mut destination: AccountView) -> pinocchio::ProgramResult {
-        // Release the borrow guard before closing so pinocchio's close() can proceed
-        self.borrow = BorshBorrow::Released;
         let mut self_view = self.view;
         let dest_lamports = destination
             .lamports()
@@ -158,6 +156,23 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
             .ok_or(ProgramError::ArithmeticOverflow)?;
         destination.set_lamports(dest_lamports);
         self_view.set_lamports(0);
+
+        // Defense-in-depth: write a closed-account sentinel ([u8::MAX; 8])
+        // over the discriminator before pinocchio's close() zeros the
+        // 48-byte header (lamports + data_len + owner). pinocchio's
+        // close does not zero the data region — verified by the
+        // `close_zeros_the_48_byte_header` test. If a future caller
+        // restores data_len + owner without going through SVM zero-on-
+        // allocate, the stale discriminator would otherwise allow a
+        // reload with pre-close state. Skipped if the borrow is not
+        // mutable (caller programming error, separate concern).
+        if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
+            if guard.len() >= 8 {
+                guard[..8].copy_from_slice(&[u8::MAX; 8]);
+            }
+        }
+        self.borrow = BorshBorrow::Released;
+
         self_view.close()?;
         Ok(())
     }
