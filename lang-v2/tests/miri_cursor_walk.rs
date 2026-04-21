@@ -19,8 +19,7 @@
 //! strict-provenance `.addr()` + `.add(delta)` rather than an
 //! int-to-ptr mask, so the derivation chain survives Miri's check.
 
-mod common;
-use common::{AccountRecord, SbfInputBuffer};
+use anchor_lang_v2::testing::{AccountRecord, SbfInputBuffer};
 
 use anchor_lang_v2::cursor::AccountCursor;
 use core::mem::MaybeUninit;

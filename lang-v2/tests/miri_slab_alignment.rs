@@ -15,8 +15,7 @@
 //!
 //! Run: `cargo +nightly miri test -p anchor-lang-v2 --test miri_slab_alignment`
 
-mod common;
-use common::AccountBuffer;
+use anchor_lang_v2::testing::AccountBuffer;
 
 use anchor_lang_v2::{accounts::Slab, AnchorAccount, Discriminator, Owner};
 use bytemuck::{Pod, Zeroable};

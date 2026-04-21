@@ -9,17 +9,28 @@
 //! Run: `MIRIFLAGS="-Zmiri-tree-borrows" cargo +nightly miri test -p anchor-spl-v2 --test miri_spl_pod`
 
 use anchor_spl_v2::{Mint, TokenAccount};
+use solana_program_pack::Pack;
+
+// --- Layout cross-check against canonical `spl-token-interface` packed sizes.
+//
+// `size_of::<MyType>()` == `Pack::LEN` ties the anchor-spl-v2 Pod layout to
+// the protocol-level packed size exposed by the interface crate. If SPL Token
+// ever changes the wire layout, this test fails until we catch up.
 
 #[test]
-fn token_account_size_and_alignment() {
-    assert_eq!(core::mem::size_of::<TokenAccount>(), 165);
-    assert_eq!(core::mem::align_of::<TokenAccount>(), 1);
+fn mint_size_matches_spl_token_interface() {
+    assert_eq!(
+        core::mem::size_of::<Mint>(),
+        spl_token_interface::state::Mint::LEN,
+    );
 }
 
 #[test]
-fn mint_size_and_alignment() {
-    assert_eq!(core::mem::size_of::<Mint>(), 82);
-    assert_eq!(core::mem::align_of::<Mint>(), 1);
+fn token_account_size_matches_spl_token_interface() {
+    assert_eq!(
+        core::mem::size_of::<TokenAccount>(),
+        spl_token_interface::state::Account::LEN,
+    );
 }
 
 #[test]

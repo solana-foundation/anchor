@@ -9,8 +9,7 @@
 //! These tests address the Class C inventory items that were blocked on
 //! AccountView scaffolding (INVENTORY.md §6.12, findings B-NN).
 
-mod common;
-use common::AccountBuffer;
+use anchor_lang_v2::testing::AccountBuffer;
 
 // -- Baseline: one view, simple operations ----------------------------
 

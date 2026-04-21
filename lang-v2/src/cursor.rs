@@ -147,20 +147,8 @@ impl AccountCursor {
             let data_len = (*account).data_len as usize;
             self.ptr = self.ptr.add(STATIC_ACCOUNT_DATA);
             self.ptr = self.ptr.add(data_len);
-            // Align to the next 8-byte boundary. The intuitive form —
-            //   self.ptr = (((self.ptr as usize) + 7) & !7) as *mut u8
-            // — is sound on the current compiler + SBF, but the
-            // int-to-ptr round-trip strips the derivation chain from
-            // the original allocation. Under Rust's strict-provenance
-            // rules (enforced by Miri's Tree Borrows model, and a
-            // contract future optimizers are allowed to rely on), the
-            // resulting pointer would have "exposed" provenance and
-            // downstream accesses could, in principle, be misoptimized.
-            //
-            // `.addr()` gives the numeric address without dropping
-            // provenance; we compute the aligned delta from it and use
-            // `.add(delta)` on the original pointer. Same machine code,
-            // full provenance preserved.
+            // Align to the next 8-byte boundary. Use strict provenance APIs to
+            // allow this to be tested under Miri.
             let addr = self.ptr.addr();
             let aligned = (addr + (BPF_ALIGN_OF_U128 - 1)) & !(BPF_ALIGN_OF_U128 - 1);
             self.ptr = self.ptr.add(aligned - addr);

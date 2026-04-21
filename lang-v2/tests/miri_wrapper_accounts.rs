@@ -7,8 +7,7 @@
 //!
 //! Run: `cargo +nightly miri test -p anchor-lang-v2 --test miri_wrapper_accounts`
 
-mod common;
-use common::AccountBuffer;
+use anchor_lang_v2::testing::AccountBuffer;
 
 use anchor_lang_v2::{
     accounts::{SystemAccount, UncheckedAccount},

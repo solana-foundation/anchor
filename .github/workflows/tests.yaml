@@ -120,6 +120,51 @@ jobs:
           flags: v2
           fail_ci_if_error: false
 
+      # Miri (Tree Borrows) — UB + aliasing + provenance checks on the
+      # same integration tests above. Catches things the default cargo
+      # test run can't: `AccountView` copy-aliasing, `Slab::header_ptr`
+      # write provenance, `AccountCursor::next` strict-provenance walks.
+      # Caches the nightly toolchain and miri component to avoid a
+      # per-run rustup fetch (~200 MB).
+      - uses: actions/cache@v4
+        name: Cache rustup nightly + miri
+        with:
+          path: |
+            ~/.rustup/toolchains/
+            ~/.rustup/update-hashes/
+            ~/.rustup/settings.toml
+          key: rustup-miri-${{ runner.os }}-v2-${{ hashFiles('rust-toolchain*', '**/rust-toolchain*') }}
+          restore-keys: |
+            rustup-miri-${{ runner.os }}-v2-
+      - name: Install nightly + miri
+        run: |
+          rustup toolchain install nightly --component miri --profile minimal
+          cargo +nightly miri setup
+      - name: Miri (Tree Borrows) for anchor-lang-v2 + anchor-spl-v2
+        env:
+          MIRIFLAGS: '-Zmiri-tree-borrows'
+        run: cargo +nightly miri test -p anchor-lang-v2 -p anchor-spl-v2 --tests
+
+      # Kani — bounded model checking on Pod arithmetic, AccountBitvec,
+      # rent math, and System-program Transfer wire format. `-j
+      # --output-format=terse` parallelises across the runner's vCPUs
+      # (required together — Kani rejects `-j` without terse output).
+      # Caches the solver bundle (~2 GB: CBMC, CaDiCaL, Z3) keyed on
+      # Kani's pinned version so bumping kani-verifier invalidates.
+      - uses: actions/cache@v4
+        name: Cache Kani solver bundle
+        with:
+          path: ~/.kani/
+          key: kani-solvers-${{ runner.os }}-0.67.0
+          restore-keys: |
+            kani-solvers-${{ runner.os }}-
+      - name: Install Kani
+        run: |
+          cargo install --locked kani-verifier --version 0.67.0
+          cargo kani setup
+      - name: Kani harnesses for anchor-lang-v2 + anchor-spl-v2
+        run: cargo kani -p anchor-lang-v2 -p anchor-spl-v2 -j --output-format=terse
+
       # CLI: unit-test + build sanity only. No anchor-binary install,
       # no `anchor build`/`anchor test` flows, no tests/* integration.
       - run: cargo check -p anchor-cli

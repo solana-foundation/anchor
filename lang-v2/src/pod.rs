@@ -1215,15 +1215,10 @@ mod tests {
 }
 
 // ---------------------------------------------------------------------------
-// Kani model-checking proof harnesses.
-//
-// Verify that Pod wrapper arithmetic is equivalent to native integer
-// arithmetic for every input, at every bounded integer width Kani can
-// handle. 128-bit types (PodU128 / PodI128) are excluded — CBMC's SAT
-// backend times out on 64-bit multiplication and above; those properties
-// live in the companion Lean proofs under formal_verification/.
-//
-// Build: `cargo kani -p anchor-lang-v2 --harness kani_proofs`
+// Kani proofs: Pod wrapper arithmetic matches native integer arithmetic
+// for every input. 16/32/64-bit widths use the default CBMC solver;
+// 128-bit widths use `#[kani::solver(z3)]` since CBMC's CaDiCaL times
+// out on symbolic 64-bit and wider multiplication.
 // ---------------------------------------------------------------------------
 
 #[cfg(kani)]

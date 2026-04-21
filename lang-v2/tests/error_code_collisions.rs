@@ -26,8 +26,9 @@ use solana_program_error::ProgramError;
 // is a compile error, and we keep the labeled vec in the same order
 // so reviewers see both halves together.
 fn all_labeled_variants() -> Vec<(&'static str, ErrorCode)> {
-    // Compile-time exhaustiveness guard. Intentionally dead at runtime.
-    #[allow(dead_code)]
+    // Compile-time exhaustiveness guard. The match must cover every
+    // `ErrorCode` variant; a missing arm is a compile error. Actually
+    // called below (with a fixed sentinel) so the fn isn't dead code.
     fn exhaustiveness_check(code: ErrorCode) {
         match code {
             ErrorCode::AccountNotEnoughKeys
@@ -55,6 +56,7 @@ fn all_labeled_variants() -> Vec<(&'static str, ErrorCode)> {
             | ErrorCode::ConstraintDuplicateMutableAccount => (),
         }
     }
+    exhaustiveness_check(ErrorCode::AccountNotEnoughKeys);
 
     vec![
         ("AccountNotEnoughKeys", ErrorCode::AccountNotEnoughKeys),
