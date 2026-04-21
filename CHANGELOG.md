@@ -25,9 +25,18 @@ The minor version will be incremented upon a breaking change and the patch versi
 - spl: Add missing auth account to `group_pointer_update` ([#4324](https://github.com/solana-foundation/anchor/pull/4324)).
 - lang: Make idl build time way faster by caching `CrateContext` ([#4325](https://github.com/solana-foundation/anchor/pull/4325)).
 - cli: Bind `localnet` to `127.0.0.1` by default to fix a panic in `solana-test-validator` version `3.1.10` ([#4397](https://github.com/solana-foundation/anchor/pull/4397)).
-- lang: Handle user-provided `borsh` attributes in derives ([#4380](https://github.com/solana-foundation/anchor/pull/4380)).
 - cli: Fallback to a priority fee of 0 on localnet ([#4259](https://github.com/solana-foundation/anchor/pull/4259/)).
 - lang: Support module constants in `max_len` attribute ([#3879](https://github.com/solana-foundation/anchor/pull/3879)).
+
+### Breaking
+
+## [1.0.1] - 2026-04-16
+
+### Features
+
+### Fixes
+
+- lang: Handle user-provided `borsh` attributes in derives ([#4380](https://github.com/solana-foundation/anchor/pull/4380)).
 
 ### Breaking
 
