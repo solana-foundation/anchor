@@ -4045,7 +4045,7 @@ dependencies = [
  "solana-account-view",
  "solana-address 2.6.0",
  "solana-instruction-view",
- "solana-program-error",
+ "solana-program-error 3.0.0",
 ]
 
 [[package]]
@@ -8784,6 +8784,7 @@ version = "0.1.0"
 dependencies = [
  "accounts-test",
  "anchor-lang-v2",
+ "anchor-spl-v2",
  "anyhow",
  "borsh-realloc",
  "callee",
@@ -8793,6 +8794,7 @@ dependencies = [
  "litesvm",
  "seeds",
  "solana-account 3.4.0",
+ "solana-address 2.6.0",
  "solana-keypair",
  "solana-message 3.0.1",
  "solana-pubkey 3.0.0",

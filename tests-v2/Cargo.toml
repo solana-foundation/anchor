@@ -27,3 +27,7 @@ solana-signer = "3.0.0"
 solana-transaction = "3.0.1"
 spl-token = "=7.0.0"
 anyhow = "1"
+
+[dev-dependencies]
+anchor-spl-v2 = { path = "../spl-v2" }
+solana-address = "2.0"
