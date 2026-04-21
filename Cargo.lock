@@ -1982,6 +1982,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "derives-test"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang-v2",
+ "borsh 1.6.1",
+ "bytemuck",
+ "pinocchio",
+ "pinocchio-system",
+ "solana-program-error 3.0.0",
+ "wincode 0.5.2",
+]
+
+[[package]]
 name = "dialoguer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8776,6 +8789,7 @@ dependencies = [
  "callee",
  "caller",
  "constraints",
+ "derives-test",
  "dup-mut",
  "litesvm",
  "seeds",

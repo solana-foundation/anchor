@@ -17,6 +17,7 @@ dup-mut = { path = "programs/dup-mut" }
 seeds = { path = "programs/seeds" }
 spl-test = { path = "programs/spl", features = ["cpi"] }
 accounts-test = { path = "programs/accounts" }
+derives-test = { path = "programs/derives" }
 litesvm = { version = "0.11.0", features = ["register-tracing"] }
 solana-account = "3.2.0"
 solana-keypair = "3.0.1"

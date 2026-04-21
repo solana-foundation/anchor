@@ -13,8 +13,10 @@ use {
     anchor_lang_v2::solana_program::instruction::AccountMeta,
     litesvm::LiteSVM,
     solana_keypair::Keypair,
+    solana_message::{Message, VersionedMessage},
     solana_pubkey::Pubkey,
     solana_signer::Signer,
+    solana_transaction::versioned::VersionedTransaction,
     spl_token::{
         solana_program::program_pack::Pack,
         state::{Account as SplTokenAccount, Mint as SplMint},

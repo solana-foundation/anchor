@@ -82,11 +82,29 @@ fn bump_boxed_mutates_through_box_deref() {
 }
 
 #[test]
-fn read_clock_succeeds_with_clock_sysvar() {
+fn read_clock_succeeds_and_sysvar_is_well_formed() {
     let (mut svm, payer) = setup();
     let metas = vec![AccountMeta::new_readonly(clock_sysvar_id(), false)];
     send_instruction(&mut svm, program_id(), vec![2], metas, &payer, &[])
         .expect("read_clock should succeed");
+
+    // Verify the Clock sysvar account exists and has the expected layout.
+    // Clock layout: slot(u64) + epoch_start_timestamp(i64) + epoch(u64)
+    //             + leader_schedule_epoch(u64) + unix_timestamp(i64) = 40 bytes.
+    let clock_account = svm.get_account(&clock_sysvar_id()).expect("clock sysvar exists");
+    assert!(
+        clock_account.data.len() >= 40,
+        "clock sysvar data should be at least 40 bytes, got {}",
+        clock_account.data.len()
+    );
+    // slot lives at offset 0; epoch at offset 16. Both should be
+    // parseable (the test program already accessed them without error).
+    let slot = u64::from_le_bytes(clock_account.data[0..8].try_into().unwrap());
+    let epoch = u64::from_le_bytes(clock_account.data[16..24].try_into().unwrap());
+    // LiteSVM may start at slot 0 / epoch 0, so we only assert they
+    // are parseable and the instruction succeeded — the important
+    // property is that the sysvar deserialized correctly on-chain.
+    let _ = (slot, epoch);
 }
 
 #[test]
@@ -96,15 +114,32 @@ fn read_clock_rejects_wrong_sysvar() {
     // `Sysvar<Clock>::load`.
     let metas = vec![AccountMeta::new_readonly(rent_sysvar_id(), false)];
     let result = send_instruction(&mut svm, program_id(), vec![2], metas, &payer, &[]);
-    assert!(result.is_err(), "wrong sysvar should be rejected");
+    let err_msg = format!("{:?}", result.as_ref().err().expect("should fail"));
+    // The sysvar ID mismatch surfaces as InvalidArgument, InvalidAccountData,
+    // or a Custom error depending on the runtime path.
+    assert!(
+        err_msg.contains("InvalidAccountData")
+            || err_msg.contains("InvalidArgument")
+            || err_msg.contains("Custom("),
+        "wrong sysvar should be rejected, got: {err_msg}"
+    );
 }
 
 #[test]
-fn read_rent_succeeds_with_rent_sysvar() {
+fn read_rent_succeeds_and_has_positive_minimum_balance() {
     let (mut svm, payer) = setup();
     let metas = vec![AccountMeta::new_readonly(rent_sysvar_id(), false)];
     send_instruction(&mut svm, program_id(), vec![3], metas, &payer, &[])
         .expect("read_rent should succeed");
+
+    // Verify that the Rent sysvar returns meaningful values.
+    // The minimum_balance_for_rent_exemption for any non-zero data size
+    // should be > 0.
+    let min_balance = svm.minimum_balance_for_rent_exemption(100);
+    assert!(
+        min_balance > 0,
+        "rent minimum balance for 100 bytes should be > 0, got {min_balance}"
+    );
 }
 
 #[test]
@@ -127,7 +162,11 @@ fn check_system_rejects_non_system_owned() {
     // `counter` is owned by our program, not the System program.
     let metas = vec![AccountMeta::new_readonly(counter, false)];
     let result = send_instruction(&mut svm, program_id(), vec![4], metas, &payer, &[]);
-    assert!(result.is_err(), "non-system-owned account should be rejected");
+    let err_msg = format!("{:?}", result.as_ref().err().expect("should fail"));
+    assert!(
+        err_msg.contains("IllegalOwner") || err_msg.contains("Custom("),
+        "non-system-owned account should be rejected with owner error, got: {err_msg}"
+    );
 }
 
 #[test]
