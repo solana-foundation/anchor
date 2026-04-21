@@ -259,8 +259,7 @@ pub fn idl_fetch_at_slot(
     client: &RpcClient,
     all_signatures: &[RpcConfirmedTransactionStatusWithSignature],
     target_slot: u64,
-    _out_dir: Option<String>,
-    out: Option<String>,
+    out_dir: Option<String>,
 ) -> Result<()> {
     let fetcher = IdlFetcher::new(client);
 
@@ -301,7 +300,7 @@ pub fn idl_fetch_at_slot(
 
     let combined_data = combine_chunks(&session_chunks);
     let idl_data = decompress_and_validate(&combined_data)?;
-    output_idl_data(&idl_data, target_slot, out)
+    output_idl_data(&idl_data, target_slot, out_dir)
 }
 
 fn partition_signatures_by_slot(
@@ -399,27 +398,28 @@ fn decompress_and_validate(compressed_data: &[u8]) -> Result<Vec<u8>> {
     }
 }
 
-fn output_idl_data(idl_data: &[u8], slot: u64, out: Option<String>) -> Result<()> {
-    if let Some(out_file) = out {
-        std::fs::write(&out_file, idl_data)?;
-        println!("Saved IDL to: {}", out_file);
+fn output_idl_data(idl_data: &[u8], slot: u64, out_dir: Option<String>) -> Result<()> {
+    if let Some(out_dir) = out_dir {
+        std::fs::create_dir_all(&out_dir)?;
+        output_idl(
+            idl_data,
+            IdlOutputDestination::File {
+                path: format!("{}/idl_{}.json", out_dir, slot),
+            },
+        )?;
     } else {
-        println!("\nIDL at slot {}:", slot);
-        println!("{}", String::from_utf8_lossy(idl_data));
+        output_idl(idl_data, IdlOutputDestination::Stdout { slot })?;
     }
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn idl_fetch_historical(
     cfg_override: &ConfigOverride,
     address: Pubkey,
-    _all: bool,
     slot: Option<u64>,
     before: Option<String>,
     after: Option<String>,
     out_dir: Option<String>,
-    out: Option<String>,
 ) -> Result<()> {
     let client = create_rpc_client(cfg_override)?;
     let fetcher = IdlFetcher::new(&client);
@@ -433,7 +433,7 @@ pub fn idl_fetch_historical(
 
     if let Some(target_slot) = slot {
         fetcher.validate_slot(target_slot)?;
-        return idl_fetch_at_slot(&client, &signatures, target_slot, out_dir, out);
+        return idl_fetch_at_slot(&client, &signatures, target_slot, out_dir);
     }
 
     let filtered_signatures = apply_date_filters(signatures, before, after)?;
@@ -494,7 +494,7 @@ pub fn idl_fetch_historical(
         "\nSuccessfully extracted {} IDL version(s)",
         extracted_idls.len()
     );
-    output_idls(extracted_idls, out_dir, out)
+    output_idls(extracted_idls, out_dir)
 }
 
 fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
@@ -586,27 +586,50 @@ fn decompress_sessions(
 fn output_idls(
     idls: Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>,
     out_dir: Option<String>,
-    out: Option<String>,
 ) -> Result<()> {
-    if let Some(out_dir) = out_dir {
-        std::fs::create_dir_all(&out_dir)?;
-        for (i, (sig, idl_data)) in idls.iter().enumerate() {
-            let filename = format!("{}/idl_v{}_{}.json", out_dir, i + 1, sig.slot);
-            std::fs::write(&filename, idl_data)?;
-            println!("Saved IDL to: {}", filename);
-        }
-    } else if let Some(out_file) = out {
-        let (sig, idl_data) = idls.last().unwrap();
-        std::fs::write(&out_file, idl_data)?;
-        println!("Saved IDL (slot {}) to: {}", sig.slot, out_file);
-    } else {
-        let (sig, idl_data) = idls.last().unwrap();
-        println!("\nIDL at slot {}:", sig.slot);
-        let idl: serde_json::Value = serde_json::from_slice(idl_data)?;
-        println!("{}", serde_json::to_string_pretty(&idl)?);
+    if let Some(ref out_dir) = out_dir {
+        std::fs::create_dir_all(out_dir)?;
+    }
+
+    for (i, (sig, idl_data)) in idls.iter().enumerate() {
+        let destination = if let Some(ref out_dir) = out_dir {
+            IdlOutputDestination::File {
+                path: format!("{}/idl_v{}_{}.json", out_dir, i + 1, sig.slot),
+            }
+        } else {
+            IdlOutputDestination::Stdout { slot: sig.slot }
+        };
+        output_idl(idl_data, destination)?;
     }
 
     Ok(())
+}
+
+enum IdlOutputDestination {
+    Stdout { slot: u64 },
+    File { path: String },
+}
+
+fn output_idl(idl_data: &[u8], destination: IdlOutputDestination) -> Result<()> {
+    match destination {
+        IdlOutputDestination::Stdout { slot } => {
+            println!("\nIDL at slot {}:", slot);
+            println!("{}", format_idl_for_stdout(idl_data)?);
+        }
+        IdlOutputDestination::File { path } => {
+            std::fs::write(&path, idl_data)?;
+            println!("Saved IDL to: {}", path);
+        }
+    }
+
+    Ok(())
+}
+
+fn format_idl_for_stdout(idl_data: &[u8]) -> Result<String> {
+    match serde_json::from_slice::<serde_json::Value>(idl_data) {
+        Ok(idl) => Ok(serde_json::to_string_pretty(&idl)?),
+        Err(_) => Ok(String::from_utf8_lossy(idl_data).into_owned()),
+    }
 }
 
 fn extract_chunks_from_transaction(
