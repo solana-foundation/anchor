@@ -7,6 +7,7 @@ use {
         parse::{Parse, ParseStream},
         parse_macro_input,
         punctuated::Punctuated,
+        spanned::Spanned,
         token::Comma,
         Attribute, DeriveInput, Expr, Field, Fields, GenericArgument, PathArguments, Type,
         TypeArray,
@@ -205,6 +206,12 @@ fn parse_len_arg(item: ParseStream) -> Result<VecDeque<TokenStream2>, syn::Error
 
     // Push them in reverse because get_next_arg() pops from the back
     for expr in exprs.into_iter().rev() {
+        if !matches!(expr, Expr::Path(_) | Expr::Lit(_)) {
+            return Err(syn::Error::new(
+                expr.span(),
+                "max_len only accepts identifiers, literals, or paths",
+            ));
+        }
         result.push_back(quote!((#expr as usize)));
     }
 

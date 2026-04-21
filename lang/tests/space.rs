@@ -113,13 +113,6 @@ pub struct TestModuleConst {
 }
 
 #[derive(InitSpace)]
-pub struct TestModuleConstArithmetic {
-    #[max_len(data::SIZE + 20)]
-    pub test_string: String,
-    pub test_array: [u8; data::SIZE + 20],
-}
-
-#[derive(InitSpace)]
 pub struct TestUnnamedStruct(
     pub u8,
     #[max_len(4)] pub Vec<u32>,
@@ -260,14 +253,6 @@ fn test_module_const() {
     assert_eq!(
         TestModuleConst::INIT_SPACE,
         (VEC_LEN_SIZE + data::SIZE) + data::SIZE
-    )
-}
-
-#[test]
-fn test_module_const_arithmetic() {
-    assert_eq!(
-        TestModuleConstArithmetic::INIT_SPACE,
-        (VEC_LEN_SIZE + (data::SIZE + 20)) + (data::SIZE + 20)
     )
 }
 
