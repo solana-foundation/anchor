@@ -20,6 +20,8 @@ pub mod loader;
 pub mod pod;
 pub mod prelude;
 pub mod programs;
+#[cfg(feature = "testing")]
+pub mod testing;
 mod traits;
 
 // Re-export derive macros

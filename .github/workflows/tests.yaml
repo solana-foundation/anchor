@@ -79,8 +79,10 @@ jobs:
       # Version must match `tests-v2/src/lib.rs::build_program`.
       - run: cargo build-sbf --tools-version v1.52 --install-only
 
-      # v2 runtime + derive crates.
-      - run: cargo test -p anchor-lang-v2
+      # v2 runtime + derive crates. `--features testing` enables the
+      # `anchor_lang_v2::testing` scaffold needed by the integration
+      # tests that exercise `unsafe` paths without an SVM.
+      - run: cargo test -p anchor-lang-v2 --features testing
       - run: cargo test -p anchor-spl-v2
 
       # On-chain programs + litesvm integration tests. Exercises the full
