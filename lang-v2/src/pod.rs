@@ -538,6 +538,23 @@ impl fmt::Debug for PodBool {
 /// This type is `Pod` when `T: Pod`, so it can be used directly inside
 /// `#[account]` structs for zero-copy account access.
 ///
+/// # Validation contract
+///
+/// `len()` returns the raw u16 length prefix verbatim — no clamp to
+/// `MAX`. On a freshly-constructed `PodVec` this invariant holds
+/// naturally, but a `PodVec` cast from attacker-controlled account
+/// bytes (via `bytemuck::from_bytes`) can carry a `len` prefix larger
+/// than `MAX`. The unchecked accessors — `as_slice`, `as_mut_slice`,
+/// `pop`, `iter`, `iter_mut`, `get`, `first`, `last`, and
+/// `std::ops::Index` — panic (via Rust's bounds check, not UB) when
+/// `len() > MAX`.
+///
+/// Two options for programs reading attacker-controlled data:
+/// 1. Validate once at account load: `vec.validate()?`, then use the
+///    unchecked accessors freely.
+/// 2. Use the `try_*` variants (`try_as_slice`, `try_pop`, `try_get`)
+///    which return `Err(CapacityError)` instead of panicking.
+///
 /// # Layout
 ///
 /// ```text
@@ -574,6 +591,17 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
         "PodVec<T, MAX>: T must have alignment 1 (no padding allowed)"
     );
 
+    // Compile-time check: MAX must fit in the u16 length prefix. Without
+    // this guard, `try_push` / `pop` / `truncate` / `set_from_slice` /
+    // `try_extend_from_slice` silently truncate `usize → u16` and corrupt
+    // `len` when the in-memory vec exceeds u16::MAX items. Catch at
+    // monomorphization so `PodVec<T, N>` with `N > 65_535` fails to compile.
+    const _MAX_FITS_U16: () = assert!(
+        MAX <= u16::MAX as usize,
+        "PodVec<T, MAX>: MAX must be <= 65_535 (u16::MAX). Use a larger \
+         length-prefix wrapper for capacities beyond this."
+    );
+
     // --- Length / capacity ---
 
     /// Returns the number of populated elements.
@@ -600,40 +628,137 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
         MAX
     }
 
+    // --- Validation (for `PodVec`s cast from attacker-controlled bytes) ---
+
+    /// Returns `true` iff the in-memory length prefix is at most `MAX`.
+    ///
+    /// A freshly-constructed `PodVec` always satisfies this, but a `PodVec`
+    /// cast from account bytes may not. The unchecked accessors below rely
+    /// on this invariant to avoid panicking — call this (or [`validate`])
+    /// at load time, or use the `try_*` variants on every access.
+    ///
+    /// [`validate`]: Self::validate
+    #[inline(always)]
+    pub fn is_valid_len(&self) -> bool {
+        self.len() <= MAX
+    }
+
+    /// Returns `Ok(())` iff the in-memory length prefix is at most `MAX`,
+    /// `Err(CapacityError)` otherwise.
+    ///
+    /// `?`-operator-friendly shorthand for `is_valid_len()`.
+    #[inline(always)]
+    pub fn validate(&self) -> Result<(), CapacityError> {
+        if self.is_valid_len() {
+            Ok(())
+        } else {
+            Err(CapacityError)
+        }
+    }
+
     // --- Element access ---
 
     /// Returns the populated elements as a slice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX` (can happen on a `PodVec` cast from
+    /// attacker-controlled account bytes). Use [`try_as_slice`] for a
+    /// non-panicking variant, or [`validate`] once at load time.
+    ///
+    /// [`try_as_slice`]: Self::try_as_slice
+    /// [`validate`]: Self::validate
     #[inline(always)]
     pub fn as_slice(&self) -> &[T] {
         &self.data[..self.len()]
     }
 
+    /// Non-panicking variant of [`as_slice`]. Returns `Err(CapacityError)` if
+    /// `len() > MAX`.
+    ///
+    /// [`as_slice`]: Self::as_slice
+    #[inline]
+    pub fn try_as_slice(&self) -> Result<&[T], CapacityError> {
+        self.validate()?;
+        Ok(self.as_slice())
+    }
+
     /// Returns the populated elements as a mutable slice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX`. See [`as_slice`] for the validation story;
+    /// use [`try_as_mut_slice`] for a non-panicking variant.
+    ///
+    /// [`as_slice`]: Self::as_slice
+    /// [`try_as_mut_slice`]: Self::try_as_mut_slice
     #[inline(always)]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         let len = self.len();
         &mut self.data[..len]
     }
 
+    /// Non-panicking variant of [`as_mut_slice`]. Returns `Err(CapacityError)`
+    /// if `len() > MAX`.
+    ///
+    /// [`as_mut_slice`]: Self::as_mut_slice
+    #[inline]
+    pub fn try_as_mut_slice(&mut self) -> Result<&mut [T], CapacityError> {
+        self.validate()?;
+        Ok(self.as_mut_slice())
+    }
+
     /// Returns a reference to the element at `idx`, or `None` if out of bounds.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX` (propagates from [`as_slice`]). Use
+    /// [`try_get`] for a non-panicking variant.
+    ///
+    /// [`as_slice`]: Self::as_slice
+    /// [`try_get`]: Self::try_get
     #[inline(always)]
     pub fn get(&self, idx: usize) -> Option<&T> {
         self.as_slice().get(idx)
     }
 
-    /// Returns a mutable reference to the element at `idx`, or `None` if out of bounds.
+    /// Non-panicking variant of [`get`]. Returns `Err(CapacityError)` if
+    /// `len() > MAX`; returns `Ok(None)` if `idx` is out of bounds but
+    /// the length prefix is valid.
+    ///
+    /// [`get`]: Self::get
+    #[inline]
+    pub fn try_get(&self, idx: usize) -> Result<Option<&T>, CapacityError> {
+        self.validate()?;
+        Ok(self.get(idx))
+    }
+
+    /// Returns a mutable reference to the element at `idx`, or `None` if
+    /// out of bounds.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX`.
     #[inline(always)]
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
         self.as_mut_slice().get_mut(idx)
     }
 
     /// Returns a reference to the first element, or `None` if empty.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX`.
     #[inline(always)]
     pub fn first(&self) -> Option<&T> {
         self.as_slice().first()
     }
 
     /// Returns a reference to the last element, or `None` if empty.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX`.
     #[inline(always)]
     pub fn last(&self) -> Option<&T> {
         self.as_slice().last()
@@ -642,18 +767,41 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     // --- Iteration ---
 
     /// Returns an iterator over the populated elements.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX`. For attacker-controlled data, [`validate`]
+    /// once at load time or use [`try_as_slice`]`()?.iter()` instead.
+    ///
+    /// [`validate`]: Self::validate
+    /// [`try_as_slice`]: Self::try_as_slice
     #[inline(always)]
     pub fn iter(&self) -> core::slice::Iter<'_, T> {
         self.as_slice().iter()
     }
 
     /// Returns a mutable iterator over the populated elements.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX`.
     #[inline(always)]
     pub fn iter_mut(&mut self) -> core::slice::IterMut<'_, T> {
         self.as_mut_slice().iter_mut()
     }
 
     // --- Mutation ---
+
+    /// Centralised `len` write: every length-mutating method funnels
+    /// through here so `Self::_MAX_FITS_U16` is forced at monomorphization
+    /// time. Without this, a `PodVec<T, 70_000>` could compile and silently
+    /// truncate its prefix through any direct `self.len = ...` write.
+    #[inline(always)]
+    fn write_len(&mut self, new_len: usize) {
+        #[allow(clippy::let_unit_value)]
+        let _ = Self::_MAX_FITS_U16;
+        self.len = PodU16::from(new_len as u16);
+    }
 
     /// Appends an element. Returns `Err(CapacityError)` if the vector is full.
     #[inline]
@@ -663,7 +811,7 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
             return Err(CapacityError);
         }
         self.data[len] = value;
-        self.len = PodU16::from((len + 1) as u16);
+        self.write_len(len + 1);
         Ok(())
     }
 
@@ -674,6 +822,13 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     }
 
     /// Removes and returns the last element, or `None` if empty.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len() > MAX` (indexes `self.data[len-1]` which is OOB
+    /// on `[T; MAX]`). Use [`try_pop`] for a non-panicking variant.
+    ///
+    /// [`try_pop`]: Self::try_pop
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
         let len = self.len();
@@ -681,21 +836,31 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
             return None;
         }
         let val = self.data[len - 1];
-        self.len = PodU16::from((len - 1) as u16);
+        self.write_len(len - 1);
         Some(val)
+    }
+
+    /// Non-panicking variant of [`pop`]. Returns `Err(CapacityError)` if
+    /// `len() > MAX`; returns `Ok(None)` if the vector is validly empty.
+    ///
+    /// [`pop`]: Self::pop
+    #[inline]
+    pub fn try_pop(&mut self) -> Result<Option<T>, CapacityError> {
+        self.validate()?;
+        Ok(self.pop())
     }
 
     /// Removes all elements, setting length to 0.
     #[inline(always)]
     pub fn clear(&mut self) {
-        self.len = PodU16::ZERO;
+        self.write_len(0);
     }
 
     /// Shortens the vector to `new_len`. No-op if `new_len >= len()`.
     #[inline]
     pub fn truncate(&mut self, new_len: usize) {
         if new_len < self.len() {
-            self.len = PodU16::from(new_len as u16);
+            self.write_len(new_len);
         }
     }
 
@@ -708,7 +873,7 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
             return Err(CapacityError);
         }
         self.data[len..len + src.len()].copy_from_slice(src);
-        self.len = PodU16::from((len + src.len()) as u16);
+        self.write_len(len + src.len());
         Ok(())
     }
 
@@ -724,7 +889,7 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     pub fn set_from_slice(&mut self, src: &[T]) {
         assert!(src.len() <= MAX, "PodVec: slice length exceeds capacity");
         self.data[..src.len()].copy_from_slice(src);
-        self.len = PodU16::from(src.len() as u16);
+        self.write_len(src.len());
     }
 }
 
