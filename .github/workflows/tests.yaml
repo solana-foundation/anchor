@@ -143,7 +143,7 @@ jobs:
       - name: Miri (Tree Borrows) for anchor-lang-v2 + anchor-spl-v2
         env:
           MIRIFLAGS: '-Zmiri-tree-borrows'
-        run: cargo +nightly miri test -p anchor-lang-v2 -p anchor-spl-v2 --tests
+        run: cargo +nightly miri test -p anchor-lang-v2 -p anchor-spl-v2 --tests --features anchor-lang-v2/testing
 
       # Kani — bounded model checking on Pod arithmetic, AccountBitvec,
       # rent math, and System-program Transfer wire format. Caches the
