@@ -32,13 +32,11 @@ fn secure_input(prompt: &str, show_spaces: bool) -> Result<String> {
                 println!();
                 break;
             }
-            Key::Backspace => {
-                if !input.is_empty() {
-                    input.pop();
-                    // Move cursor back, print space, move cursor back again
-                    print!("\x08 \x08");
-                    io::stdout().flush()?;
-                }
+            Key::Backspace if !input.is_empty() => {
+                input.pop();
+                // Move cursor back, print space, move cursor back again
+                print!("\x08 \x08");
+                io::stdout().flush()?;
             }
             Key::Char(c) => {
                 input.push(c);

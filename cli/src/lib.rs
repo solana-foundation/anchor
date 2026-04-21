@@ -3274,7 +3274,7 @@ fn test(
                         .unwrap()
                         .captures_iter(&test_script.clone())
                         .last()
-                        .and_then(|c| c.get(1).and_then(|mtch| c.get(2).map(|ext| (mtch, ext))))
+                        .and_then(|c| c.get(1).zip(c.get(2)))
                         .map(|(mtch, ext)| {
                             (
                                 mtch.as_str(),
@@ -5121,9 +5121,7 @@ fn epoch_info(cfg_override: &ConfigOverride) -> Result<()> {
                 )
             });
 
-        if total_slots > 0 {
-            let avg_slot_time_ms = (total_secs * 1000) / total_slots;
-
+        if let Some(avg_slot_time_ms) = (total_secs * 1000).checked_div(total_slots) {
             // Calculate time_remaining using average slot time (always estimated)
             let remaining_secs = (remaining_slots * avg_slot_time_ms) / 1000;
 
