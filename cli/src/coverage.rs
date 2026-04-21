@@ -71,12 +71,21 @@ pub fn generate_lcov(
             continue;
         }
 
+        // Walk the full DWARF inlining chain per PC so `#[inline(always)]`
+        // wrappers get direct coverage credit. `find_location` alone would
+        // attribute the PC to whichever line the line program emits —
+        // usually one frame, sometimes the outer callsite — leaving tiny
+        // helpers like `Box<T>::load` and `AccountLoader::next*` at 0%
+        // despite running on every transaction. Matches the behavior of
+        // `llvm-cov show` over compile-time expansion regions.
         let mut resolved_count = 0u64;
         for &pc in pcs {
-            if let Some(loc) = resolver.resolve(pc) {
+            let frames = resolver.resolve_frames(pc);
+            if !frames.is_empty() {
                 resolved_count += 1;
-                let resolved = resolve_source_path(&loc.file, manifest_dir);
-                if let Some(path) = resolved {
+            }
+            for loc in frames {
+                if let Some(path) = resolve_source_path(&loc.file, manifest_dir) {
                     *line_hits
                         .entry(path)
                         .or_default()

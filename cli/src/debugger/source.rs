@@ -50,6 +50,45 @@ impl SourceResolver {
         })
     }
 
+    /// Resolves an SBPF program counter to its full DWARF inlining chain,
+    /// innermost-first (the deepest inlined body) out to the physical
+    /// caller. Returns an empty vec when DWARF is unavailable.
+    ///
+    /// `resolve` (via `find_location`) returns whichever line the DWARF
+    /// line program emitted at the PC — usually innermost, but aggressive
+    /// inlining can shove the entry back to an outer callsite. For
+    /// coverage, attributing a PC to *every* frame in the chain credits
+    /// the tiny `#[inline(always)]` wrappers (`Box<T>::load`,
+    /// `Sysvar::load`, `AccountLoader::next*`, etc.) that would otherwise
+    /// show 0% despite running on every transaction, matching the
+    /// behavior of `llvm-cov show` over expansion regions.
+    pub fn resolve_frames(&self, pc: u64) -> Vec<SrcLoc> {
+        let Some(inner) = self.inner.as_ref() else {
+            return Vec::<SrcLoc>::new();
+        };
+        let Some(vaddr) = inner.text_addr.checked_add(match pc.checked_mul(INSN_SIZE) {
+            Some(v) => v,
+            None => return Vec::<SrcLoc>::new(),
+        }) else {
+            return Vec::<SrcLoc>::new();
+        };
+        let mut out: Vec<SrcLoc> = Vec::new();
+        let Ok(mut frames) = inner.loader.find_frames(vaddr) else {
+            return out;
+        };
+        while let Ok(Some(frame)) = frames.next() {
+            if let Some(loc) = frame.location {
+                if let (Some(file), Some(line)) = (loc.file, loc.line) {
+                    out.push(SrcLoc {
+                        file: PathBuf::from(file),
+                        line,
+                    });
+                }
+            }
+        }
+        out
+    }
+
     /// `true` when no DWARF context was built — the TUI uses this to render
     /// a single "no source info" notice instead of per-step errors.
     pub fn is_empty(&self) -> bool {
