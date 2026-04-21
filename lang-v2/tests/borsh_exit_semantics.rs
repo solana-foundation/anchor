@@ -182,7 +182,7 @@ fn reacquire_refreshes_self_data_from_cpi_changes() {
     set_data_bytes(&mut buf, 8, &777u64.to_le_bytes());
 
     // Step 4: user reacquires the borrow.
-    acct.reacquire_borrow_mut().unwrap();
+    acct.reacquire_borrow_mut(&program_id).unwrap();
 
     // Step 5: reacquire re-deserialized from buffer, so self.data
     // now reflects the CPI's write of 777, not the user's pre-release
@@ -232,7 +232,7 @@ fn reacquire_rejects_when_discriminator_changes_during_release() {
     let foreign_disc = [0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF];
     set_data_bytes(&mut buf, 0, &foreign_disc);
 
-    let result = acct.reacquire_borrow_mut();
+    let result = acct.reacquire_borrow_mut(&program_id);
     assert_eq!(
         result.err(),
         Some(ProgramError::InvalidAccountData),
@@ -266,7 +266,7 @@ fn reacquire_rejects_when_owner_changes_during_release() {
     // changes.
     buf.set_owner([0xFE; 32]);
 
-    let result = acct.reacquire_borrow_mut();
+    let result = acct.reacquire_borrow_mut(&program_id);
     assert_eq!(
         result.err(),
         Some(ProgramError::IllegalOwner),

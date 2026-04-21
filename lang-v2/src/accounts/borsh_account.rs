@@ -30,11 +30,6 @@ pub struct BorshAccount<T: BorshDeserialize + BorshSerialize + Owner + Discrimin
     view: AccountView,
     data: T,
     borrow: BorshBorrow,
-    /// Owner snapshotted at load time. `reacquire_borrow_mut` re-checks
-    /// `view.owned_by(&expected_owner)` because a released-window CPI
-    /// could transfer the account away from `T::owner(program_id)` while
-    /// leaving the discriminator + Borsh-compatible payload in place.
-    expected_owner: Address,
 }
 
 // Forward `Space::INIT_SPACE` from the inner type and add 8 for the
@@ -83,12 +78,12 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
     ///
     /// Returns `IllegalOwner` / `AccountDataTooSmall` /
     /// `InvalidAccountData` if the account no longer validates as `T`.
-    pub fn reacquire_borrow_mut(&mut self) -> Result<(), ProgramError> {
+    pub fn reacquire_borrow_mut(&mut self, program_id: &Address) -> Result<(), ProgramError> {
         // Re-run the load-time invariants. A CPI in the release window
         // could have mutated owner, discriminator, or payload in any
         // combination — without re-checking, we'd accept an account that
         // no longer validates as `T`.
-        if !self.view.owned_by(&self.expected_owner) {
+        if !self.view.owned_by(&T::owner(program_id)) {
             return Err(ProgramError::IllegalOwner);
         }
         let mut view_mut = self.view;
@@ -163,7 +158,6 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
             view,
             data,
             borrow: BorshBorrow::Immutable { _guard: guard },
-            expected_owner: T::owner(program_id),
         })
     }
 
@@ -190,7 +184,6 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
             view,
             data,
             borrow: BorshBorrow::Mutable { guard },
-            expected_owner: T::owner(program_id),
         })
     }
 
@@ -337,7 +330,6 @@ where
             view: *account,
             data,
             borrow: BorshBorrow::Mutable { guard },
-            expected_owner: T::owner(program_id),
         })
     }
 }
