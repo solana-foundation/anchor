@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "anchor-cli-macros"
-version = "0.1.0"
+version = "2.0.0"
 dependencies = [
  "proc-macro2",
  "quote",

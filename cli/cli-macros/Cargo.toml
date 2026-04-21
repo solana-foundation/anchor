@@ -1,7 +1,11 @@
 [package]
 name = "anchor-cli-macros"
-version = "0.1.0"
+version.workspace = true
 edition = "2024"
+publish = true
+repository =  "https://github.com/solana-foundation/anchor"
+description = "Macros used internally by the Anchor CLI"
+license = "Apache-2.0"
 
 [lib]
 proc-macro = true
