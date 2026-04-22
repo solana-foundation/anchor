@@ -512,3 +512,28 @@ macro_rules! require_gte {
         }
     };
 }
+
+// ---------------------------------------------------------------------------
+// Coverage smoke-test helper — intentionally trivial. Exists so the PR
+// comment pipeline has something to measure; delete once comment posting
+// is confirmed working.
+// ---------------------------------------------------------------------------
+#[doc(hidden)]
+#[inline]
+pub const fn __coverage_smoke(n: u8) -> u8 {
+    n.saturating_add(1)
+}
+
+#[cfg(test)]
+mod coverage_smoke_tests {
+    #[test]
+    fn smoke_increments() {
+        assert_eq!(super::__coverage_smoke(0), 1);
+        assert_eq!(super::__coverage_smoke(41), 42);
+    }
+
+    #[test]
+    fn smoke_saturates_at_u8_max() {
+        assert_eq!(super::__coverage_smoke(u8::MAX), u8::MAX);
+    }
+}
