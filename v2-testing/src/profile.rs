@@ -72,7 +72,19 @@ const DEFAULT_DIR: &str = "target/anchor-v2-profile";
 /// and installs [`TestNameCallback`] so each transaction writes an SBF
 /// register trace under `target/anchor-v2-profile/<test_name>/`.
 /// Without the feature, identical to [`LiteSVM::new()`].
+///
+/// When `ANCHOR_GDB_SOCKET` is set (by `anchor debugger --gdb`), additionally
+/// allocates a free TCP port, writes it into `VM_DEBUG_PORT` so sbpf's
+/// gdb-stub picks it up, and announces the port over the Unix socket at
+/// `ANCHOR_GDB_SOCKET`. The mutex only covers the tiny window where env is
+/// set + LiteSVM constructed (sbpf reads `VM_DEBUG_PORT` in
+/// `EbpfVm::new`, which is called inside `LiteSVM::new_debuggable`); once
+/// the port is baked into the VM config the guard releases and other
+/// threads can build their own VMs in parallel.
 pub fn svm() -> LiteSVM {
+    #[cfg(feature = "profile")]
+    let _gdb_guard = setup_gdb_port();
+
     // `new_debuggable(true)` is what actually turns on rbpf's
     // instruction tracing — without it, `set_invocation_inspect_callback`
     // fires but `iterate_vm_traces` is empty. litesvm alternatively
@@ -81,6 +93,53 @@ pub fn svm() -> LiteSVM {
     let mut svm = LiteSVM::new_debuggable(true);
     svm.set_invocation_inspect_callback(TestNameCallback::new());
     svm
+}
+
+/// Allocates a free TCP port, sets `VM_DEBUG_PORT`, and announces the
+/// port to `anchor debugger --gdb` over the Unix socket identified by
+/// `ANCHOR_GDB_SOCKET`. Returns a `MutexGuard` that keeps the environment
+/// writes from interleaving between threads; drop as soon as the caller
+/// has finished constructing its LiteSVM.
+///
+/// No-op when `ANCHOR_GDB_SOCKET` is unset (the common case — normal
+/// `cargo test --features profile` runs without gdb).
+#[cfg(feature = "profile")]
+fn setup_gdb_port() -> Option<std::sync::MutexGuard<'static, ()>> {
+    use std::{
+        io::Write,
+        net::TcpListener,
+        os::unix::net::UnixStream,
+        sync::{Mutex, OnceLock},
+    };
+
+    let sock_path = std::env::var("ANCHOR_GDB_SOCKET").ok()?;
+
+    // Global lock so two parallel test threads don't clobber each
+    // other's `VM_DEBUG_PORT` during the VM-construction window.
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    let guard = LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+
+    // Ask the OS for a free port via bind-and-drop. The brief window
+    // between drop and sbpf's bind is near-impossible to lose to
+    // another process in a localhost-only test run.
+    let port = TcpListener::bind("127.0.0.1:0")
+        .ok()
+        .and_then(|l| l.local_addr().ok())?
+        .port();
+
+    // Announce first, then set env — so anchor-debugger is already
+    // polling the port by the time sbpf opens its listener.
+    if let Ok(mut sock) = UnixStream::connect(&sock_path) {
+        let thread_name = std::thread::current()
+            .name()
+            .unwrap_or("unknown")
+            .to_owned();
+        let _ = writeln!(sock, "{port}\t{thread_name}");
+    }
+
+    std::env::set_var("VM_DEBUG_PORT", port.to_string());
+
+    Some(guard)
 }
 
 struct TestState {

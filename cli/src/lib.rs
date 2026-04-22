@@ -288,6 +288,13 @@ pub enum Command {
         /// Forwarded to the underlying `anchor test` invocation.
         #[clap(long)]
         skip_lint: bool,
+        /// Drive tests over sbpf's gdb-stub instead of reading dumped trace
+        /// files. Per-step register snapshots + exact CU are collected live
+        /// via the gdb remote serial protocol. 100-1000× slower than the
+        /// default register-tracing path, but needs no fork to emit CU
+        /// values (sbpf exposes `cu_remaining` as register 12).
+        #[clap(long)]
+        gdb: bool,
         /// Arguments to pass to the underlying `cargo build-sbf` command.
         #[clap(required = false, last = true)]
         cargo_args: Vec<String>,
@@ -1353,6 +1360,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_run,
             skip_build,
             skip_lint,
+            gdb,
             cargo_args,
         } => debugger(
             &opts.cfg_override,
@@ -1360,6 +1368,7 @@ fn process_command(opts: Opts) -> Result<()> {
             skip_run,
             skip_build,
             skip_lint,
+            gdb,
             cargo_args,
         ),
         Command::Coverage {
@@ -3576,6 +3585,7 @@ fn debugger(
     skip_run: bool,
     skip_build: bool,
     skip_lint: bool,
+    gdb: bool,
     cargo_args: Vec<String>,
 ) -> Result<()> {
     // Dispatch on workspace shape:
@@ -3597,6 +3607,13 @@ fn debugger(
         }
     };
 
+    if gdb && has_anchor_toml {
+        return Err(anyhow!(
+            "`--gdb` isn't supported with an Anchor.toml workspace yet; \
+             run it from a loose cargo workspace (see `anchor debugger --help`)."
+        ));
+    }
+
     if has_anchor_toml {
         debugger_anchor_workspace(
             cfg_override,
@@ -3607,7 +3624,14 @@ fn debugger(
             cargo_args,
         )
     } else {
-        debugger_loose(cfg_override, test_name, skip_run, skip_build, cargo_args)
+        debugger_loose(
+            cfg_override,
+            test_name,
+            skip_run,
+            skip_build,
+            gdb,
+            cargo_args,
+        )
     }
 }
 
@@ -3673,11 +3697,13 @@ fn debugger_anchor_workspace(
 /// Sanity-checks the workspace shape before doing anything destructive
 /// (clearing the trace dir, running cargo test) so the user gets a clear
 /// error early rather than a "no traces" mystery later.
+#[allow(clippy::too_many_arguments)]
 fn debugger_loose(
     _cfg_override: &ConfigOverride,
     test_name: Option<String>,
     skip_run: bool,
     skip_build: bool,
+    gdb: bool,
     cargo_args: Vec<String>,
 ) -> Result<()> {
     let cwd = std::env::current_dir().context("read current directory")?;
@@ -3738,7 +3764,8 @@ fn debugger_loose(
         std::env::remove_var(debugger::rustc_wrapper::WRAPPER_SENTINEL);
 
         eprintln!(
-            "running `cargo test --features {profile_feature}{pkg}{filter}` from {dir}",
+            "running `cargo test{gdb} --features {profile_feature}{pkg}{filter}` from {dir}",
+            gdb = if gdb { " [gdb mode]" } else { "" },
             pkg = ws
                 .current_package
                 .as_deref()
@@ -3750,13 +3777,23 @@ fn debugger_loose(
                 .unwrap_or_default(),
             dir = ws.cargo_invocation_dir().display(),
         );
-        debugger::loose::run_cargo_test(
-            ws.cargo_invocation_dir(),
-            ws.current_package.as_deref(),
-            &profile_feature,
-            &profile_dir,
-            test_name.as_deref(),
-        )?;
+        if gdb {
+            debugger::gdb::run_gdb_mode(
+                ws.cargo_invocation_dir(),
+                ws.current_package.as_deref(),
+                &profile_feature,
+                &profile_dir,
+                test_name.as_deref(),
+            )?;
+        } else {
+            debugger::loose::run_cargo_test(
+                ws.cargo_invocation_dir(),
+                ws.current_package.as_deref(),
+                &profile_feature,
+                &profile_dir,
+                test_name.as_deref(),
+            )?;
+        }
     }
 
     let pubkey_to_so = debugger::loose::discover_programs(&ws.root, ws.current_package.as_deref())?;

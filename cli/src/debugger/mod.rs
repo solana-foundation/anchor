@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 
 pub mod arena;
 pub mod cargo_deps;
+pub mod gdb;
 pub mod highlight;
 pub mod loose;
 pub mod model;
