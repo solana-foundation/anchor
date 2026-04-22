@@ -62,7 +62,7 @@ fn needs_ix_lifetime(ty: &Type) -> bool {
 /// - Nested types are walked (`Option<&[u8]>`, `Result<Args<'_>, E>`, ...)
 ///
 /// This lets a handler fn take a borrowed struct arg like
-/// `args: MyArgs<'_>` and have the generated `__Args` struct bind the
+/// `args: MyArgs<'_>` and have the generated `IxArgs` struct bind the
 /// lifetime correctly.
 fn with_ix_lifetime(ty: &Type, ix: &syn::Lifetime) -> Type {
     match ty {
@@ -102,74 +102,23 @@ fn with_ix_lifetime(ty: &Type, ix: &syn::Lifetime) -> Type {
     }
 }
 
-struct ArgsDeser {
-    #[allow(dead_code)]
-    deser: TokenStream2,
-    arg_types: Vec<Type>,
-    has_refs: bool,
-}
-
-/// Build the `#[derive(SchemaRead)] struct + deserialize` block for a list of
-/// `(name, type)` argument pairs. Used by both `#[instruction(...)]` in
-/// `impl_accounts` and handler extra-args in `impl_program`.
+/// Compute lifetime-rewritten argument types plus a flag indicating whether
+/// any of them needs an `'ix` borrow.
 ///
-/// `inline_error`: when `true`, deser failure returns a `u64` directly (handler
-/// wrapper context); when `false`, it returns `Err(...)` (try_accounts context).
-fn emit_args_deser(args: &[(&Ident, &Type)], struct_name: &str, inline_error: bool) -> ArgsDeser {
+/// Returns `(arg_types, has_refs)`:
+/// - `arg_types`: each input type with elided lifetimes rewritten to `'ix`, so
+///   the emitted client-side `SchemaWrite` struct and handler signatures stay
+///   in sync.
+/// - `has_refs`: `true` iff at least one arg carries an `'ix` borrow, in which
+///   case the generated struct needs a `<'ix>` lifetime parameter.
+fn args_meta(args: &[(&Ident, &Type)]) -> (Vec<Type>, bool) {
     let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
     let arg_types: Vec<Type> = args
         .iter()
         .map(|(_, t)| with_ix_lifetime(t, &ix_lifetime))
         .collect();
     let has_refs = args.iter().any(|(_, t)| needs_ix_lifetime(t));
-    let (lt_decl, lt_use) = if has_refs {
-        (quote! { <'ix> }, quote! { <'_> })
-    } else {
-        (quote! {}, quote! {})
-    };
-
-    let names: Vec<_> = args.iter().map(|(n, _)| *n).collect();
-    let struct_ident = Ident::new(struct_name, proc_macro2::Span::call_site());
-
-    let deser = if args.is_empty() {
-        quote! {}
-    } else {
-        let error_handling = if inline_error {
-            quote! {
-                match anchor_lang_v2::wincode::config::deserialize(
-                    __ix_data,
-                    anchor_lang_v2::BORSH_CONFIG,
-                ) {
-                    Ok(__v) => __v,
-                    Err(_) => return {
-                        let __e: anchor_lang_v2::Error =
-                            anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize.into();
-                        __e.into()
-                    },
-                }
-            }
-        } else {
-            quote! {
-                anchor_lang_v2::wincode::config::deserialize(
-                    __ix_data,
-                    anchor_lang_v2::BORSH_CONFIG,
-                )
-                    .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?
-            }
-        };
-        quote! {
-            #[derive(anchor_lang_v2::wincode::SchemaRead)]
-            struct #struct_ident #lt_decl { #(#names: #arg_types,)* }
-            let __args: #struct_ident #lt_use = #error_handling;
-            #(let #names = __args.#names;)*
-        }
-    };
-
-    ArgsDeser {
-        deser,
-        arg_types,
-        has_refs,
-    }
+    (arg_types, has_refs)
 }
 
 /// Build artifacts for the single-deserialization `IxArgs` associated type.
@@ -1478,8 +1427,8 @@ fn process_handler(
     // Still needed to emit the client-side `SchemaWrite` struct (on-wire shape).
     // Types carry elided lifetimes rewritten to `'ix` for consistency with the
     // handler-fn signature.
-    let args_deser = emit_args_deser(&extra_args, "__Args", true);
-    let extra_arg_types = &args_deser.arg_types;
+    let (extra_arg_types, has_ref_args) = args_meta(&extra_args);
+    let extra_arg_types = &extra_arg_types;
 
     // Dispatch arm.
     let dispatch_arm = quote! {
@@ -1544,7 +1493,7 @@ fn process_handler(
 
     // Client-side instruction struct.
     let ix_struct_name = syn::Ident::new(&to_camel_case(&fn_name_str), fn_name.span());
-    let (ix_lt_decl, ix_lt_use) = if args_deser.has_refs {
+    let (ix_lt_decl, ix_lt_use) = if has_ref_args {
         (quote! { <'ix> }, quote! { <'ix> })
     } else {
         (quote! {}, quote! {})
