@@ -47,7 +47,7 @@ use {
         path::{Path, PathBuf},
         process::{Child, ExitStatus, Stdio},
         string::ToString,
-        sync::LazyLock,
+        sync::{LazyLock, OnceLock},
     },
 };
 
@@ -1418,7 +1418,7 @@ fn init(
     // Build the program.
     rust_template::create_program(&project_name, template, Some(&test_template))?;
 
-    let program_id = rust_template::get_or_create_program_id(&rust_name, target_dir());
+    let program_id = rust_template::get_or_create_program_id(&rust_name, target_dir()?);
     let mut localnet = BTreeMap::new();
     localnet.insert(
         rust_name,
@@ -1590,7 +1590,7 @@ fn new(
                 programs.insert(
                     name.clone(),
                     ProgramDeployment {
-                        address: rust_template::get_or_create_program_id(&name, target_dir()),
+                        address: rust_template::get_or_create_program_id(&name, target_dir()?),
                         path: None,
                         idl: None,
                     },
@@ -1827,13 +1827,13 @@ pub fn build(
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
-        None => Some(target_dir().join("idl")),
+        None => Some(target_dir()?.join("idl")),
     };
     fs::create_dir_all(idl_out.as_ref().unwrap())?;
 
     let idl_ts_out = match idl_ts {
         Some(idl_ts) => Some(PathBuf::from(idl_ts)),
-        None => Some(target_dir().join("types")),
+        None => Some(target_dir()?.join("types")),
     };
     fs::create_dir_all(idl_ts_out.as_ref().unwrap())?;
 
@@ -2000,7 +2000,7 @@ fn build_cwd_verifiable(
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
-    let target_dir = target_dir();
+    let target_dir = target_dir()?;
     fs::create_dir_all(target_dir.join("verifiable"))?;
     fs::create_dir_all(target_dir.join("idl"))?;
     fs::create_dir_all(target_dir.join("types"))?;
@@ -3484,7 +3484,7 @@ fn validator_flags(
     let mut flags = Vec::new();
     for mut program in cfg.read_all_programs()? {
         let verifiable = false;
-        let binary_path = program.binary_path(verifiable).display().to_string();
+        let binary_path = program.binary_path(verifiable)?.display().to_string();
         // Use the [programs.cluster] override and fallback to the keypair
         // files if no override is given.
         let address = programs
@@ -3508,7 +3508,7 @@ fn validator_flags(
             idl.address = address;
 
             // Persist it.
-            let idl_out = target_dir()
+            let idl_out = target_dir()?
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -3659,7 +3659,7 @@ fn surfpool_flags(
         if let Some(idl) = program.idl.as_mut() {
             // Creating the idl files
             idl.address = address;
-            let idl_out = target_dir()
+            let idl_out = target_dir()?
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -3869,7 +3869,7 @@ fn stream_solana_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<Lo
 
     // Subscribe to logs for all workspace programs
     for program in config.read_all_programs()? {
-        let idl_path = target_dir()
+        let idl_path = target_dir()?
             .join("idl")
             .join(&program.lib_name)
             .with_extension("json");
@@ -4190,7 +4190,7 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
     };
 
     let dot_anchor_dir = workspace_root.join(".anchor");
-    let target_dir = crate::target_dir();
+    let target_dir = crate::target_dir()?;
     let deploy_dir = target_dir.join("deploy");
 
     if dot_anchor_dir.exists() {
@@ -4251,7 +4251,7 @@ fn deploy(
         println!("Upgrade authority: {keypair}");
 
         for program in cfg.get_programs(program_name)? {
-            let binary_path = program.binary_path(verifiable);
+            let binary_path = program.binary_path(verifiable)?;
 
             println!("Deploying program {:?}...", program.lib_name);
             println!("Program path: {}...", binary_path.display());
@@ -4901,18 +4901,16 @@ fn localnet(
     })?
 }
 
-/// Return the cargo build artifacts directory. Caches the result assuming that
-/// a single run will only work with a single rust workspace. Exits the process
-/// if the directory cannot be determined.
-pub fn target_dir() -> PathBuf {
-    static TARGET_DIR: LazyLock<Result<PathBuf>> = LazyLock::new(target_dir_no_cache);
-    match TARGET_DIR.as_ref() {
-        Ok(path) => path.clone(),
-        Err(e) => {
-            eprintln!("Error: {e:?}");
-            std::process::exit(1);
-        }
+/// Return the cargo build artifacts directory. The successful result is
+/// cached.
+pub fn target_dir() -> Result<&'static Path> {
+    static TARGET_DIR: OnceLock<PathBuf> = OnceLock::new();
+    if let Some(path) = TARGET_DIR.get() {
+        return Ok(path.as_path());
     }
+    let path = target_dir_no_cache()?;
+    let _ = TARGET_DIR.set(path);
+    Ok(TARGET_DIR.get().expect("just set").as_path())
 }
 
 /// Return the cargo build artifacts directory.

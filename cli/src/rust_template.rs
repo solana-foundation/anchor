@@ -54,7 +54,7 @@ pub fn create_program(
 
     create_files(&common_files)?;
 
-    let target_path = crate::target_dir();
+    let target_path = crate::target_dir()?;
 
     // Remove the stub version
     fs::remove_file(&lib_rs_path)?;

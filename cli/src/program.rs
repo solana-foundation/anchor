@@ -296,7 +296,7 @@ fn deploy_workspace(
     }
 
     for program in programs {
-        let binary_path = program.binary_path(verifiable);
+        let binary_path = program.binary_path(verifiable)?;
 
         println!("\nDeploying program: {}", program.lib_name);
 
@@ -495,7 +495,7 @@ pub fn program_deploy(
         let programs = get_programs_from_workspace(cfg_override, program_name.clone())?;
 
         let program = &programs[0];
-        let binary_path = program.binary_path(false); // false = not verifiable build
+        let binary_path = program.binary_path(false)?; // false = not verifiable build
 
         println!("Deploying program: {}", program.lib_name);
 
@@ -994,7 +994,7 @@ fn program_write_buffer(
         }
 
         let program = &programs[0];
-        let binary_path = program.binary_path(false);
+        let binary_path = program.binary_path(false)?;
 
         println!("Writing buffer for program: {}", program.lib_name);
 
@@ -1374,7 +1374,7 @@ pub fn program_upgrade(
         let programs = get_programs_from_workspace(cfg_override, program_name.clone())?;
 
         let program = &programs[0];
-        let binary_path = program.binary_path(false); // false = not verifiable build
+        let binary_path = program.binary_path(false)?; // false = not verifiable build
 
         println!("Upgrading program: {}", program.lib_name);
 
