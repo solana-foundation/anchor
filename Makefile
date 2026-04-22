@@ -141,6 +141,16 @@ coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 		-o $(COVERAGE_DIR)/combined.lcov \
 		--ignore-errors unused \
 		--ignore-errors empty
+	# Self-merge to collapse duplicate `SF:` blocks. Host coverage runs
+	# three `cargo llvm-cov --no-report` passes (default features, + spl
+	# + tests-v2, + idl-build), plus the SBF pass. Ubuntu's lcov 1.x
+	# concatenates records from each pass rather than merging them,
+	# yielding 4x duplicate `SF:` entries per file in the combined
+	# output. lcov 2.x merges on read, so this step is a no-op locally
+	# but essential for the report Codecov ingests from CI.
+	lcov -a $(COVERAGE_DIR)/combined.lcov \
+		-o $(COVERAGE_DIR)/combined.lcov \
+		--ignore-errors empty,format,inconsistent
 
 $(COVERAGE_DIR)/sbf.lcov: coverage-v2-sbf
 $(COVERAGE_DIR)/host.lcov: coverage-v2-host
