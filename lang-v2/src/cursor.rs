@@ -82,6 +82,18 @@ impl AccountCursor {
         self.consumed
     }
 
+    /// Current duplicate-tracking bitvec. `None` if the cursor has not
+    /// yet yielded a duplicate account (lazy allocation — see
+    /// [`Self::next`]). Used by
+    /// [`Context::remaining_accounts`](crate::context::Context::remaining_accounts)
+    /// to re-check `MUT_MASK` after each trailing account is walked,
+    /// catching aliases of declared mut accounts that only surface past
+    /// `HEADER_SIZE`.
+    #[inline(always)]
+    pub fn duplicates(&self) -> Option<&AccountBitvec> {
+        self.duplicate.as_ref()
+    }
+
     /// Walk N accounts in a tight loop, storing views in the lookup array.
     /// Returns a slice of the walked views and the duplicate tracking bitvec.
     /// This avoids interleaving cursor math with validation logic, letting
@@ -217,11 +229,7 @@ pub const fn mut_mask_set_bit(mut mask: [u64; 4], bit: usize) -> [u64; 4] {
 /// OR `other << shift` (as a 256-bit shift) into `mask`. Used by the derive
 /// to fold a `Nested<U>` child's `MUT_MASK` into its parent's at the child's
 /// account offset.
-pub const fn mut_mask_or_shifted(
-    mut mask: [u64; 4],
-    other: [u64; 4],
-    shift: usize,
-) -> [u64; 4] {
+pub const fn mut_mask_or_shifted(mut mask: [u64; 4], other: [u64; 4], shift: usize) -> [u64; 4] {
     let word_shift = shift / 64;
     let bit_shift = shift % 64;
     let mut i = 0;

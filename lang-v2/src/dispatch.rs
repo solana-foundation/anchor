@@ -89,7 +89,14 @@ pub fn run_handler<'a, T: TryAccounts>(
         T::try_accounts(program_id, views, duplicates, 0, ix_data)?
     };
     let remaining_num = (num_accounts - T::HEADER_SIZE) as u8;
-    let mut ctx = Context::new(program_id, ctx_accounts, bumps, cursor, remaining_num);
+    let mut ctx = Context::new(
+        program_id,
+        ctx_accounts,
+        bumps,
+        cursor,
+        remaining_num,
+        &T::MUT_MASK,
+    );
     handler(&mut ctx, ix_args)?;
     ctx.accounts.exit_accounts()?;
     Ok(())
