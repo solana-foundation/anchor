@@ -84,24 +84,20 @@ coverage-v2-host:
 #
 # `cargo-llvm-cov` instruments every line of every file it compiles, including
 # SBF-runtime code pulled in as a path dep of `tests-v2` (lang-v2/src/*.rs,
-# spl-v2/src/*.rs). Those files never execute host-side, so every line comes
-# through host.lcov as `DA:N,0`. When merged naively, those zeros pollute
-# lines that SBF's DWARF traces couldn't pin down (typically the signature
-# and closing-brace of `#[inline(always)]` helpers that got partially erased
-# by LLVM), displaying them as "uncovered" despite the body running.
+# spl-v2/src/*.rs). Some of those lines get erased by LLVM's `#[inline(always)]`
+# handling — SBF's DWARF sees the line executed, but host-side instrumentation
+# records `DA:N,0` because the machine code lives at the callsite, not the
+# source site. Naive merge ends up displaying those lines as uncovered.
 #
-# The filter:
-#   - For each file that appears in sbf.lcov (meaning SBF has some coverage
-#     for it): drop host's `DA:N,0` entries. Those 0s are artifacts of
-#     host-side instrumentation of code that only runs in the VM.
-#   - For files NOT in sbf.lcov (genuinely untested — no test program ever
-#     loaded that code): keep host entries as-is so the "uncovered"
-#     signal survives.
-#
-# Side effect: for SBF-tested files, lines SBF couldn't pin down via DWARF
-# go from "red/uncovered" to "gray/uninstrumented" in the report — a
-# cosmetic accuracy win since those lines often have no machine code at
-# all after `#[inline(always)]` erasure.
+# The filter scrubs host's `DA:N,0` entries **only when SBF recorded a hit at
+# the same (file, line)**. Zero-hit lines on both sides remain in the report
+# as genuinely uncovered — which matters: earlier versions of this filter
+# stripped every zero-hit line for any file that appeared in sbf.lcov, which
+# made files with genuine uncovered regions (e.g. spl-v2/src/token.rs's many
+# untested CPI branches) look artificially at 100%. See analysis in
+# `ci.lcov` vs Codecov comparison (spl-v2/src/token.rs was reported as
+# 82/82 locally vs. 82/347 on CI, all because of this scrub). Line-level
+# matching preserves the SBF-only-executed fix without over-reaching.
 .PHONY: coverage-v2-merge
 coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 	@echo "==> Merging coverage"
@@ -109,13 +105,17 @@ coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 		echo "lcov not installed. Run: brew install lcov  (or apt install lcov)"; \
 		exit 1; \
 	}
-	awk ' \
+	awk -F'[:,]' ' \
 		FNR == NR { \
-			if ($$0 ~ /^SF:/) { f=$$0; sub("^SF:", "", f); sbf[f]=1 } \
+			if ($$1 == "SF") { f = $$0; sub("^SF:", "", f) } \
+			else if ($$1 == "DA" && $$3+0 > 0) sbf_hit[f "," $$2+0] = 1; \
 			next \
 		} \
-		/^SF:/ { f=$$0; sub("^SF:", "", f); in_sbf = (f in sbf); print; next } \
-		in_sbf && /^DA:/ { split($$0, a, ","); if (a[2]+0 == 0) next } \
+		$$1 == "SF" { f = $$0; sub("^SF:", "", f); print; next } \
+		$$1 == "DA" { \
+			if ($$3+0 == 0 && (f "," $$2+0) in sbf_hit) next; \
+			print; next; \
+		} \
 		{ print } \
 		' $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov \
 		> $(COVERAGE_DIR)/host.filtered.lcov
