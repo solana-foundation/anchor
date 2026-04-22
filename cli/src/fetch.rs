@@ -14,26 +14,48 @@ use {
     },
     solana_signature::Signature,
     solana_transaction_status_client_types::*,
-    std::{io::Read, path::PathBuf, str::FromStr},
+    std::{io::Read, path::PathBuf, str::FromStr, thread},
 };
 
 // IDL Historical Fetch - Type Definitions and Constants
-const FULL_CHUNK_THRESHOLD: usize = 1000;
-const MAX_SLOT_GAP: u64 = 5;
 const IDL_IX_TAG: [u8; 8] = [0x40, 0xf4, 0xbc, 0x78, 0xa7, 0xe9, 0x69, 0x0a];
 const WRITE_VARIANT: u8 = 0x02;
+const DEFAULT_PARALLEL_FETCH_SIGNATURE_THRESHOLD: usize = 10;
+const DEFAULT_MAX_PARALLEL_FETCH_WORKERS: usize = 4;
+const DEFAULT_MAX_RETRIES: u32 = 5;
+const DEFAULT_RETRY_BACKOFF_MS: u64 = 500;
 
 type ChunkData = Vec<u8>;
 type SlotChunk = (u64, ChunkData);
 type SessionChunks = Vec<SlotChunk>;
 
+#[derive(Clone, Copy, Debug)]
+pub struct FetchTuning {
+    pub workers: Option<usize>,
+    pub no_parallel: bool,
+    pub max_retries: u32,
+    pub retry_backoff_ms: u64,
+}
+
+impl Default for FetchTuning {
+    fn default() -> Self {
+        Self {
+            workers: None,
+            no_parallel: false,
+            max_retries: DEFAULT_MAX_RETRIES,
+            retry_backoff_ms: DEFAULT_RETRY_BACKOFF_MS,
+        }
+    }
+}
+
 pub struct IdlFetcher<'a> {
     client: &'a RpcClient,
+    tuning: FetchTuning,
 }
 
 impl<'a> IdlFetcher<'a> {
-    fn new(client: &'a RpcClient) -> Self {
-        Self { client }
+    fn new(client: &'a RpcClient, tuning: FetchTuning) -> Self {
+        Self { client, tuning }
     }
 
     fn validate_slot(&self, target_slot: u64) -> Result<()> {
@@ -60,18 +82,7 @@ impl<'a> IdlFetcher<'a> {
                 if let Some(pb) = pb {
                     pb.inc(1);
                 }
-                let signature = Signature::from_str(&sig.signature).ok()?;
-                let chunks = extract_chunks_from_transaction(self.client, &signature).ok()?;
-                if chunks.is_empty() {
-                    None
-                } else {
-                    Some(
-                        chunks
-                            .into_iter()
-                            .map(|chunk| (sig.slot, chunk))
-                            .collect::<Vec<_>>(),
-                    )
-                }
+                collect_signature_chunks(self.client, sig, &self.tuning)
             })
             .flatten()
             .collect()
@@ -82,89 +93,97 @@ impl<'a> IdlFetcher<'a> {
         signatures: &[RpcConfirmedTransactionStatusWithSignature],
         pb: Option<&ProgressBar>,
     ) -> Vec<SlotChunk> {
+        if should_parallelize_historical_fetch(signatures.len(), &self.tuning) {
+            return self.collect_chunks_owned_parallel(signatures, pb);
+        }
+
         let refs: Vec<&RpcConfirmedTransactionStatusWithSignature> = signatures.iter().collect();
         self.collect_chunks(&refs, pb)
     }
 
-    fn scan_backwards(
+    fn collect_chunks_owned_parallel(
         &self,
-        signatures: &[&RpcConfirmedTransactionStatusWithSignature],
-        target_slot: u64,
-    ) -> SessionChunks {
-        let mut chunks = Vec::new();
-        let mut found_data = false;
-
-        for sig in signatures.iter().rev() {
-            let slot_gap = target_slot.saturating_sub(sig.slot);
-            if slot_gap > MAX_SLOT_GAP {
-                println!(
-                    "Stopped backward scan: slot gap {} > {}",
-                    slot_gap, MAX_SLOT_GAP
-                );
-                break;
-            }
-
-            if let Ok(signature) = Signature::from_str(&sig.signature) {
-                if let Ok(extracted) = extract_chunks_from_transaction(self.client, &signature) {
-                    for chunk in extracted {
-                        if chunk.is_empty() {
-                            // 0-byte chunk
-                            if found_data {
-                                return chunks;
-                            }
-                            continue;
-                        } else if chunk.len() >= FULL_CHUNK_THRESHOLD {
-                            chunks.insert(0, (sig.slot, chunk));
-                            found_data = true;
-                        } else {
-                            return chunks;
-                        }
-                    }
-                }
-            }
+        signatures: &[RpcConfirmedTransactionStatusWithSignature],
+        pb: Option<&ProgressBar>,
+    ) -> Vec<SlotChunk> {
+        let worker_count = historical_fetch_worker_count(signatures.len(), &self.tuning);
+        if worker_count <= 1 {
+            let refs: Vec<&RpcConfirmedTransactionStatusWithSignature> =
+                signatures.iter().collect();
+            return self.collect_chunks(&refs, pb);
         }
-        chunks
+
+        let chunk_size = signatures.len().div_ceil(worker_count);
+        let progress = pb.cloned();
+
+        thread::scope(|scope| {
+            let mut handles = Vec::new();
+
+            for signature_chunk in signatures.chunks(chunk_size) {
+                let progress = progress.clone();
+                handles.push(scope.spawn(move || {
+                    signature_chunk
+                        .iter()
+                        .filter_map(|sig| {
+                            if let Some(pb) = progress.as_ref() {
+                                pb.inc(1);
+                            }
+                            collect_signature_chunks(self.client, sig, &self.tuning)
+                        })
+                        .flatten()
+                        .collect::<Vec<_>>()
+                }));
+            }
+
+            handles
+                .into_iter()
+                .flat_map(|handle| handle.join().expect("IDL fetch worker panicked"))
+                .collect()
+        })
+    }
+}
+
+fn collect_signature_chunks(
+    client: &RpcClient,
+    sig: &RpcConfirmedTransactionStatusWithSignature,
+    tuning: &FetchTuning,
+) -> Option<Vec<SlotChunk>> {
+    let signature = Signature::from_str(&sig.signature).ok()?;
+    let chunks = extract_chunks_from_transaction(client, &signature, tuning).ok()?;
+
+    if chunks.is_empty() {
+        None
+    } else {
+        Some(
+            chunks
+                .into_iter()
+                .map(|chunk| (sig.slot, chunk))
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+fn should_parallelize_historical_fetch(signature_count: usize, tuning: &FetchTuning) -> bool {
+    if tuning.no_parallel {
+        return false;
+    }
+    if matches!(tuning.workers, Some(1)) {
+        return false;
+    }
+    signature_count > DEFAULT_PARALLEL_FETCH_SIGNATURE_THRESHOLD
+}
+
+fn historical_fetch_worker_count(signature_count: usize, tuning: &FetchTuning) -> usize {
+    if !should_parallelize_historical_fetch(signature_count, tuning) {
+        return 1;
     }
 
-    fn scan_forwards(
-        &self,
-        signatures: &[&RpcConfirmedTransactionStatusWithSignature],
-        target_slot: u64,
-    ) -> SessionChunks {
-        let mut chunks = Vec::new();
-        let mut last_checked_slot = target_slot;
+    let available = thread::available_parallelism()
+        .map(|count| count.get())
+        .unwrap_or(DEFAULT_MAX_PARALLEL_FETCH_WORKERS);
+    let cap = tuning.workers.unwrap_or(DEFAULT_MAX_PARALLEL_FETCH_WORKERS);
 
-        for sig in signatures {
-            let slot_gap = sig.slot.saturating_sub(last_checked_slot);
-            if slot_gap > MAX_SLOT_GAP {
-                break;
-            }
-
-            if let Ok(signature) = Signature::from_str(&sig.signature) {
-                if let Ok(extracted) = extract_chunks_from_transaction(self.client, &signature) {
-                    for chunk in extracted {
-                        if chunk.is_empty() {
-                            // 0-byte chunk indicates session boundary
-                            if !chunks.is_empty() {
-                                return chunks;
-                            }
-                            // Skip if we haven't collected any chunks yet
-                            continue;
-                        }
-
-                        chunks.push((sig.slot, chunk.clone()));
-
-                        if chunk.len() < FULL_CHUNK_THRESHOLD {
-                            return chunks;
-                        }
-                    }
-                }
-            }
-
-            last_checked_slot = sig.slot;
-        }
-        chunks
-    }
+    signature_count.min(available).min(cap).max(1)
 }
 
 fn parse_date_to_timestamp(date_str: &str) -> Result<i64> {
@@ -185,74 +204,57 @@ fn parse_date_to_timestamp(date_str: &str) -> Result<i64> {
     Ok(datetime.and_utc().timestamp())
 }
 
+// Session boundary detection combines two signals:
+//   1. Chunk-size progression. Within a single upload, every Write chunk uses
+//      the same payload size except the final (terminator) chunk, which is
+//      strictly smaller. A size increase, or a chunk after a terminator, marks
+//      a new upload.
+//   2. Slot gap. Anchor IDL uploads are continuous bursts (adjacent chunks
+//      land within a few seconds). A long idle gap between chunks means two
+//      different uploads even if their chunk sizes happen to match.
+const SESSION_SLOT_GAP_THRESHOLD: u64 = 5_000;
+
 fn group_chunks_into_sessions(all_chunks: &[SlotChunk]) -> Vec<SessionChunks> {
-    let mut upload_sessions = Vec::new();
-    let mut processed = vec![false; all_chunks.len()];
+    let mut sessions: Vec<SessionChunks> = Vec::new();
+    let mut current: SessionChunks = Vec::new();
+    let mut terminator_seen = false;
 
-    for i in 0..all_chunks.len() {
-        if processed[i] {
-            continue;
+    for chunk in all_chunks {
+        let size = chunk.1.len();
+        let last = current.last();
+        let prev_size = last.map(|(_, data)| data.len());
+        let prev_slot = last.map(|(slot, _)| *slot);
+
+        let slot_gap_break = matches!(
+            prev_slot,
+            Some(prev) if chunk.0.saturating_sub(prev) > SESSION_SLOT_GAP_THRESHOLD
+        );
+
+        let start_new = slot_gap_break
+            || match prev_size {
+                Some(prev) => terminator_seen || size > prev,
+                None => false,
+            };
+
+        if start_new {
+            sessions.push(std::mem::take(&mut current));
+            terminator_seen = false;
         }
 
-        let start_idx = find_session_start(all_chunks, &processed, i);
-        let session = collect_session_forward(all_chunks, &mut processed, start_idx);
-
-        if !session.is_empty() {
-            upload_sessions.push(session);
-        }
-    }
-
-    upload_sessions
-}
-
-fn find_session_start(chunks: &[SlotChunk], processed: &[bool], start: usize) -> usize {
-    let mut idx = start;
-    while idx > 0 {
-        let prev_idx = idx - 1;
-        if processed[prev_idx] {
-            break;
-        }
-
-        let slot_gap = chunks[idx].0.saturating_sub(chunks[prev_idx].0);
-        let prev_is_full = chunks[prev_idx].1.len() >= FULL_CHUNK_THRESHOLD;
-
-        if prev_is_full && slot_gap <= MAX_SLOT_GAP {
-            idx = prev_idx;
-        } else {
-            break;
-        }
-    }
-    idx
-}
-
-fn collect_session_forward(
-    chunks: &[SlotChunk],
-    processed: &mut [bool],
-    start: usize,
-) -> SessionChunks {
-    let mut session = Vec::new();
-    let mut idx = start;
-
-    while idx < chunks.len() && !processed[idx] {
-        let chunk = &chunks[idx];
-        session.push(chunk.clone());
-        processed[idx] = true;
-
-        if chunk.1.len() < FULL_CHUNK_THRESHOLD {
-            break;
-        }
-
-        if idx + 1 < chunks.len() {
-            let slot_gap = chunks[idx + 1].0.saturating_sub(chunk.0);
-            if slot_gap > MAX_SLOT_GAP {
-                break;
+        if let Some(prev) = prev_size {
+            if !start_new && size < prev {
+                terminator_seen = true;
             }
         }
 
-        idx += 1;
+        current.push(chunk.clone());
     }
 
-    session
+    if !current.is_empty() {
+        sessions.push(current);
+    }
+
+    sessions
 }
 
 pub fn idl_fetch_at_slot(
@@ -260,14 +262,11 @@ pub fn idl_fetch_at_slot(
     all_signatures: &[RpcConfirmedTransactionStatusWithSignature],
     target_slot: u64,
     out_dir: Option<String>,
+    tuning: FetchTuning,
 ) -> Result<()> {
-    let fetcher = IdlFetcher::new(client);
+    let fetcher = IdlFetcher::new(client, tuning);
 
-    let (before_target, at_target, after_target) =
-        partition_signatures_by_slot(all_signatures, target_slot);
-
-    let total_sigs = before_target.len() + at_target.len() + after_target.len();
-    let pb = ProgressBar::new(total_sigs as u64);
+    let pb = ProgressBar::new(all_signatures.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
             .template(
@@ -279,104 +278,66 @@ pub fn idl_fetch_at_slot(
     );
     pb.set_message("Processing transactions...");
 
-    let session_chunks = reconstruct_session_at_slot(
-        &fetcher,
-        &before_target,
-        &at_target,
-        &after_target,
-        target_slot,
-        Some(&pb),
-    )?;
-
+    let all_chunks = collect_and_process_chunks(&fetcher, all_signatures, Some(&pb));
     pb.finish_with_message("Transaction processing complete");
 
-    if session_chunks.is_empty() {
+    if all_chunks.is_empty() {
+        println!("\nNo IDL chunks found in transactions");
+        return Ok(());
+    }
+
+    let sessions = group_chunks_into_sessions(&all_chunks);
+    // Candidate sessions that finished on or before target_slot, newest first.
+    // The session-grouping heuristic can mis-split on chunk-size anomalies or
+    // include duplicated retries, so the nominal "latest completed" session is
+    // not guaranteed to decompress. Try each candidate until one succeeds —
+    // that's the IDL actually visible at target_slot.
+    let mut candidates: Vec<SessionChunks> = sessions
+        .into_iter()
+        .filter(|session| {
+            session
+                .last()
+                .map(|(slot, _)| *slot <= target_slot)
+                .unwrap_or(false)
+        })
+        .collect();
+    candidates
+        .sort_by_key(|session| std::cmp::Reverse(session.last().map(|(s, _)| *s).unwrap_or(0)));
+
+    if candidates.is_empty() {
         println!(
-            "\nFailed to reconstruct any IDL session at or before slot {}",
+            "\nNo completed IDL upload session at or before slot {}.",
             target_slot
         );
         return Ok(());
     }
 
-    let combined_data = combine_chunks(&session_chunks);
-    let idl_data = decompress_and_validate(&combined_data)?;
-    output_idl_data(&idl_data, target_slot, out_dir)
-}
-
-fn partition_signatures_by_slot(
-    signatures: &[RpcConfirmedTransactionStatusWithSignature],
-    target_slot: u64,
-) -> (
-    Vec<&RpcConfirmedTransactionStatusWithSignature>,
-    Vec<&RpcConfirmedTransactionStatusWithSignature>,
-    Vec<&RpcConfirmedTransactionStatusWithSignature>,
-) {
-    let mut before: Vec<_> = signatures
-        .iter()
-        .filter(|sig| sig.slot < target_slot)
-        .collect();
-    let at: Vec<_> = signatures
-        .iter()
-        .filter(|sig| sig.slot == target_slot)
-        .collect();
-    let mut after: Vec<_> = signatures
-        .iter()
-        .filter(|sig| sig.slot > target_slot)
-        .collect();
-
-    before.sort_by_key(|sig| sig.slot);
-    after.sort_by_key(|sig| sig.slot);
-
-    (before, at, after)
-}
-
-fn reconstruct_session_at_slot(
-    fetcher: &IdlFetcher,
-    before_target: &[&RpcConfirmedTransactionStatusWithSignature],
-    at_target: &[&RpcConfirmedTransactionStatusWithSignature],
-    after_target: &[&RpcConfirmedTransactionStatusWithSignature],
-    target_slot: u64,
-    pb: Option<&ProgressBar>,
-) -> Result<SessionChunks> {
-    let mut session_chunks = fetcher.collect_chunks(at_target, pb);
-
-    if session_chunks.is_empty() {
-        let all_chunks = fetcher.collect_chunks(before_target, pb);
-        if all_chunks.is_empty() {
-            println!(
-                "No IDL Write transactions found before slot {}",
-                target_slot
-            );
-            return Ok(Vec::new());
+    let total = candidates.len();
+    for (idx, session) in candidates.into_iter().enumerate() {
+        let combined = combine_chunks(&session);
+        match decompress_idl_data(&combined) {
+            Ok(Some(idl_data)) => {
+                let last_slot = session.last().map(|(s, _)| *s).unwrap_or(target_slot);
+                println!(
+                    "Decompressed IDL from session ending at slot {} ({} bytes)",
+                    last_slot,
+                    idl_data.len()
+                );
+                return output_idl_data(&idl_data, target_slot, out_dir);
+            }
+            Ok(None) | Err(_) => {
+                if idx + 1 < total {
+                    continue;
+                }
+            }
         }
-
-        let sessions = group_chunks_into_sessions(&all_chunks);
-        if sessions.is_empty() {
-            println!("No complete IDL sessions found");
-            return Ok(Vec::new());
-        }
-
-        return Ok(sessions.last().unwrap().clone());
     }
 
-    let has_full_chunk = session_chunks
-        .iter()
-        .any(|(_, data)| data.len() == FULL_CHUNK_THRESHOLD);
-    let has_partial_chunk = session_chunks
-        .iter()
-        .any(|(_, data)| data.len() < FULL_CHUNK_THRESHOLD);
-
-    let backward_chunks = fetcher.scan_backwards(before_target, target_slot);
-    for chunk in backward_chunks.into_iter().rev() {
-        session_chunks.insert(0, chunk);
-    }
-
-    if has_full_chunk && !has_partial_chunk {
-        let forward_chunks = fetcher.scan_forwards(after_target, target_slot);
-        session_chunks.extend(forward_chunks);
-    }
-
-    Ok(session_chunks)
+    Err(anyhow!(
+        "No decompressable IDL session found at or before slot {}. Try --all to see all \
+         recoverable versions.",
+        target_slot
+    ))
 }
 
 fn combine_chunks(chunks: &[SlotChunk]) -> Vec<u8> {
@@ -385,17 +346,6 @@ fn combine_chunks(chunks: &[SlotChunk]) -> Vec<u8> {
         .flat_map(|(_, chunk)| chunk.iter())
         .copied()
         .collect()
-}
-
-fn decompress_and_validate(compressed_data: &[u8]) -> Result<Vec<u8>> {
-    match decompress_idl_data(compressed_data) {
-        Ok(Some(idl_data)) => {
-            println!("Successfully decompressed IDL ({} bytes)", idl_data.len());
-            Ok(idl_data)
-        }
-        Ok(None) => Err(anyhow!("Failed to decompress IDL")),
-        Err(e) => Err(e),
-    }
 }
 
 fn output_idl_data(idl_data: &[u8], slot: u64, out_dir: Option<String>) -> Result<()> {
@@ -412,9 +362,10 @@ pub fn idl_fetch_historical(
     before: Option<String>,
     after: Option<String>,
     out_dir: Option<String>,
+    tuning: FetchTuning,
 ) -> Result<()> {
     let client = create_rpc_client(cfg_override)?;
-    let fetcher = IdlFetcher::new(&client);
+    let fetcher = IdlFetcher::new(&client, tuning);
 
     let signatures = fetch_idl_signatures(&client, &address)?;
     if signatures.is_empty() {
@@ -425,7 +376,7 @@ pub fn idl_fetch_historical(
 
     if let Some(target_slot) = slot {
         fetcher.validate_slot(target_slot)?;
-        return idl_fetch_at_slot(&client, &signatures, target_slot, out_dir);
+        return idl_fetch_at_slot(&client, &signatures, target_slot, out_dir, tuning);
     }
 
     let filtered_signatures = apply_date_filters(signatures, before, after)?;
@@ -510,7 +461,12 @@ fn fetch_idl_signatures(
     let program_signer = Pubkey::find_program_address(&[], address).0;
     let idl_account_address = Pubkey::create_with_seed(&program_signer, "anchor:idl", address)
         .map_err(|e| anyhow!("Failed to derive IDL account address: {e}"))?;
-    Ok(client.get_signatures_for_address(&idl_account_address)?)
+    let mut signatures = client.get_signatures_for_address(&idl_account_address)?;
+    // Failed transactions land on-chain but do not mutate the IDL buffer.
+    // Including their Write payloads would duplicate bytes in the concatenated
+    // stream and break zlib decompression.
+    signatures.retain(|sig| sig.err.is_none());
+    Ok(signatures)
 }
 
 fn apply_date_filters(
@@ -546,32 +502,44 @@ fn decompress_sessions(
     signatures: &[RpcConfirmedTransactionStatusWithSignature],
     pb: Option<&ProgressBar>,
 ) -> Result<Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>> {
-    let extracted = sessions
+    let mut failed = 0usize;
+
+    let extracted: Vec<_> = sessions
         .iter()
-        .filter_map(|session| {
+        .flat_map(|session| {
             if let Some(pb) = pb {
                 pb.inc(1);
             }
             let combined_data = combine_chunks(session);
-            match decompress_idl_data(&combined_data) {
-                Ok(Some(idl_data)) => {
-                    let session_sig = signatures
-                        .iter()
-                        .find(|sig| sig.slot == session.first().unwrap().0)
-                        .unwrap_or(&signatures[0]);
-                    Some((session_sig.clone(), idl_data))
-                }
-                Ok(None) => {
-                    println!("Decompression failed for this session");
-                    None
-                }
-                Err(e) => {
-                    println!("Error: {}", e);
-                    None
-                }
+            let streams = decompress_all_streams(&combined_data);
+            if streams.is_empty() {
+                failed += 1;
+                return Vec::new();
             }
+            let session_sig = signatures
+                .iter()
+                .find(|sig| sig.slot == session.first().unwrap().0)
+                .unwrap_or(&signatures[0])
+                .clone();
+            streams
+                .into_iter()
+                .map(|idl_data| (session_sig.clone(), idl_data))
+                .collect::<Vec<_>>()
         })
         .collect();
+
+    if failed > 0 {
+        let msg = format!(
+            "Skipped {}/{} session(s): no zlib streams found (partial uploads)",
+            failed,
+            sessions.len()
+        );
+        match pb {
+            Some(pb) => pb.println(msg),
+            None => println!("{msg}"),
+        }
+    }
+
     Ok(extracted)
 }
 
@@ -601,10 +569,9 @@ fn output_idl(idl_data: &[u8], path: &PathBuf) -> Result<()> {
 // Resolve the output directory for the IDL.
 // If no output directory is provided, use the current directory.
 fn resolve_idl_output_dir(out_dir: Option<&str>) -> Result<PathBuf> {
-    out_dir.map(PathBuf::from).map_or_else(
-        || std::env::current_dir().map_err(Into::into),
-        |path| Ok(path),
-    )
+    out_dir
+        .map(PathBuf::from)
+        .map_or_else(|| std::env::current_dir().map_err(Into::into), Ok)
 }
 
 // Generate the output path for a single IDL.
@@ -620,8 +587,9 @@ fn historical_idl_output_path(version: usize, slot: u64, out_dir: &std::path::Pa
 fn extract_chunks_from_transaction(
     client: &RpcClient,
     signature: &Signature,
+    tuning: &FetchTuning,
 ) -> Result<Vec<ChunkData>> {
-    let transaction = fetch_transaction(client, signature)?;
+    let transaction = fetch_transaction(client, signature, tuning)?;
     let ui_tx = parse_transaction_data(transaction)?;
     extract_chunks_from_message(ui_tx.message)
 }
@@ -629,6 +597,7 @@ fn extract_chunks_from_transaction(
 fn fetch_transaction(
     client: &RpcClient,
     signature: &Signature,
+    tuning: &FetchTuning,
 ) -> Result<EncodedConfirmedTransactionWithStatusMeta> {
     let config = RpcTransactionConfig {
         encoding: Some(UiTransactionEncoding::Json),
@@ -636,12 +605,28 @@ fn fetch_transaction(
         max_supported_transaction_version: Some(0),
     };
 
-    client
-        .get_transaction_with_config(signature, config)
-        .map_err(|e| {
-            println!("Failed to fetch transaction: {}", e);
-            anyhow!("Transaction fetch failed")
-        })
+    let mut attempt: u32 = 0;
+    loop {
+        attempt += 1;
+        match client.get_transaction_with_config(signature, config) {
+            Ok(tx) => return Ok(tx),
+            Err(e) => {
+                let msg = e.to_string();
+                let retryable = msg.contains("429")
+                    || msg.contains("Too Many Requests")
+                    || msg.contains("timed out")
+                    || msg.contains("connection");
+                if !retryable || attempt >= tuning.max_retries {
+                    println!("Failed to fetch transaction: {}", e);
+                    return Err(anyhow!("Transaction fetch failed"));
+                }
+                let backoff = tuning
+                    .retry_backoff_ms
+                    .saturating_mul(1u64 << (attempt - 1));
+                std::thread::sleep(std::time::Duration::from_millis(backoff));
+            }
+        }
+    }
 }
 
 fn parse_transaction_data(
@@ -692,19 +677,45 @@ fn extract_from_raw_instructions(instructions: &[UiCompiledInstruction]) -> Resu
 }
 
 fn decompress_idl_data(compressed_data: &[u8]) -> Result<Option<Vec<u8>>> {
+    let streams = decompress_all_streams(compressed_data);
+    // When a session buffer contains several concatenated zlib streams (grouping
+    // merged two adjacent uploads), the last complete stream is the newest IDL.
+    // A single-stream session just returns its only entry.
+    Ok(streams.into_iter().last())
+}
+
+fn decompress_all_streams(compressed_data: &[u8]) -> Vec<Vec<u8>> {
     const ZLIB_HEADER: u8 = 0x78;
 
-    if compressed_data.is_empty() || compressed_data.first() != Some(&ZLIB_HEADER) {
-        return Ok(None);
+    let mut streams = Vec::new();
+    let mut cursor = compressed_data;
+
+    while cursor.first() == Some(&ZLIB_HEADER) {
+        let mut decoder = ZlibDecoder::new(cursor);
+        let mut out = Vec::new();
+        match decoder.read_to_end(&mut out) {
+            Ok(_) => {
+                let consumed = decoder.total_in() as usize;
+                if is_complete_idl_json(&out) {
+                    streams.push(out);
+                }
+                if consumed == 0 || consumed > cursor.len() {
+                    break;
+                }
+                cursor = &cursor[consumed..];
+            }
+            Err(_) => break,
+        }
     }
 
-    let mut decoder = ZlibDecoder::new(compressed_data);
-    let mut decompressed = Vec::new();
+    streams
+}
 
-    decoder
-        .read_to_end(&mut decompressed)
-        .map(|_| Some(decompressed))
-        .or(Ok(None))
+// A decompressed IDL stream may be truncated if the original upload was
+// aborted mid-write but the zlib trailer happened to decode cleanly. Validate
+// the output parses as JSON before accepting it — anything else is garbage.
+fn is_complete_idl_json(data: &[u8]) -> bool {
+    serde_json::from_slice::<serde_json::Value>(data).is_ok()
 }
 
 fn extract_compressed_chunk(data_str: &str) -> Result<Option<ChunkData>> {
