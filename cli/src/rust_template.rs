@@ -238,8 +238,6 @@ solana-message = "3.0.1"
 solana-transaction = "3.0.2"
 solana-signer = "3.0.0"
 solana-keypair = "3.0.1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 "#
         }
         _ => "",
@@ -912,49 +910,16 @@ use {{
     solana_transaction::versioned::VersionedTransaction,
 }};
 
-/// Resolve the workspace's deploy directory
-#[cfg(test)]
-fn deploy_dir() -> &'static std::path::Path {{
-    static DIR: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
-    DIR.get_or_init(|| {{
-        #[derive(serde::Deserialize)]
-        struct Metadata {{
-            target_directory: std::path::PathBuf,
-        }}
-
-        let out = std::process::Command::new("cargo")
-            .args(["metadata", "--no-deps", "--format-version=1"])
-            .output()
-            .expect("Failed to run `cargo metadata`");
-
-        if !out.status.success() {{
-            panic!(
-                "cargo metadata failed:\n{{}}",
-                String::from_utf8_lossy(&out.stderr)
-            );
-        }}
-
-        let metadata: Metadata =
-            serde_json::from_slice(&out.stdout).expect("Failed to parse cargo metadata JSON");
-
-        metadata.target_directory.join("deploy")
-    }})
-}}
-
-#[cfg(test)]
-fn get_program_bytes(name: &str) -> Vec<u8> {{
-    let path = deploy_dir().join(format!("{{}}.so", name));
-    std::fs::read(&path)
-        .unwrap_or_else(|_| panic!("Could not read program bytes at {{}}", path.display()))
-}}
-
 #[test]
 fn test_initialize() {{
     let program_id = {0}::id();
     let payer = Keypair::new();
     let mut svm = LiteSVM::new();
-    let bytes = get_program_bytes("{0}");
-    svm.add_program(program_id, &bytes).unwrap();
+    let bytes = include_bytes!(concat!(
+        env!("CARGO_TARGET_TMPDIR"),
+        "/../deploy/{0}.so"
+    ));
+    svm.add_program(program_id, bytes).unwrap();
     svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
 
     let instruction = Instruction::new_with_bytes(
