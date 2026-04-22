@@ -100,38 +100,25 @@ jobs:
       # but under llvm-cov instrumentation, and additionally runs SBF
       # trace-based coverage via `anchor coverage`. Test pass/fail signal
       # is preserved — a failing test exits the make invocation non-zero.
-      # The combined LCOV is uploaded as an artifact for the diff job.
+      # The combined LCOV is shipped to Codecov in the step below.
       - run: make coverage-v2
 
-      - name: Upload v2 coverage lcov
-        uses: actions/upload-artifact@v4
+      # Upload to Codecov. The action handles comment posting on PRs via
+      # the Codecov GitHub App — including fork PRs, where the token
+      # flows through their bot instead of our workflow's `GITHUB_TOKEN`.
+      #
+      # `token` is optional on public repos (Codecov supports tokenless
+      # uploads for open-source projects) but passing the repo-scoped
+      # secret when available speeds upload discovery and is required on
+      # anchor-next pushes. On fork PRs the secret is empty — the action
+      # falls through to the tokenless flow automatically.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          name: v2-coverage-lcov
-          path: target/coverage/combined.lcov
-          retention-days: 14
-
-      # The `Coverage Diff` workflow (.github/workflows/coverage-diff.yaml)
-      # runs after this one via `workflow_run`, which has base-branch
-      # permissions (so fork PRs can post comments) but no access to the
-      # original PR context — `github.event.workflow_run.pull_requests` is
-      # empty for fork-originated runs. Pass the PR number and SHAs as
-      # an artifact so the downstream workflow can pick them up.
-      - name: Write PR metadata for downstream workflow
-        if: github.event_name == 'pull_request'
-        run: |
-          mkdir -p coverage-meta
-          cat >coverage-meta/metadata.env <<EOF
-          PR_NUMBER=${{ github.event.pull_request.number }}
-          BASE_SHA=${{ github.event.pull_request.base.sha }}
-          HEAD_SHA=${{ github.event.pull_request.head.sha }}
-          EOF
-      - name: Upload PR metadata
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: v2-coverage-metadata
-          path: coverage-meta/metadata.env
-          retention-days: 14
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: target/coverage/combined.lcov
+          flags: v2
+          fail_ci_if_error: false
 
       # CLI: unit-test + build sanity only. No anchor-binary install,
       # no `anchor build`/`anchor test` flows, no tests/* integration.
@@ -178,9 +165,3 @@ jobs:
             echo "::endgroup::"
           done
           exit "$fail"
-
-  # The PR-comment-posting job lives in `.github/workflows/coverage-diff.yaml`,
-  # triggered by `workflow_run: [Tests] completed`. That trigger runs in
-  # the base-branch context with the base branch's permissions, so fork PRs
-  # can post comments — unlike a `pull_request`-triggered job on this
-  # workflow, whose `GITHUB_TOKEN` is forced read-only for forks.
