@@ -223,6 +223,15 @@ pub fn expand(item: TokenStream) -> TokenStream {
                 }
             }
         }
+
+        // `#[repr(transparent)] struct Pod{Enum}(pub u8)` — at the byte
+        // level the wrapper is a plain `u8`, so it gets the same no-op
+        // `IdlAccountType` treatment as `PodU64` / `PodBool`. Without
+        // this impl, using the wrapper inside a `#[derive(Accounts)]`
+        // field trips the trait bound on the generated `__register_idl_deps`
+        // walk under `--features idl-build`.
+        #[cfg(feature = "idl-build")]
+        impl anchor_lang_v2::IdlAccountType for #pod_name {}
     };
 
     TokenStream::from(expanded)
