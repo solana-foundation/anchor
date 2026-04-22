@@ -59,22 +59,31 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
         self.view.address()
     }
 
-    /// Release the data borrow guard so the underlying `AccountView` can be
-    /// resized or passed to CPIs that call `check_borrow_mut()`. After this,
-    /// `exit()` becomes a no-op until `reacquire_borrow_mut()` is called.
-    pub fn release_borrow(&mut self) {
+    /// Commit `self.data` to the buffer and release the borrow guard so
+    /// the underlying `AccountView` can be resized or passed to CPIs
+    /// that call `check_borrow_mut()`. The CPI sees the user's
+    /// in-memory mutations because they were just serialized. After
+    /// this, `exit()` becomes a no-op until `reacquire_borrow_mut()` is
+    /// called. Immutable / already-released borrows skip the commit.
+    pub fn release_borrow(&mut self) -> Result<(), ProgramError> {
+        if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
+            self.data
+                .serialize(&mut &mut guard[DISC_LEN..])
+                .map_err(|_| ProgramError::InvalidAccountData)?;
+        }
         self.borrow = BorshBorrow::Released;
+        Ok(())
     }
 
     /// Re-acquire a mutable borrow after a `release_borrow()` + CPI.
     ///
     /// Re-runs the full load-time invariants (owner / size /
     /// discriminator) and re-deserializes `self.data` from the live
-    /// buffer, so CPI-induced changes are picked up and a CPI that
-    /// reassigned the account or swapped its disc is rejected. Any
-    /// in-memory modifications to `self.data` made before
-    /// `release_borrow` are dropped — re-apply them after this call
-    /// if needed.
+    /// buffer so CPI-induced changes are picked up and a CPI that
+    /// reassigned the account or swapped its disc is rejected.
+    /// `release_borrow` already committed the user's pre-CPI
+    /// modifications to the buffer, so the re-deserialized state
+    /// reflects {pre-CPI mutations} ∪ {CPI mutations}.
     ///
     /// Returns `IllegalOwner` / `AccountDataTooSmall` /
     /// `InvalidAccountData` if the account no longer validates as `T`.
@@ -231,11 +240,10 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         // Detect and fix before serializing.
         let stale = matches!(&self.borrow, BorshBorrow::Mutable { guard } if guard.len() != self.view.data_len());
         if stale {
-            self.release_borrow();
-            // Use reacquire_guard_only here — we do NOT want to re-read
-            // self.data from the (potentially just-resized) buffer.
-            // The user's in-memory modifications to self.data are what
-            // we're about to serialize.
+            // Drop the stale guard directly rather than via release_borrow:
+            // serializing through a stale-length guard would OOB on shrink.
+            // The serialize below runs through the freshly reacquired guard.
+            self.borrow = BorshBorrow::Released;
             self.reacquire_guard_only()?;
         }
         if let BorshBorrow::Mutable { ref mut guard } = self.borrow {

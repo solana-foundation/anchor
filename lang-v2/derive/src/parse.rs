@@ -1068,7 +1068,7 @@ pub fn parse_field(
         let base_ty = option_inner.unwrap_or(field_ty);
         let is_borsh_account = field_ty_str(base_ty) == "BorshAccount";
         let pre_realloc = if is_borsh_account {
-            quote! { #field_name.release_borrow(); }
+            quote! { #field_name.release_borrow()?; }
         } else {
             quote! {}
         };

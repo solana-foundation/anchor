@@ -1,4 +1,4 @@
-//! Audit of `BorshAccount::close` semantics.
+//! Tests for `BorshAccount::close` semantics.
 //!
 //! ## What the documentation says
 //!
@@ -36,7 +36,7 @@
 //!   (b) SVM-runtime zero-on-allocate for the `create_account` reinit path
 //!   (c) SVM-runtime end-of-instruction data zero for closed accounts
 //!
-//! ## What this test audits
+//! ## What this test verifies
 //!
 //! 1. After close, does `data_len == 0` (so load rejects)?
 //! 2. After close, do data bytes retain the discriminator? (Expected yes

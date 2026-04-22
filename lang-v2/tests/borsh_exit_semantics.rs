@@ -1,36 +1,19 @@
-//! Audit of `BorshAccount::exit` stale-borrow detection + write-back
-//! semantics.
+//! Tests for `BorshAccount` exit / release / reacquire semantics.
 //!
-//! ## The belt-and-braces stale detection
-//!
-//! `borsh_account.rs:174`:
-//! ```rust
-//! let stale = matches!(&self.borrow, BorshBorrow::Mutable { guard }
-//!     if guard.len() != self.view.data_len());
-//! if stale {
-//!     self.release_borrow();
-//!     self.reacquire_borrow_mut()?;
-//! }
-//! ```
-//!
-//! The heuristic compares the guard's cached length to the live
-//! `view.data_len()`. This catches the case where a realloc CPI
-//! resized the account between `load_mut` and `exit` without the
-//! user going through the proper `release_borrow` / `reacquire_borrow_mut`
-//! dance.
-//!
-//! ## What this audit witnesses
-//!
-//! 1. The stale detection fires when `data_len` changes (size-based heuristic).
-//! 2. The stale detection does **not** fire when data *content* is
-//!    mutated out-of-band (same size). This is by design — exit treats
-//!    in-memory `self.data` as authoritative.
-//! 3. `reacquire_borrow_mut` refreshes only the guard pointer, **not**
-//!    `self.data`. Programs that release + CPI + reacquire must
-//!    manually re-read state from the account if the CPI mutated it,
-//!    otherwise `exit` overwrites with stale `self.data`.
-//! 4. `exit` on a closed account (lamports == 0) is a no-op — correct
-//!    behavior: closed accounts should not have data serialized back.
+//! 1. `release_borrow` commits `self.data` to the buffer before
+//!    dropping the guard, so a CPI invoked between release and
+//!    reacquire sees the user's in-memory mutations.
+//! 2. `reacquire_borrow_mut` re-runs the load-time invariants
+//!    (owner / disc / size) and re-deserializes `self.data` from
+//!    the buffer, picking up any CPI-induced changes. A CPI that
+//!    reassigned the account or swapped its disc is rejected.
+//! 3. `exit` serializes `self.data` through the held mutable guard.
+//!    On a closed account (lamports == 0) it is a no-op.
+//! 4. `exit`'s stale-size detection fires when an external resize
+//!    happened without the user going through release / reacquire.
+//!    It does not fire on content-only out-of-band mutation (same
+//!    size) — by design, exit treats in-memory `self.data` as
+//!    authoritative.
 
 use anchor_lang_v2::testing::AccountBuffer;
 
@@ -175,7 +158,7 @@ fn reacquire_refreshes_self_data_from_cpi_changes() {
     acct.value = 100;
 
     // Step 2: user releases the borrow (e.g., to CPI).
-    acct.release_borrow();
+    acct.release_borrow().unwrap();
 
     // Step 3: simulated CPI mutates the account's data bytes.
     // Writes 777 as the new u64 value.
@@ -224,7 +207,7 @@ fn reacquire_rejects_when_discriminator_changes_during_release() {
     let view = unsafe { buf.view() };
     let mut acct = unsafe { BorshAccount::<Counter>::load_mut(view, &program_id) }.unwrap();
 
-    acct.release_borrow();
+    acct.release_borrow().unwrap();
 
     // Simulated CPI rewrites the discriminator to a different account
     // type's bytes while leaving the u64 payload intact (which would
@@ -259,7 +242,7 @@ fn reacquire_rejects_when_owner_changes_during_release() {
     let view = unsafe { buf.view() };
     let mut acct = unsafe { BorshAccount::<Counter>::load_mut(view, &program_id) }.unwrap();
 
-    acct.release_borrow();
+    acct.release_borrow().unwrap();
 
     // Simulated CPI transfers ownership to a different program. The
     // discriminator and Borsh payload are untouched — only the owner
@@ -310,14 +293,14 @@ fn exit_on_zero_lamport_account_is_noop() {
     );
 }
 
-// -- 5. Exit after release-without-reacquire is also a no-op --------
+// -- 5. release_borrow commits self.data to the buffer -------------
 //
-// `if let BorshBorrow::Mutable ...` — if the borrow is Released,
-// exit skips serialization. Modified self.data is silently dropped.
-// A user who forgets to reacquire after CPI loses their changes.
+// CPIs invoked between release_borrow and reacquire_borrow_mut must
+// observe the user's pre-CPI in-memory mutations. release_borrow
+// serializes self.data through the held guard before dropping it.
 
 #[test]
-fn exit_with_released_borrow_silently_drops_in_memory_changes() {
+fn release_borrow_commits_in_memory_changes_to_buffer() {
     let mut buf = AccountBuffer::<256>::new();
     setup_counter_buf(&mut buf, 42);
     let program_id = Address::new_from_array(PROGRAM_ID);
@@ -326,17 +309,14 @@ fn exit_with_released_borrow_silently_drops_in_memory_changes() {
     let mut acct = unsafe { BorshAccount::<Counter>::load_mut(view, &program_id) }.unwrap();
 
     acct.value = 100;
-    acct.release_borrow();
-    // User forgets to reacquire.
-    acct.exit().unwrap();
+    acct.release_borrow().unwrap();
 
-    // Account bytes are unchanged (still 42).
     let bytes = read_data_bytes(&buf, 8, 8);
     assert_eq!(
         u64::from_le_bytes(bytes.try_into().unwrap()),
-        42,
-        "exit with Released borrow does not serialize — the user's \
-         modification to self.data is silently dropped"
+        100,
+        "release_borrow must serialize self.data so a subsequent CPI \
+         sees the in-memory mutations"
     );
 }
 
