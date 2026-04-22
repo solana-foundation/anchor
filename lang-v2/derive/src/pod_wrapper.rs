@@ -32,15 +32,21 @@
 //!
 //! // bytemuck traits — safe because the wrapper is `#[repr(transparent)]`
 //! // over `u8`, which is itself Pod. Invalid discriminants are caught at
-//! // conversion time (`From<PodMarketMode> for MarketMode`), not at cast time.
+//! // *both* equality and conversion time: any `==`, `!=`, or `.into()` on a
+//! // `PodMarketMode` holding a byte that doesn't correspond to a declared
+//! // variant panics. The raw-byte read via `pod.0` remains unvalidated —
+//! // it's the intentional escape hatch for callers that want to inspect
+//! // bytes without triggering the variant check.
 //! unsafe impl bytemuck::Pod for PodMarketMode {}
 //! unsafe impl bytemuck::Zeroable for PodMarketMode {}
 //!
 //! // Cross-type comparisons let existing `engine.market_mode == MarketMode::Live`
 //! // keep working untouched after migrating the field from `MarketMode` to
-//! // `PodMarketMode`.
-//! impl PartialEq<MarketMode> for PodMarketMode { /* ... */ }
-//! impl PartialEq<PodMarketMode> for MarketMode { /* ... */ }
+//! // `PodMarketMode`. Both operands are validated against the declared
+//! // variants, so an invalid byte can't silently bypass a negative guard
+//! // like `if market_mode != MarketMode::Closed { … }`.
+//! impl PartialEq<MarketMode> for PodMarketMode { /* panics on invalid */ }
+//! impl PartialEq<PodMarketMode> for MarketMode { /* panics on invalid */ }
 //!
 //! // Round-trip conversions; `From<PodMarketMode> for MarketMode` panics on
 //! // bytes that don't correspond to a declared variant.
@@ -167,19 +173,34 @@ pub fn expand(item: TokenStream) -> TokenStream {
             }
         }
 
+        // Equality validates both sides against the declared variants before
+        // comparing bytes. An invalid discriminant panics — same message as
+        // `From<#pod_name> for #name` — so a negative guard like
+        // `if pod != Enum::Variant { … }` can't silently execute with a
+        // corrupt byte. Use the raw `pod.0` field for an unvalidated read.
         impl ::core::cmp::PartialEq for #pod_name {
             #[inline]
-            fn eq(&self, other: &Self) -> bool { self.0 == other.0 }
+            fn eq(&self, other: &Self) -> bool {
+                let _: #name = (*self).into();
+                let _: #name = (*other).into();
+                self.0 == other.0
+            }
         }
         impl ::core::cmp::Eq for #pod_name {}
 
         impl ::core::cmp::PartialEq<#name> for #pod_name {
             #[inline]
-            fn eq(&self, other: &#name) -> bool { self.0 == *other as u8 }
+            fn eq(&self, other: &#name) -> bool {
+                let _: #name = (*self).into();
+                self.0 == *other as u8
+            }
         }
         impl ::core::cmp::PartialEq<#pod_name> for #name {
             #[inline]
-            fn eq(&self, other: &#pod_name) -> bool { *self as u8 == other.0 }
+            fn eq(&self, other: &#pod_name) -> bool {
+                let _: #name = (*other).into();
+                *self as u8 == other.0
+            }
         }
 
         impl ::core::convert::From<#name> for #pod_name {
