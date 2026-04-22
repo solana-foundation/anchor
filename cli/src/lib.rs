@@ -23,6 +23,7 @@ use {
     regex::{Regex, RegexBuilder},
     rust_template::{ProgramTemplate, TestTemplate},
     semver::{Version, VersionReq},
+    serde::Deserialize,
     serde_json::{json, Map, Value as JsonValue},
     solana_cli_config::Config as SolanaCliConfig,
     solana_commitment_config::CommitmentConfig,
@@ -1399,20 +1400,6 @@ fn init(
     let package_manager_cmd = package_manager.to_string();
     cfg.toolchain.package_manager = Some(package_manager);
 
-    let mut localnet = BTreeMap::new();
-    let program_id = rust_template::get_or_create_program_id(&rust_name);
-    localnet.insert(
-        rust_name,
-        ProgramDeployment {
-            address: program_id,
-            path: None,
-            idl: None,
-        },
-    );
-    cfg.programs.insert(Cluster::Localnet, localnet);
-    let toml = cfg.to_string();
-    fs::write("Anchor.toml", toml)?;
-
     // Initialize .gitignore file
     fs::write(".gitignore", rust_template::git_ignore())?;
 
@@ -1430,6 +1417,20 @@ fn init(
 
     // Build the program.
     rust_template::create_program(&project_name, template, Some(&test_template))?;
+
+    let program_id = rust_template::get_or_create_program_id(&rust_name, target_dir());
+    let mut localnet = BTreeMap::new();
+    localnet.insert(
+        rust_name,
+        ProgramDeployment {
+            address: program_id,
+            path: None,
+            idl: None,
+        },
+    );
+    cfg.programs.insert(Cluster::Localnet, localnet);
+    let toml = cfg.to_string();
+    fs::write("Anchor.toml", toml)?;
 
     // Build the migrations directory.
     let migrations_path = Path::new("migrations");
@@ -1589,7 +1590,7 @@ fn new(
                 programs.insert(
                     name.clone(),
                     ProgramDeployment {
-                        address: rust_template::get_or_create_program_id(&name),
+                        address: rust_template::get_or_create_program_id(&name, target_dir()),
                         path: None,
                         idl: None,
                     },
@@ -1826,13 +1827,13 @@ pub fn build(
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
-        None => Some(cfg_parent.join("target").join("idl")),
+        None => Some(target_dir().join("idl")),
     };
     fs::create_dir_all(idl_out.as_ref().unwrap())?;
 
     let idl_ts_out = match idl_ts {
         Some(idl_ts) => Some(PathBuf::from(idl_ts)),
-        None => Some(cfg_parent.join("target").join("types")),
+        None => Some(target_dir().join("types")),
     };
     fs::create_dir_all(idl_ts_out.as_ref().unwrap())?;
 
@@ -1999,7 +2000,7 @@ fn build_cwd_verifiable(
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
-    let target_dir = workspace_dir.join("target");
+    let target_dir = target_dir();
     fs::create_dir_all(target_dir.join("verifiable"))?;
     fs::create_dir_all(target_dir.join("idl"))?;
     fs::create_dir_all(target_dir.join("types"))?;
@@ -2031,8 +2032,7 @@ fn build_cwd_verifiable(
             let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
             // Write out the JSON file.
             println!("Writing the IDL file");
-            let out_file = workspace_dir
-                .join("target")
+            let out_file = target_dir
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -2040,8 +2040,7 @@ fn build_cwd_verifiable(
 
             // Write out the TypeScript type.
             println!("Writing the .ts file");
-            let ts_file = workspace_dir
-                .join("target")
+            let ts_file = target_dir
                 .join("types")
                 .join(&idl.metadata.name)
                 .with_extension("ts");
@@ -3509,7 +3508,7 @@ fn validator_flags(
             idl.address = address;
 
             // Persist it.
-            let idl_out = Path::new("target")
+            let idl_out = target_dir()
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -3660,7 +3659,7 @@ fn surfpool_flags(
         if let Some(idl) = program.idl.as_mut() {
             // Creating the idl files
             idl.address = address;
-            let idl_out = Path::new("target")
+            let idl_out = target_dir()
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -3870,7 +3869,7 @@ fn stream_solana_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<Lo
 
     // Subscribe to logs for all workspace programs
     for program in config.read_all_programs()? {
-        let idl_path = Path::new("target")
+        let idl_path = target_dir()
             .join("idl")
             .join(&program.lib_name)
             .with_extension("json");
@@ -4191,7 +4190,7 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
     };
 
     let dot_anchor_dir = workspace_root.join(".anchor");
-    let target_dir = workspace_root.join("target");
+    let target_dir = crate::target_dir();
     let deploy_dir = target_dir.join("deploy");
 
     if dot_anchor_dir.exists() {
@@ -4902,9 +4901,48 @@ fn localnet(
     })?
 }
 
+/// Return the cargo build artifacts directory. Caches the result assuming that
+/// a single run will only work with a single rust workspace. Exits the process
+/// if the directory cannot be determined.
+pub fn target_dir() -> PathBuf {
+    static TARGET_DIR: LazyLock<Result<PathBuf>> = LazyLock::new(target_dir_no_cache);
+    match TARGET_DIR.as_ref() {
+        Ok(path) => path.clone(),
+        Err(e) => {
+            eprintln!("Error: {e:?}");
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Return the cargo build artifacts directory.
+fn target_dir_no_cache() -> Result<PathBuf> {
+    // `cargo metadata` produces a JSON blob from which we extract the
+    // `target_directory` field.
+    let output = std::process::Command::new("cargo")
+        .args(["metadata", "--no-deps", "--format-version=1"])
+        .output()
+        .context("Failed to execute 'cargo metadata'")?;
+
+    if !output.status.success() {
+        let stderr_msg = String::from_utf8_lossy(&output.stderr);
+        bail!("'cargo metadata' failed with: {stderr_msg}");
+    }
+
+    #[derive(Deserialize)]
+    struct CargoMetadata {
+        target_directory: PathBuf,
+    }
+
+    let metadata: CargoMetadata = serde_json::from_slice(&output.stdout)
+        .context("Failed to parse 'cargo metadata' output")?;
+
+    Ok(metadata.target_directory)
+}
+
 // with_workspace ensures the current working directory is always the top level
-// workspace directory, i.e., where the `Anchor.toml` file is located, before
-// and after the closure invocation.
+// where the `Anchor.toml` file is located, before and after the closure
+// invocation.
 //
 // The closure passed into this function must never change the working directory
 // to be outside the workspace. Doing so will have undefined behavior.
