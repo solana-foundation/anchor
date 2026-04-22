@@ -17,6 +17,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - client: Add versioned tx support ([#4207](https://github.com/solana-foundation/anchor/pull/4207)).
 - cli: Add `edition` and `rust-version` to template ([#4048](https://github.com/solana-foundation/anchor/pull/4048))
 - lang: Add `program_id` verification to CPI return values ([#4411](https://github.com/solana-foundation/anchor/pull/4411)).
+- cli: Resolve the target directory via `cargo metadata` so custom target locations (e.g. `CARGO_TARGET_DIR`, workspace-level overrides) work across build, test, deploy and IDL paths ([#3817](https://github.com/solana-foundation/anchor/pull/3817)).
 
 ### Fixes
 
