@@ -4939,8 +4939,8 @@ fn target_dir_no_cache() -> Result<PathBuf> {
 }
 
 // with_workspace ensures the current working directory is always the top level
-// where the `Anchor.toml` file is located, before and after the closure
-// invocation.
+// workspace directory, i.e., where the `Anchor.toml` file is located, before
+// and after the closure invocation.
 //
 // The closure passed into this function must never change the working directory
 // to be outside the workspace. Doing so will have undefined behavior.
