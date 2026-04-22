@@ -40,6 +40,11 @@ account-resize = ["pinocchio/account-resize"]
 # `create_account` CPI. Enable via `--features const-rent` for fixed-`space`
 # programs where the ~90 CU matters more than formula drift safety.
 const-rent = []
+# Enables the `anchor_lang_v2::testing` module: stack-backed mock pinocchio
+# types (`AccountView`, SBF input buffer) used by the `tests/` integration
+# tests + Miri witnesses. Off by default so production BPF binaries never
+# ship the scaffold. `cargo test -p anchor-lang-v2 --features testing`.
+testing = []
 
 [dependencies]
 anchor-derive-accounts-v2 = { path = "./derive", version = "2.0.0" }
@@ -67,3 +72,18 @@ sha2 = "0.10"
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = ['cfg(target_os, values("solana"))']
+
+# Integration tests that exercise `unsafe` paths via the `testing`
+# scaffold. Gated behind the `testing` feature so the mock types never
+# ship in production BPF binaries.
+[[test]]
+name = "borsh_exit_semantics"
+required-features = ["testing"]
+
+[[test]]
+name = "close_semantics"
+required-features = ["testing"]
+
+[[test]]
+name = "slab_resize_reproducers"
+required-features = ["testing"]

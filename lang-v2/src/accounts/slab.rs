@@ -393,11 +393,26 @@ where
         self.read_len() as usize
     }
 
-    /// How many items the account's tail region can currently hold without
-    /// growing. Derived on demand from `view.data_len()`.
+    /// How many items the account's tail region can currently hold.
+    /// Returns 0 if `data_len < ITEMS_OFFSET` (guards against post-resize
+    /// underflow when an external `realloc_account` has shrunk the
+    /// account below the Slab's structural minimum).
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        (self.view.data_len() - Self::ITEMS_OFFSET) / core::mem::size_of::<T>()
+        self.view
+            .data_len()
+            .saturating_sub(Self::ITEMS_OFFSET)
+            / core::mem::size_of::<T>()
+    }
+
+    /// Live `len` clamped to current `capacity`. The stored `len` may
+    /// exceed `capacity` if an external `realloc_account` shrank the
+    /// account after this `Slab` was constructed; mutation paths must
+    /// use this value (not the raw `len`) when computing item offsets
+    /// or indexing the tail region.
+    #[inline(always)]
+    fn effective_len(&self) -> usize {
+        self.len().min(self.capacity())
     }
 
     #[inline(always)]
@@ -410,10 +425,12 @@ where
         self.len() == self.capacity()
     }
 
-    /// View the tail region as an immutable slice.
+    /// View the tail region as an immutable slice. Uses `effective_len` so
+    /// a post-load external resize (which would leave raw `len > capacity`)
+    /// cannot cause an OOB slice read.
     #[inline]
     pub fn as_slice(&self) -> &[T] {
-        let len = self.len();
+        let len = self.effective_len();
         let bytes = self.guard_bytes();
         // `ITEMS_OFFSET` is const-computed to be `align_of::<T>()`-aligned,
         // and Pod requires `size_of` is a multiple of `align_of`, so every
@@ -423,10 +440,11 @@ where
         bytemuck::cast_slice(items_bytes)
     }
 
-    /// View the tail region as a mutable slice.
+    /// View the tail region as a mutable slice. Uses `effective_len`;
+    /// same post-resize guard as `as_slice`.
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        let len = self.len();
+        let len = self.effective_len();
         let bytes = self.guard_bytes_mut();
         let items_bytes =
             &mut bytes[Self::ITEMS_OFFSET..Self::ITEMS_OFFSET + len * core::mem::size_of::<T>()];
@@ -487,9 +505,12 @@ where
         Ok(())
     }
 
-    /// Remove and return the last item, or `None` if empty.
+    /// Remove and return the last item, or `None` if empty. Uses
+    /// `effective_len` so a post-shrink Slab (raw len > capacity) doesn't
+    /// read past the live data buffer; the write-back also clamps the
+    /// stored len to a value `<= capacity`.
     pub fn pop(&mut self) -> Option<T> {
-        let len = self.len();
+        let len = self.effective_len();
         if len == 0 {
             return None;
         }
@@ -504,10 +525,13 @@ where
         Some(value)
     }
 
-    /// Truncate the tail to `new_len`. No-op if `new_len >= len`.
+    /// Truncate the tail to `new_len`. Uses `effective_len` so a
+    /// post-shrink Slab is brought back to a consistent state: the stored
+    /// len ends up at `min(new_len, effective_len)`.
     pub fn truncate(&mut self, new_len: usize) {
-        if new_len < self.len() {
-            self.write_len(new_len as u32);
+        let target = new_len.min(self.effective_len());
+        if target != self.len() {
+            self.write_len(target as u32);
         }
     }
 
@@ -517,16 +541,18 @@ where
     }
 
     /// Swap the item at `index` with the last, then pop. `O(1)` remove.
+    /// Uses `effective_len` so a post-shrink Slab can't index past the
+    /// live data buffer.
     ///
     /// # Panics
     ///
-    /// Panics if `index >= len`, matching `Vec::swap_remove`.
+    /// Panics if `index >= effective_len()`, matching `Vec::swap_remove`.
     pub fn swap_remove(&mut self, index: usize) -> T {
-        let len = self.len();
+        let len = self.effective_len();
         assert!(index < len, "swap_remove index out of bounds");
         let new_len = len - 1;
-        // Go through the typed slice — `as_mut_slice()` returns a bounds-
-        // checked `&mut [T]` of length `len`, and `swap` + read are safe.
+        // `as_mut_slice()` returns a bounds-checked `&mut [T]` of length
+        // `effective_len`, so `index` and `new_len` are both in-bounds.
         let removed = {
             let items = self.as_mut_slice();
             let value = items[index];
@@ -734,3 +760,4 @@ where
         H::__register_idl_deps(types);
     }
 }
+
