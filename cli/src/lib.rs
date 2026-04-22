@@ -2237,14 +2237,10 @@ fn docker_build_bpf(
 
     // Copy the binary out of the docker image.
     println!("Copying out the build artifacts");
-    let out_file = cfg_parent
-        .canonicalize()?
-        .join(
-            Path::new("target")
-                .join("verifiable")
-                .join(&binary_name)
-                .with_extension("so"),
-        )
+    let out_file = crate::target_dir()?
+        .join("verifiable")
+        .join(&binary_name)
+        .with_extension("so")
         .display()
         .to_string();
 
