@@ -1,4 +1,4 @@
-//! `#[derive(PodWrapper)]` — generates a `Pod`-compatible companion type for
+//! `#[pod_wrapper]` — generates a `Pod`-compatible companion type for
 //! an `#[repr(u8)]` enum.
 //!
 //! `bytemuck::Pod` requires every bit pattern of a type to be valid, which
@@ -7,10 +7,11 @@
 //! zero-copy `#[account]`) is therefore unsound — a corrupt byte produces
 //! an invalid enum value and instant UB on any pattern match.
 //!
-//! This derive works around that. Given:
+//! This attribute macro works around that. Given:
 //!
 //! ```ignore
-//! #[derive(PodWrapper)]
+//! #[pod_wrapper]
+//! #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 //! #[repr(u8)]
 //! pub enum MarketMode {
 //!     Live = 0,
@@ -56,7 +57,7 @@
 //!
 //! # Requirements
 //!
-//! * The item must be an `enum`.
+//! * The annotated item must be an `enum`.
 //! * The enum must be declared `#[repr(u8)]` (explicit discriminant size).
 //! * Every variant must be a bare unit variant (no tuple/struct payload).
 //! * The downstream crate must have `anchor_lang_v2::bytemuck` in scope
@@ -80,7 +81,7 @@ pub fn expand(item: TokenStream) -> TokenStream {
             return TokenStream::from(
                 syn::Error::new_spanned(
                     &name,
-                    "#[derive(PodWrapper)] only supports enums — \
+                    "#[pod_wrapper] only supports enums — \
                      structs already have direct `#[derive(bytemuck::Pod)]` support.",
                 )
                 .to_compile_error(),
@@ -89,13 +90,13 @@ pub fn expand(item: TokenStream) -> TokenStream {
     };
 
     // Reject enums with payload-bearing variants: would need a tag byte
-    // plus per-variant layout, which this derive doesn't emit.
+    // plus per-variant layout, which this attribute doesn't emit.
     for v in &enm.variants {
         if !matches!(v.fields, Fields::Unit) {
             return TokenStream::from(
                 syn::Error::new_spanned(
                     v,
-                    "#[derive(PodWrapper)] only supports unit variants. \
+                    "#[pod_wrapper] only supports unit variants. \
                      Payload-bearing variants can't be stored in a single u8.",
                 )
                 .to_compile_error(),
@@ -110,7 +111,7 @@ pub fn expand(item: TokenStream) -> TokenStream {
         return TokenStream::from(
             syn::Error::new_spanned(
                 &name,
-                "#[derive(PodWrapper)] requires `#[repr(u8)]` on the enum so the \
+                "#[pod_wrapper] requires `#[repr(u8)]` on the enum so the \
                  stored discriminant width is explicit.",
             )
             .to_compile_error(),
@@ -147,6 +148,11 @@ pub fn expand(item: TokenStream) -> TokenStream {
     let invalid_panic_msg = format!("invalid {} discriminant: {{}}", name_str);
 
     let expanded: TokenStream2 = quote! {
+        // Re-emit the annotated enum verbatim — attribute macros consume
+        // their input, and every downstream `Enum::Variant` reference
+        // still needs the original type to resolve.
+        #input
+
         #[repr(transparent)]
         #[derive(Clone, Copy)]
         #vis struct #pod_name(pub u8);

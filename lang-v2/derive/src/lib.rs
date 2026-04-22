@@ -2505,7 +2505,7 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
 }
 
 // ---------------------------------------------------------------------------
-// #[derive(PodWrapper)]
+// #[pod_wrapper]
 // ---------------------------------------------------------------------------
 
 /// Generates a `Pod`-compatible companion type for an `#[repr(u8)]` enum.
@@ -2515,30 +2515,33 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
 /// enum inside a zero-copy `#[account]` struct is therefore unsound: a corrupt
 /// byte becomes an invalid enum value and instant UB on pattern match.
 ///
-/// `#[derive(PodWrapper)]` emits a `#[repr(transparent)] struct Pod{Enum}(pub u8)`
-/// with `Pod + Zeroable` impls, per-variant `SCREAMING_SNAKE_CASE` constants,
-/// and `From` / `PartialEq` bridges so existing `engine.market_mode == MarketMode::Live`
+/// `#[pod_wrapper]` emits a `#[repr(transparent)] struct Pod{Enum}(pub u8)`
+/// with `Pod + Zeroable` impls, per-variant associated constants, and `From` /
+/// `PartialEq` bridges so existing `engine.market_mode == MarketMode::Live`
 /// comparisons still compile after swapping a field from `Enum` to `PodEnum`.
+/// It is an attribute macro — not a derive — so the companion can also carry
+/// trait impls (e.g. `IdlAccountType`) that derives cannot express.
 ///
 /// # Example
 ///
 /// ```ignore
-/// #[derive(PodWrapper)]
+/// #[pod_wrapper]
+/// #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 /// #[repr(u8)]
 /// pub enum MarketMode { Live = 0, Resolved = 1 }
 ///
-/// // generated: PodMarketMode::LIVE, PodMarketMode::RESOLVED
+/// // generated: PodMarketMode::Live, PodMarketMode::Resolved
 /// // generated: From<MarketMode> / From<PodMarketMode> (panics on invalid byte)
 /// // generated: PartialEq<MarketMode> / PartialEq<PodMarketMode> bridges
 /// ```
 ///
 /// # Requirements
 ///
-/// * The item must be an `enum`.
+/// * The annotated item must be an `enum`.
 /// * The enum must carry `#[repr(u8)]` so the stored width is explicit.
 /// * Every variant must be a bare unit variant (no payload).
-#[proc_macro_derive(PodWrapper)]
-pub fn derive_pod_wrapper(item: TokenStream) -> TokenStream {
+#[proc_macro_attribute]
+pub fn pod_wrapper(_attr: TokenStream, item: TokenStream) -> TokenStream {
     pod_wrapper::expand(item)
 }
 

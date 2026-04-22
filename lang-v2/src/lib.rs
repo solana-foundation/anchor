@@ -119,8 +119,8 @@ pub use serde_json as __serde_json;
 pub use {
     accounts::{AccountInitialize, SlabInit},
     anchor_derive_accounts_v2::{
-        access_control, account, constant, emit, error_code, event, program, Accounts, InitSpace,
-        PodWrapper,
+        access_control, account, constant, emit, error_code, event, pod_wrapper, program,
+        Accounts, InitSpace,
     },
     borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,

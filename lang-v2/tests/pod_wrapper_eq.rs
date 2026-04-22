@@ -1,14 +1,14 @@
-//! Tests for the validating `PartialEq` impls emitted by `#[derive(PodWrapper)]`.
+//! Tests for the validating `PartialEq` impls emitted by `#[pod_wrapper]`.
 //!
 //! Background: the generated `PodEnum` wraps a raw `u8`, so any byte pattern
-//! is representable. Earlier revisions of the derive compared the raw bytes
+//! is representable. Earlier revisions of the macro compared the raw bytes
 //! directly in `PartialEq`, which let an invalid discriminant silently
 //! participate in `==` / `!=`. A negative guard like
 //! `if engine.market_mode != MarketMode::Closed { … sensitive … }` would then
 //! evaluate `42 != 2` as `true` and execute the sensitive branch with a
 //! corrupt state byte.
 //!
-//! The current derive validates both operands against the declared variants
+//! The current macro validates both operands against the declared variants
 //! (via the existing `From<PodEnum> for Enum` match) and panics on an
 //! unknown byte — mirroring the panic `.into()` would produce. Raw-byte
 //! inspection via the public `PodEnum::0` field remains the unvalidated
@@ -23,7 +23,8 @@
 
 use anchor_lang_v2::prelude::*;
 
-#[derive(PodWrapper, Clone, Copy, Debug)]
+#[pod_wrapper]
+#[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum MarketMode {
     Live = 0,
