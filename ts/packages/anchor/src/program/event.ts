@@ -274,7 +274,7 @@ export class EventParser {
 
   // Handles logs when the current program being executing is *not* this.
   private handleSystemLog(log: string): [string | null, boolean] {
-    if (log.startsWith(`Program ${this.programId.toString()} log:`)) {
+    if (log.startsWith(`Program ${this.programId.toString()} log:`) || log.startsWith(`Program ${this.programId.toString()} invoke`)) {
       return [this.programId.toString(), false];
     } else if (log.includes("invoke") && !log.endsWith("[1]")) {
       return ["cpi", false];
