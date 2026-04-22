@@ -127,14 +127,17 @@ coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 	lcov -a $(COVERAGE_DIR)/sbf.lcov -a $(COVERAGE_DIR)/host.filtered.lcov \
 		-o $(COVERAGE_DIR)/combined.lcov \
 		--ignore-errors empty
-	# Drop cargo-registry and target-generated paths only. The prior
-	# `/home/runner/*` / `/Users/runner/*` blanket filters matched the
-	# CI workspace root (`/home/runner/work/<repo>/<repo>/...`) and
-	# stripped every source file, producing an empty LCOV on CI. Path
-	# globs of `*/.cargo/*` and `*/target/*` are content-based so they
-	# work identically on local and CI runners.
+	# Drop cargo-registry and target-generated paths. Lcov's glob handling
+	# varies by version: the shell-style patterns below look redundant but
+	# cover both behaviors. Older lcov (Ubuntu 1.14/1.16) treats `*` as
+	# non-slash-crossing, so `*/.cargo/*` doesn't match an absolute path
+	# like `/home/runner/.cargo/registry/.../file.rs`; adding `**/.cargo/**`
+	# is a no-op on strict shell globs but handled by lcov 2.x as a
+	# recursive glob. Having both keeps the filter correct on local macOS
+	# (lcov 2.x), Ubuntu CI runners (lcov 1.x), and anywhere in between.
 	lcov --remove $(COVERAGE_DIR)/combined.lcov \
-		'*/.cargo/*' '*/target/*' \
+		'*/.cargo/*' '**/.cargo/**' '*.cargo*' \
+		'*/target/*' '**/target/**' \
 		-o $(COVERAGE_DIR)/combined.lcov \
 		--ignore-errors unused \
 		--ignore-errors empty
