@@ -240,10 +240,6 @@ solana-signer = "3.0.0"
 solana-keypair = "3.0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-
-# blake3 (transitively dep from litesvm/solana-*) requires constant_time_eq
-# ^0.4. 0.4.3 requires rustc 1.95.
-constant_time_eq = "=0.4.2"
 "#
         }
         _ => "",
