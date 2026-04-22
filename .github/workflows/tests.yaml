@@ -160,11 +160,34 @@ jobs:
         run: |
           cargo install --locked kani-verifier --version 0.67.0
           cargo kani setup
-      # Serial. kani-driver 0.67.0 panics on an unrecognized `ERROR`
-      # status that CBMC emits when Z3 flakes under `-j` contention on
-      # the runner. Locally all 132 harnesses pass in ~20s.
-      - name: Kani harnesses for anchor-lang-v2 + anchor-spl-v2
-        run: cargo kani -p anchor-lang-v2 -p anchor-spl-v2 --output-format=terse
+      # Per-crate runs with 3× retry. kani-driver 0.67.0 panics when
+      # CBMC emits an `ERROR` status (an unrecognized variant in the
+      # driver's deserializer) — observed intermittently on the runner
+      # when Z3 aborts under memory/CPU pressure. Splitting the combined
+      # `-p anchor-lang-v2 -p anchor-spl-v2` invocation into per-crate
+      # calls shrinks each driver process's working set; the retry
+      # masks transient flakes. Per-harness retry would be ideal but
+      # kani-driver re-compiles the crate on every `--harness` filter
+      # change (~100s each × 135 harnesses = infeasible). Locally a
+      # single pass verifies all 135 harnesses in ~96s.
+      - name: Kani harnesses for anchor-lang-v2
+        run: |
+          for attempt in 1 2 3; do
+            if cargo kani -p anchor-lang-v2 --output-format=terse; then
+              exit 0
+            fi
+            echo "::warning::anchor-lang-v2 Kani attempt $attempt failed; retrying"
+          done
+          exit 1
+      - name: Kani harnesses for anchor-spl-v2
+        run: |
+          for attempt in 1 2 3; do
+            if cargo kani -p anchor-spl-v2 --output-format=terse; then
+              exit 0
+            fi
+            echo "::warning::anchor-spl-v2 Kani attempt $attempt failed; retrying"
+          done
+          exit 1
 
       # CLI: unit-test + build sanity only. No anchor-binary install,
       # no `anchor build`/`anchor test` flows, no tests/* integration.
