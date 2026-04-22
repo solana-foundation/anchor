@@ -79,15 +79,59 @@ jobs:
       # Version must match `tests-v2/src/lib.rs::build_program`.
       - run: cargo build-sbf --tools-version v1.52 --install-only
 
-      # v2 runtime + derive crates. `--features testing` enables the
-      # `anchor_lang_v2::testing` scaffold needed by the integration
-      # tests that exercise `unsafe` paths without an SVM.
-      - run: cargo test -p anchor-lang-v2 --features testing
-      - run: cargo test -p anchor-spl-v2
+      # Tools for `make coverage-v2`:
+      #   - lcov for merging sbf.lcov + host.lcov and generating the report.
+      #   - cargo-llvm-cov for host-side instrumentation coverage.
+      #
+      # The three direct `cargo test -p anchor-{lang,spl}-v2` / `-p tests-v2`
+      # invocations that used to live here (including `anchor-lang-v2`'s
+      # `--features testing` flag for the Miri-witnesses scaffold) are
+      # subsumed by the `make coverage-v2` call below — the Makefile's
+      # host-coverage step runs the same packages under instrumentation.
+      - run: sudo apt-get install -y lcov
+      - name: Install cargo-llvm-cov
+        run: |
+          if ! command -v cargo-llvm-cov >/dev/null; then
+            cargo install cargo-llvm-cov --locked
+          fi
 
-      # On-chain programs + litesvm integration tests. Exercises the full
-      # v2 codegen path end-to-end.
-      - run: cargo test -p tests-v2
+      # `make coverage-v2` runs the same v2 test suites we used to invoke
+      # directly (`cargo test -p anchor-lang-v2 -p anchor-spl-v2 -p tests-v2`)
+      # but under llvm-cov instrumentation, and additionally runs SBF
+      # trace-based coverage via `anchor coverage`. Test pass/fail signal
+      # is preserved — a failing test exits the make invocation non-zero.
+      # The combined LCOV is uploaded as an artifact for the diff job.
+      - run: make coverage-v2
+
+      - name: Upload v2 coverage lcov
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-coverage-lcov
+          path: target/coverage/combined.lcov
+          retention-days: 14
+
+      # The `Coverage Diff` workflow (.github/workflows/coverage-diff.yaml)
+      # runs after this one via `workflow_run`, which has base-branch
+      # permissions (so fork PRs can post comments) but no access to the
+      # original PR context — `github.event.workflow_run.pull_requests` is
+      # empty for fork-originated runs. Pass the PR number and SHAs as
+      # an artifact so the downstream workflow can pick them up.
+      - name: Write PR metadata for downstream workflow
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p coverage-meta
+          cat >coverage-meta/metadata.env <<EOF
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          EOF
+      - name: Upload PR metadata
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-coverage-metadata
+          path: coverage-meta/metadata.env
+          retention-days: 14
 
       # CLI: unit-test + build sanity only. No anchor-binary install,
       # no `anchor build`/`anchor test` flows, no tests/* integration.
@@ -134,3 +178,9 @@ jobs:
             echo "::endgroup::"
           done
           exit "$fail"
+
+  # The PR-comment-posting job lives in `.github/workflows/coverage-diff.yaml`,
+  # triggered by `workflow_run: [Tests] completed`. That trigger runs in
+  # the base-branch context with the base branch's permissions, so fork PRs
+  # can post comments — unlike a `pull_request`-triggered job on this
+  # workflow, whose `GITHUB_TOKEN` is forced read-only for forks.

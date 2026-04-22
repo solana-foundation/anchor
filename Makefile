@@ -58,21 +58,27 @@ coverage-v2-host:
 		exit 1; \
 	}
 	cargo llvm-cov clean --workspace
-	# First pass: default feature set (covers runtime + derive codegen paths).
+	# First pass: `anchor-lang-v2` with its `testing` feature enabled — the
+	# Miri-witnesses integration tests need the `anchor_lang_v2::testing`
+	# scaffold. Split into its own invocation because `testing` is a
+	# lang-v2-only feature, and passing it to a multi-package run would
+	# fail when `anchor-spl-v2` / `tests-v2` don't define it.
 	CARGO_PROFILE_RELEASE_DEBUG=2 \
-	cargo llvm-cov --no-report -p anchor-lang-v2 -p anchor-spl-v2 -p tests-v2
-	# Second pass: same crates with --features idl-build so the IDL-emission
-	# branches in derive/src/idl.rs and the program-level IDL assembler run.
-	# No `--no-clean` here — passing `--no-report` already preserves the
-	# profile data across passes; the merged report is assembled by the
-	# final `llvm-cov report` below.
+	cargo llvm-cov --no-report -p anchor-lang-v2 --features testing
+	# Second pass: the other v2 crates under default features.
+	CARGO_PROFILE_RELEASE_DEBUG=2 \
+	cargo llvm-cov --no-report -p anchor-spl-v2 -p tests-v2
+	# Third pass: lang-v2 + spl-v2 with --features idl-build so the
+	# IDL-emission branches in derive/src/idl.rs and the program-level IDL
+	# assembler run. `--no-report` accumulates profile data across passes;
+	# the merged report is assembled by the final `llvm-cov report` below.
 	CARGO_PROFILE_RELEASE_DEBUG=2 \
 	cargo llvm-cov --no-report --features idl-build \
 		-p anchor-lang-v2 -p anchor-spl-v2
 	cargo llvm-cov report \
 		--lcov \
 		--output-path $(COVERAGE_DIR)/host.lcov \
-		--ignore-filename-regex='(\.cargo|target/debug/build|/runner/work/)'
+		--ignore-filename-regex='(\.cargo|target/(debug|release)/build)'
 
 # Merge the two LCOV files into one.
 #
@@ -119,11 +125,19 @@ coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 	sed -i.bak '/^LF:/d;/^LH:/d' $(COVERAGE_DIR)/host.filtered.lcov
 	rm -f $(COVERAGE_DIR)/host.filtered.lcov.bak
 	lcov -a $(COVERAGE_DIR)/sbf.lcov -a $(COVERAGE_DIR)/host.filtered.lcov \
-		-o $(COVERAGE_DIR)/combined.lcov
-	lcov --remove $(COVERAGE_DIR)/combined.lcov \
-		'/Users/runner/*' '/home/runner/*' '*/.cargo/*' '*/target/*' \
 		-o $(COVERAGE_DIR)/combined.lcov \
-		--ignore-errors unused
+		--ignore-errors empty
+	# Drop cargo-registry and target-generated paths only. The prior
+	# `/home/runner/*` / `/Users/runner/*` blanket filters matched the
+	# CI workspace root (`/home/runner/work/<repo>/<repo>/...`) and
+	# stripped every source file, producing an empty LCOV on CI. Path
+	# globs of `*/.cargo/*` and `*/target/*` are content-based so they
+	# work identically on local and CI runners.
+	lcov --remove $(COVERAGE_DIR)/combined.lcov \
+		'*/.cargo/*' '*/target/*' \
+		-o $(COVERAGE_DIR)/combined.lcov \
+		--ignore-errors unused \
+		--ignore-errors empty
 
 $(COVERAGE_DIR)/sbf.lcov: coverage-v2-sbf
 $(COVERAGE_DIR)/host.lcov: coverage-v2-host
