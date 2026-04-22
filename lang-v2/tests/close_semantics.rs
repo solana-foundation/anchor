@@ -121,7 +121,7 @@ fn close_zeros_the_48_byte_header() {
     setup_vault_buf(&mut buf);
 
     // Destination account to receive lamports.
-    let mut dest_buf = AccountBuffer::<256>::new();
+    let dest_buf = AccountBuffer::<256>::new();
     dest_buf.init([0xDD; 32], PROGRAM_ID, 0, false, true, false);
     dest_buf.set_lamports(100);
 
@@ -160,7 +160,7 @@ fn close_scrubs_discriminator_to_closed_sentinel() {
     let mut buf = AccountBuffer::<256>::new();
     setup_vault_buf(&mut buf);
 
-    let mut dest_buf = AccountBuffer::<256>::new();
+    let dest_buf = AccountBuffer::<256>::new();
     dest_buf.init([0xDD; 32], PROGRAM_ID, 0, false, true, false);
 
     let program_id = Address::new_from_array(PROGRAM_ID);
@@ -195,7 +195,7 @@ fn load_after_close_rejects_with_data_too_small() {
     let mut buf = AccountBuffer::<256>::new();
     setup_vault_buf(&mut buf);
 
-    let mut dest_buf = AccountBuffer::<256>::new();
+    let dest_buf = AccountBuffer::<256>::new();
     dest_buf.init([0xDD; 32], PROGRAM_ID, 0, false, true, false);
 
     let program_id = Address::new_from_array(PROGRAM_ID);
@@ -230,7 +230,7 @@ fn resurrected_account_reload_rejects_after_disc_scrub() {
     let mut buf = AccountBuffer::<256>::new();
     setup_vault_buf(&mut buf);
 
-    let mut dest_buf = AccountBuffer::<256>::new();
+    let dest_buf = AccountBuffer::<256>::new();
     dest_buf.init([0xDD; 32], PROGRAM_ID, 0, false, true, false);
 
     let program_id = Address::new_from_array(PROGRAM_ID);

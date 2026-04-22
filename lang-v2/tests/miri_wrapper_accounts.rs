@@ -23,7 +23,7 @@ const PROGRAM_ID: [u8; 32] = [0x42; 32];
 
 #[test]
 fn system_account_loads_for_system_owned() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init(
         [0x11; 32],
         /*owner*/ [0; 32], // System's ID is all-zero.
@@ -40,7 +40,7 @@ fn system_account_loads_for_system_owned() {
 
 #[test]
 fn system_account_rejects_non_system_owner() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([0x11; 32], PROGRAM_ID, 0, false, true, false);
     let view = unsafe { buf.view() };
     let program_id = Address::new_from_array(PROGRAM_ID);
@@ -52,7 +52,7 @@ fn system_account_rejects_non_system_owner() {
 #[test]
 fn unchecked_account_loads_for_any_owner() {
     for owner in [[0u8; 32], PROGRAM_ID, [0xFFu8; 32], [0x42u8; 32]] {
-        let mut buf = AccountBuffer::<256>::new();
+        let buf = AccountBuffer::<256>::new();
         buf.init([0x22; 32], owner, 0, false, true, false);
         let view = unsafe { buf.view() };
         let program_id = Address::new_from_array(PROGRAM_ID);
@@ -68,7 +68,7 @@ fn unchecked_account_loads_for_any_owner() {
 
 #[test]
 fn program_of_system_loads_when_address_matches_and_executable() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init(
         /*address = System::id()*/ [0; 32],
         [0; 32],
@@ -85,7 +85,7 @@ fn program_of_system_loads_when_address_matches_and_executable() {
 #[test]
 fn program_of_token_rejects_wrong_address() {
     // Buffer claims to be Token, but the address is actually System's.
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init(
         /*address*/ [0; 32], // System, not Token
         [0; 32],
@@ -103,7 +103,7 @@ fn program_of_token_rejects_wrong_address() {
 #[cfg(feature = "guardrails")]
 fn program_rejects_non_executable_account() {
     // Address matches System, but executable flag is false.
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([0; 32], [0; 32], 0, false, false, /*executable*/ false);
     let view = unsafe { buf.view() };
     let program_id = Address::new_from_array(PROGRAM_ID);
@@ -115,7 +115,7 @@ fn program_rejects_non_executable_account() {
 
 #[test]
 fn signer_loads_when_is_signer_set() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([0x33; 32], [0; 32], 0, /*signer*/ true, true, false);
     let view = unsafe { buf.view() };
     let program_id = Address::new_from_array(PROGRAM_ID);
@@ -125,7 +125,7 @@ fn signer_loads_when_is_signer_set() {
 
 #[test]
 fn signer_rejects_non_signer() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([0x33; 32], [0; 32], 0, /*signer*/ false, true, false);
     let view = unsafe { buf.view() };
     let program_id = Address::new_from_array(PROGRAM_ID);
@@ -142,8 +142,8 @@ fn signer_rejects_non_signer() {
 
 #[test]
 fn distinct_wrapper_types_on_distinct_buffers() {
-    let mut buf1 = AccountBuffer::<256>::new();
-    let mut buf2 = AccountBuffer::<256>::new();
+    let buf1 = AccountBuffer::<256>::new();
+    let buf2 = AccountBuffer::<256>::new();
     buf1.init([0x01; 32], [0; 32], 0, false, true, false);
     buf2.init([0x02; 32], PROGRAM_ID, 0, false, true, false);
 

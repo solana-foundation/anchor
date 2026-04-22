@@ -59,7 +59,7 @@ fn disc() -> [u8; 8] {
 }
 
 fn setup_counter_buffer() -> AccountBuffer<128> {
-    let mut buf = AccountBuffer::<128>::new();
+    let buf = AccountBuffer::<128>::new();
     // Layout: header + disc (8) + Counter (16) = small.
     let data_len = 8 + core::mem::size_of::<Counter>();
     buf.init(
@@ -82,7 +82,7 @@ fn setup_counter_buffer() -> AccountBuffer<128> {
 
 #[test]
 fn load_succeeds_with_correct_disc_and_owner() {
-    let mut buf = setup_counter_buffer();
+    let buf = setup_counter_buffer();
     let view = unsafe { buf.view() };
     let program_id = Address::new_from_array(PROGRAM_ID);
     let acct = CounterAccount::load(view, &program_id).unwrap();
@@ -92,7 +92,7 @@ fn load_succeeds_with_correct_disc_and_owner() {
 
 #[test]
 fn load_rejects_wrong_owner() {
-    let mut buf = setup_counter_buffer();
+    let buf = setup_counter_buffer();
     // Corrupt the owner — any value != PROGRAM_ID fails the check.
     buf.init(
         [0xAA; 32],
@@ -114,7 +114,7 @@ fn load_rejects_wrong_owner() {
 
 #[test]
 fn load_rejects_wrong_disc() {
-    let mut buf = AccountBuffer::<128>::new();
+    let buf = AccountBuffer::<128>::new();
     let data_len = 8 + core::mem::size_of::<Counter>();
     buf.init([0xAA; 32], PROGRAM_ID, data_len, false, true, false);
     // Write wrong discriminator.
@@ -137,7 +137,7 @@ fn load_rejects_wrong_disc() {
 
 #[test]
 fn load_mut_deref_mut_writes_propagate_to_bytes() {
-    let mut buf = setup_counter_buffer();
+    let buf = setup_counter_buffer();
     let view = unsafe { buf.view() };
     let program_id = Address::new_from_array(PROGRAM_ID);
 
@@ -161,7 +161,7 @@ fn load_mut_deref_mut_writes_propagate_to_bytes() {
 
 #[test]
 fn drop_mut_then_load_immutable_sees_writes() {
-    let mut buf = setup_counter_buffer();
+    let buf = setup_counter_buffer();
     let program_id = Address::new_from_array(PROGRAM_ID);
 
     {
@@ -179,7 +179,7 @@ fn drop_mut_then_load_immutable_sees_writes() {
 
 #[test]
 fn multiple_mut_load_cycles_preserve_state() {
-    let mut buf = setup_counter_buffer();
+    let buf = setup_counter_buffer();
     let program_id = Address::new_from_array(PROGRAM_ID);
 
     for i in 0u64..20 {

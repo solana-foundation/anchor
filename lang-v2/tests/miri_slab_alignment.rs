@@ -78,7 +78,7 @@ fn verify_header_disc_vector() {
 fn slab_align1_push_pop_roundtrip() {
     // HEADER_OFFSET=8, LEN_OFFSET=16, ITEMS_OFFSET=20 (align 1).
     // Capacity = 4: data_len = 20 + 16*4 = 84
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([0xAA; 32], PROGRAM_ID, 84, false, true, false);
 
     let mut data = [0u8; 84];
@@ -113,7 +113,7 @@ fn slab_align1_push_pop_roundtrip() {
 
 #[test]
 fn slab_align1_swap_remove_preserves_correctness() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([0xAA; 32], PROGRAM_ID, 84, false, true, false);
     let mut data = [0u8; 84];
     data[..8].copy_from_slice(&HEADER_DISC);

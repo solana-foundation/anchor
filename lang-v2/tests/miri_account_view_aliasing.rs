@@ -15,7 +15,7 @@ use anchor_lang_v2::testing::AccountBuffer;
 
 #[test]
 fn single_view_read_and_write_lamports() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([7; 32], [3; 32], 0, false, true, false);
     let mut view = unsafe { buf.view() };
     assert_eq!(view.lamports(), 100);
@@ -34,7 +34,7 @@ fn single_view_read_and_write_lamports() {
 
 #[test]
 fn two_copies_alias_same_runtime_account() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([1; 32], [0; 32], 0, false, true, false);
     let mut view_a = unsafe { buf.view() };
     let mut view_b = view_a; // Copy — aliases same raw pointer
@@ -55,7 +55,7 @@ fn two_copies_alias_same_runtime_account() {
 
 #[test]
 fn interleaved_mut_through_copies_cycles() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([2; 32], [0; 32], 0, false, true, false);
     let mut view_a = unsafe { buf.view() };
     let view_b = view_a;
@@ -81,7 +81,7 @@ fn interleaved_mut_through_copies_cycles() {
 
 #[test]
 fn shared_ref_read_while_copy_writes() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([5; 32], [0; 32], 0, false, true, false);
     let view_shared = unsafe { buf.view() };
     let mut view_mut_copy = view_shared;
@@ -101,7 +101,7 @@ fn shared_ref_read_while_copy_writes() {
 
 #[test]
 fn address_reference_stable_across_lamport_writes() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([0xAB; 32], [0; 32], 0, false, true, false);
     let view_a = unsafe { buf.view() };
     let mut view_b = view_a;
@@ -119,8 +119,8 @@ fn address_reference_stable_across_lamport_writes() {
 
 #[test]
 fn distinct_buffers_do_not_alias() {
-    let mut buf1 = AccountBuffer::<256>::new();
-    let mut buf2 = AccountBuffer::<256>::new();
+    let buf1 = AccountBuffer::<256>::new();
+    let buf2 = AccountBuffer::<256>::new();
     buf1.init([1; 32], [0; 32], 0, false, true, false);
     buf2.init([2; 32], [0; 32], 0, false, true, false);
 
@@ -144,7 +144,7 @@ fn distinct_buffers_do_not_alias() {
 
 #[test]
 fn borrow_state_byte_round_trip() {
-    let mut buf = AccountBuffer::<256>::new();
+    let buf = AccountBuffer::<256>::new();
     buf.init([1; 32], [0; 32], 0, false, true, false);
     buf.set_borrow_state(254); // simulate "one immutable borrow outstanding"
 
