@@ -39,39 +39,56 @@ fn parse_priority_fee_from_args(args: &[String]) -> Option<u64> {
         .and_then(|pair| pair[1].parse().ok())
 }
 
+fn find_workspace_root(start_dir: &Path) -> Result<Option<PathBuf>> {
+    let mut dir = Some(start_dir);
+
+    while let Some(path) = dir {
+        let cargo_toml_path = path.join("Cargo.toml");
+        if cargo_toml_path.exists() {
+            let cargo_content = fs::read_to_string(&cargo_toml_path)?;
+            let cargo_toml: toml::Value = toml::from_str(&cargo_content)?;
+
+            if cargo_toml.get("workspace").is_some() {
+                return Ok(Some(path.to_path_buf()));
+            }
+        }
+
+        dir = path.parent();
+    }
+
+    Ok(None)
+}
+
 /// Discover Solana programs from a non-Anchor Cargo workspace
 pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Program>> {
     let current_dir = std::env::current_dir()?;
+    let workspace_dir = find_workspace_root(&current_dir)?;
+    let manifest_dir = workspace_dir.as_ref().unwrap_or(&current_dir);
     let mut program_paths = Vec::new();
 
-    // Check if current directory has Cargo.toml
-    let cargo_toml_path = current_dir.join("Cargo.toml");
+    let cargo_toml_path = manifest_dir.join("Cargo.toml");
     if cargo_toml_path.exists() {
         let cargo_content = fs::read_to_string(&cargo_toml_path)?;
         let cargo_toml: toml::Value = toml::from_str(&cargo_content)?;
 
-        // Check if it's a workspace Cargo.toml
         if let Some(workspace) = cargo_toml.get("workspace") {
-            // It's a workspace - iterate over members
             if let Some(members) = workspace.get("members").and_then(|m| m.as_array()) {
                 for member in members {
                     if let Some(member_path) = member.as_str() {
-                        let full_path = current_dir.join(member_path);
+                        let full_path = manifest_dir.join(member_path);
                         if full_path.is_dir() && full_path.join("Cargo.toml").exists() {
                             program_paths.push(full_path);
                         }
                     }
                 }
             }
-        } else if is_solana_program(&current_dir)? {
-            // It's a single program Cargo.toml with cdylib - use current directory
+        } else if is_solana_program(manifest_dir)? {
             program_paths.push(current_dir.clone());
         }
     }
 
-    // If no programs found yet, fallback to looking in programs/ directory
     if program_paths.is_empty() {
-        let programs_dir = current_dir.join("programs");
+        let programs_dir = manifest_dir.join("programs");
         if programs_dir.is_dir() {
             for entry in fs::read_dir(programs_dir)? {
                 let entry = entry?;
@@ -83,7 +100,6 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
         }
     }
 
-    // Filter to only Solana programs and build Program structs
     let mut programs = Vec::new();
     for path in program_paths {
         if !is_solana_program(&path)? {
@@ -93,7 +109,6 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
         let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
         let lib_name = cargo.lib_name()?;
 
-        // Check if this is the program we're looking for (if name specified)
         if let Some(ref name) = program_name {
             let matches = *name == lib_name || *name == path.file_name().unwrap().to_str().unwrap();
             if !matches {
@@ -101,7 +116,6 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
             }
         }
 
-        // Try to read IDL if it exists (will be None for non-Anchor programs)
         let idl_filepath = target_dir()?
             .join("idl")
             .join(&lib_name)
@@ -2005,4 +2019,114 @@ fn send_messages_in_batches(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        std::{
+            collections::BTreeSet,
+            env, fs,
+            path::{Path, PathBuf},
+            sync::{Mutex, OnceLock},
+        },
+        tempfile::tempdir,
+    };
+
+    struct CurrentDirGuard(PathBuf);
+
+    impl Drop for CurrentDirGuard {
+        fn drop(&mut self) {
+            env::set_current_dir(&self.0).unwrap();
+        }
+    }
+
+    fn in_dir<T>(path: &Path, f: impl FnOnce() -> T) -> T {
+        let guard = CurrentDirGuard(env::current_dir().unwrap());
+        env::set_current_dir(path).unwrap();
+        let result = f();
+        drop(guard);
+        result
+    }
+
+    fn write_file(path: &Path, contents: &str) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents).unwrap();
+    }
+
+    fn create_program(root: &Path, name: &str) {
+        write_file(
+            &root.join("Cargo.toml"),
+            &format!(
+                r#"[package]
+name = "{name}"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+"#
+            ),
+        );
+        write_file(&root.join("src").join("lib.rs"), "");
+    }
+
+    fn create_workspace(root: &Path) {
+        write_file(
+            &root.join("Cargo.toml"),
+            r#"[workspace]
+members = ["programs/*"]
+resolver = "2"
+"#,
+        );
+        create_program(&root.join("programs").join("foo"), "foo");
+        create_program(&root.join("programs").join("bar"), "bar");
+    }
+
+    fn current_dir_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn discover_solana_programs_finds_sibling_programs_from_nested_member() {
+        let _lock = current_dir_lock().lock().unwrap();
+        let dir = tempdir().unwrap();
+        create_workspace(dir.path());
+
+        let root_programs = in_dir(dir.path(), || {
+            discover_solana_programs(Some("bar".into())).unwrap()
+        });
+        let nested_programs = in_dir(&dir.path().join("programs").join("foo"), || {
+            discover_solana_programs(Some("bar".into())).unwrap()
+        });
+
+        assert_eq!(root_programs.len(), 1);
+        assert_eq!(nested_programs.len(), 1);
+        assert_eq!(root_programs[0].lib_name, "bar");
+        assert_eq!(nested_programs[0].lib_name, "bar");
+        assert_eq!(root_programs[0].path, nested_programs[0].path);
+    }
+
+    #[test]
+    fn discover_solana_programs_lists_all_members_from_nested_member() {
+        let _lock = current_dir_lock().lock().unwrap();
+        let dir = tempdir().unwrap();
+        create_workspace(dir.path());
+
+        let programs = in_dir(&dir.path().join("programs").join("foo"), || {
+            discover_solana_programs(None).unwrap()
+        });
+
+        let names = programs
+            .into_iter()
+            .map(|program| program.lib_name)
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(
+            names,
+            BTreeSet::from(["bar".to_string(), "foo".to_string()])
+        );
+    }
 }
