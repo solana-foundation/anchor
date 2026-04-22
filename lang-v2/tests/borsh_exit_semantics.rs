@@ -176,8 +176,6 @@ fn reacquire_refreshes_self_data_from_cpi_changes() {
          buffer — the CPI's write of 777 is reflected, not clobbered"
     );
 
-    acct.exit().unwrap();
-
     // Post-fix: exit() runs on refreshed self.data (777), so the CPI's
     // change persists. If the user wanted to override with 100 instead,
     // they should modify self.value after reacquire.
@@ -230,8 +228,9 @@ fn reacquire_rejects_when_discriminator_changes_during_release() {
 // Even with disc + payload still valid, a released-window CPI could
 // transfer the account to a different owner. Without an owner check,
 // `reacquire_borrow_mut` would silently accept the now-foreign-owned
-// account as `BorshAccount<T>`. Post-fix: `expected_owner` is captured
-// at load time and re-checked on reacquire.
+// account as `BorshAccount<T>`. Post-fix: the caller passes `program_id`
+// into `reacquire_borrow_mut`, which re-runs `view.owned_by(&T::owner(program_id))`
+// against the live header.
 
 #[test]
 fn reacquire_rejects_when_owner_changes_during_release() {
@@ -254,9 +253,8 @@ fn reacquire_rejects_when_owner_changes_during_release() {
         result.err(),
         Some(ProgramError::IllegalOwner),
         "reacquire_borrow_mut must reject when the on-chain owner no \
-         longer matches the owner captured at load — otherwise the \
-         program continues holding BorshAccount<T> over a foreign-owned \
-         account."
+         longer matches `T::owner(program_id)` — otherwise the program \
+         continues holding BorshAccount<T> over a foreign-owned account."
     );
 }
 
