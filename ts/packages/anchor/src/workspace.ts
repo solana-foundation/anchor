@@ -5,6 +5,29 @@ import { Program } from "./program/index.js";
 import { isBrowser } from "./utils/common.js";
 import { Idl } from "./idl.js";
 
+let cargoTargetDirectoryCache: string | undefined;
+
+function getCargoTargetDirectory(): string {
+  if (cargoTargetDirectoryCache !== undefined) {
+    return cargoTargetDirectoryCache;
+  }
+  let metadata: { target_directory: string };
+  try {
+    const output = execSync("cargo metadata --no-deps --format-version=1", {
+      encoding: "utf8",
+    });
+    metadata = JSON.parse(output);
+  } catch (err) {
+    throw new Error(
+      `Failed to run 'cargo metadata'. Ensure Rust and Cargo are installed and the project is valid.\nOriginal error: ${
+        err instanceof Error ? err.message : err
+      }`
+    );
+  }
+  cargoTargetDirectoryCache = metadata.target_directory;
+  return cargoTargetDirectoryCache;
+}
+
 /**
  * The `workspace` namespace provides a convenience API to automatically
  * search for and deserialize [[Program]] objects defined by compiled IDLs
@@ -55,23 +78,7 @@ const workspace = new Proxy(
         //
         // To avoid the above problem with numbers, read the `idl` directory and
         // compare the camelCased  version of both file names and `programName`.
-        let metadata: { target_directory: string };
-        try {
-          const output = execSync(
-            "cargo metadata --no-deps --format-version=1",
-            {
-              encoding: "utf8",
-            }
-          );
-          metadata = JSON.parse(output);
-        } catch (err) {
-          throw new Error(
-            `Failed to run 'cargo metadata'. Ensure Rust and Cargo are installed and the project is valid.\nOriginal error: ${
-              err instanceof Error ? err.message : err
-            }`
-          );
-        }
-        const idlDirPath = path.join(metadata.target_directory, "idl");
+        const idlDirPath = path.join(getCargoTargetDirectory(), "idl");
         const fileName = fs
           .readdirSync(idlDirPath)
           .find((name) => camelcase(path.parse(name).name) === programName);
