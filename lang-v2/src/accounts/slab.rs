@@ -42,8 +42,8 @@ pub(super) fn cold_not_writable() -> ProgramError {
 ///
 /// Factored out of `Slab::capacity` as a free `const fn` so the Kani proofs
 /// below (`capacity_never_underflows`, `capacity_fits_within_data_len`,
-/// `as_slice_bound_fits_after_clamp`) can reason about it in isolation
-/// from `Slab`'s generic plumbing.
+/// `clamp_never_exceeds_capacity`) can reason about it in isolation from
+/// `Slab`'s generic plumbing.
 #[inline(always)]
 const fn capacity_for(data_len: usize, items_offset: usize, item_size: usize) -> usize {
     if data_len < items_offset {
@@ -827,26 +827,29 @@ mod kani_proofs {
         assert!(items_offset + capacity * item_size <= data_len);
     }
 
-    // Slice-bounds invariant for any raw `len` (possibly > capacity from
-    // a retained Slab whose buffer was shrunk externally). Verifies the
-    // `.min(...)` clamp in `as_slice` keeps the slice in-bounds.
+    // The `.min(capacity)` clamp in `Slab::as_slice`'s `effective_len`
+    // never exceeds `capacity`, regardless of the raw stored `len` (which
+    // may exceed `capacity` when a retained Slab's buffer has been shrunk
+    // externally via `realloc_account`).
+    //
+    // Combined with `capacity_fits_within_data_len`:
+    //   `clamped_len ≤ capacity`
+    //   ∧  `items_offset + capacity * item_size ≤ data_len`
+    //   ⟹  `items_offset + clamped_len * item_size ≤ data_len`
+    // — the slice-bounds invariant that `as_slice` depends on. The
+    // compositional form avoids a single harness with two symbolic
+    // multiplications + a conditional; CBMC on the Kani 0.67.0 Linux
+    // bundle aborts on that encoding before Z3 even runs (macOS bundle
+    // is fine), and the issue surfaces as an unparseable `ERROR` status
+    // that panics `kani-driver`.
     #[kani::proof]
-    #[kani::solver(z3)]
-    fn as_slice_bound_fits_after_clamp() {
-        let data_len: usize = kani::any();
-        let items_offset: usize = kani::any();
-        let item_size: usize = kani::any();
+    fn clamp_never_exceeds_capacity() {
+        let capacity: usize = kani::any();
         let raw_len: usize = kani::any();
-        kani::assume(item_size > 0);
-        kani::assume(data_len <= DATA_LEN_MAX);
-        kani::assume(items_offset <= OFFSET_MAX);
-        kani::assume(item_size <= ITEM_SIZE_MAX);
-        kani::assume(data_len >= items_offset);
+        kani::assume(capacity <= DATA_LEN_MAX);
         kani::assume(raw_len <= DATA_LEN_MAX);
-
-        let capacity = capacity_for(data_len, items_offset, item_size);
         let clamped_len = if raw_len < capacity { raw_len } else { capacity };
-        assert!(items_offset + clamped_len * item_size <= data_len);
+        assert!(clamped_len <= capacity);
     }
 }
 
