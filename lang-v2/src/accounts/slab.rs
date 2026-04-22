@@ -35,6 +35,24 @@ pub(super) fn cold_not_writable() -> ProgramError {
     ProgramError::InvalidAccountData
 }
 
+/// Capacity from live `data_len` / `items_offset` / `item_size`. Returns 0
+/// when `data_len < items_offset` to guard against underflow if an external
+/// `realloc_account` shrinks the buffer while a `Slab` is retained. Caller
+/// must ensure `item_size > 0` (`Slab` skips this for ZST items).
+///
+/// Factored out of `Slab::capacity` as a free `const fn` so the Kani proofs
+/// below (`capacity_never_underflows`, `capacity_fits_within_data_len`,
+/// `as_slice_bound_fits_after_clamp`) can reason about it in isolation
+/// from `Slab`'s generic plumbing.
+#[inline(always)]
+const fn capacity_for(data_len: usize, items_offset: usize, item_size: usize) -> usize {
+    if data_len < items_offset {
+        0
+    } else {
+        (data_len - items_offset) / item_size
+    }
+}
+
 /// `Account<H>` / `BorshAccount<H>` get `AccountInitialize` for free by
 /// running `H::SlabInit::create_and_initialize(...)` and then loading.
 impl<H, T> AccountInitialize for Slab<H, T>
@@ -399,10 +417,11 @@ where
     /// account below the Slab's structural minimum).
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        self.view
-            .data_len()
-            .saturating_sub(Self::ITEMS_OFFSET)
-            / core::mem::size_of::<T>()
+        capacity_for(
+            self.view.data_len(),
+            Self::ITEMS_OFFSET,
+            core::mem::size_of::<T>(),
+        )
     }
 
     /// Live `len` clamped to current `capacity`. The stored `len` may
@@ -758,6 +777,76 @@ where
     const __IDL_TYPE: Option<&'static str> = H::__IDL_TYPE;
     fn __register_idl_deps(types: &mut ::alloc::vec::Vec<&'static str>) {
         H::__register_idl_deps(types);
+    }
+}
+
+// Kani proofs for the `capacity_for` helper, which backs `Slab::capacity`
+// and therefore every slice-bounds computation in the tail-region
+// accessors (`as_slice`, `as_mut_slice`, push/pop/swap_remove). Proving
+// these invariants on the free function means any regression to the
+// production formula (e.g. replacing the `data_len < items_offset` guard
+// with a raw subtract) will break CBMC/Z3's proof obligations.
+#[cfg(kani)]
+mod kani_proofs {
+    use super::capacity_for;
+
+    // Generous bounds on the symbolic inputs — well above any realistic
+    // Slab account, but tight enough for CBMC/Z3 to converge.
+    const DATA_LEN_MAX: usize = 1 << 16;
+    const OFFSET_MAX: usize = 1024;
+    const ITEM_SIZE_MAX: usize = 1024;
+
+    // `capacity_for` never panics or wraps for any valid input.
+    #[kani::proof]
+    fn capacity_never_underflows() {
+        let data_len: usize = kani::any();
+        let items_offset: usize = kani::any();
+        let item_size: usize = kani::any();
+        kani::assume(item_size > 0);
+        kani::assume(data_len <= DATA_LEN_MAX);
+        kani::assume(items_offset <= OFFSET_MAX);
+        kani::assume(item_size <= ITEM_SIZE_MAX);
+        let _ = capacity_for(data_len, items_offset, item_size);
+    }
+
+    // Normal case: `items_offset + capacity * item_size <= data_len` —
+    // the invariant `as_slice`'s slice-bounds depends on. Z3 because
+    // symbolic `usize` multiplication chokes CBMC.
+    #[kani::proof]
+    #[kani::solver(z3)]
+    fn capacity_fits_within_data_len() {
+        let data_len: usize = kani::any();
+        let items_offset: usize = kani::any();
+        let item_size: usize = kani::any();
+        kani::assume(item_size > 0);
+        kani::assume(data_len <= DATA_LEN_MAX);
+        kani::assume(items_offset <= OFFSET_MAX);
+        kani::assume(item_size <= ITEM_SIZE_MAX);
+        kani::assume(data_len >= items_offset);
+        let capacity = capacity_for(data_len, items_offset, item_size);
+        assert!(items_offset + capacity * item_size <= data_len);
+    }
+
+    // Slice-bounds invariant for any raw `len` (possibly > capacity from
+    // a retained Slab whose buffer was shrunk externally). Verifies the
+    // `.min(...)` clamp in `as_slice` keeps the slice in-bounds.
+    #[kani::proof]
+    #[kani::solver(z3)]
+    fn as_slice_bound_fits_after_clamp() {
+        let data_len: usize = kani::any();
+        let items_offset: usize = kani::any();
+        let item_size: usize = kani::any();
+        let raw_len: usize = kani::any();
+        kani::assume(item_size > 0);
+        kani::assume(data_len <= DATA_LEN_MAX);
+        kani::assume(items_offset <= OFFSET_MAX);
+        kani::assume(item_size <= ITEM_SIZE_MAX);
+        kani::assume(data_len >= items_offset);
+        kani::assume(raw_len <= DATA_LEN_MAX);
+
+        let capacity = capacity_for(data_len, items_offset, item_size);
+        let clamped_len = if raw_len < capacity { raw_len } else { capacity };
+        assert!(items_offset + clamped_len * item_size <= data_len);
     }
 }
 
