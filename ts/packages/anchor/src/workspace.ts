@@ -7,6 +7,63 @@ import { Idl } from "./idl.js";
 
 let cargoTargetDirectoryCache: string | undefined;
 
+/**
+ * Resolves the IDL file name in `idlDirPath` matching `programName`
+ * (already camelCased). Throws a descriptive error if the directory
+ * is missing, empty, or no match is found.
+ */
+export function resolveIdlFileName(
+  idlDirPath: string,
+  programName: string
+): string {
+  const fs = require("fs");
+  const path = require("path");
+
+  let dirEntries: string[];
+  try {
+    dirEntries = fs.readdirSync(idlDirPath);
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      throw new Error(
+        `IDL directory not found at \`${idlDirPath}\`. Did you run \`anchor build\`?`
+      );
+    }
+    throw err;
+  }
+
+  const jsonFiles = dirEntries.filter(
+    (name: string) =>
+      path.extname(name) === ".json" &&
+      fs.statSync(path.join(idlDirPath, name)).isFile()
+  );
+
+  const fileName = jsonFiles.find(
+    (name: string) => camelcase(path.parse(name).name) === programName
+  );
+
+  if (!fileName) {
+    if (jsonFiles.length === 0) {
+      throw new Error(
+        `No IDL files found in \`${idlDirPath}\`. Did you run \`anchor build\`?`
+      );
+    }
+    const available = jsonFiles
+      .map((n: string) => path.parse(n).name)
+      .sort()
+      .join(", ");
+    throw new Error(
+      `Failed to find IDL for program \`${programName}\`.\n` +
+        `Available programs in \`${idlDirPath}\`: ${available}\n` +
+        `Ensure the following all use the same snake_case name:\n` +
+        `  - \`[lib].name\` in Cargo.toml\n` +
+        `  - \`#[program]\` module name in your Rust program\n` +
+        `  - Program key in Anchor.toml under \`[programs.<cluster>]\``
+    );
+  }
+
+  return fileName;
+}
+
 function getCargoTargetDirectory(): string {
   if (cargoTargetDirectoryCache !== undefined) {
     return cargoTargetDirectoryCache;
@@ -79,49 +136,7 @@ const workspace = new Proxy(
         // To avoid the above problem with numbers, read the `idl` directory and
         // compare the camelCased  version of both file names and `programName`.
         const idlDirPath = path.join(getCargoTargetDirectory(), "idl");
-
-        let dirEntries: string[];
-        try {
-          dirEntries = fs.readdirSync(idlDirPath);
-        } catch (err: any) {
-          if (err.code === "ENOENT") {
-            throw new Error(
-              `IDL directory not found at \`${idlDirPath}\`. Did you run \`anchor build\`?`
-            );
-          }
-          throw err;
-        }
-
-        const jsonFiles = dirEntries.filter(
-          (name) =>
-            path.extname(name) === ".json" &&
-            fs.statSync(path.join(idlDirPath, name)).isFile()
-        );
-
-        const fileName = jsonFiles.find(
-          (name) => camelcase(path.parse(name).name) === programName
-        );
-
-        if (!fileName) {
-          if (jsonFiles.length === 0) {
-            throw new Error(
-              `No IDL files found in \`${idlDirPath}\`. Did you run \`anchor build\`?`
-            );
-          }
-          const available = jsonFiles
-            .map((n) => path.parse(n).name)
-            .sort()
-            .join(", ");
-          throw new Error(
-            `Failed to find IDL for program \`${programName}\`.\n` +
-              `Available programs in \`${idlDirPath}\`: ${available}\n` +
-              `Ensure the following all use the same snake_case name:\n` +
-              `  - \`[lib].name\` in Cargo.toml\n` +
-              `  - \`#[program]\` module name in your Rust program\n` +
-              `  - Program key in Anchor.toml under \`[programs.<cluster>]\``
-          );
-        }
-
+        const fileName = resolveIdlFileName(idlDirPath, programName);
         idlPath = path.join(idlDirPath, fileName);
       }
 
