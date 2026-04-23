@@ -21,7 +21,7 @@ As a general rule of thumb, we will look to these questions to evaluate eligibil
 
 Regardless, if you think you have an issue, we'd like to hear about it.
 
-For bugs that affect production code, we will pay up to $X according to the following guidelines. This is exclusive to any bounties claimed from the protocol. In other words, reports can't double-dip.
+For bugs that affect production code, we will pay up to X SOL tokens according to the following guidelines. This is exclusive to any bounties claimed from the protocol. In other words, reports can't double-dip.
 
 ---
 
@@ -71,17 +71,17 @@ At its sole discretion, the Solana Foundation may offer a bounty for valid repor
 _Note: Payments will continue to be paid out in 12-month locked SOL._
 
 #### Critical:
-_Max: $100k in SOL tokens. Min: $10k in SOL tokens_
+_Max: 1176 SOL tokens. Min: 118 SOL tokens_
 
 * Bypassing fundamental Anchor checks, such as account ownership, discriminator, memory safety, etc.
 
 #### Medium:
-_Max: $25k in SOL tokens. Min: $5k in SOL tokens_
+_Max: 294 SOL tokens. Min: 59 SOL tokens_
 
 * Denial of service attacks
 
 #### Low:
-_Max: $5k in SOL tokens. Min: $100 in SOL tokens_
+_Max: 59 SOL tokens. Min: 1 SOL tokens_
 
 * All remaining issues
 * Attacks to devex infrastructure

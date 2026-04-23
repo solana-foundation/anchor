@@ -1,6 +1,6 @@
 {
   "name": "@anchor-lang/cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Anchor CLI tool",
   "homepage": "https://github.com/solana-foundation/anchor#readme",
   "bugs": {
