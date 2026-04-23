@@ -1,6 +1,6 @@
 use {
     crate::{
-        config::{Config, Manifest, Program, WithPath},
+        config::{Config, Program, WithPath},
         target_dir, ConfigOverride, ProgramCommand,
     },
     anchor_lang_idl::types::Idl,
@@ -49,13 +49,12 @@ fn discover_cargo_metadata(start_dir: &Path) -> Result<Option<Metadata>> {
         .exec()
     {
         Ok(metadata) => Ok(Some(metadata)),
-        Err(err) => {
-            let err = err.to_string();
-            if err.contains("could not find `Cargo.toml`") {
+        Err(cargo_metadata::Error::CargoMetadata { stderr }) => {
+            if stderr.contains("could not find `Cargo.toml`") {
                 return Ok(None);
             }
-            if !err.contains("current package believes it's in a workspace when it's not") {
-                bail!(err);
+            if !stderr.contains("current package believes it's in a workspace when it's not") {
+                bail!(stderr);
             }
             let Some(manifest_dir) = current_manifest_dir(start_dir)? else {
                 return Ok(None);
@@ -65,16 +64,17 @@ fn discover_cargo_metadata(start_dir: &Path) -> Result<Option<Metadata>> {
             };
             match MetadataCommand::new().current_dir(parent).no_deps().exec() {
                 Ok(metadata) => Ok(Some(metadata)),
-                Err(err) => {
-                    let err = err.to_string();
-                    if err.contains("could not find `Cargo.toml`") {
+                Err(cargo_metadata::Error::CargoMetadata { stderr }) => {
+                    if stderr.contains("could not find `Cargo.toml`") {
                         Ok(None)
                     } else {
-                        bail!(err);
+                        bail!(stderr);
                     }
                 }
+                Err(err) => Err(err.into()),
             }
         }
+        Err(err) => Err(err.into()),
     }
 }
 
@@ -108,10 +108,16 @@ fn manifest_lib_name(cargo_toml: &toml::Value) -> Result<String> {
     }
 }
 
-fn current_program_candidate(start_dir: &Path) -> Result<Option<(PathBuf, String)>> {
+fn current_program_candidate(
+    start_dir: &Path,
+    candidates: &BTreeMap<PathBuf, String>,
+) -> Result<Option<(PathBuf, String)>> {
     let Some(path) = current_manifest_dir(start_dir)? else {
         return Ok(None);
     };
+    if candidates.contains_key(path.as_path()) {
+        return Ok(None);
+    }
     let cargo_toml = read_cargo_toml(&path)?;
     if is_solana_program(&cargo_toml) {
         return Ok(Some((path, manifest_lib_name(&cargo_toml)?)));
@@ -135,11 +141,12 @@ fn current_manifest_dir(start_dir: &Path) -> Result<Option<PathBuf>> {
     Ok(None)
 }
 
-/// Discover Solana programs from a non-Anchor Cargo workspace
-pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Program>> {
-    let current_dir = std::env::current_dir()?;
+fn discover_solana_programs_from_path(
+    current_dir: &Path,
+    program_name: Option<String>,
+) -> Result<Vec<Program>> {
     let mut candidates = BTreeMap::new();
-    let metadata = discover_cargo_metadata(&current_dir)?;
+    let metadata = discover_cargo_metadata(current_dir)?;
 
     if let Some(metadata) = &metadata {
         let workspace_members = metadata.workspace_members.iter().collect::<HashSet<_>>();
@@ -158,7 +165,7 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
         }
     }
 
-    if let Some((path, lib_name)) = current_program_candidate(&current_dir)? {
+    if let Some((path, lib_name)) = current_program_candidate(current_dir, &candidates)? {
         candidates.entry(path).or_insert(lib_name);
     }
 
@@ -172,8 +179,10 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
                 let entry = entry?;
                 let path = entry.path();
                 if path.is_dir() && path.join("Cargo.toml").exists() {
-                    let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
-                    candidates.insert(path, cargo.lib_name()?);
+                    let cargo_toml = read_cargo_toml(&path)?;
+                    if is_solana_program(&cargo_toml) {
+                        candidates.insert(path, manifest_lib_name(&cargo_toml)?);
+                    }
                 }
             }
         }
@@ -206,18 +215,23 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
     Ok(programs)
 }
 
+/// Discover Solana programs from a non-Anchor Cargo workspace
+pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Program>> {
+    discover_solana_programs_from_path(&std::env::current_dir()?, program_name)
+}
+
 /// Check if a given Cargo project is a Solana program
 /// A deployable Solana program must have crate-type = ["cdylib", ...]
 fn is_solana_program(cargo_toml: &toml::Value) -> bool {
-    if let Some(lib) = cargo_toml.get("lib") {
-        if let Some(crate_type) = lib.get("crate-type").and_then(|ct| ct.as_array()) {
-            if crate_type.iter().any(|ct| ct.as_str() == Some("cdylib")) {
-                return true;
-            }
-        }
-    }
-
-    false
+    cargo_toml
+        .get("lib")
+        .and_then(|lib| lib.get("crate-type"))
+        .and_then(|crate_type| crate_type.as_array())
+        .is_some_and(|crate_types| {
+            crate_types
+                .iter()
+                .any(|crate_type| crate_type.as_str() == Some("cdylib"))
+        })
 }
 
 /// Get programs from workspace (Anchor or non-Anchor)
@@ -2087,30 +2101,9 @@ fn send_messages_in_batches(
 mod tests {
     use {
         super::*,
-        std::{
-            collections::BTreeSet,
-            env, fs,
-            path::{Path, PathBuf},
-            sync::{Mutex, OnceLock},
-        },
+        std::{collections::BTreeSet, fs, path::Path},
         tempfile::tempdir,
     };
-
-    struct CurrentDirGuard(PathBuf);
-
-    impl Drop for CurrentDirGuard {
-        fn drop(&mut self) {
-            env::set_current_dir(&self.0).unwrap();
-        }
-    }
-
-    fn in_dir<T>(path: &Path, f: impl FnOnce() -> T) -> T {
-        let guard = CurrentDirGuard(env::current_dir().unwrap());
-        env::set_current_dir(path).unwrap();
-        let result = f();
-        drop(guard);
-        result
-    }
 
     fn write_file(path: &Path, contents: &str) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -2160,23 +2153,18 @@ resolver = "2"
         create_program(&root.join("programs").join("bar"), "bar");
     }
 
-    fn current_dir_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
-
     #[test]
     fn discover_solana_programs_finds_sibling_programs_from_nested_member() {
-        let _lock = current_dir_lock().lock().unwrap();
         let dir = tempdir().unwrap();
         create_workspace(dir.path());
 
-        let root_programs = in_dir(dir.path(), || {
-            discover_solana_programs(Some("bar".into())).unwrap()
-        });
-        let nested_programs = in_dir(&dir.path().join("programs").join("foo"), || {
-            discover_solana_programs(Some("bar".into())).unwrap()
-        });
+        let root_programs =
+            discover_solana_programs_from_path(dir.path(), Some("bar".into())).unwrap();
+        let nested_programs = discover_solana_programs_from_path(
+            &dir.path().join("programs").join("foo"),
+            Some("bar".into()),
+        )
+        .unwrap();
 
         assert_eq!(root_programs.len(), 1);
         assert_eq!(nested_programs.len(), 1);
@@ -2187,13 +2175,12 @@ resolver = "2"
 
     #[test]
     fn discover_solana_programs_lists_all_members_from_nested_member() {
-        let _lock = current_dir_lock().lock().unwrap();
         let dir = tempdir().unwrap();
         create_workspace(dir.path());
 
-        let programs = in_dir(&dir.path().join("programs").join("foo"), || {
-            discover_solana_programs(None).unwrap()
-        });
+        let programs =
+            discover_solana_programs_from_path(&dir.path().join("programs").join("foo"), None)
+                .unwrap();
 
         let names = programs
             .into_iter()
@@ -2208,14 +2195,13 @@ resolver = "2"
 
     #[test]
     fn discover_solana_programs_includes_current_program_outside_workspace_members() {
-        let _lock = current_dir_lock().lock().unwrap();
         let dir = tempdir().unwrap();
         create_workspace(dir.path());
         create_program(&dir.path().join("tools").join("baz"), "baz");
 
-        let programs = in_dir(&dir.path().join("tools").join("baz"), || {
-            discover_solana_programs(None).unwrap()
-        });
+        let programs =
+            discover_solana_programs_from_path(&dir.path().join("tools").join("baz"), None)
+                .unwrap();
 
         let names = programs
             .into_iter()
@@ -2230,14 +2216,13 @@ resolver = "2"
 
     #[test]
     fn discover_solana_programs_from_nonmember_crate_keeps_workspace_members() {
-        let _lock = current_dir_lock().lock().unwrap();
         let dir = tempdir().unwrap();
         create_workspace(dir.path());
         create_library(&dir.path().join("tools").join("helper"), "helper");
 
-        let programs = in_dir(&dir.path().join("tools").join("helper"), || {
-            discover_solana_programs(None).unwrap()
-        });
+        let programs =
+            discover_solana_programs_from_path(&dir.path().join("tools").join("helper"), None)
+                .unwrap();
 
         let names = programs
             .into_iter()
