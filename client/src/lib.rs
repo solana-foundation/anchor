@@ -541,9 +541,6 @@ pub fn extract_simulation_logs(err: &SolanaClientError) -> Option<Vec<String>> {
 
 /// Convert a [`SolanaClientError`] into the richest [`ClientError`] variant
 /// available.
-fn to_client_error(err: SolanaClientError) -> ClientError {
-    ClientError::SolanaClientError(Box::new(err))
-}
 
 pub trait AsSigner {
     fn as_signer(&self) -> &dyn Signer;
@@ -806,7 +803,8 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         self.internal_rpc_client
             .send_and_confirm_transaction(&tx)
             .await
-            .map_err(to_client_error)
+            .map_err(Box::new)
+            .map_err(Into::into)
     }
 
     async fn send_with_spinner_and_config_internal(
@@ -828,7 +826,8 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
                 config,
             )
             .await
-            .map_err(to_client_error)
+            .map_err(Box::new)
+            .map_err(Into::into)
     }
 }
 
@@ -959,7 +958,7 @@ mod tests {
             "Program log: Error Message: custom error".to_string(),
         ];
         let err = make_preflight_error(logs.clone());
-        let client_err = to_client_error(err);
+        let client_err = ClientError::SolanaClientError(Box::new(err));
         let display = format!("{client_err}");
         for log in &logs {
             assert!(
