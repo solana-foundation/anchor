@@ -12,7 +12,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Features
 
-- [client] Added `SolanaClientPreflightError` to surface program logs during preflight failures.
+- client: Added `extract_simulation_logs` method to surface program logs during preflight failures.
 
 - ts: Add `decodeIdlAccountRaw` ([#4375](https://github.com/solana-foundation/anchor/pull/4375)).
 - cli: Add `--stdout` flag to the `expand` command ([#4400](https://github.com/solana-foundation/anchor/pull/4400)).

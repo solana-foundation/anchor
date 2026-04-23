@@ -803,8 +803,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         self.internal_rpc_client
             .send_and_confirm_transaction(&tx)
             .await
-            .map_err(Box::new)
-            .map_err(Into::into)
+            .map_err(|e| Box::new(e).into())
     }
 
     async fn send_with_spinner_and_config_internal(
@@ -826,8 +825,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
                 config,
             )
             .await
-            .map_err(Box::new)
-            .map_err(Into::into)
+            .map_err(|e| Box::new(e).into())
     }
 }
 
