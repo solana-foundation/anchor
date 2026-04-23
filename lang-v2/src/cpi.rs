@@ -19,6 +19,13 @@ const MAX_SAFE_SPACE: u64 = (u64::MAX / DEFAULT_LAMPORTS_PER_BYTE) - ACCOUNT_STO
 #[cfg(feature = "account-resize")]
 const SYSTEM_TRANSFER_VARIANT: u8 = 2;
 
+// Pin the protocol-mandated discriminant at compile time. Without this,
+// the wire-format Kani harness below would still pass if someone edited
+// `SYSTEM_TRANSFER_VARIANT` (both sides of its byte-equality reference
+// the same constant).
+#[cfg(feature = "account-resize")]
+const _: () = assert!(SYSTEM_TRANSFER_VARIANT == 2);
+
 /// Encode a System program `Transfer` instruction body.
 ///
 /// Extracted as a pure helper so the Kani harness in this module can verify
@@ -554,6 +561,29 @@ pub fn realloc_account(
     Ok(())
 }
 
+#[cfg(all(test, feature = "const-rent"))]
+mod const_rent_tests {
+    use super::*;
+
+    // `space > MAX_SAFE_SPACE` must short-circuit to an error before the
+    // formula runs. Covered by unit test because the branch is boolean —
+    // a couple of boundary values suffice and Kani adds no value.
+    #[test]
+    fn rejects_oversized_space() {
+        assert!(rent_exempt_lamports(MAX_SAFE_SPACE as usize + 1).is_err());
+        assert!(rent_exempt_lamports(usize::MAX).is_err());
+    }
+
+    // Base case: space == 0 charges only the fixed storage overhead.
+    #[test]
+    fn zero_space_returns_overhead_only() {
+        assert_eq!(
+            rent_exempt_lamports(0).unwrap(),
+            ACCOUNT_STORAGE_OVERHEAD * DEFAULT_LAMPORTS_PER_BYTE,
+        );
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Kani proofs — CPI helper invariants
 // ---------------------------------------------------------------------------
@@ -561,14 +591,6 @@ pub fn realloc_account(
 #[cfg(all(kani, feature = "const-rent"))]
 mod kani_proofs_const_rent {
     use super::*;
-
-    // Baseline: rent_exempt_lamports rejects space > MAX_SAFE_SPACE.
-    #[kani::proof]
-    fn rejects_oversized_space() {
-        let space: usize = kani::any();
-        kani::assume(space as u64 > MAX_SAFE_SPACE);
-        assert!(rent_exempt_lamports(space).is_err());
-    }
 
     // For accepted inputs, the wrapping_mul does not actually wrap.
     // The comment "Bounded by MAX_SAFE_SPACE → no overflow" is load-bearing.
@@ -592,13 +614,6 @@ mod kani_proofs_const_rent {
     fn boundary_space_value_fits_u64() {
         let result = rent_exempt_lamports(MAX_SAFE_SPACE as usize);
         assert!(result.is_ok());
-    }
-
-    // Space == 0 returns the pure storage overhead times lamports/byte.
-    #[kani::proof]
-    fn zero_space_returns_overhead_only() {
-        let result = rent_exempt_lamports(0).unwrap();
-        assert!(result == ACCOUNT_STORAGE_OVERHEAD * DEFAULT_LAMPORTS_PER_BYTE);
     }
 
     // Monotonicity: larger space ⇒ ≥ rent. (Logic invariant — required
@@ -653,22 +668,12 @@ mod kani_proofs_pda {
 mod kani_proofs_cpi_wire {
     use super::{encode_system_transfer, SYSTEM_TRANSFER_VARIANT};
 
-    // Concrete-value witness: pins the protocol-mandated discriminant.
-    // Without this, the layout harness below would pass even if someone
-    // changed `SYSTEM_TRANSFER_VARIANT` to 3 (because both sides of the
-    // equality reference the same constant). This harness locks the
-    // actual protocol value.
-    #[kani::proof]
-    fn system_transfer_variant_is_two() {
-        assert!(SYSTEM_TRANSFER_VARIANT == 2);
-    }
-
     // Calls the real `encode_system_transfer` helper (the same one
     // `realloc_account` uses) so a layout change in the encoder — moving a
     // field, swapping endianness, truncating bytes — fails this harness.
-    // Paired with the constant witness above, this proves both "the
-    // encoder produces the protocol format" and "the protocol constant
-    // is correct."
+    // Paired with the `const _: () = assert!(SYSTEM_TRANSFER_VARIANT == 2)`
+    // guard near the constant definition, this proves both "the encoder
+    // produces the protocol format" and "the protocol constant is correct."
     #[kani::proof]
     fn anchor_transfer_encoding_matches_wire_format() {
         let lamports: u64 = kani::any();
