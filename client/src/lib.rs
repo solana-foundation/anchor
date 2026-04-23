@@ -423,13 +423,20 @@ pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize
 }
 
 pub fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool) {
+    let invoke_re = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[([\d]+)\]$").unwrap();
+    if let Some(invoke_match) = invoke_re.captures(log) {
+        if invoke_match.get(1).unwrap().as_str() == this_program_str {
+            return (Some(this_program_str.to_string()), false);
+
+            // `Invoke [1]` instructions are pushed to the stack in `parse_logs_response`,
+            // so this ensures we only push CPIs to the stack at this stage
+        } else if invoke_match.get(2).unwrap().as_str() != "1" {
+            return (Some("cpi".to_string()), false); // Any string will do.
+        }
+    }
+
     if log.starts_with(&format!("Program {this_program_str} log:")) {
         (Some(this_program_str.to_string()), false)
-
-        // `Invoke [1]` instructions are pushed to the stack in `parse_logs_response`,
-        // so this ensures we only push CPIs to the stack at this stage
-    } else if log.contains("invoke") && !log.ends_with("[1]") {
-        (Some("cpi".to_string()), false) // Any string will do.
     } else {
         let re = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) success$").unwrap();
         if re.is_match(log) {
