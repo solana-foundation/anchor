@@ -6,7 +6,6 @@ use {
     anchor_lang_idl::types::Idl,
     anyhow::{anyhow, bail, Result},
     cargo_metadata::{Metadata, MetadataCommand, Package, TargetKind},
-    heck::ToSnakeCase,
     solana_client::send_and_confirm_transactions_in_parallel::{
         send_and_confirm_transactions_in_parallel_blocking_v2, SendAndConfirmConfigV2,
     },
@@ -51,27 +50,9 @@ fn discover_cargo_metadata(start_dir: &Path) -> Result<Option<Metadata>> {
         Ok(metadata) => Ok(Some(metadata)),
         Err(cargo_metadata::Error::CargoMetadata { stderr }) => {
             if stderr.contains("could not find `Cargo.toml`") {
-                return Ok(None);
-            }
-            if !stderr.contains("current package believes it's in a workspace when it's not") {
+                Ok(None)
+            } else {
                 bail!(stderr);
-            }
-            let Some(manifest_dir) = current_manifest_dir(start_dir)? else {
-                return Ok(None);
-            };
-            let Some(parent) = manifest_dir.parent() else {
-                return Ok(None);
-            };
-            match MetadataCommand::new().current_dir(parent).no_deps().exec() {
-                Ok(metadata) => Ok(Some(metadata)),
-                Err(cargo_metadata::Error::CargoMetadata { stderr }) => {
-                    if stderr.contains("could not find `Cargo.toml`") {
-                        Ok(None)
-                    } else {
-                        bail!(stderr);
-                    }
-                }
-                Err(err) => Err(err.into()),
             }
         }
         Err(err) => Err(err.into()),
@@ -84,61 +65,6 @@ fn package_lib_name(package: &Package) -> Option<String> {
         .iter()
         .find(|target| target.kind.iter().any(|kind| kind == &TargetKind::CDyLib))
         .map(|target| target.name.clone())
-}
-
-fn read_cargo_toml(path: &Path) -> Result<toml::Value> {
-    Ok(toml::from_str(&fs::read_to_string(
-        path.join("Cargo.toml"),
-    )?)?)
-}
-
-fn manifest_lib_name(cargo_toml: &toml::Value) -> Result<String> {
-    match cargo_toml
-        .get("lib")
-        .and_then(|lib| lib.get("name"))
-        .and_then(|name| name.as_str())
-    {
-        Some(name) => Ok(name.to_string()),
-        None => cargo_toml
-            .get("package")
-            .and_then(|package| package.get("name"))
-            .and_then(|name| name.as_str())
-            .map(ToSnakeCase::to_snake_case)
-            .ok_or_else(|| anyhow!("package section not provided")),
-    }
-}
-
-fn current_program_candidate(
-    start_dir: &Path,
-    candidates: &BTreeMap<PathBuf, String>,
-) -> Result<Option<(PathBuf, String)>> {
-    let Some(path) = current_manifest_dir(start_dir)? else {
-        return Ok(None);
-    };
-    if candidates.contains_key(path.as_path()) {
-        return Ok(None);
-    }
-    let cargo_toml = read_cargo_toml(&path)?;
-    if is_solana_program(&cargo_toml) {
-        return Ok(Some((path, manifest_lib_name(&cargo_toml)?)));
-    }
-    Ok(None)
-}
-
-fn current_manifest_dir(start_dir: &Path) -> Result<Option<PathBuf>> {
-    let mut dir = Some(start_dir);
-
-    while let Some(path) = dir {
-        if path.join("Cargo.toml").exists() {
-            return Ok(Some(path.to_path_buf()));
-        }
-        if path.join("Anchor.toml").exists() {
-            return Ok(None);
-        }
-        dir = path.parent();
-    }
-
-    Ok(None)
 }
 
 fn discover_solana_programs_from_path(
@@ -162,29 +88,6 @@ fn discover_solana_programs_from_path(
             let manifest_path = package.manifest_path.clone().into_std_path_buf();
             let path = manifest_path.parent().unwrap().to_path_buf();
             candidates.insert(path, lib_name);
-        }
-    }
-
-    if let Some((path, lib_name)) = current_program_candidate(current_dir, &candidates)? {
-        candidates.entry(path).or_insert(lib_name);
-    }
-
-    if candidates.is_empty() {
-        let programs_dir = metadata
-            .as_ref()
-            .map(|metadata| metadata.workspace_root.join("programs").into_std_path_buf())
-            .unwrap_or_else(|| current_dir.join("programs"));
-        if programs_dir.is_dir() {
-            for entry in fs::read_dir(programs_dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() && path.join("Cargo.toml").exists() {
-                    let cargo_toml = read_cargo_toml(&path)?;
-                    if is_solana_program(&cargo_toml) {
-                        candidates.insert(path, manifest_lib_name(&cargo_toml)?);
-                    }
-                }
-            }
         }
     }
 
@@ -220,20 +123,6 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
     discover_solana_programs_from_path(&std::env::current_dir()?, program_name)
 }
 
-/// Check if a given Cargo project is a Solana program
-/// A deployable Solana program must have crate-type = ["cdylib", ...]
-fn is_solana_program(cargo_toml: &toml::Value) -> bool {
-    cargo_toml
-        .get("lib")
-        .and_then(|lib| lib.get("crate-type"))
-        .and_then(|crate_type| crate_type.as_array())
-        .is_some_and(|crate_types| {
-            crate_types
-                .iter()
-                .any(|crate_type| crate_type.as_str() == Some("cdylib"))
-        })
-}
-
 /// Get programs from workspace (Anchor or non-Anchor)
 pub fn get_programs_from_workspace(
     cfg_override: &ConfigOverride,
@@ -251,15 +140,13 @@ pub fn get_programs_from_workspace(
         if let Some(name) = program_name {
             return Err(anyhow!(
                 "Program '{}' not found. Make sure you're in a Solana workspace (Anchor or \
-                 non-Anchor) with programs in the programs/ directory, or provide a program \
-                 filepath.",
+                 non-Anchor), or provide a program filepath.",
                 name
             ));
         } else {
             return Err(anyhow!(
                 "No Solana programs found. Make sure you're in a Solana workspace (Anchor or \
-                 non-Anchor) with programs in the programs/ directory, or provide a program \
-                 filepath."
+                 non-Anchor), or provide a program filepath."
             ));
         }
     }
@@ -2127,20 +2014,6 @@ crate-type = ["cdylib", "lib"]
         write_file(&root.join("src").join("lib.rs"), "");
     }
 
-    fn create_library(root: &Path, name: &str) {
-        write_file(
-            &root.join("Cargo.toml"),
-            &format!(
-                r#"[package]
-name = "{name}"
-version = "0.1.0"
-edition = "2021"
-"#
-            ),
-        );
-        write_file(&root.join("src").join("lib.rs"), "");
-    }
-
     fn create_workspace(root: &Path) {
         write_file(
             &root.join("Cargo.toml"),
@@ -2194,44 +2067,15 @@ resolver = "2"
     }
 
     #[test]
-    fn discover_solana_programs_includes_current_program_outside_workspace_members() {
+    fn discover_solana_programs_errors_for_nonmember_current_crate() {
         let dir = tempdir().unwrap();
         create_workspace(dir.path());
         create_program(&dir.path().join("tools").join("baz"), "baz");
 
-        let programs =
-            discover_solana_programs_from_path(&dir.path().join("tools").join("baz"), None)
-                .unwrap();
+        let err = discover_solana_programs_from_path(&dir.path().join("tools").join("baz"), None)
+            .unwrap_err()
+            .to_string();
 
-        let names = programs
-            .into_iter()
-            .map(|program| program.lib_name)
-            .collect::<BTreeSet<_>>();
-
-        assert_eq!(
-            names,
-            BTreeSet::from(["bar".to_string(), "baz".to_string(), "foo".to_string()])
-        );
-    }
-
-    #[test]
-    fn discover_solana_programs_from_nonmember_crate_keeps_workspace_members() {
-        let dir = tempdir().unwrap();
-        create_workspace(dir.path());
-        create_library(&dir.path().join("tools").join("helper"), "helper");
-
-        let programs =
-            discover_solana_programs_from_path(&dir.path().join("tools").join("helper"), None)
-                .unwrap();
-
-        let names = programs
-            .into_iter()
-            .map(|program| program.lib_name)
-            .collect::<BTreeSet<_>>();
-
-        assert_eq!(
-            names,
-            BTreeSet::from(["bar".to_string(), "foo".to_string()])
-        );
+        assert!(err.contains("current package believes it's in a workspace when it's not"));
     }
 }
