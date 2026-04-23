@@ -8,7 +8,7 @@ const {
 const {
   sleep,
   getClusterTime,
-  waitUntilClusterTime,
+  advanceClusterTime,
   getTokenAccount,
   createMint,
   createTokenAccount,
@@ -103,17 +103,16 @@ describe("ido-pool", () => {
     bumps.poolUsdc = poolUsdcBump;
 
     idoTimes = new IdoTimes();
-    // Anchor pacing against cluster time (not `Date.now()`) so client /
-    // validator clock skew can't consume the phase budget. Windows are
-    // sized for slow CI runners with cold test-validator boot: 30s of
-    // deposits and 15s of exchange give ~3x headroom over observed
-    // worst-case execution.
+    // Cluster time is advanced between phases via `surfnet_timeTravel`, so
+    // these windows are notional — we jump to each boundary directly rather
+    // than waiting wall-clock. `validate_ido_times` only requires strict
+    // ordering and `start_ido > now`.
     const clusterNow = await getClusterTime(provider.connection);
     const nowBn = new anchor.BN(clusterNow);
     idoTimes.startIdo = nowBn.add(new anchor.BN(10));
-    idoTimes.endDeposits = nowBn.add(new anchor.BN(40));
-    idoTimes.endIdo = nowBn.add(new anchor.BN(55));
-    idoTimes.endEscrow = nowBn.add(new anchor.BN(60));
+    idoTimes.endDeposits = nowBn.add(new anchor.BN(20));
+    idoTimes.endIdo = nowBn.add(new anchor.BN(30));
+    idoTimes.endEscrow = nowBn.add(new anchor.BN(40));
 
     await program.rpc.initializePool(
       idoName,
@@ -151,11 +150,8 @@ describe("ido-pool", () => {
   const firstDeposit = new anchor.BN(10_000_349);
 
   it("Exchanges user USDC for redeemable tokens", async () => {
-    // Wait until the IDO has opened on-chain.
-    await waitUntilClusterTime(
-      provider.connection,
-      idoTimes.startIdo.toNumber()
-    );
+    // Jump cluster time past `startIdo` so the deposit phase is open.
+    await advanceClusterTime(provider.connection, idoTimes.startIdo.toNumber());
 
     const [idoAccount] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from(idoName)],
@@ -420,8 +416,8 @@ describe("ido-pool", () => {
   });
 
   it("Exchanges user Redeemable tokens for watermelon", async () => {
-    // Wait until the IDO has ended on-chain.
-    await waitUntilClusterTime(provider.connection, idoTimes.endIdo.toNumber());
+    // Jump cluster time past `endIdo` so the sale has ended.
+    await advanceClusterTime(provider.connection, idoTimes.endIdo.toNumber());
 
     const [idoAccount] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from(idoName)],
@@ -559,8 +555,8 @@ describe("ido-pool", () => {
   });
 
   it("Withdraws USDC from the escrow account after waiting period is over", async () => {
-    // Wait until the escrow period is over on-chain.
-    await waitUntilClusterTime(
+    // Jump cluster time past `endEscrow` so withdrawals are unlocked.
+    await advanceClusterTime(
       provider.connection,
       idoTimes.endEscrow.toNumber()
     );

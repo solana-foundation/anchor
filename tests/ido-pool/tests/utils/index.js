@@ -16,8 +16,7 @@ function sleep(ms) {
 }
 
 // Read the cluster's current `unix_timestamp` — the same value the on-chain
-// `Clock::get()` observes. Pacing against this instead of `Date.now()`
-// eliminates client/validator clock-skew flakiness.
+// `Clock::get()` observes.
 async function getClusterTime(connection) {
   for (let attempt = 0; attempt < 20; attempt++) {
     const slot = await connection.getSlot("confirmed");
@@ -28,17 +27,23 @@ async function getClusterTime(connection) {
   throw new Error("getBlockTime returned null for 20 consecutive slots");
 }
 
-// Poll the cluster clock until it is *strictly past* `targetUnixSecs`.
-// Matches the semantics of the on-chain phase checks, which all use
-// `clock.unix_timestamp <= boundary` — a tx landing in a block whose
-// `unix_timestamp` equals the boundary still trips the check. Polling
-// to `now > target` ensures the next tx observes a strictly later
-// cluster clock.
-async function waitUntilClusterTime(connection, targetUnixSecs) {
-  let now = await getClusterTime(connection);
-  while (now <= targetUnixSecs) {
-    await sleep(Math.min(targetUnixSecs - now + 1, 1) * 1000);
-    now = await getClusterTime(connection);
+// Jump the cluster clock to *strictly past* `targetUnixSecs` via surfpool's
+// `surfnet_timeTravel` cheatcode. The on-chain phase checks all use
+// `clock.unix_timestamp <= boundary` — a block whose `unix_timestamp` equals
+// the boundary still trips the check, so we target `boundary + 1`.
+//
+// Driving cluster time via an RPC (instead of polling wall-clock pacing)
+// decouples phase progression from tx confirmation latency: a stalled tx
+// can no longer burn the phase budget and cascade-fail later tests.
+//
+// `absoluteTimestamp` is in milliseconds (surfpool divides by 1000 when
+// writing the Clock sysvar's `unix_timestamp`).
+async function advanceClusterTime(connection, targetUnixSecs) {
+  const res = await connection._rpcRequest("surfnet_timeTravel", [
+    { absoluteTimestamp: (targetUnixSecs + 1) * 1000 },
+  ]);
+  if (res.error) {
+    throw new Error(`surfnet_timeTravel failed: ${JSON.stringify(res.error)}`);
   }
 }
 
@@ -76,7 +81,7 @@ module.exports = {
   TOKEN_PROGRAM_ID,
   sleep,
   getClusterTime,
-  waitUntilClusterTime,
+  advanceClusterTime,
   getTokenAccount,
   createTokenAccount,
   createMint,
