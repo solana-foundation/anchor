@@ -5,6 +5,8 @@ use {
     },
     anchor_lang_idl::types::Idl,
     anyhow::{anyhow, bail, Result},
+    cargo_metadata::{Metadata, MetadataCommand, Package, TargetKind},
+    heck::ToSnakeCase,
     solana_client::send_and_confirm_transactions_in_parallel::{
         send_and_confirm_transactions_in_parallel_blocking_v2, SendAndConfirmConfigV2,
     },
@@ -23,6 +25,7 @@ use {
     solana_signer::{EncodableKey, Signer},
     solana_transaction::Transaction,
     std::{
+        collections::{BTreeMap, HashSet},
         fs::{self, File},
         io::Write,
         path::{Path, PathBuf},
@@ -39,18 +42,73 @@ fn parse_priority_fee_from_args(args: &[String]) -> Option<u64> {
         .and_then(|pair| pair[1].parse().ok())
 }
 
-fn find_workspace_root(start_dir: &Path) -> Result<Option<PathBuf>> {
+fn discover_cargo_metadata(start_dir: &Path) -> Result<Option<Metadata>> {
     let mut dir = Some(start_dir);
 
     while let Some(path) = dir {
-        let cargo_toml_path = path.join("Cargo.toml");
-        if cargo_toml_path.exists() {
-            let cargo_content = fs::read_to_string(&cargo_toml_path)?;
-            let cargo_toml: toml::Value = toml::from_str(&cargo_content)?;
-
-            if cargo_toml.get("workspace").is_some() {
-                return Ok(Some(path.to_path_buf()));
+        match MetadataCommand::new().current_dir(path).no_deps().exec() {
+            Ok(metadata) => return Ok(Some(metadata)),
+            Err(err) => {
+                let err = err.to_string();
+                if err.contains("could not find `Cargo.toml`") {
+                    return Ok(None);
+                }
+                if !err.contains("current package believes it's in a workspace when it's not") {
+                    bail!(err);
+                }
             }
+        }
+
+        dir = path.parent();
+    }
+
+    Ok(None)
+}
+
+fn package_lib_name(package: &Package) -> Option<String> {
+    package
+        .targets
+        .iter()
+        .find(|target| target.kind.iter().any(|kind| kind == &TargetKind::CDyLib))
+        .map(|target| target.name.clone())
+}
+
+fn read_cargo_toml(path: &Path) -> Result<toml::Value> {
+    Ok(toml::from_str(&fs::read_to_string(
+        path.join("Cargo.toml"),
+    )?)?)
+}
+
+fn manifest_lib_name(cargo_toml: &toml::Value) -> Result<String> {
+    match cargo_toml
+        .get("lib")
+        .and_then(|lib| lib.get("name"))
+        .and_then(|name| name.as_str())
+    {
+        Some(name) => Ok(name.to_string()),
+        None => cargo_toml
+            .get("package")
+            .and_then(|package| package.get("name"))
+            .and_then(|name| name.as_str())
+            .map(ToSnakeCase::to_snake_case)
+            .ok_or_else(|| anyhow!("package section not provided")),
+    }
+}
+
+fn current_program_candidate(start_dir: &Path) -> Result<Option<(PathBuf, String)>> {
+    let mut dir = Some(start_dir);
+
+    while let Some(path) = dir {
+        if path.join("Cargo.toml").exists() {
+            let cargo_toml = read_cargo_toml(path)?;
+            if is_solana_program(&cargo_toml) {
+                return Ok(Some((path.to_path_buf(), manifest_lib_name(&cargo_toml)?)));
+            }
+            return Ok(None);
+        }
+
+        if path.join("Anchor.toml").exists() {
+            return Ok(None);
         }
 
         dir = path.parent();
@@ -62,53 +120,49 @@ fn find_workspace_root(start_dir: &Path) -> Result<Option<PathBuf>> {
 /// Discover Solana programs from a non-Anchor Cargo workspace
 pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Program>> {
     let current_dir = std::env::current_dir()?;
-    let workspace_dir = find_workspace_root(&current_dir)?;
-    let manifest_dir = workspace_dir.as_ref().unwrap_or(&current_dir);
-    let mut program_paths = Vec::new();
+    let mut candidates = BTreeMap::new();
+    let metadata = discover_cargo_metadata(&current_dir)?;
 
-    let cargo_toml_path = manifest_dir.join("Cargo.toml");
-    if cargo_toml_path.exists() {
-        let cargo_content = fs::read_to_string(&cargo_toml_path)?;
-        let cargo_toml: toml::Value = toml::from_str(&cargo_content)?;
+    if let Some(metadata) = &metadata {
+        let workspace_members = metadata.workspace_members.iter().collect::<HashSet<_>>();
 
-        if let Some(workspace) = cargo_toml.get("workspace") {
-            if let Some(members) = workspace.get("members").and_then(|m| m.as_array()) {
-                for member in members {
-                    if let Some(member_path) = member.as_str() {
-                        let full_path = manifest_dir.join(member_path);
-                        if full_path.is_dir() && full_path.join("Cargo.toml").exists() {
-                            program_paths.push(full_path);
-                        }
-                    }
-                }
+        for package in &metadata.packages {
+            if !workspace_members.contains(&package.id) {
+                continue;
             }
-        } else if is_solana_program(manifest_dir)? {
-            program_paths.push(current_dir.clone());
+
+            let Some(lib_name) = package_lib_name(package) else {
+                continue;
+            };
+            let manifest_path = package.manifest_path.clone().into_std_path_buf();
+            let path = manifest_path.parent().unwrap().to_path_buf();
+            candidates.insert(path, lib_name);
         }
     }
 
-    if program_paths.is_empty() {
-        let programs_dir = manifest_dir.join("programs");
+    if let Some((path, lib_name)) = current_program_candidate(&current_dir)? {
+        candidates.entry(path).or_insert(lib_name);
+    }
+
+    if candidates.is_empty() {
+        let programs_dir = metadata
+            .as_ref()
+            .map(|metadata| metadata.workspace_root.join("programs").into_std_path_buf())
+            .unwrap_or_else(|| current_dir.join("programs"));
         if programs_dir.is_dir() {
             for entry in fs::read_dir(programs_dir)? {
                 let entry = entry?;
                 let path = entry.path();
                 if path.is_dir() && path.join("Cargo.toml").exists() {
-                    program_paths.push(path);
+                    let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
+                    candidates.insert(path, cargo.lib_name()?);
                 }
             }
         }
     }
 
     let mut programs = Vec::new();
-    for path in program_paths {
-        if !is_solana_program(&path)? {
-            continue;
-        }
-
-        let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
-        let lib_name = cargo.lib_name()?;
-
+    for (path, lib_name) in candidates {
         if let Some(ref name) = program_name {
             let matches = *name == lib_name || *name == path.file_name().unwrap().to_str().unwrap();
             if !matches {
@@ -136,26 +190,16 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
 
 /// Check if a given Cargo project is a Solana program
 /// A deployable Solana program must have crate-type = ["cdylib", ...]
-fn is_solana_program(path: &Path) -> Result<bool> {
-    let cargo_path = path.join("Cargo.toml");
-    if !cargo_path.exists() {
-        return Ok(false);
-    }
-
-    let cargo_content = fs::read_to_string(&cargo_path)?;
-    let cargo_toml: toml::Value = toml::from_str(&cargo_content)?;
-
-    // Check if it has cdylib (required for deployable Solana programs)
-    // This is the definitive marker - libraries and client tools won't have this
+fn is_solana_program(cargo_toml: &toml::Value) -> bool {
     if let Some(lib) = cargo_toml.get("lib") {
         if let Some(crate_type) = lib.get("crate-type").and_then(|ct| ct.as_array()) {
             if crate_type.iter().any(|ct| ct.as_str() == Some("cdylib")) {
-                return Ok(true);
+                return true;
             }
         }
     }
 
-    Ok(false)
+    false
 }
 
 /// Get programs from workspace (Anchor or non-Anchor)
@@ -2127,6 +2171,28 @@ resolver = "2"
         assert_eq!(
             names,
             BTreeSet::from(["bar".to_string(), "foo".to_string()])
+        );
+    }
+
+    #[test]
+    fn discover_solana_programs_includes_current_program_outside_workspace_members() {
+        let _lock = current_dir_lock().lock().unwrap();
+        let dir = tempdir().unwrap();
+        create_workspace(dir.path());
+        create_program(&dir.path().join("tools").join("baz"), "baz");
+
+        let programs = in_dir(&dir.path().join("tools").join("baz"), || {
+            discover_solana_programs(None).unwrap()
+        });
+
+        let names = programs
+            .into_iter()
+            .map(|program| program.lib_name)
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(
+            names,
+            BTreeSet::from(["bar".to_string(), "baz".to_string(), "foo".to_string()])
         );
     }
 }
