@@ -1,24 +1,24 @@
-use anchor_lang::{prelude::*, solana_program::entrypoint::ProgramResult};
-
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_2022::spl_token_2022::extension::{
-        group_member_pointer::GroupMemberPointer, metadata_pointer::MetadataPointer,
-        mint_close_authority::MintCloseAuthority, pausable::PausableConfig,
-        permanent_delegate::PermanentDelegate, transfer_hook::TransferHook,
+use {
+    crate::{
+        get_meta_list_size, get_mint_extensible_extension_data,
+        update_account_lamports_to_minimum_balance, META_LIST_ACCOUNT_SEED,
     },
-    token_2022_extensions,
-    token_interface::{
-        get_mint_extension_data, pausable_pause, pausable_resume,
-        spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
-        PausableToggle, Token2022, TokenAccount, TokenMetadataInitialize,
+    anchor_lang::{prelude::*, solana_program::entrypoint::ProgramResult},
+    anchor_spl::{
+        associated_token::AssociatedToken,
+        token_2022::spl_token_2022::extension::{
+            group_member_pointer::GroupMemberPointer, metadata_pointer::MetadataPointer,
+            mint_close_authority::MintCloseAuthority, pausable::PausableConfig,
+            permanent_delegate::PermanentDelegate, transfer_hook::TransferHook,
+        },
+        token_2022_extensions,
+        token_interface::{
+            get_mint_extension_data, pausable_pause, pausable_resume,
+            spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
+            PausableToggle, Token2022, TokenAccount, TokenMetadataInitialize,
+        },
     },
-};
-use spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool};
-
-use crate::{
-    get_meta_list_size, get_mint_extensible_extension_data,
-    update_account_lamports_to_minimum_balance, META_LIST_ACCOUNT_SEED,
+    spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool},
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -312,5 +312,18 @@ pub fn toggle_pause_handler(ctx: Context<CheckTogglePause>) -> Result<()> {
     let pausable_extension = get_mint_extension_data::<PausableConfig>(mint_data)?;
     assert_eq!(pausable_extension.paused, PodBool::from_bool(false));
 
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct CheckPausableAuthorityConstraint<'info> {
+    pub authority: Signer<'info>,
+    #[account(extensions::pausable::authority = authority)]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+pub fn check_pausable_authority_constraint_handler(
+    _ctx: Context<CheckPausableAuthorityConstraint>,
+) -> Result<()> {
     Ok(())
 }

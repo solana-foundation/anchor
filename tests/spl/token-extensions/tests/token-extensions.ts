@@ -1,5 +1,6 @@
 import * as anchor from "@anchor-lang/core";
-import { Program } from "@anchor-lang/core";
+import { AnchorError, Program } from "@anchor-lang/core";
+import { strict as assert } from "node:assert";
 import {
   PublicKey,
   Keypair,
@@ -226,5 +227,67 @@ describe("token extensions", () => {
       })
       .signers([payer])
       .rpc();
+  });
+
+  it("pausable authority constraint fails on mismatched authority", async () => {
+    const wrongAuthority = Keypair.generate();
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(
+        wrongAuthority.publicKey,
+        1000000000
+      ),
+      "confirmed"
+    );
+
+    try {
+      await program.methods
+        .checkPausableAuthorityConstraint()
+        .accountsStrict({
+          authority: wrongAuthority.publicKey,
+          mint: mint.publicKey,
+        })
+        .signers([wrongAuthority])
+        .rpc();
+      assert.fail("expected ConstraintMintPausableAuthority");
+    } catch (err) {
+      assert.ok(err instanceof AnchorError);
+      assert.equal(
+        (err as AnchorError).error.errorCode.code,
+        "ConstraintMintPausableAuthority"
+      );
+      assert.equal((err as AnchorError).error.errorCode.number, 2044);
+    }
+  });
+
+  it("pausable authority constraint fails when mint has no pausable extension", async () => {
+    const plainMint = await createMint(
+      provider.connection,
+      payer,
+      payer.publicKey,
+      null,
+      9,
+      Keypair.generate(),
+      { commitment: "confirmed" },
+      TOKEN_2022_PROGRAM_ID
+    );
+
+    try {
+      await program.methods
+        .checkPausableAuthorityConstraint()
+        .accountsStrict({
+          authority: payer.publicKey,
+          mint: plainMint,
+        })
+        .signers([payer])
+        .rpc();
+      assert.fail("expected ConstraintMintPausableExtension");
+    } catch (err) {
+      assert.ok(err instanceof AnchorError);
+      assert.equal(
+        (err as AnchorError).error.errorCode.code,
+        "ConstraintMintPausableExtension"
+      );
+      assert.equal((err as AnchorError).error.errorCode.number, 2043);
+    }
   });
 });
