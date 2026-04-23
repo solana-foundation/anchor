@@ -43,26 +43,39 @@ fn parse_priority_fee_from_args(args: &[String]) -> Option<u64> {
 }
 
 fn discover_cargo_metadata(start_dir: &Path) -> Result<Option<Metadata>> {
-    let mut dir = Some(start_dir);
-
-    while let Some(path) = dir {
-        match MetadataCommand::new().current_dir(path).no_deps().exec() {
-            Ok(metadata) => return Ok(Some(metadata)),
-            Err(err) => {
-                let err = err.to_string();
-                if err.contains("could not find `Cargo.toml`") {
-                    return Ok(None);
-                }
-                if !err.contains("current package believes it's in a workspace when it's not") {
-                    bail!(err);
+    match MetadataCommand::new()
+        .current_dir(start_dir)
+        .no_deps()
+        .exec()
+    {
+        Ok(metadata) => Ok(Some(metadata)),
+        Err(err) => {
+            let err = err.to_string();
+            if err.contains("could not find `Cargo.toml`") {
+                return Ok(None);
+            }
+            if !err.contains("current package believes it's in a workspace when it's not") {
+                bail!(err);
+            }
+            let Some(manifest_dir) = current_manifest_dir(start_dir)? else {
+                return Ok(None);
+            };
+            let Some(parent) = manifest_dir.parent() else {
+                return Ok(None);
+            };
+            match MetadataCommand::new().current_dir(parent).no_deps().exec() {
+                Ok(metadata) => Ok(Some(metadata)),
+                Err(err) => {
+                    let err = err.to_string();
+                    if err.contains("could not find `Cargo.toml`") {
+                        Ok(None)
+                    } else {
+                        bail!(err);
+                    }
                 }
             }
         }
-
-        dir = path.parent();
     }
-
-    Ok(None)
 }
 
 fn package_lib_name(package: &Package) -> Option<String> {
@@ -96,21 +109,26 @@ fn manifest_lib_name(cargo_toml: &toml::Value) -> Result<String> {
 }
 
 fn current_program_candidate(start_dir: &Path) -> Result<Option<(PathBuf, String)>> {
+    let Some(path) = current_manifest_dir(start_dir)? else {
+        return Ok(None);
+    };
+    let cargo_toml = read_cargo_toml(&path)?;
+    if is_solana_program(&cargo_toml) {
+        return Ok(Some((path, manifest_lib_name(&cargo_toml)?)));
+    }
+    Ok(None)
+}
+
+fn current_manifest_dir(start_dir: &Path) -> Result<Option<PathBuf>> {
     let mut dir = Some(start_dir);
 
     while let Some(path) = dir {
         if path.join("Cargo.toml").exists() {
-            let cargo_toml = read_cargo_toml(path)?;
-            if is_solana_program(&cargo_toml) {
-                return Ok(Some((path.to_path_buf(), manifest_lib_name(&cargo_toml)?)));
-            }
-            return Ok(None);
+            return Ok(Some(path.to_path_buf()));
         }
-
         if path.join("Anchor.toml").exists() {
             return Ok(None);
         }
-
         dir = path.parent();
     }
 
@@ -2116,6 +2134,20 @@ crate-type = ["cdylib", "lib"]
         write_file(&root.join("src").join("lib.rs"), "");
     }
 
+    fn create_library(root: &Path, name: &str) {
+        write_file(
+            &root.join("Cargo.toml"),
+            &format!(
+                r#"[package]
+name = "{name}"
+version = "0.1.0"
+edition = "2021"
+"#
+            ),
+        );
+        write_file(&root.join("src").join("lib.rs"), "");
+    }
+
     fn create_workspace(root: &Path) {
         write_file(
             &root.join("Cargo.toml"),
@@ -2193,6 +2225,28 @@ resolver = "2"
         assert_eq!(
             names,
             BTreeSet::from(["bar".to_string(), "baz".to_string(), "foo".to_string()])
+        );
+    }
+
+    #[test]
+    fn discover_solana_programs_from_nonmember_crate_keeps_workspace_members() {
+        let _lock = current_dir_lock().lock().unwrap();
+        let dir = tempdir().unwrap();
+        create_workspace(dir.path());
+        create_library(&dir.path().join("tools").join("helper"), "helper");
+
+        let programs = in_dir(&dir.path().join("tools").join("helper"), || {
+            discover_solana_programs(None).unwrap()
+        });
+
+        let names = programs
+            .into_iter()
+            .map(|program| program.lib_name)
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(
+            names,
+            BTreeSet::from(["bar".to_string(), "foo".to_string()])
         );
     }
 }
