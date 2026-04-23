@@ -529,10 +529,12 @@ impl ClientError {
 /// `RpcResponseErrorData::SendTransactionPreflightFailure` that carries logs,
 /// and `None` for every other error kind.
 pub fn extract_simulation_logs(err: &SolanaClientError) -> Option<Vec<String>> {
-    if let ErrorKind::RpcError(RpcError::RpcResponseError { data, .. }) = err.kind() {
-        if let RpcResponseErrorData::SendTransactionPreflightFailure(result) = data {
-            return result.logs.clone();
-        }
+    if let ErrorKind::RpcError(RpcError::RpcResponseError {
+        data: RpcResponseErrorData::SendTransactionPreflightFailure(result),
+        ..
+    }) = err.kind()
+    {
+        return result.logs.clone();
     }
     None
 }
