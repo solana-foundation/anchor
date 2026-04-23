@@ -260,6 +260,7 @@ dependencies = [
  "futures",
  "regex",
  "serde",
+ "serde_json",
  "solana-account",
  "solana-account-decoder",
  "solana-commitment-config",

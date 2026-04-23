@@ -94,11 +94,13 @@ use {
     solana_pubsub_client::nonblocking::pubsub_client::PubsubClient,
     solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
     solana_rpc_client_api::{
+        client_error::ErrorKind,
         config::{
             RpcAccountInfoConfig, RpcProgramAccountsConfig, RpcTransactionLogsConfig,
             RpcTransactionLogsFilter,
         },
         filter::Memcmp,
+        request::{RpcError, RpcResponseErrorData},
         response::{Response as RpcResponse, RpcLogsResponse},
     },
     solana_signature::Signature,
@@ -494,6 +496,17 @@ pub enum ClientError {
     ProgramError(#[from] ProgramError),
     #[error("{0}")]
     SolanaClientError(#[from] Box<SolanaClientError>),
+    /// A transaction preflight (simulation) failure that also carries the full
+    /// program log output. Use this variant to give users actionable feedback
+    /// instead of the opaque `[N log messages]` annotation in the RPC error.
+    #[error("{err}\nProgram simulation logs:\n{}", logs.join("\n"))]
+    SolanaClientPreflightError {
+        /// Every log line emitted during simulation, in order.
+        logs: Vec<String>,
+        /// The underlying Solana RPC error (preserved for the `source()` chain).
+        #[source]
+        err: Box<SolanaClientError>,
+    },
     #[error("{0}")]
     SolanaClientPubsubError(#[from] Box<PubsubClientError>),
     #[error("Unable to parse log: {0}")]
@@ -506,6 +519,38 @@ pub enum ClientError {
     CompileError(#[from] solana_message::CompileError),
     #[error("Expected a legacy transaction but got a versioned transaction")]
     NotLegacyTransaction,
+}
+
+/// Extracts the program simulation logs from a [`SolanaClientError`] when the
+/// error originates from a preflight (simulation) failure.
+///
+/// Returns `Some(logs)` if the error is a
+/// `RpcResponseErrorData::SendTransactionPreflightFailure` that carries logs,
+/// and `None` for every other error kind.
+pub fn extract_simulation_logs(err: &SolanaClientError) -> Option<Vec<String>> {
+    if let ErrorKind::RpcError(RpcError::RpcResponseError { data, .. }) = err.kind() {
+        if let RpcResponseErrorData::SendTransactionPreflightFailure(result) = data {
+            return result.logs.clone();
+        }
+    }
+    None
+}
+
+/// Convert a [`SolanaClientError`] into the richest [`ClientError`] variant
+/// available.
+///
+/// When the Solana error is a preflight failure that carries simulation logs,
+/// the returned variant is [`ClientError::SolanaClientPreflightError`] so that
+/// callers (and the `Display` impl) automatically surface those logs.
+/// All other errors fall back to the plain [`ClientError::SolanaClientError`].
+fn to_client_error(err: SolanaClientError) -> ClientError {
+    match extract_simulation_logs(&err) {
+        Some(logs) if !logs.is_empty() => ClientError::SolanaClientPreflightError {
+            logs,
+            err: Box::new(err),
+        },
+        _ => ClientError::SolanaClientError(Box::new(err)),
+    }
 }
 
 pub trait AsSigner {
@@ -769,7 +814,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         self.internal_rpc_client
             .send_and_confirm_transaction(&tx)
             .await
-            .map_err(|e| Box::new(e).into())
+            .map_err(to_client_error)
     }
 
     async fn send_with_spinner_and_config_internal(
@@ -791,7 +836,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
                 config,
             )
             .await
-            .map_err(|e| Box::new(e).into())
+            .map_err(to_client_error)
     }
 }
 
@@ -869,6 +914,71 @@ mod tests {
     pub struct MockEvent {}
 
     use super::*;
+
+    // ── Tests for issue #702: simulation log extraction & error display ────────
+
+    /// Helper: build a `SolanaClientError` whose `ErrorKind` is
+    /// `RpcError::RpcResponseError` with `SendTransactionPreflightFailure` data.
+    fn make_preflight_error(logs: Vec<String>) -> SolanaClientError {
+        use solana_rpc_client_api::{
+            client_error::ErrorKind,
+            request::{RpcError, RpcResponseErrorData},
+            response::RpcSimulateTransactionResult,
+        };
+
+        let sim_result: RpcSimulateTransactionResult = serde_json::from_value(serde_json::json!({
+            "err": null,
+            "logs": logs,
+        }))
+        .unwrap_or_else(|e| panic!("Failed to mock RpcSimulateTransactionResult: {}", e));
+
+        ErrorKind::RpcError(RpcError::RpcResponseError {
+            code: -32002,
+            message: "Transaction simulation failed".to_string(),
+            data: RpcResponseErrorData::SendTransactionPreflightFailure(sim_result),
+        })
+        .into()
+    }
+
+    #[test]
+    fn test_extract_simulation_logs_with_preflight_failure() {
+        let expected = vec![
+            "Program log: AnchorError occurred".to_string(),
+            "Program log: Error Code: InvalidArgument".to_string(),
+        ];
+        let err = make_preflight_error(expected.clone());
+        let logs = extract_simulation_logs(&err);
+        assert_eq!(logs, Some(expected));
+    }
+
+    #[test]
+    fn test_extract_simulation_logs_no_logs_for_non_preflight_error() {
+        use solana_rpc_client_api::client_error::ErrorKind;
+        use solana_transaction::TransactionError;
+        let err: SolanaClientError =
+            ErrorKind::TransactionError(TransactionError::AccountNotFound).into();
+        assert_eq!(extract_simulation_logs(&err), None);
+    }
+
+    #[test]
+    fn test_client_error_prefail_display_shows_logs() {
+        let logs = vec![
+            "Program log: Instruction: Initialize".to_string(),
+            "Program log: Error Message: custom error".to_string(),
+        ];
+        let err = make_preflight_error(logs.clone());
+        let client_err = to_client_error(err);
+        let display = format!("{client_err}");
+        for log in &logs {
+            assert!(
+                display.contains(log.as_str()),
+                "expected display to contain '{log}', got:\n{display}"
+            );
+        }
+    }
+
+    // ── End issue #702 tests ──────────────────────────────────────────────────
+
     #[test]
     fn new_execution() {
         let mut logs: &[String] =

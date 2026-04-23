@@ -42,3 +42,4 @@ url = "2"
 [dev-dependencies]
 solana-keypair.workspace = true
 tokio-tungstenite = "0.28"
+serde_json = "1.0"
