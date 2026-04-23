@@ -93,6 +93,10 @@ struct Data {
 }
 ```
 
+Safe zero-copy requires architecture-stable field layouts. Use fixed-width
+integer types such as `u64` or `i64`; host-sized integers like `usize` and
+`isize` are not supported.
+
 ### Use AccountLoader for Zero Copy Accounts
 
 To deserialize a zero-copy account, use
