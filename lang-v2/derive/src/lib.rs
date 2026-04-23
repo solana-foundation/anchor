@@ -62,7 +62,7 @@ fn needs_ix_lifetime(ty: &Type) -> bool {
 /// - Nested types are walked (`Option<&[u8]>`, `Result<Args<'_>, E>`, ...)
 ///
 /// This lets a handler fn take a borrowed struct arg like
-/// `args: MyArgs<'_>` and have the generated `__Args` struct bind the
+/// `args: MyArgs<'_>` and have the generated `IxArgs` struct bind the
 /// lifetime correctly.
 fn with_ix_lifetime(ty: &Type, ix: &syn::Lifetime) -> Type {
     match ty {
@@ -102,72 +102,126 @@ fn with_ix_lifetime(ty: &Type, ix: &syn::Lifetime) -> Type {
     }
 }
 
-struct ArgsDeser {
-    deser: TokenStream2,
-    arg_types: Vec<Type>,
-    has_refs: bool,
-}
-
-/// Build the `#[derive(SchemaRead)] struct + deserialize` block for a list of
-/// `(name, type)` argument pairs. Used by both `#[instruction(...)]` in
-/// `impl_accounts` and handler extra-args in `impl_program`.
+/// Compute lifetime-rewritten argument types plus a flag indicating whether
+/// any of them needs an `'ix` borrow.
 ///
-/// `inline_error`: when `true`, deser failure returns a `u64` directly (handler
-/// wrapper context); when `false`, it returns `Err(...)` (try_accounts context).
-fn emit_args_deser(args: &[(&Ident, &Type)], struct_name: &str, inline_error: bool) -> ArgsDeser {
+/// Returns `(arg_types, has_refs)`:
+/// - `arg_types`: each input type with elided lifetimes rewritten to `'ix`, so
+///   the emitted client-side `SchemaWrite` struct and handler signatures stay
+///   in sync.
+/// - `has_refs`: `true` iff at least one arg carries an `'ix` borrow, in which
+///   case the generated struct needs a `<'ix>` lifetime parameter.
+fn args_meta(args: &[(&Ident, &Type)]) -> (Vec<Type>, bool) {
     let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
     let arg_types: Vec<Type> = args
         .iter()
         .map(|(_, t)| with_ix_lifetime(t, &ix_lifetime))
         .collect();
     let has_refs = args.iter().any(|(_, t)| needs_ix_lifetime(t));
+    (arg_types, has_refs)
+}
+
+/// Build artifacts for the single-deserialization `IxArgs` associated type.
+///
+/// Returns a module-scope `pub struct #struct_ident<'ix>` definition plus an
+/// assoc-type alias (`type IxArgs<'ix> = ...`) and the in-body deser+bind
+/// block for `try_accounts`. The body deserializes `__ix_data` once, binds
+/// each named field to a local so existing constraint codegen keeps
+/// compiling, and leaves the parsed value available under `__ix_args_val`
+/// for return to the dispatcher.
+///
+/// For the no-args case the assoc type is `()` and the deser body is empty;
+/// `__ix_args_val` is still bound (to `()`) so the return-tuple is uniform.
+struct IxArgsArtifacts {
+    /// Module-scope `pub struct __IxArgs_<StructName><'ix> { ... }` (or empty
+    /// TokenStream for the no-args case).
+    struct_def: TokenStream2,
+    /// `type IxArgs<'ix> = __IxArgs_<StructName><'ix>` or `= ()`.
+    assoc_type: TokenStream2,
+    /// Body code that deserializes `__ix_data` into `__ix_args_val` (or
+    /// binds `()`), binds each arg's name to a local, and leaves the parsed
+    /// struct available for the tuple return.
+    body: TokenStream2,
+    /// How to produce the value to return in the tuple at the end of
+    /// `try_accounts` — for the no-args case this is `()`, otherwise a
+    /// struct literal re-assembling the moved-out locals.
+    return_value: TokenStream2,
+}
+
+fn build_ix_args_artifacts(
+    accounts_struct_name: &Ident,
+    args: &[(Ident, Type)],
+) -> IxArgsArtifacts {
+    let struct_ident = Ident::new(
+        &format!("__IxArgs_{}", accounts_struct_name),
+        accounts_struct_name.span(),
+    );
+
+    if args.is_empty() {
+        return IxArgsArtifacts {
+            struct_def: quote! {},
+            assoc_type: quote! { type IxArgs<'ix> = (); },
+            body: quote! { let __ix_args_val: () = (); },
+            return_value: quote! { __ix_args_val },
+        };
+    }
+
+    let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
+    let arg_types: Vec<Type> = args
+        .iter()
+        .map(|(_, t)| with_ix_lifetime(t, &ix_lifetime))
+        .collect();
+    let names: Vec<&Ident> = args.iter().map(|(n, _)| n).collect();
+
+    // Only carry the `'ix` lifetime on the struct when at least one field
+    // actually borrows from `ix_data`. The GAT alias `type IxArgs<'ix> =
+    // __IxArgs_Foo;` is valid Rust even when `'ix` is unused on the RHS.
+    let has_refs = args.iter().any(|(_, t)| needs_ix_lifetime(t));
     let (lt_decl, lt_use) = if has_refs {
-        (quote! { <'ix> }, quote! { <'_> })
+        (quote! { <'ix> }, quote! { <'ix> })
     } else {
         (quote! {}, quote! {})
     };
 
-    let names: Vec<_> = args.iter().map(|(n, _)| *n).collect();
-    let struct_ident = Ident::new(struct_name, proc_macro2::Span::call_site());
-
-    let deser = if args.is_empty() {
-        quote! {}
-    } else {
-        let error_handling = if inline_error {
-            quote! {
-                match anchor_lang_v2::wincode::config::deserialize(
-                    __ix_data,
-                    anchor_lang_v2::BORSH_CONFIG,
-                ) {
-                    Ok(__v) => __v,
-                    Err(_) => return {
-                        let __e: anchor_lang_v2::Error =
-                            anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize.into();
-                        __e.into()
-                    },
-                }
-            }
-        } else {
-            quote! {
-                anchor_lang_v2::wincode::config::deserialize(
-                    __ix_data,
-                    anchor_lang_v2::BORSH_CONFIG,
-                )
-                    .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?
-            }
-        };
-        quote! {
-            #[derive(anchor_lang_v2::wincode::SchemaRead)]
-            struct #struct_ident #lt_decl { #(#names: #arg_types,)* }
-            let __args: #struct_ident #lt_use = #error_handling;
-            #(let #names = __args.#names;)*
+    let struct_def = quote! {
+        #[derive(anchor_lang_v2::wincode::SchemaRead)]
+        #[allow(non_camel_case_types)]
+        pub struct #struct_ident #lt_decl {
+            #(pub #names: #arg_types,)*
         }
     };
 
-    ArgsDeser {
-        deser,
-        arg_types,
-        has_refs,
+    let assoc_type = quote! {
+        type IxArgs<'ix> = #struct_ident #lt_use;
+    };
+
+    let body_lt_use = if has_refs {
+        quote! { <'_> }
+    } else {
+        quote! {}
+    };
+
+    // Deserialize once; destructure by moving each field into a local so
+    // existing `#(#constraints)*` codegen sees the named identifiers. We
+    // rebuild the struct at return time (zero runtime cost — just moves).
+    let body = quote! {
+        let __ix_args_val: #struct_ident #body_lt_use = anchor_lang_v2::wincode::config::deserialize(
+            __ix_data,
+            anchor_lang_v2::BORSH_CONFIG,
+        )
+            .map_err(|_| anchor_lang_v2::ErrorCode::InstructionDidNotDeserialize)?;
+        let #struct_ident { #(#names,)* } = __ix_args_val;
+    };
+
+    let return_value = quote! {
+        #struct_ident { #(#names,)* }
+    };
+
+    IxArgsArtifacts {
+        struct_def,
+        assoc_type,
+        body,
+        return_value,
     }
 }
 
@@ -439,12 +493,11 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         .filter_map(|f| f.idl_field_ty.as_ref())
         .collect();
 
-    let ix_deser = if ix_args.is_empty() {
-        quote! {}
-    } else {
-        let pairs: Vec<(&Ident, &Type)> = ix_args.iter().map(|(n, t)| (n, t)).collect();
-        emit_args_deser(&pairs, "__IxArgs", false).deser
-    };
+    let ix_args_artifacts = build_ix_args_artifacts(name, &ix_args);
+    let ix_args_struct_def = &ix_args_artifacts.struct_def;
+    let ix_args_assoc = &ix_args_artifacts.assoc_type;
+    let ix_deser = &ix_args_artifacts.body;
+    let ix_args_return = &ix_args_artifacts.return_value;
 
     // Conditional bumps: empty → type alias, non-empty → struct
     let has_bumps = !bump_fields.is_empty();
@@ -851,24 +904,28 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             type Bumps = #bumps_name;
         }
 
+        #ix_args_struct_def
+
         impl anchor_lang_v2::TryAccounts for #name {
             const HEADER_SIZE: usize = #header_size_expr;
             const MUT_MASK: [u64; 4] = #mut_mask_expr;
 
+            #ix_args_assoc
+
             #[inline]
-            fn try_accounts(
+            fn try_accounts<'ix>(
                 __program_id: &anchor_lang_v2::Address,
                 __views: &[anchor_lang_v2::AccountView],
                 __duplicates: ::core::option::Option<&anchor_lang_v2::AccountBitvec>,
                 __base_offset: usize,
-                __ix_data: &[u8],
-            ) -> anchor_lang_v2::Result<(Self, #bumps_name)> {
+                __ix_data: &'ix [u8],
+            ) -> anchor_lang_v2::Result<(Self, #bumps_name, Self::IxArgs<'ix>)> {
                 #ix_deser
                 #bumps_init
                 #(#loads)*
                 #dup_check_block
                 #(#constraints)*
-                Ok((Self { #(#field_names),* }, __bumps))
+                Ok((Self { #(#field_names),* }, __bumps, #ix_args_return))
             }
 
             //
@@ -1367,43 +1424,76 @@ fn process_handler(
         .collect();
 
     let extra_arg_names: Vec<_> = extra_args.iter().map(|(n, _)| *n).collect();
-    let args_deser = emit_args_deser(&extra_args, "__Args", true);
-    let deser_args = &args_deser.deser;
-    let extra_arg_types = &args_deser.arg_types;
+    // Still needed to emit the client-side `SchemaWrite` struct (on-wire shape).
+    // Types carry elided lifetimes rewritten to `'ix` for consistency with the
+    // handler-fn signature.
+    let (extra_arg_types, has_ref_args) = args_meta(&extra_args);
+    let extra_arg_types = &extra_arg_types;
 
     // Dispatch arm.
     let dispatch_arm = quote! {
         #disc_match_arm_pattern => __handlers::#fn_name(__program_id, &mut __cursor, __ix_data, __num),
     };
 
-    // Handler wrapper.
-    let wrapper = quote! {
-        #[inline(always)]
-        pub fn #fn_name<'a>(
-            __program_id: &'a anchor_lang_v2::Address,
-            __cursor: &'a mut anchor_lang_v2::AccountCursor,
-            __ix_data: &[u8],
-            __num_accounts: usize,
-        ) -> u64 {
-            #[cfg(not(feature = "no-log-ix-name"))]
-            anchor_lang_v2::msg!(#fn_name_log);
-            #deser_args
-            match anchor_lang_v2::run_handler::<#accounts_type>(
-                __program_id,
-                __cursor,
-                __ix_data,
-                __num_accounts,
-                |__ctx| #mod_name::#fn_name(__ctx, #(#extra_arg_names),*),
-            ) {
-                Ok(()) => 0,
-                Err(__e) => __e.into(),
+    // Handler wrapper — single deserialization lives in `T::try_accounts`; the
+    // parsed `IxArgs` flows through `run_handler` into the closure and gets
+    // destructured into the handler's extra params. Any type mismatch between
+    // the handler arg and the `#[instruction(...)]` field surfaces as a type
+    // error at `__ix_args.#name` with good spans.
+    let wrapper = if extra_arg_names.is_empty() {
+        quote! {
+            #[inline(always)]
+            pub fn #fn_name<'a>(
+                __program_id: &'a anchor_lang_v2::Address,
+                __cursor: &'a mut anchor_lang_v2::AccountCursor,
+                __ix_data: &'a [u8],
+                __num_accounts: usize,
+            ) -> u64 {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang_v2::msg!(#fn_name_log);
+                match anchor_lang_v2::run_handler::<#accounts_type>(
+                    __program_id,
+                    __cursor,
+                    __ix_data,
+                    __num_accounts,
+                    |__ctx, _ix_args| #mod_name::#fn_name(__ctx),
+                ) {
+                    Ok(()) => 0,
+                    Err(__e) => __e.into(),
+                }
+            }
+        }
+    } else {
+        quote! {
+            #[inline(always)]
+            pub fn #fn_name<'a>(
+                __program_id: &'a anchor_lang_v2::Address,
+                __cursor: &'a mut anchor_lang_v2::AccountCursor,
+                __ix_data: &'a [u8],
+                __num_accounts: usize,
+            ) -> u64 {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang_v2::msg!(#fn_name_log);
+                match anchor_lang_v2::run_handler::<#accounts_type>(
+                    __program_id,
+                    __cursor,
+                    __ix_data,
+                    __num_accounts,
+                    |__ctx, __ix_args| #mod_name::#fn_name(
+                        __ctx,
+                        #(__ix_args.#extra_arg_names),*
+                    ),
+                ) {
+                    Ok(()) => 0,
+                    Err(__e) => __e.into(),
+                }
             }
         }
     };
 
     // Client-side instruction struct.
     let ix_struct_name = syn::Ident::new(&to_camel_case(&fn_name_str), fn_name.span());
-    let (ix_lt_decl, ix_lt_use) = if args_deser.has_refs {
+    let (ix_lt_decl, ix_lt_use) = if has_ref_args {
         (quote! { <'ix> }, quote! { <'ix> })
     } else {
         (quote! {}, quote! {})

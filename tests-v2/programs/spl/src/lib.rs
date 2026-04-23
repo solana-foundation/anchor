@@ -244,6 +244,7 @@ pub struct InitTokenAccount {
 }
 
 #[derive(Accounts)]
+#[instruction(amount: u64)]
 pub struct DoMintTo {
     #[account(mut)]
     pub mint: Account<Mint>,
@@ -254,6 +255,7 @@ pub struct DoMintTo {
 }
 
 #[derive(Accounts)]
+#[instruction(amount: u64)]
 pub struct DoTransfer {
     #[account(mut)]
     pub from: Account<TokenAccount>,
@@ -264,6 +266,7 @@ pub struct DoTransfer {
 }
 
 #[derive(Accounts)]
+#[instruction(amount: u64, decimals: u8)]
 pub struct DoTransferChecked {
     #[account(mut)]
     pub from: Account<TokenAccount>,
@@ -275,6 +278,7 @@ pub struct DoTransferChecked {
 }
 
 #[derive(Accounts)]
+#[instruction(amount: u64)]
 pub struct DoBurn {
     #[account(mut)]
     pub account: Account<TokenAccount>,
@@ -285,6 +289,7 @@ pub struct DoBurn {
 }
 
 #[derive(Accounts)]
+#[instruction(amount: u64)]
 pub struct DoApprove {
     #[account(mut)]
     pub source: Account<TokenAccount>,

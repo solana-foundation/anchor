@@ -926,7 +926,7 @@ pub fn parse_field(
         // nested struct. A future optimization could pre-shift the bitvec
         // or use a wrapper that offsets transparently.
         let load = quote! {
-            let (__nested_inner, _) =
+            let (__nested_inner, _, _) =
                 <#inner_ty as anchor_lang_v2::TryAccounts>::try_accounts(
                     __program_id,
                     &__views[#offset_expr .. #offset_expr + <#inner_ty as anchor_lang_v2::TryAccounts>::HEADER_SIZE],

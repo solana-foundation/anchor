@@ -33,14 +33,14 @@ pub mod caller {
             data: ctx.accounts.callee_data.cpi_handle_mut(),
             authority: ctx.accounts.authority.cpi_handle(),
         };
-        let cpi_ctx =
-            CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
+        let cpi_ctx = CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
         callee::cpi::set_data(cpi_ctx, value)?;
         Ok(())
     }
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct ProxySetData {
     /// Loaded as a Slab-backed Account — Slab sets borrow_state = 0,
     /// which would fail pinocchio's checked invoke. Our CpiContext uses

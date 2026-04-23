@@ -50,10 +50,7 @@ pub mod dup_mut {
         Ok(())
     }
 
-    pub fn touch_two_mut_unsafe(
-        ctx: &mut Context<TouchTwoMutUnsafe>,
-        value: u64,
-    ) -> Result<()> {
+    pub fn touch_two_mut_unsafe(ctx: &mut Context<TouchTwoMutUnsafe>, value: u64) -> Result<()> {
         // SAFETY: When invoked with data_a == data_b, both fields alias the
         // same account data. We only ever materialize ONE `&mut Data` (via
         // `data_a`). `data_b` is never deref'd, so no two `&mut` to the same
@@ -72,10 +69,7 @@ pub mod dup_mut {
     // surface as either false positives (distinct accounts rejected) or
     // false negatives (aliased accounts accepted) inside the inner struct.
 
-    pub fn touch_nested_two_mut(
-        ctx: &mut Context<TouchNestedTwoMut>,
-        value: u64,
-    ) -> Result<()> {
+    pub fn touch_nested_two_mut(ctx: &mut Context<TouchNestedTwoMut>, value: u64) -> Result<()> {
         ctx.accounts.pair.data_a.value = value;
         ctx.accounts.pair.data_b.value = value.wrapping_add(1);
         Ok(())
@@ -109,10 +103,7 @@ pub mod dup_mut {
         Ok(())
     }
 
-    pub fn touch_nested_unsafe(
-        ctx: &mut Context<TouchNestedUnsafe>,
-        value: u64,
-    ) -> Result<()> {
+    pub fn touch_nested_unsafe(ctx: &mut Context<TouchNestedUnsafe>, value: u64) -> Result<()> {
         // SAFETY: same argument as touch_two_mut_unsafe — only data_a is
         // deref'd, so no two live `&mut Data` to the same bytes coexist.
         ctx.accounts.pair.data_a.value = value;
@@ -152,6 +143,7 @@ pub struct Initialize {
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchTwoMut {
     #[account(mut)]
     pub data_a: Account<Data>,
@@ -160,6 +152,7 @@ pub struct TouchTwoMut {
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchThreeMut {
     #[account(mut)]
     pub data_a: Account<Data>,
@@ -170,6 +163,7 @@ pub struct TouchThreeMut {
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchMutAndReadonly {
     #[account(mut)]
     pub data_a: Account<Data>,
@@ -177,6 +171,7 @@ pub struct TouchMutAndReadonly {
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchTwoMutAsymUnsafe {
     #[account(mut)]
     pub data_a: Account<Data>,
@@ -185,6 +180,7 @@ pub struct TouchTwoMutAsymUnsafe {
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchTwoMutUnsafe {
     #[account(mut, unsafe(dup))]
     pub data_a: Account<Data>,
@@ -243,31 +239,37 @@ pub struct InnerUnsafe {
 // --- Outer instructions that wrap each Inner via Nested<_> -----------------
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchNestedTwoMut {
     pub pair: Nested<InnerTwoMut>,
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchNestedThreeMut {
     pub trio: Nested<InnerThreeMut>,
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchNestedMutReadonly {
     pub pair: Nested<InnerMutReadonly>,
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchNestedAsymUnsafe {
     pub pair: Nested<InnerAsymUnsafe>,
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchNestedUnsafe {
     pub pair: Nested<InnerUnsafe>,
 }
 
 #[derive(Accounts)]
+#[instruction(value: u64)]
 pub struct TouchOuterMutPlusNested {
     #[account(mut)]
     pub outer: Account<Data>,
