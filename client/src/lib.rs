@@ -541,7 +541,6 @@ pub fn extract_simulation_logs(err: &SolanaClientError) -> Option<Vec<String>> {
 
 /// Convert a [`SolanaClientError`] into the richest [`ClientError`] variant
 /// available.
-
 pub trait AsSigner {
     fn as_signer(&self) -> &dyn Signer;
 }
