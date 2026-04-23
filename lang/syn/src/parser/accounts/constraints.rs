@@ -476,10 +476,10 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                             if let syn::Expr::Lit(_) = &expr {
                                 return Err(ParseError::new(
                                     expr.span(),
-                                    "constraint must be a boolean expression, not a literal.\n\
-                                     Help: Raw constraints expect expressions that evaluate to \
-                                     boolean values.\nIf you need to compare a field to a value, \
-                                     use: constraint = my_field == <value>",
+                                    "constraint must be a boolean expression, not a \
+                                     literal.\nHelp: Raw constraints expect expressions that \
+                                     evaluate to boolean values.\nIf you need to compare a field \
+                                     to a value, use: constraint = my_field == <value>",
                                 ));
                             }
 
