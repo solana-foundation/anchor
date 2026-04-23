@@ -82,8 +82,8 @@ describe("workspace IDL resolution", () => {
       { code: "EACCES" }
     );
 
-    // resolveIdlFileName calls require("fs") internally; patch that shared
-    // module object directly so our throw propagates into the function.
+    // `import * as fs` produces a getter-only namespace; require() gives the
+    // raw mutable CJS module object needed to patch the property.
     const fsModule = require("fs");
     const original = fsModule.readdirSync;
     fsModule.readdirSync = () => {

@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as toml from "toml";
 import camelcase from "camelcase";
 import { execSync } from "child_process";
@@ -16,9 +18,6 @@ export function resolveIdlFileName(
   idlDirPath: string,
   programName: string
 ): string {
-  const fs = require("fs");
-  const path = require("path");
-
   let dirEntries: string[];
   try {
     dirEntries = fs.readdirSync(idlDirPath);
@@ -108,11 +107,8 @@ const workspace = new Proxy(
       // Return early if the program is in cache
       if (workspaceCache[programName]) return workspaceCache[programName];
 
-      const fs = require("fs");
-      const path = require("path");
-
       // Override the workspace programs if the user put them in the config.
-      const anchorToml = toml.parse(fs.readFileSync("Anchor.toml"));
+      const anchorToml = toml.parse(fs.readFileSync("Anchor.toml", "utf8"));
       const clusterId = anchorToml.provider.cluster;
       const programs = anchorToml.programs?.[clusterId];
       let programEntry;
@@ -146,7 +142,7 @@ const workspace = new Proxy(
         );
       }
 
-      const idl: Idl = JSON.parse(fs.readFileSync(idlPath));
+      const idl: Idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
       if (programId) {
         idl.address = programId;
       }
