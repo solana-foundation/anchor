@@ -1187,7 +1187,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                 self.add_extension_permanent_delegate(c)
             }
             ConstraintToken::Dup(c) => self.add_dup(c),
-            ConstraintToken::ExtensionPausableAuthority(c) => self.add_extension_pausable(c),
+            ConstraintToken::ExtensionPausableAuthority(c) => {
+                self.add_extension_pausable_authority(c)
+            }
         }
     }
 
@@ -1780,14 +1782,14 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         Ok(())
     }
 
-    fn add_extension_pausable(
+    fn add_extension_pausable_authority(
         &mut self,
         c: Context<ConstraintExtensionAuthority>,
     ) -> ParseResult<()> {
         if self.extension_pausable_authority.is_some() {
             return Err(ParseError::new(
                 c.span(),
-                "extension pausable already provided",
+                "extension pausable authority already provided",
             ));
         }
         self.extension_pausable_authority.replace(c);
