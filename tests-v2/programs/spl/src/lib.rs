@@ -316,7 +316,7 @@ pub mod spl_test {
     /// newer transfer fee's basis-points value matches `expected_bps`.
     #[discrim = 27]
     pub fn read_transfer_fee_config(
-        ctx: &mut Context<ReadMintExtension>,
+        ctx: &mut Context<ReadTransferFeeConfig>,
         expected_bps: u16,
     ) -> Result<()> {
         let ext: &TransferFeeConfig =
@@ -331,7 +331,7 @@ pub mod spl_test {
     /// `metadata_address` fields match the passed pubkeys.
     #[discrim = 28]
     pub fn read_metadata_pointer(
-        ctx: &mut Context<ReadMintExtension>,
+        ctx: &mut Context<ReadMetadataPointer>,
         expected_authority: Address,
         expected_metadata: Address,
     ) -> Result<()> {
@@ -346,7 +346,7 @@ pub mod spl_test {
     /// Parse `TransferHook` and assert the `program_id` matches.
     #[discrim = 29]
     pub fn read_transfer_hook(
-        ctx: &mut Context<ReadMintExtension>,
+        ctx: &mut Context<ReadTransferHook>,
         expected_program_id: Address,
     ) -> Result<()> {
         let ext: &TransferHook =
@@ -361,7 +361,7 @@ pub mod spl_test {
     /// resulting field — returns an error when the close authority is unset.
     #[discrim = 30]
     pub fn read_mint_close_authority(
-        ctx: &mut Context<ReadMintExtension>,
+        ctx: &mut Context<ReadMintCloseAuthority>,
         expected_authority: Address,
     ) -> Result<()> {
         let ext: &MintCloseAuthority =
@@ -375,7 +375,7 @@ pub mod spl_test {
     /// Parse `PermanentDelegate` and compare via `optional_address`.
     #[discrim = 31]
     pub fn read_permanent_delegate(
-        ctx: &mut Context<ReadMintExtension>,
+        ctx: &mut Context<ReadPermanentDelegate>,
         expected_delegate: Address,
     ) -> Result<()> {
         let ext: &PermanentDelegate =
@@ -389,7 +389,7 @@ pub mod spl_test {
     /// Parse `TransferFeeAmount` from a Token-2022 token account.
     #[discrim = 32]
     pub fn read_transfer_fee_amount(
-        ctx: &mut Context<ReadTokenAccountExtension>,
+        ctx: &mut Context<ReadTransferFeeAmount>,
         expected_withheld: u64,
     ) -> Result<()> {
         let ext: &TransferFeeAmount =
@@ -403,7 +403,7 @@ pub mod spl_test {
     /// Parse `TransferHookAccount` from a Token-2022 token account.
     #[discrim = 33]
     pub fn read_transfer_hook_account(
-        ctx: &mut Context<ReadTokenAccountExtension>,
+        ctx: &mut Context<ReadTransferHookAccount>,
         expected_transferring: u8,
     ) -> Result<()> {
         let ext: &TransferHookAccount =
@@ -672,13 +672,53 @@ pub struct CheckInterfaceMintTokenProgram {
 }
 
 // -- Extension-reader structs ------------------------------------------------
+//
+// Each Token-2022 extension reader has its own Accounts struct so the
+// struct's `#[instruction(...)]` list matches its handler's extra-args
+// signature exactly. The single-deser contract (one Borsh parse of
+// `ix_data`, shared between constraint validation and the handler) only
+// works when each (accounts struct, handler) pair agrees on the wire
+// shape — so handlers that previously shared `ReadMintExtension` /
+// `ReadTokenAccountExtension` with divergent args get their own struct.
 
 #[derive(Accounts)]
-pub struct ReadMintExtension {
+#[instruction(expected_bps: u16)]
+pub struct ReadTransferFeeConfig {
     pub mint: InterfaceAccount<Mint>,
 }
 
 #[derive(Accounts)]
-pub struct ReadTokenAccountExtension {
+#[instruction(expected_authority: Address, expected_metadata: Address)]
+pub struct ReadMetadataPointer {
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+#[instruction(expected_program_id: Address)]
+pub struct ReadTransferHook {
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+#[instruction(expected_authority: Address)]
+pub struct ReadMintCloseAuthority {
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+#[instruction(expected_delegate: Address)]
+pub struct ReadPermanentDelegate {
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+#[instruction(expected_withheld: u64)]
+pub struct ReadTransferFeeAmount {
+    pub token_account: InterfaceAccount<TokenAccount>,
+}
+
+#[derive(Accounts)]
+#[instruction(expected_transferring: u8)]
+pub struct ReadTransferHookAccount {
     pub token_account: InterfaceAccount<TokenAccount>,
 }

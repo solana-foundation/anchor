@@ -716,6 +716,25 @@ fn pack_base_mint(authority: &Pubkey, decimals: u8, supply: u64) -> [u8; SplMint
     base
 }
 
+/// Like `pack_base_mint` but with `freeze_authority` set to `Some(freeze)`.
+fn pack_base_mint_with_freeze(
+    authority: &Pubkey,
+    freeze: &Pubkey,
+    decimals: u8,
+    supply: u64,
+) -> [u8; SplMint::LEN] {
+    let mint_state = SplMint {
+        mint_authority: COption::Some(to_spl(authority)),
+        supply,
+        decimals,
+        is_initialized: true,
+        freeze_authority: COption::Some(to_spl(freeze)),
+    };
+    let mut base = [0u8; SplMint::LEN];
+    mint_state.pack_into_slice(&mut base);
+    base
+}
+
 /// Build a 165-byte legacy `SplTokenAccount` state.
 fn pack_base_token_account(mint: &Pubkey, owner: &Pubkey, amount: u64) -> [u8; SplTokenAccount::LEN] {
     let state = SplTokenAccount {
@@ -751,6 +770,22 @@ fn build_mint_data(
     let mut data = Vec::with_capacity(166 + tlv.len());
     data.extend_from_slice(&pack_base_mint(authority, decimals, supply));
     // pad to 165
+    data.resize(165, 0);
+    data.push(1); // AccountType::Mint
+    data.extend_from_slice(tlv);
+    data
+}
+
+/// Like `build_mint_data` but with `freeze_authority` set to `Some(freeze)`.
+fn build_mint_data_with_freeze(
+    authority: &Pubkey,
+    freeze: &Pubkey,
+    decimals: u8,
+    supply: u64,
+    tlv: &[u8],
+) -> Vec<u8> {
+    let mut data = Vec::with_capacity(166 + tlv.len());
+    data.extend_from_slice(&pack_base_mint_with_freeze(authority, freeze, decimals, supply));
     data.resize(165, 0);
     data.push(1); // AccountType::Mint
     data.extend_from_slice(tlv);
@@ -1135,6 +1170,55 @@ fn interface_mint_freeze_authority_constraint_rejects_when_unset() {
     assert!(
         result.is_err(),
         "freeze_authority unset should fail the constraint",
+    );
+}
+
+#[test]
+fn interface_mint_freeze_authority_constraint_accepts_matching() {
+    // Exercises the `Some(addr) if addr == expected` arm of
+    // `mint::FreezeAuthorityConstraint::check`.
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-mf-ok-auth");
+    let expected = keypair_for("iface-mf-ok-expected");
+    let mint = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data_with_freeze(&authority.pubkey(), &expected.pubkey(), 6, 0, &[]),
+    );
+
+    let metas = vec![
+        AccountMeta::new_readonly(expected.pubkey(), false),
+        AccountMeta::new(mint, false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![24], metas, &payer, &[])
+        .expect("matching mint::freeze_authority should pass");
+}
+
+#[test]
+fn interface_mint_freeze_authority_constraint_rejects_mismatch() {
+    // Exercises the `Some(addr) if addr != expected` (fall-through) arm
+    // of `mint::FreezeAuthorityConstraint::check` — distinct from the
+    // unset/None case covered above.
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-mf-rej-auth");
+    let expected = keypair_for("iface-mf-rej-expected");
+    let other = keypair_for("iface-mf-rej-other");
+    let mint = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data_with_freeze(&authority.pubkey(), &other.pubkey(), 6, 0, &[]),
+    );
+
+    let metas = vec![
+        AccountMeta::new_readonly(expected.pubkey(), false),
+        AccountMeta::new(mint, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![24], metas, &payer, &[]);
+    assert!(
+        result.is_err(),
+        "mismatched mint::freeze_authority should reject",
     );
 }
 
