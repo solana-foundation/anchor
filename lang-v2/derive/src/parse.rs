@@ -56,8 +56,6 @@ pub struct AccountAttrs {
     pub is_zeroed: bool,
     pub is_executable: bool,
     pub is_dup: bool,
-    /// None = not specified, Some(true) = enforce, Some(false) = skip
-    pub rent_exempt: Option<bool>,
     /// None = no bump attr, Some(None) = `bump` without value, Some(Some(expr)) = `bump = expr`
     pub bump: Option<Option<Expr>>,
     pub payer: Option<Ident>,
@@ -101,7 +99,6 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
         is_zeroed: false,
         is_executable: false,
         is_dup: false,
-        rent_exempt: None,
         bump: None,
         payer: None,
         space: None,
@@ -206,11 +203,6 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                                 content.parse::<Token![,]>()?;
                             }
                         }
-                    }
-                    "rent_exempt" => {
-                        input.parse::<Token![=]>()?;
-                        let val: Ident = input.parse()?;
-                        result.rent_exempt = Some(val == "enforce");
                     }
                     "payer" => {
                         input.parse::<Token![=]>()?;
@@ -1145,15 +1137,6 @@ pub fn parse_field(
         constraints.push(quote! {
             if !#field_name.account().executable() {
                 return Err(anchor_lang_v2::ErrorCode::ConstraintExecutable.into());
-            }
-        });
-    }
-
-    // rent_exempt check
-    if let Some(true) = attrs.rent_exempt {
-        constraints.push(quote! {
-            if !anchor_lang_v2::is_rent_exempt(#field_name.account()) {
-                return Err(anchor_lang_v2::ErrorCode::ConstraintRentExempt.into());
             }
         });
     }

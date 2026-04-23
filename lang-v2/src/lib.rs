@@ -215,7 +215,6 @@ pub enum ErrorCode {
     ConstraintOwner,
     ConstraintRaw,
     ConstraintExecutable,
-    ConstraintRentExempt,
     ConstraintZero,
     InstructionDidNotDeserialize,
     DeclaredProgramIdMismatch,
@@ -248,7 +247,6 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             ErrorCode::ConstraintOwner => solana_program_error::ProgramError::IllegalOwner,
             ErrorCode::ConstraintRaw => solana_program_error::ProgramError::Custom(2001),
             ErrorCode::ConstraintExecutable => solana_program_error::ProgramError::Custom(2002),
-            ErrorCode::ConstraintRentExempt => solana_program_error::ProgramError::Custom(2003),
             ErrorCode::ConstraintZero => solana_program_error::ProgramError::Custom(2004),
             ErrorCode::InstructionDidNotDeserialize => {
                 solana_program_error::ProgramError::InvalidInstructionData
@@ -271,13 +269,6 @@ impl From<ErrorCode> for solana_program_error::ProgramError {
             }
         }
     }
-}
-
-/// Check if an account is rent-exempt. Used by `rent_exempt = enforce` constraint.
-pub fn is_rent_exempt(view: &pinocchio::account::AccountView) -> bool {
-    use pinocchio::sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BYTE};
-    let required = (ACCOUNT_STORAGE_OVERHEAD + view.data_len() as u64) * DEFAULT_LAMPORTS_PER_BYTE;
-    view.lamports() >= required
 }
 
 /// Guardrail: verify that the runtime-supplied `program_id` matches this
