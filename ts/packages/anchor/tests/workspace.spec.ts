@@ -76,6 +76,28 @@ describe("workspace IDL resolution", () => {
     );
   });
 
+  it("rethrows non-ENOENT errors from readdirSync unchanged (e.g. EACCES)", () => {
+    const accessError = Object.assign(
+      new Error("EACCES: permission denied, scandir '/protected'"),
+      { code: "EACCES" }
+    );
+
+    // resolveIdlFileName calls require("fs") internally; patch that shared
+    // module object directly so our throw propagates into the function.
+    const fsModule = require("fs");
+    const original = fsModule.readdirSync;
+    fsModule.readdirSync = () => {
+      throw accessError;
+    };
+    try {
+      expect(() => resolveIdlFileName(tmpDir, "anyProgram")).toThrow(
+        accessError
+      );
+    } finally {
+      fsModule.readdirSync = original;
+    }
+  });
+
   it("does not list non-JSON files in the available programs error", () => {
     fs.writeFileSync(path.join(tmpDir, "user_g_market.json"), "{}");
     fs.writeFileSync(path.join(tmpDir, "readme.txt"), "ignore me");
