@@ -9,8 +9,13 @@ use {
     anchor_lang_v2::prelude::*,
     anchor_spl_v2::{
         associated_token::get_associated_token_address,
+        extensions::{
+            self, MetadataPointer, MintCloseAuthority, PermanentDelegate, TransferFeeAmount,
+            TransferFeeConfig, TransferHook, TransferHookAccount,
+        },
         mint::{self, Mint},
         token::{self, cpi as token_cpi, TokenAccount},
+        token_interface::InterfaceAccount,
     },
 };
 
@@ -201,6 +206,213 @@ pub mod spl_test {
         }
         Ok(())
     }
+
+    // ---- InterfaceAccount read path ---------------------------------------
+
+    /// Load an `InterfaceAccount<Mint>` and touch accessors. Succeeds when the
+    /// underlying account is owned by either Token or Token-2022.
+    #[discrim = 16]
+    pub fn read_interface_mint(ctx: &mut Context<ReadInterfaceMint>) -> Result<()> {
+        let m = &*ctx.accounts.mint;
+        let _ = m.supply();
+        let _ = m.decimals();
+        let _ = m.mint_authority();
+        let _ = m.freeze_authority();
+        let _ = m.is_initialized();
+        Ok(())
+    }
+
+    /// Load an `InterfaceAccount<TokenAccount>` and touch accessors.
+    #[discrim = 17]
+    pub fn read_interface_token_account(
+        ctx: &mut Context<ReadInterfaceTokenAccount>,
+    ) -> Result<()> {
+        let ta = &*ctx.accounts.token_account;
+        let _ = ta.mint();
+        let _ = ta.owner();
+        let _ = ta.amount();
+        Ok(())
+    }
+
+    // ---- InterfaceAccount init path ---------------------------------------
+
+    /// Create a new Mint through the `InterfaceAccount<Mint>` init path with
+    /// the legacy Token program (InitializeMint2 is hardcoded to legacy).
+    #[discrim = 18]
+    pub fn init_interface_mint(_ctx: &mut Context<InitInterfaceMint>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Create a new TokenAccount through the `InterfaceAccount<TokenAccount>`
+    /// init path with the legacy Token program.
+    #[discrim = 19]
+    pub fn init_interface_token_account(
+        _ctx: &mut Context<InitInterfaceTokenAccount>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    // ---- Namespaced constraints on InterfaceAccount -----------------------
+
+    /// `token::mint = mint` on `InterfaceAccount<TokenAccount>`.
+    #[discrim = 20]
+    pub fn check_interface_token_mint(
+        _ctx: &mut Context<CheckInterfaceTokenMint>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// `token::authority = expected` on `InterfaceAccount<TokenAccount>`.
+    #[discrim = 21]
+    pub fn check_interface_token_authority(
+        _ctx: &mut Context<CheckInterfaceTokenAuthority>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// `token::token_program = token_program` on `InterfaceAccount<TokenAccount>`.
+    #[discrim = 22]
+    pub fn check_interface_token_program(
+        _ctx: &mut Context<CheckInterfaceTokenProgram>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// `mint::authority = expected` on `InterfaceAccount<Mint>`.
+    #[discrim = 23]
+    pub fn check_interface_mint_authority(
+        _ctx: &mut Context<CheckInterfaceMintAuthority>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// `mint::freeze_authority = expected` on `InterfaceAccount<Mint>`.
+    #[discrim = 24]
+    pub fn check_interface_mint_freeze_authority(
+        _ctx: &mut Context<CheckInterfaceMintFreezeAuthority>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// `mint::decimals = 6` on `InterfaceAccount<Mint>`.
+    #[discrim = 25]
+    pub fn check_interface_mint_decimals(
+        _ctx: &mut Context<CheckInterfaceMintDecimals>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// `mint::token_program = token_program` on `InterfaceAccount<Mint>`.
+    #[discrim = 26]
+    pub fn check_interface_mint_token_program(
+        _ctx: &mut Context<CheckInterfaceMintTokenProgram>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    // ---- Token-2022 extension parsing -------------------------------------
+
+    /// Parse `TransferFeeConfig` from a Token-2022 mint and assert the
+    /// newer transfer fee's basis-points value matches `expected_bps`.
+    #[discrim = 27]
+    pub fn read_transfer_fee_config(
+        ctx: &mut Context<ReadMintExtension>,
+        expected_bps: u16,
+    ) -> Result<()> {
+        let ext: &TransferFeeConfig =
+            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        if ext.newer_transfer_fee.basis_points() != expected_bps {
+            return Err(ProgramError::InvalidAccountData.into());
+        }
+        Ok(())
+    }
+
+    /// Parse `MetadataPointer` and assert both the `authority` and
+    /// `metadata_address` fields match the passed pubkeys.
+    #[discrim = 28]
+    pub fn read_metadata_pointer(
+        ctx: &mut Context<ReadMintExtension>,
+        expected_authority: Address,
+        expected_metadata: Address,
+    ) -> Result<()> {
+        let ext: &MetadataPointer =
+            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        if ext.authority != expected_authority || ext.metadata_address != expected_metadata {
+            return Err(ProgramError::InvalidAccountData.into());
+        }
+        Ok(())
+    }
+
+    /// Parse `TransferHook` and assert the `program_id` matches.
+    #[discrim = 29]
+    pub fn read_transfer_hook(
+        ctx: &mut Context<ReadMintExtension>,
+        expected_program_id: Address,
+    ) -> Result<()> {
+        let ext: &TransferHook =
+            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        if ext.program_id != expected_program_id {
+            return Err(ProgramError::InvalidAccountData.into());
+        }
+        Ok(())
+    }
+
+    /// Parse `MintCloseAuthority`, exercising `optional_address` on the
+    /// resulting field — returns an error when the close authority is unset.
+    #[discrim = 30]
+    pub fn read_mint_close_authority(
+        ctx: &mut Context<ReadMintExtension>,
+        expected_authority: Address,
+    ) -> Result<()> {
+        let ext: &MintCloseAuthority =
+            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        match extensions::optional_address(&ext.close_authority) {
+            Some(addr) if *addr == expected_authority => Ok(()),
+            _ => Err(ProgramError::InvalidAccountData.into()),
+        }
+    }
+
+    /// Parse `PermanentDelegate` and compare via `optional_address`.
+    #[discrim = 31]
+    pub fn read_permanent_delegate(
+        ctx: &mut Context<ReadMintExtension>,
+        expected_delegate: Address,
+    ) -> Result<()> {
+        let ext: &PermanentDelegate =
+            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        match extensions::optional_address(&ext.delegate) {
+            Some(addr) if *addr == expected_delegate => Ok(()),
+            _ => Err(ProgramError::InvalidAccountData.into()),
+        }
+    }
+
+    /// Parse `TransferFeeAmount` from a Token-2022 token account.
+    #[discrim = 32]
+    pub fn read_transfer_fee_amount(
+        ctx: &mut Context<ReadTokenAccountExtension>,
+        expected_withheld: u64,
+    ) -> Result<()> {
+        let ext: &TransferFeeAmount =
+            extensions::get_token_account_extension(ctx.accounts.token_account.account())?;
+        if ext.withheld_amount() != expected_withheld {
+            return Err(ProgramError::InvalidAccountData.into());
+        }
+        Ok(())
+    }
+
+    /// Parse `TransferHookAccount` from a Token-2022 token account.
+    #[discrim = 33]
+    pub fn read_transfer_hook_account(
+        ctx: &mut Context<ReadTokenAccountExtension>,
+        expected_transferring: u8,
+    ) -> Result<()> {
+        let ext: &TransferHookAccount =
+            extensions::get_token_account_extension(ctx.accounts.token_account.account())?;
+        if ext.transferring != expected_transferring {
+            return Err(ProgramError::InvalidAccountData.into());
+        }
+        Ok(())
+    }
 }
 
 // -- Accounts structs --------------------------------------------------------
@@ -358,4 +570,115 @@ pub struct CheckAta {
     pub authority: UncheckedAccount,
     pub mint: Account<Mint>,
     pub vault: Account<TokenAccount>,
+}
+
+// -- InterfaceAccount read-path structs --------------------------------------
+
+#[derive(Accounts)]
+pub struct ReadInterfaceMint {
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+pub struct ReadInterfaceTokenAccount {
+    pub token_account: InterfaceAccount<TokenAccount>,
+}
+
+// -- InterfaceAccount init-path structs --------------------------------------
+
+#[derive(Accounts)]
+pub struct InitInterfaceMint {
+    #[account(mut)]
+    pub payer: Signer,
+    pub authority: UncheckedAccount,
+    pub token_program: Program<Token>,
+    #[account(
+        init,
+        payer = payer,
+        mint::decimals = 6,
+        mint::authority = authority,
+        mint::token_program = token_program,
+    )]
+    pub mint: InterfaceAccount<Mint>,
+    pub system_program: Program<System>,
+}
+
+#[derive(Accounts)]
+pub struct InitInterfaceTokenAccount {
+    #[account(mut)]
+    pub payer: Signer,
+    pub mint: InterfaceAccount<Mint>,
+    pub authority: UncheckedAccount,
+    pub token_program: Program<Token>,
+    #[account(
+        init,
+        payer = payer,
+        token::mint = mint,
+        token::authority = authority,
+        token::token_program = token_program,
+    )]
+    pub token_account: InterfaceAccount<TokenAccount>,
+    pub system_program: Program<System>,
+}
+
+// -- Namespaced-constraint structs on InterfaceAccount -----------------------
+
+#[derive(Accounts)]
+pub struct CheckInterfaceTokenMint {
+    pub mint: InterfaceAccount<Mint>,
+    #[account(mut, token::mint = mint)]
+    pub token_account: InterfaceAccount<TokenAccount>,
+}
+
+#[derive(Accounts)]
+pub struct CheckInterfaceTokenAuthority {
+    pub expected: UncheckedAccount,
+    #[account(mut, token::authority = expected)]
+    pub token_account: InterfaceAccount<TokenAccount>,
+}
+
+#[derive(Accounts)]
+pub struct CheckInterfaceTokenProgram {
+    pub token_program: UncheckedAccount,
+    #[account(mut, token::token_program = token_program)]
+    pub token_account: InterfaceAccount<TokenAccount>,
+}
+
+#[derive(Accounts)]
+pub struct CheckInterfaceMintAuthority {
+    pub expected: UncheckedAccount,
+    #[account(mut, mint::authority = expected)]
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+pub struct CheckInterfaceMintFreezeAuthority {
+    pub expected: UncheckedAccount,
+    #[account(mut, mint::freeze_authority = expected)]
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+pub struct CheckInterfaceMintDecimals {
+    #[account(mut, mint::decimals = 6)]
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+pub struct CheckInterfaceMintTokenProgram {
+    pub token_program: UncheckedAccount,
+    #[account(mut, mint::token_program = token_program)]
+    pub mint: InterfaceAccount<Mint>,
+}
+
+// -- Extension-reader structs ------------------------------------------------
+
+#[derive(Accounts)]
+pub struct ReadMintExtension {
+    pub mint: InterfaceAccount<Mint>,
+}
+
+#[derive(Accounts)]
+pub struct ReadTokenAccountExtension {
+    pub token_account: InterfaceAccount<TokenAccount>,
 }

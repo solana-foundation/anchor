@@ -31,3 +31,7 @@ spl-token = "=7.0.0"
 base64 = "0.22"
 sha2 = "0.10"
 anyhow = "1"
+
+[dev-dependencies]
+anchor-spl-v2 = { path = "../spl-v2" }
+solana-address = "2.0"

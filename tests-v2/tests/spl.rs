@@ -12,12 +12,15 @@
 use {
     anchor_lang_v2::solana_program::instruction::AccountMeta,
     litesvm::LiteSVM,
+    solana_account::Account,
     solana_keypair::Keypair,
     solana_pubkey::Pubkey,
     solana_signer::Signer,
     spl_token::{
-        solana_program::program_pack::Pack,
-        state::{Account as SplTokenAccount, Mint as SplMint},
+        solana_program::{
+            program_option::COption, program_pack::Pack, pubkey::Pubkey as SplPubkey,
+        },
+        state::{Account as SplTokenAccount, AccountState, Mint as SplMint},
     },
     tests_v2::{build_program, keypair_for, send_instruction},
 };
@@ -28,6 +31,10 @@ fn program_id() -> Pubkey {
 
 fn token_program_id() -> Pubkey {
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".parse().unwrap()
+}
+
+fn token_2022_program_id() -> Pubkey {
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".parse().unwrap()
 }
 
 fn ata_program_id() -> Pubkey {
@@ -679,4 +686,829 @@ fn check_ata_accepts_canonical_address() {
     ];
     send_instruction(&mut svm, program_id(), vec![15], metas, &payer, &[])
         .expect("canonical ATA should pass");
+}
+
+// ---- Token-2022 seeding helpers --------------------------------------------
+//
+// Build raw account data for Token-2022 extended mints and token accounts and
+// drop it directly into the SVM via `set_account`. No CPI to Token-2022 is
+// required because `InterfaceAccount` validation is ownership + length only;
+// extension parsing is pure byte-level reading.
+
+/// Convert our `solana_pubkey::Pubkey` into the `spl_token`-flavoured one so
+/// `SplMint`/`SplTokenAccount` `pack` calls accept it.
+fn to_spl(pk: &Pubkey) -> SplPubkey {
+    SplPubkey::new_from_array(pk.to_bytes())
+}
+
+/// Build an 82-byte legacy `SplMint` state. Suitable for use as the base of
+/// either a Token-2022 extended mint or a plain (legacy) mint account.
+fn pack_base_mint(authority: &Pubkey, decimals: u8, supply: u64) -> [u8; SplMint::LEN] {
+    let mint_state = SplMint {
+        mint_authority: COption::Some(to_spl(authority)),
+        supply,
+        decimals,
+        is_initialized: true,
+        freeze_authority: COption::None,
+    };
+    let mut base = [0u8; SplMint::LEN];
+    mint_state.pack_into_slice(&mut base);
+    base
+}
+
+/// Build a 165-byte legacy `SplTokenAccount` state.
+fn pack_base_token_account(mint: &Pubkey, owner: &Pubkey, amount: u64) -> [u8; SplTokenAccount::LEN] {
+    let state = SplTokenAccount {
+        mint: to_spl(mint),
+        owner: to_spl(owner),
+        amount,
+        delegate: COption::None,
+        state: AccountState::Initialized,
+        is_native: COption::None,
+        delegated_amount: 0,
+        close_authority: COption::None,
+    };
+    let mut base = [0u8; SplTokenAccount::LEN];
+    state.pack_into_slice(&mut base);
+    base
+}
+
+/// Append a single TLV entry to `buf`: `u16_le type | u16_le length | value`.
+fn push_tlv(buf: &mut Vec<u8>, ext_type: u16, value: &[u8]) {
+    buf.extend_from_slice(&ext_type.to_le_bytes());
+    buf.extend_from_slice(&(value.len() as u16).to_le_bytes());
+    buf.extend_from_slice(value);
+}
+
+/// Build data for a Token-2022 extended mint: 82-byte base + zero pad to 165 +
+/// `AccountType::Mint = 1` at byte 165 + caller-provided TLV region.
+fn build_mint_data(
+    authority: &Pubkey,
+    decimals: u8,
+    supply: u64,
+    tlv: &[u8],
+) -> Vec<u8> {
+    let mut data = Vec::with_capacity(166 + tlv.len());
+    data.extend_from_slice(&pack_base_mint(authority, decimals, supply));
+    // pad to 165
+    data.resize(165, 0);
+    data.push(1); // AccountType::Mint
+    data.extend_from_slice(tlv);
+    data
+}
+
+/// Build data for a Token-2022 extended token account: 165-byte base +
+/// `AccountType::Account = 2` at byte 165 + caller-provided TLV region.
+fn build_token_account_data(
+    mint: &Pubkey,
+    owner: &Pubkey,
+    amount: u64,
+    tlv: &[u8],
+) -> Vec<u8> {
+    let mut data = Vec::with_capacity(166 + tlv.len());
+    data.extend_from_slice(&pack_base_token_account(mint, owner, amount));
+    data.push(2); // AccountType::Account
+    data.extend_from_slice(tlv);
+    data
+}
+
+/// Seed a Token-2022-owned account at `address` with the given raw bytes.
+fn seed_token_2022_account(svm: &mut LiteSVM, address: Pubkey, data: Vec<u8>) {
+    svm.set_account(
+        address,
+        Account {
+            lamports: 10_000_000,
+            data,
+            owner: token_2022_program_id(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    )
+    .expect("seed token-2022 account");
+}
+
+// ---- InterfaceAccount read path --------------------------------------------
+
+#[test]
+fn read_interface_mint_accepts_legacy_token_owned() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("interface-mint-auth");
+    let mint = Keypair::new();
+    do_init_mint(&mut svm, &payer, &mint, &authority.pubkey());
+
+    // read_interface_mint (discrim = 16)
+    let metas = vec![AccountMeta::new_readonly(mint.pubkey(), false)];
+    send_instruction(&mut svm, program_id(), vec![16], metas, &payer, &[])
+        .expect("legacy-owned mint should pass interface load");
+}
+
+#[test]
+fn read_interface_mint_accepts_token_2022_owned() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("t22-mint-auth");
+    let mint = Pubkey::new_unique();
+
+    let data = build_mint_data(&authority.pubkey(), 9, 0, &[]);
+    seed_token_2022_account(&mut svm, mint, data);
+
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    send_instruction(&mut svm, program_id(), vec![16], metas, &payer, &[])
+        .expect("token-2022-owned mint should pass interface load");
+}
+
+#[test]
+fn read_interface_mint_rejects_foreign_owner() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("foreign-mint-auth");
+    let mint = Pubkey::new_unique();
+
+    // Same bytes as a Token-2022 mint, but owned by an unrelated program.
+    let data = build_mint_data(&authority.pubkey(), 6, 0, &[]);
+    let foreign_owner = Pubkey::new_unique();
+    svm.set_account(
+        mint,
+        Account {
+            lamports: 10_000_000,
+            data,
+            owner: foreign_owner,
+            executable: false,
+            rent_epoch: 0,
+        },
+    )
+    .unwrap();
+
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    let result = send_instruction(&mut svm, program_id(), vec![16], metas, &payer, &[]);
+    assert!(
+        result.is_err(),
+        "foreign-owned account should not load as InterfaceAccount<Mint>",
+    );
+}
+
+#[test]
+fn read_interface_token_account_accepts_legacy_and_token_2022() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mix-mint-auth");
+    let owner = keypair_for("mix-owner");
+
+    // Legacy branch: reuse the classic mint_and_fund flow.
+    let (_mint, legacy_token) =
+        mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 10);
+    let metas = vec![AccountMeta::new_readonly(legacy_token, false)];
+    send_instruction(&mut svm, program_id(), vec![17], metas, &payer, &[])
+        .expect("legacy-owned token account should pass interface load");
+
+    // Token-2022 branch: seed a raw extended account.
+    let t22_mint = Pubkey::new_unique();
+    let t22_token = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        t22_mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &[]),
+    );
+    seed_token_2022_account(
+        &mut svm,
+        t22_token,
+        build_token_account_data(&t22_mint, &owner.pubkey(), 42, &[]),
+    );
+    let metas = vec![AccountMeta::new_readonly(t22_token, false)];
+    send_instruction(&mut svm, program_id(), vec![17], metas, &payer, &[])
+        .expect("token-2022-owned token account should pass interface load");
+}
+
+// ---- InterfaceAccount init path --------------------------------------------
+//
+// Init is hard-wired to the legacy Token program via `pinocchio_token::
+// InitializeMint2` / `InitializeAccount3`, so these tests exercise the
+// interface codegen while creating legacy-owned accounts. The Token-2022
+// init path is a known limitation of the PR.
+
+#[test]
+fn init_interface_mint_creates_legacy_mint() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-init-mint-auth");
+    let mint = Keypair::new();
+
+    // init_interface_mint (discrim = 18)
+    let metas = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new_readonly(authority.pubkey(), false),
+        AccountMeta::new_readonly(token_program_id(), false),
+        AccountMeta::new(mint.pubkey(), true),
+        AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![18], metas, &payer, &[&mint])
+        .expect("init_interface_mint should succeed");
+
+    let account = svm.get_account(&mint.pubkey()).expect("mint exists");
+    assert_eq!(account.owner, token_program_id());
+    assert_eq!(account.data.len(), SplMint::LEN);
+    let state = SplMint::unpack(&account.data).expect("unpack mint");
+    assert_eq!(state.decimals, 6);
+    assert!(state.is_initialized);
+}
+
+#[test]
+fn init_interface_token_account_creates_legacy_token_account() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("iface-init-token-mint-auth");
+    let owner = keypair_for("iface-init-token-owner");
+    let mint = Keypair::new();
+    let token = Keypair::new();
+
+    // Seed the mint through the non-interface init path so we don't double-
+    // cover codegen; `Account<Mint>` coexists with `InterfaceAccount<Mint>`
+    // on-chain — the underlying bytes are identical.
+    do_init_mint(&mut svm, &payer, &mint, &mint_authority.pubkey());
+
+    // init_interface_token_account (discrim = 19)
+    let metas = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new_readonly(mint.pubkey(), false),
+        AccountMeta::new_readonly(owner.pubkey(), false),
+        AccountMeta::new_readonly(token_program_id(), false),
+        AccountMeta::new(token.pubkey(), true),
+        AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![19], metas, &payer, &[&token])
+        .expect("init_interface_token_account should succeed");
+
+    let account = svm.get_account(&token.pubkey()).expect("token exists");
+    assert_eq!(account.owner, token_program_id());
+    assert_eq!(account.data.len(), SplTokenAccount::LEN);
+    let state = SplTokenAccount::unpack(&account.data).expect("unpack token");
+    assert_eq!(state.mint.to_bytes(), mint.pubkey().to_bytes());
+    assert_eq!(state.owner.to_bytes(), owner.pubkey().to_bytes());
+}
+
+// ---- Namespaced constraints on InterfaceAccount ----------------------------
+
+/// Shared fixture: a Token-2022-owned mint + token account pair. No
+/// extensions — just the base state with the AccountType byte set.
+fn seed_t22_mint_and_token(
+    svm: &mut LiteSVM,
+    mint_authority: &Pubkey,
+    owner: &Pubkey,
+) -> (Pubkey, Pubkey) {
+    let mint = Pubkey::new_unique();
+    let token = Pubkey::new_unique();
+    seed_token_2022_account(svm, mint, build_mint_data(mint_authority, 6, 0, &[]));
+    seed_token_2022_account(
+        svm,
+        token,
+        build_token_account_data(&mint, owner, 0, &[]),
+    );
+    (mint, token)
+}
+
+#[test]
+fn interface_token_mint_constraint_accepts_matching() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("iface-tm-auth");
+    let owner = keypair_for("iface-tm-owner");
+    let (mint, token) =
+        seed_t22_mint_and_token(&mut svm, &mint_authority.pubkey(), &owner.pubkey());
+
+    // check_interface_token_mint (discrim = 20)
+    let metas = vec![
+        AccountMeta::new_readonly(mint, false),
+        AccountMeta::new(token, false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![20], metas, &payer, &[])
+        .expect("matching token::mint should pass");
+}
+
+#[test]
+fn interface_token_mint_constraint_rejects_mismatch() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("iface-tm-rej-auth");
+    let owner = keypair_for("iface-tm-rej-owner");
+    let (_real_mint, token) =
+        seed_t22_mint_and_token(&mut svm, &mint_authority.pubkey(), &owner.pubkey());
+
+    // A different mint (wrong one).
+    let other_mint = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        other_mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &[]),
+    );
+
+    let metas = vec![
+        AccountMeta::new_readonly(other_mint, false),
+        AccountMeta::new(token, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![20], metas, &payer, &[]);
+    assert!(result.is_err(), "mismatched token::mint should reject");
+}
+
+#[test]
+fn interface_token_authority_constraint_accepts_matching() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("iface-ta-auth");
+    let owner = keypair_for("iface-ta-owner");
+    let (_mint, token) =
+        seed_t22_mint_and_token(&mut svm, &mint_authority.pubkey(), &owner.pubkey());
+
+    // check_interface_token_authority (discrim = 21)
+    let metas = vec![
+        AccountMeta::new_readonly(owner.pubkey(), false),
+        AccountMeta::new(token, false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![21], metas, &payer, &[])
+        .expect("matching token::authority should pass");
+}
+
+#[test]
+fn interface_token_authority_constraint_rejects_mismatch() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("iface-ta-rej-auth");
+    let owner = keypair_for("iface-ta-rej-owner");
+    let wrong = keypair_for("iface-ta-rej-wrong");
+    let (_mint, token) =
+        seed_t22_mint_and_token(&mut svm, &mint_authority.pubkey(), &owner.pubkey());
+
+    let metas = vec![
+        AccountMeta::new_readonly(wrong.pubkey(), false),
+        AccountMeta::new(token, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![21], metas, &payer, &[]);
+    assert!(result.is_err(), "mismatched token::authority should reject");
+}
+
+#[test]
+fn interface_token_program_constraint_accepts_token_2022() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("iface-tp-auth");
+    let owner = keypair_for("iface-tp-owner");
+    let (_mint, token) =
+        seed_t22_mint_and_token(&mut svm, &mint_authority.pubkey(), &owner.pubkey());
+
+    // check_interface_token_program (discrim = 22): expected = Token-2022.
+    let metas = vec![
+        AccountMeta::new_readonly(token_2022_program_id(), false),
+        AccountMeta::new(token, false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![22], metas, &payer, &[])
+        .expect("token-2022-owned account should match Token-2022 program id");
+}
+
+#[test]
+fn interface_token_program_constraint_rejects_wrong_program() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("iface-tp-rej-auth");
+    let owner = keypair_for("iface-tp-rej-owner");
+    let (_mint, token) =
+        seed_t22_mint_and_token(&mut svm, &mint_authority.pubkey(), &owner.pubkey());
+
+    // expected = legacy Token, actual owner = Token-2022 → reject.
+    let metas = vec![
+        AccountMeta::new_readonly(token_program_id(), false),
+        AccountMeta::new(token, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![22], metas, &payer, &[]);
+    assert!(
+        result.is_err(),
+        "legacy Token expected vs Token-2022 owner should reject",
+    );
+}
+
+#[test]
+fn interface_mint_authority_constraint_accepts_matching() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-ma-auth");
+    let mint = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&authority.pubkey(), 6, 0, &[]),
+    );
+
+    // check_interface_mint_authority (discrim = 23)
+    let metas = vec![
+        AccountMeta::new_readonly(authority.pubkey(), false),
+        AccountMeta::new(mint, false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![23], metas, &payer, &[])
+        .expect("matching mint::authority should pass");
+}
+
+#[test]
+fn interface_mint_authority_constraint_rejects_mismatch() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-ma-rej-auth");
+    let wrong = keypair_for("iface-ma-rej-wrong");
+    let mint = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&authority.pubkey(), 6, 0, &[]),
+    );
+
+    let metas = vec![
+        AccountMeta::new_readonly(wrong.pubkey(), false),
+        AccountMeta::new(mint, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![23], metas, &payer, &[]);
+    assert!(result.is_err(), "mismatched mint::authority should reject");
+}
+
+#[test]
+fn interface_mint_freeze_authority_constraint_rejects_when_unset() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-mf-auth");
+    let expected = keypair_for("iface-mf-expected");
+    let mint = Pubkey::new_unique();
+    // Base state uses COption::None for freeze_authority.
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&authority.pubkey(), 6, 0, &[]),
+    );
+
+    // check_interface_mint_freeze_authority (discrim = 24)
+    let metas = vec![
+        AccountMeta::new_readonly(expected.pubkey(), false),
+        AccountMeta::new(mint, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![24], metas, &payer, &[]);
+    assert!(
+        result.is_err(),
+        "freeze_authority unset should fail the constraint",
+    );
+}
+
+#[test]
+fn interface_mint_decimals_constraint_accepts_matching() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-md-auth");
+    let mint = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&authority.pubkey(), 6, 0, &[]),
+    );
+
+    // check_interface_mint_decimals (discrim = 25) — expects 6.
+    let metas = vec![AccountMeta::new(mint, false)];
+    send_instruction(&mut svm, program_id(), vec![25], metas, &payer, &[])
+        .expect("matching mint::decimals should pass");
+}
+
+#[test]
+fn interface_mint_decimals_constraint_rejects_mismatch() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-md-rej-auth");
+    let mint = Pubkey::new_unique();
+    // Decimals = 9, but constraint expects 6.
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&authority.pubkey(), 9, 0, &[]),
+    );
+
+    let metas = vec![AccountMeta::new(mint, false)];
+    let result = send_instruction(&mut svm, program_id(), vec![25], metas, &payer, &[]);
+    assert!(result.is_err(), "mismatched mint::decimals should reject");
+}
+
+#[test]
+fn interface_mint_token_program_constraint_accepts_token_2022() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-mtp-auth");
+    let mint = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&authority.pubkey(), 6, 0, &[]),
+    );
+
+    // check_interface_mint_token_program (discrim = 26): expected = Token-2022.
+    let metas = vec![
+        AccountMeta::new_readonly(token_2022_program_id(), false),
+        AccountMeta::new(mint, false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![26], metas, &payer, &[])
+        .expect("token-2022-owned mint should match Token-2022 program id");
+}
+
+#[test]
+fn interface_mint_token_program_constraint_rejects_wrong_program() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("iface-mtp-rej-auth");
+    let mint = Pubkey::new_unique();
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&authority.pubkey(), 6, 0, &[]),
+    );
+
+    // expected = legacy Token, actual owner = Token-2022 → reject.
+    let metas = vec![
+        AccountMeta::new_readonly(token_program_id(), false),
+        AccountMeta::new(mint, false),
+    ];
+    let result = send_instruction(&mut svm, program_id(), vec![26], metas, &payer, &[]);
+    assert!(
+        result.is_err(),
+        "legacy Token expected vs Token-2022-owned mint should reject",
+    );
+}
+
+// ---- Token-2022 extension parsing ------------------------------------------
+
+/// Helpers for building TLV values matching the `anchor-spl-v2::extensions`
+/// struct layouts exactly. All fields are alignment-1, so raw byte-level
+/// construction is safe.
+
+fn tlv_transfer_fee_config(
+    authority: &Pubkey,
+    withdraw_authority: &Pubkey,
+    newer_bps: u16,
+    newer_epoch: u64,
+    newer_max: u64,
+) -> Vec<u8> {
+    let mut value = Vec::with_capacity(108);
+    value.extend_from_slice(authority.as_ref());
+    value.extend_from_slice(withdraw_authority.as_ref());
+    value.extend_from_slice(&0u64.to_le_bytes()); // withheld_amount
+    // older_transfer_fee: zeroed
+    value.extend_from_slice(&[0u8; 8]); // epoch
+    value.extend_from_slice(&[0u8; 8]); // max_fee
+    value.extend_from_slice(&[0u8; 2]); // basis points
+    // newer_transfer_fee
+    value.extend_from_slice(&newer_epoch.to_le_bytes());
+    value.extend_from_slice(&newer_max.to_le_bytes());
+    value.extend_from_slice(&newer_bps.to_le_bytes());
+    let mut out = Vec::new();
+    push_tlv(&mut out, 1, &value); // TransferFeeConfig
+    out
+}
+
+fn tlv_metadata_pointer(authority: &Pubkey, metadata: &Pubkey) -> Vec<u8> {
+    let mut value = Vec::with_capacity(64);
+    value.extend_from_slice(authority.as_ref());
+    value.extend_from_slice(metadata.as_ref());
+    let mut out = Vec::new();
+    push_tlv(&mut out, 18, &value); // MetadataPointer
+    out
+}
+
+fn tlv_transfer_hook(authority: &Pubkey, program: &Pubkey) -> Vec<u8> {
+    let mut value = Vec::with_capacity(64);
+    value.extend_from_slice(authority.as_ref());
+    value.extend_from_slice(program.as_ref());
+    let mut out = Vec::new();
+    push_tlv(&mut out, 14, &value); // TransferHook
+    out
+}
+
+fn tlv_mint_close_authority(authority: &Pubkey) -> Vec<u8> {
+    let mut out = Vec::new();
+    push_tlv(&mut out, 3, authority.as_ref()); // MintCloseAuthority
+    out
+}
+
+fn tlv_permanent_delegate(delegate: &Pubkey) -> Vec<u8> {
+    let mut out = Vec::new();
+    push_tlv(&mut out, 12, delegate.as_ref()); // PermanentDelegate
+    out
+}
+
+fn tlv_transfer_fee_amount(withheld: u64) -> Vec<u8> {
+    let mut out = Vec::new();
+    push_tlv(&mut out, 2, &withheld.to_le_bytes()); // TransferFeeAmount
+    out
+}
+
+fn tlv_transfer_hook_account(transferring: u8) -> Vec<u8> {
+    let mut out = Vec::new();
+    push_tlv(&mut out, 15, &[transferring]); // TransferHookAccount
+    out
+}
+
+#[test]
+fn transfer_fee_config_extension_round_trips() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("tfc-mint-auth");
+    let fee_authority = keypair_for("tfc-fee-auth");
+    let withdraw_authority = keypair_for("tfc-withdraw-auth");
+    let mint = Pubkey::new_unique();
+
+    let tlv = tlv_transfer_fee_config(
+        &fee_authority.pubkey(),
+        &withdraw_authority.pubkey(),
+        250, // basis points (2.5%)
+        4,
+        1_000_000,
+    );
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &tlv),
+    );
+
+    // read_transfer_fee_config (discrim = 27), expected bps = 250 → pass.
+    let mut data = vec![27];
+    data.extend_from_slice(&250u16.to_le_bytes());
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("TransferFeeConfig bps should match");
+
+    // Wrong bps → reject.
+    let mut data = vec![27];
+    data.extend_from_slice(&999u16.to_le_bytes());
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    let result = send_instruction(&mut svm, program_id(), data, metas, &payer, &[]);
+    assert!(result.is_err(), "wrong bps should reject");
+}
+
+#[test]
+fn metadata_pointer_extension_round_trips() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mp-mint-auth");
+    let meta_authority = keypair_for("mp-meta-auth");
+    let metadata = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
+
+    let tlv = tlv_metadata_pointer(&meta_authority.pubkey(), &metadata);
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &tlv),
+    );
+
+    // read_metadata_pointer (discrim = 28)
+    let mut data = vec![28];
+    data.extend_from_slice(&meta_authority.pubkey().to_bytes());
+    data.extend_from_slice(&metadata.to_bytes());
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("MetadataPointer should parse and match");
+}
+
+#[test]
+fn transfer_hook_extension_round_trips() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("th-mint-auth");
+    let hook_authority = keypair_for("th-hook-auth");
+    let hook_program = Pubkey::new_unique();
+    let mint = Pubkey::new_unique();
+
+    let tlv = tlv_transfer_hook(&hook_authority.pubkey(), &hook_program);
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &tlv),
+    );
+
+    // read_transfer_hook (discrim = 29)
+    let mut data = vec![29];
+    data.extend_from_slice(&hook_program.to_bytes());
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("TransferHook program id should match");
+}
+
+#[test]
+fn mint_close_authority_extension_round_trips() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("mca-mint-auth");
+    let close_authority = keypair_for("mca-close-auth");
+    let mint = Pubkey::new_unique();
+
+    let tlv = tlv_mint_close_authority(&close_authority.pubkey());
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &tlv),
+    );
+
+    // read_mint_close_authority (discrim = 30) — exercises optional_address.
+    let mut data = vec![30];
+    data.extend_from_slice(&close_authority.pubkey().to_bytes());
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("MintCloseAuthority close authority should match");
+}
+
+#[test]
+fn permanent_delegate_extension_round_trips() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("pd-mint-auth");
+    let delegate = keypair_for("pd-delegate");
+    let mint = Pubkey::new_unique();
+
+    let tlv = tlv_permanent_delegate(&delegate.pubkey());
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &tlv),
+    );
+
+    // read_permanent_delegate (discrim = 31)
+    let mut data = vec![31];
+    data.extend_from_slice(&delegate.pubkey().to_bytes());
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("PermanentDelegate delegate should match");
+}
+
+#[test]
+fn transfer_fee_amount_extension_round_trips() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("tfa-mint-auth");
+    let owner = keypair_for("tfa-owner");
+    let mint = Pubkey::new_unique();
+    let token = Pubkey::new_unique();
+
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &[]),
+    );
+    let tlv = tlv_transfer_fee_amount(777);
+    seed_token_2022_account(
+        &mut svm,
+        token,
+        build_token_account_data(&mint, &owner.pubkey(), 0, &tlv),
+    );
+
+    // read_transfer_fee_amount (discrim = 32)
+    let mut data = vec![32];
+    data.extend_from_slice(&777u64.to_le_bytes());
+    let metas = vec![AccountMeta::new_readonly(token, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("TransferFeeAmount withheld should match");
+}
+
+#[test]
+fn transfer_hook_account_extension_round_trips() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("tha-mint-auth");
+    let owner = keypair_for("tha-owner");
+    let mint = Pubkey::new_unique();
+    let token = Pubkey::new_unique();
+
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &[]),
+    );
+    let tlv = tlv_transfer_hook_account(1);
+    seed_token_2022_account(
+        &mut svm,
+        token,
+        build_token_account_data(&mint, &owner.pubkey(), 0, &tlv),
+    );
+
+    // read_transfer_hook_account (discrim = 33)
+    let data = vec![33, 1];
+    let metas = vec![AccountMeta::new_readonly(token, false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("TransferHookAccount transferring should match");
+}
+
+#[test]
+fn missing_extension_returns_invalid_account_data() {
+    let (mut svm, payer) = setup();
+    let mint_authority = keypair_for("noext-mint-auth");
+    let mint = Pubkey::new_unique();
+
+    // Mint has MintCloseAuthority only — lookup for TransferFeeConfig fails.
+    let other = keypair_for("noext-close-auth");
+    let tlv = tlv_mint_close_authority(&other.pubkey());
+    seed_token_2022_account(
+        &mut svm,
+        mint,
+        build_mint_data(&mint_authority.pubkey(), 6, 0, &tlv),
+    );
+
+    let mut data = vec![27]; // read_transfer_fee_config
+    data.extend_from_slice(&250u16.to_le_bytes());
+    let metas = vec![AccountMeta::new_readonly(mint, false)];
+    let result = send_instruction(&mut svm, program_id(), data, metas, &payer, &[]);
+    assert!(
+        result.is_err(),
+        "missing extension should surface InvalidAccountData",
+    );
+}
+
+// ---- Unit tests for host-side helpers --------------------------------------
+//
+// `is_some_address` / `optional_address` are `pub fn` on `anchor-spl-v2` and
+// can be called directly from the host-side test binary.
+
+#[test]
+fn is_some_address_detects_zero_and_nonzero() {
+    use anchor_spl_v2::extensions::{is_some_address, optional_address};
+    let zero = solana_address::Address::new_from_array([0u8; 32]);
+    let mut nonzero_bytes = [0u8; 32];
+    nonzero_bytes[31] = 1;
+    let nonzero = solana_address::Address::new_from_array(nonzero_bytes);
+
+    assert!(!is_some_address(&zero));
+    assert!(is_some_address(&nonzero));
+    assert!(optional_address(&zero).is_none());
+    assert_eq!(optional_address(&nonzero), Some(&nonzero));
 }

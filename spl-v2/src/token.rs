@@ -80,8 +80,6 @@ impl SlabSchema for TokenAccount {
         data: &[u8],
         _program_id: &Address,
     ) -> Result<(), ProgramError> {
-        // TODO: Token2022 support — add a TokenAccount2022 type or a feature
-        // gate that adds `|| view.owned_by(&Token2022::id())` here.
         if !view.owned_by(&Token::id()) {
             return Err(ProgramError::IllegalOwner);
         }
