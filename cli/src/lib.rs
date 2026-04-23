@@ -1347,7 +1347,6 @@ fn process_command(opts: Opts) -> Result<()> {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn is_package_manager_available(pm: &PackageManager) -> bool {
     std::process::Command::new(pm.to_string())
         .arg("--version")
@@ -1357,6 +1356,7 @@ fn is_package_manager_available(pm: &PackageManager) -> bool {
         .is_ok()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn init(
     cfg_override: &ConfigOverride,
     name: String,
