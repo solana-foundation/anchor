@@ -145,27 +145,12 @@ jobs:
           MIRIFLAGS: '-Zmiri-tree-borrows'
         run: cargo +nightly miri test -p anchor-lang-v2 -p anchor-spl-v2 --tests --features anchor-lang-v2/testing
 
-      # Kani — bounded model checking on Pod arithmetic, AccountBitvec,
-      # rent math, and System-program Transfer wire format. Caches the
-      # solver bundle (~2 GB: CBMC, CaDiCaL, Z3) keyed on Kani's pinned
-      # version so bumping kani-verifier invalidates.
-      - uses: actions/cache@v4
-        name: Cache Kani solver bundle
-        with:
-          path: ~/.kani/
-          key: kani-solvers-${{ runner.os }}-0.67.0
-          restore-keys: |
-            kani-solvers-${{ runner.os }}-
-      - name: Install Kani
-        run: |
-          cargo install --locked kani-verifier --version 0.67.0
-          cargo kani setup
-      # Per-crate runs keep each kani-driver process's working set small
-      # enough that CBMC/Z3 don't abort under the runner's memory ceiling.
-      - name: Kani harnesses for anchor-lang-v2
-        run: cargo kani -p anchor-lang-v2 --output-format=terse
-      - name: Kani harnesses for anchor-spl-v2
-        run: cargo kani -p anchor-spl-v2 --output-format=terse
+      # Kani harnesses live in-tree under `#[cfg(kani)]` and are runnable
+      # locally via `cargo kani -p anchor-lang-v2` / `-p anchor-spl-v2`,
+      # but are not wired into CI: kani-verifier 0.67.0 has an
+      # upstream-deterministic `.unwrap()` panic on CBMC `ERROR` status
+      # lines (kani#4519, fixed on main in #4540, not yet released).
+      # Re-enable once kani-verifier ≥ 0.68.0 ships on crates.io.
 
       # CLI: unit-test + build sanity only. No anchor-binary install,
       # no `anchor build`/`anchor test` flows, no tests/* integration.
