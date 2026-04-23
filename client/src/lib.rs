@@ -495,18 +495,8 @@ pub enum ClientError {
     #[error("{0}")]
     ProgramError(#[from] ProgramError),
     #[error("{0}")]
+    /// To extract simulation logs from this error, use [Self::extract_simulation_logs].
     SolanaClientError(#[from] Box<SolanaClientError>),
-    /// A transaction preflight (simulation) failure that also carries the full
-    /// program log output. Use this variant to give users actionable feedback
-    /// instead of the opaque `[N log messages]` annotation in the RPC error.
-    #[error("{err}\nProgram simulation logs:\n{}", logs.join("\n"))]
-    SolanaClientPreflightError {
-        /// Every log line emitted during simulation, in order.
-        logs: Vec<String>,
-        /// The underlying Solana RPC error (preserved for the `source()` chain).
-        #[source]
-        err: Box<SolanaClientError>,
-    },
     #[error("{0}")]
     SolanaClientPubsubError(#[from] Box<PubsubClientError>),
     #[error("Unable to parse log: {0}")]
@@ -519,6 +509,17 @@ pub enum ClientError {
     CompileError(#[from] solana_message::CompileError),
     #[error("Expected a legacy transaction but got a versioned transaction")]
     NotLegacyTransaction,
+}
+
+impl ClientError {
+    /// Extracts the program simulation logs from this error if it originates
+    /// from a preflight (simulation) failure.
+    pub fn extract_simulation_logs(&self) -> Option<Vec<String>> {
+        match self {
+            ClientError::SolanaClientError(err) => extract_simulation_logs(err),
+            _ => None,
+        }
+    }
 }
 
 /// Extracts the program simulation logs from a [`SolanaClientError`] when the
@@ -538,19 +539,8 @@ pub fn extract_simulation_logs(err: &SolanaClientError) -> Option<Vec<String>> {
 
 /// Convert a [`SolanaClientError`] into the richest [`ClientError`] variant
 /// available.
-///
-/// When the Solana error is a preflight failure that carries simulation logs,
-/// the returned variant is [`ClientError::SolanaClientPreflightError`] so that
-/// callers (and the `Display` impl) automatically surface those logs.
-/// All other errors fall back to the plain [`ClientError::SolanaClientError`].
 fn to_client_error(err: SolanaClientError) -> ClientError {
-    match extract_simulation_logs(&err) {
-        Some(logs) if !logs.is_empty() => ClientError::SolanaClientPreflightError {
-            logs,
-            err: Box::new(err),
-        },
-        _ => ClientError::SolanaClientError(Box::new(err)),
-    }
+    ClientError::SolanaClientError(Box::new(err))
 }
 
 pub trait AsSigner {
