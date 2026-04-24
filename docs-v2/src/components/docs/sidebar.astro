@@ -1,0 +1,55 @@
+---
+import SidebarItem from '@/components/docs/sidebar-item.astro'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import type { SidebarNode } from '@/types'
+
+interface Props {
+  tree: SidebarNode[]
+  class?: string
+}
+
+const { tree, class: className } = Astro.props
+---
+
+<nav aria-label="Documentation" class={className}>
+  <ScrollArea client:load className="h-full" type="hover">
+    <ul class="flex flex-col gap-0.5">
+      {
+        tree.map((node) => (
+          <li>
+            <SidebarItem node={node} />
+          </li>
+        ))
+      }
+    </ul>
+  </ScrollArea>
+</nav>
+
+<script>
+  function trimTrailingSlash(path: string): string {
+    if (path === '/') return path
+    return path.replace(/\/+$/, '')
+  }
+
+  function updateActiveSidebarLink() {
+    const current = trimTrailingSlash(window.location.pathname)
+    document.querySelectorAll<HTMLAnchorElement>('[data-sidebar-link]').forEach((link) => {
+      const href = link.getAttribute('data-sidebar-link') ?? ''
+      const isActive = trimTrailingSlash(href) === current
+      if (isActive) {
+        link.setAttribute('aria-current', 'page')
+        // Expand every <details> ancestor so the active link is visible.
+        let node: HTMLElement | null = link.parentElement
+        while (node) {
+          if (node instanceof HTMLDetailsElement) node.open = true
+          node = node.parentElement
+        }
+      } else {
+        link.removeAttribute('aria-current')
+      }
+    })
+  }
+
+  updateActiveSidebarLink()
+  document.addEventListener('astro:after-swap', updateActiveSidebarLink)
+</script>

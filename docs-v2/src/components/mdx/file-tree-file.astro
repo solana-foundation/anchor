@@ -1,0 +1,28 @@
+---
+import { Icon } from 'astro-icon/components'
+
+interface Props {
+  name: string
+  highlight?: boolean
+  comment?: string
+}
+
+const { name, highlight = false, comment } = Astro.props
+---
+
+<li>
+  <span
+    class:list={[
+      'inline-flex items-center gap-1.5 whitespace-nowrap rounded px-1.5 py-0.5',
+      highlight && 'bg-primary/10 font-medium text-primary',
+    ]}
+  >
+    <span class="size-3 shrink-0" aria-hidden="true"></span>
+    <Icon
+      name="lucide:file"
+      class:list={['size-4 shrink-0', highlight ? 'text-primary' : 'text-muted-foreground']}
+    />
+    <span>{name}</span>
+    {comment && <span class="text-muted-foreground ml-2 text-xs">{comment}</span>}
+  </span>
+</li>

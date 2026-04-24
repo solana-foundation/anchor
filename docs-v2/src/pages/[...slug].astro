@@ -1,0 +1,62 @@
+---
+import DocLayout from '@/layouts/doc.astro'
+import {
+  docHref,
+  docSlugFromId,
+  getAllDocs,
+  getEditUrl,
+  resolveLastUpdated,
+  resolveTOC,
+  type Doc,
+} from '@/lib/docs'
+import { gitLastUpdated } from '@/lib/git-lastmod'
+import { mdxComponents } from '@/lib/mdx-components'
+import { getIndexChildren, getPrevNext, getSidebarTree } from '@/lib/sidebar'
+import { render } from 'astro:content'
+
+export async function getStaticPaths() {
+  const docs = await getAllDocs()
+  return docs.map((doc) => ({
+    params: { slug: docSlugFromId(doc.id) },
+    props: { doc },
+  }))
+}
+
+interface Props {
+  doc: Doc
+}
+
+const { doc } = Astro.props
+const { Content, headings } = await render(doc)
+
+const href = docHref(doc.id)
+const sidebar = await getSidebarTree(href)
+const { prev, next } = await getPrevNext(href)
+const editUrl = getEditUrl(doc)
+
+const frontmatterLastUpdated = resolveLastUpdated(doc)
+const lastUpdated =
+  frontmatterLastUpdated ??
+  (doc.data.lastUpdated === false ? null : doc.filePath ? gitLastUpdated(doc.filePath) : null)
+
+const toc = resolveTOC(doc)
+
+const isIndex = doc.id === 'index' || /\/index\.mdx?$/.test(doc.filePath ?? '')
+const indexChildren = isIndex && doc.data.autoCards !== false ? await getIndexChildren(href) : []
+---
+
+<DocLayout
+  doc={doc}
+  headings={headings}
+  sidebar={sidebar}
+  prev={prev}
+  next={next}
+  editUrl={editUrl}
+  lastUpdated={lastUpdated}
+  tocMinDepth={toc.minDepth}
+  tocMaxDepth={toc.maxDepth}
+  tocEnabled={toc.enabled}
+  indexChildren={indexChildren}
+>
+  <Content components={mdxComponents} />
+</DocLayout>

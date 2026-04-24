@@ -1,0 +1,62 @@
+---
+import Link from '@/components/link.astro'
+import { buttonVariants } from '@/components/ui/button'
+import type { FlatDoc } from '@/types'
+import { cn } from '@/lib/utils'
+import { Icon } from 'astro-icon/components'
+
+interface Props {
+  prev: FlatDoc | null
+  next: FlatDoc | null
+}
+
+const { prev, next } = Astro.props
+---
+
+{
+  (prev || next) && (
+    <nav class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {prev ? (
+        <Link
+          href={prev.href}
+          class={cn(
+            buttonVariants({ variant: 'outline' }),
+            'group flex size-full items-center justify-start rounded-lg',
+          )}
+        >
+          <Icon
+            name="lucide:arrow-left"
+            class="mr-2 size-4 transition-transform group-hover:-translate-x-1"
+          />
+          <div class="flex flex-col items-start overflow-hidden text-wrap">
+            <span class="text-muted-foreground text-left text-xs">Previous</span>
+            <span class="w-full text-left text-sm text-balance text-ellipsis">{prev.label}</span>
+          </div>
+        </Link>
+      ) : (
+        <div class="hidden sm:block" />
+      )}
+
+      {next ? (
+        <Link
+          href={next.href}
+          class={cn(
+            buttonVariants({ variant: 'outline' }),
+            'group flex size-full items-center justify-end rounded-lg',
+          )}
+        >
+          <div class="flex flex-col items-end overflow-hidden text-wrap">
+            <span class="text-muted-foreground text-right text-xs">Next</span>
+            <span class="w-full text-right text-sm text-balance text-ellipsis">{next.label}</span>
+          </div>
+          <Icon
+            name="lucide:arrow-right"
+            class="ml-2 size-4 transition-transform group-hover:translate-x-1"
+          />
+        </Link>
+      ) : (
+        <div class="hidden sm:block" />
+      )}
+    </nav>
+  )
+}

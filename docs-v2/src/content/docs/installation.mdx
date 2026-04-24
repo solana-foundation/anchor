@@ -1,0 +1,679 @@
+---
+title: Installation
+description: Learn how to install Rust, the Solana CLI, and Anchor Framework on Windows (WSL), Linux, or Mac.
+---
+
+This section covers the steps to set up your local environment for Solana development.
+
+## Quick installation
+
+On Mac and Linux, run this single command to install all dependencies.
+
+```ansi title="Terminal"
+curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev | bash
+```
+
+<Callout variant="warning" title="For Windows users">
+  Windows users must first install WSL (see [Install Dependencies](#install-dependencies)). Then run the command above in the Ubuntu (Linux) terminal.
+</Callout>
+
+After installation, you should see output similar to the following:
+
+```ansi
+Installed Versions:
+Rust: rustc 1.95.0 (59807616e 2026-04-14)
+Solana CLI: solana-cli 3.1.14 (src:ca2c682f; feat:534737035, client:Agave)
+Anchor CLI: anchor-cli 0.32.1
+Surfpool CLI: surfpool 1.2.0
+Node.js: v24.12.0
+Yarn: 1.22.22
+
+Installation complete. Please restart your terminal to apply all changes.
+```
+
+<Callout>
+  If the quick installation command above doesn't work, please refer to the [Install dependencies](#install-dependencies) section below for instructions to install each dependency individually.
+
+  If the quick install command runs successfully, skip to the [Solana CLI basics](#solana-cli-basics) and [Anchor CLI basics](#anchor-cli-basics) sections below.
+</Callout>
+
+## Install dependencies
+
+The instructions below will guide you through installing each dependency individually.
+
+- Windows users must first install WSL (Windows subsystem for Linux) and then install the dependencies specified in the Linux section below.
+- Linux users should first install the dependencies specified in the Linux section below.
+- Mac users should start with the Rust installation instructions below.
+
+<Callout variant="tip" title="WSL install" defaultOpen={false}>
+  To develop Solana programs on Windows **you must use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)** (Windows subsystem for Linux). All additional dependencies must be installed through the Linux terminal. Once WSL is installed, install the dependencies specified in the Linux section below before proceeding to install Rust, Solana CLI, and Anchor CLI.
+
+  To install WSL, run the following command in Windows PowerShell:
+
+  ```ansi title="Terminal"
+  wsl --install
+  ```
+
+  The install process will prompt you to create a default user account.
+
+  ![WSL Install](/docs/installation/wsl-install.png)
+
+  By default, WSL installs Ubuntu. You can open a Linux terminal by searching "Ubuntu" in the Search bar.
+
+  ![WSL Ubuntu](/docs/installation/wsl-ubuntu-search.png)
+
+  If your Ubuntu terminal looks like the image below, you may encounter an issue where <kbd>Ctrl</kbd> + <kbd>V</kbd> (paste keyboard shortcut) doesn't work in the terminal.
+
+  ![Ubuntu Terminal](/docs/installation/wsl-ubuntu-terminal-1.png)
+
+  If you encounter this issue, open Windows Terminal by searching for "Terminal" in the Search bar.
+
+  ![Windows Terminal](/docs/installation/wsl-windows-terminal.png)
+
+  Next, close the Windows Terminal and reopen a Linux terminal by searching for Ubuntu again. The terminal should now look like the image below, where <kbd>Ctrl</kbd>+<kbd>V</kbd> (paste keyboard shortcut) works.
+
+  ![Ubuntu Terminal](/docs/installation/wsl-ubuntu-terminal-2.png)
+
+  If you are using VS Code, the [WSL extension](https://code.visualstudio.com/docs/remote/wsl-tutorial) enables you to use WSL and VS Code together.
+
+  ![WSL Setup in VS Code](/docs/installation/wsl-vscode.png)
+
+  You should then see the following in the VS Code status bar:
+
+  ![WSL: Ubuntu](/docs/installation/wsl-vscode-ubuntu.png)
+
+  Once you have WSL set up, all additional dependencies **must** be installed through the Ubuntu (Linux) terminal.
+
+  To install the required Solana dependencies, first try running the [quick installation](#quick-installation) command above in the Ubuntu (Linux) terminal.
+
+  <Callout>
+
+  If the quick install command doesn't work, install the dependencies specified in the Linux section below before proceeding to the individual steps for installing Rust, Solana CLI, and Anchor CLI.
+
+  If the quick install command runs successfully, skip to the [Solana CLI basics](#solana-cli-basics) and [Anchor CLI basics](#anchor-cli-basics) sections below.
+  </Callout>
+</Callout>
+
+<Callout variant="tip" defaultOpen={false} title="Linux">
+  The following dependencies are required for the Anchor CLI installation.
+
+  1. First, run the following command:
+      ```ansi title="Terminal"
+      sudo apt-get update
+      ```
+
+  2. Next, install the following dependencies:
+      ```ansi title="Terminal"
+      sudo apt-get install -y \
+          build-essential \
+          pkg-config \
+          libudev-dev llvm libclang-dev \
+          protobuf-compiler libssl-dev
+      ```
+      <Callout variant="tip" title="protobuf-compiler error">
+        If you encounter the following error when installing `protobuf-compiler`, make sure you first run `sudo apt-get update`:
+        ```ansi showLineNumbers=false
+        Package protobuf-compiler is not available, but is referred to by another package.
+        This may mean that the package is missing, has been obsoleted, or
+        is only available from another source
+        ```
+      </Callout>
+</Callout>
+
+<Steps>
+<Step>
+
+### Install Rust
+
+Solana programs are written in the [Rust programming language](https://www.rust-lang.org/). The recommended installation method for Rust is [rustup](https://www.rust-lang.org/tools/install).
+
+Run the following command to install Rust:
+
+```ansi title="Terminal"
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+```
+
+You should see the following after a successful install:
+
+```ansi
+[1mRust is installed now. Great![0m
+
+To get started you may need to restart your current shell.
+This would reload your [1mPATH[0m environment variable to include
+Cargo's bin directory ($HOME/.cargo/bin).
+
+To configure your current shell, you need to source
+the corresponding [1menv[0m file under $HOME/.cargo.
+
+This is usually done by running one of the following (note the leading DOT):
+. "$HOME/.cargo/env"            # For sh/bash/zsh/ash/dash/pdksh
+source "$HOME/.cargo/env.fish"  # For fish
+```
+
+Run the following command to reload your PATH environment variable to include Cargo's bin directory:
+
+```ansi title="Terminal"
+. "$HOME/.cargo/env"
+```
+
+To verify that the installation was successful, check the Rust version:
+
+```ansi title="Terminal"
+$ rustc --version
+rustc 1.95.0 (59807616e 2026-04-14)
+```
+
+</Step>
+<Step>
+
+### Install Solana CLI
+
+The Solana CLI provides all the tools required to build and deploy Solana programs. Install the Solana CLI tool suite using the official install command:
+
+```ansi title="Terminal"
+sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+```
+
+<Callout variant="tip" title="Changing versions">
+You can replace `stable` with the release tag matching the software version of your desired release (i.e. `v2.0.3`), or use one of the three symbolic channel names: `stable`, `beta`, or `edge`.
+</Callout>
+
+If it is your first time installing the Solana CLI, you may see the following message prompting you to add a `PATH` environment variable:
+
+```ansi
+Close and reopen your terminal to apply the PATH changes or run the following in your existing shell:
+
+export PATH="/Users/test/.local/share/solana/install/active_release/bin:$PATH"
+```
+
+<Tabs groupId="language" items={["Linux", "Mac"]}>
+<Tab>
+  If you are using a Linux or WSL terminal, you can add the `PATH` environment variable to your shell configuration file by running the command logged from the installation or by restarting your terminal.
+
+  ```ansi title="Terminal"
+  export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+  ```
+</Tab>
+<Tab>
+  If you're on Mac using `zsh`, running the default `export PATH` command logged from the installation does not persist once you close your terminal.
+
+  Instead, you can add the `PATH` to your shell configuration file by running the following command:
+
+  ```ansi title="Terminal"
+  echo 'export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"' >> ~/.zshrc
+  ```
+
+  Then run the following command to refresh the terminal session or restart your terminal.
+
+  ```ansi title="Terminal"
+  source ~/.zshrc
+  ```
+</Tab>
+</Tabs>
+
+To verify that the installation was successful, check the Solana CLI version:
+
+```ansi title="Terminal"
+$ solana --version
+solana-cli 3.1.14 (src:ca2c682f; feat:534737035, client:Agave)
+```
+
+You can view all available versions on the [Agave Github repo](https://github.com/anza-xyz/agave/releases).
+
+<Callout>
+
+Agave is the validator client from [Anza](https://www.anza.xyz/), formerly known as Solana Labs validator client.
+
+</Callout>
+
+To later update the Solana CLI to the latest version, you can use the following command:
+
+```ansi title="Terminal"
+agave-install update
+```
+
+</Step>
+<Step>
+
+### Install Anchor CLI
+
+[Anchor](https://www.anchor-lang.com/) is a framework for developing Solana programs. The Anchor framework leverages Rust macros to simplify the process of writing Solana programs.
+
+You can install the Anchor CLI and tooling either with the recommended Anchor Version Manager (AVM), which makes managing versions easy, or directly from GitHub if you prefer not to use AVM.
+
+<Tabs groupId="anchor" items={["AVM", "Without AVM"]}>
+<Tab>
+
+The Anchor version manager (AVM) allows you to install and manage different Anchor versions on your system and easily update Anchor versions in the future.
+
+Install AVM with the following command:
+
+```ansi title="Terminal"
+cargo install --git https://github.com/solana-foundation/anchor avm --force
+```
+
+Check that AVM was installed successfully:
+
+```ansi title="Terminal"
+$ avm --version
+avm 1.0.1
+```
+
+Install the latest version of Anchor CLI using AVM:
+
+```ansi title="Terminal"
+avm install latest
+avm use latest
+```
+
+<Callout variant="tip" title="Alternative Anchor versions">
+  Alternatively, you can install a specific version of Anchor CLI by specifying the version number:
+
+  ```ansi title="Terminal"
+  avm install 1.0.0
+  avm use 1.0.0
+  ```
+</Callout>
+
+<Callout variant="note">
+
+Don't forget to run the `avm use` command to declare which Anchor CLI version should be used on your system.
+
+- If you installed the `latest` version, run `avm use latest`.
+- If you installed the version `1.0.0`, run `avm use 1.0.0`.
+
+</Callout>
+
+</Tab>
+
+<Tab>
+
+Install a specific version of the Anchor CLI with the following command:
+
+```ansi title="Terminal"
+cargo install --git https://github.com/solana-foundation/anchor --tag v1.0.0 anchor-cli
+```
+
+</Tab>
+</Tabs>
+
+To verify that the installation was successful, check the Anchor CLI version:
+
+```ansi title="Terminal"
+$ anchor --version
+anchor-cli 1.0.1
+```
+
+<Callout variant="warning">
+
+When installing the Anchor CLI on Linux or WSL, you may encounter this error:
+
+```ansi
+error: could not exec the linker cc = note: Permission denied (os error 13)
+```
+
+If you see this error message, follow these steps:
+
+1. Install the dependencies listed in the [Linux](#install-dependencies) section at the top of this page.
+2. Retry installing the Anchor CLI.
+
+</Callout>
+
+#### Node.js and Yarn
+
+Node.js and Yarn are required for project initialization and when using a TypeScript-based test template (`mocha`, `jest`). The default test template (`litesvm`) does not run TypeScript tests, so they are not needed for day-to-day development once initialization is complete. They are expected to become fully optional in a future release.
+
+<Tabs groupId="node-yarn" items={["Node", "Yarn"]}>
+  <Tab>
+    The recommended way to install node is using [Node Version Manager (nvm)](https://github.com/nvm-sh/nvm).
+
+    Install nvm using the following command:
+
+    ```ansi title="Terminal"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+    ```
+
+    Restart your terminal and verify that nvm is installed:
+
+    ```ansi title="Terminal"
+    command -v nvm
+    ```
+
+    Next, use `nvm` to install node:
+
+    ```ansi title="Terminal"
+    nvm install node
+    ```
+
+    To verify that the installation was successful, check the Node version:
+
+    ```ansi title="Terminal"
+    $ node --version
+    v23.7.0
+    ```
+  </Tab>
+  <Tab>
+    Install Yarn:
+
+    ```ansi title="Terminal"
+    npm install --global yarn
+    ```
+
+    To verify that the installation was successful, check the Yarn version:
+
+    ```ansi title="Terminal"
+    $ yarn --version
+    1.22.1
+    ```
+  </Tab>
+</Tabs>
+
+<Callout variant="warning">
+  The following are common errors that occur when running `anchor build`:
+  <Callout variant="problem" title='"error: not a directory"' defaultOpen={false}>
+    ```ansi
+    error: not a directory: '.../solana-release/bin/sdk/sbf/dependencies/platform-tools/rust/lib'
+    ```
+    Try these solutions:
+    1. Force install using the following command:
+
+    ```ansi title="Terminal"
+    cargo build-sbf --force-tools-install
+    ```
+
+    2. If the solution above doesn't work, clear the Solana cache:
+
+    ```ansi title="Terminal"
+    rm -rf ~/.cache/solana/*
+    ```
+  </Callout>
+  <Callout variant="problem" title="lock file version 4 requires -Znext-lockfile-bump" defaultOpen={false}>
+    You can fix this by changing the version field of `Cargo.lock` file from 4 to 3:
+
+    ```yml title="Cargo.lock" showLineNumbers={false} add={2} del={1}
+    version = 4
+    version = 3
+    ```
+
+    See [this issue](https://github.com/solana-foundation/anchor/issues/3392) for more information.
+
+    After applying the solution above, attempt to run `anchor build` again.
+  </Callout>
+</Callout>
+
+<Callout variant="warning" title="Common errors">
+  When running `anchor test` after creating a new Anchor project on Linux or WSL, you may encounter ` Permission denied (os error 13)` or `No such file or directory (os error 2)` if Node.js or Yarn are not installed.
+</Callout>
+
+</Step>
+</Steps>
+
+## Solana CLI basics
+
+This section will walk through some common Solana CLI commands to get you started.
+
+<Steps>
+<Step>
+
+### Solana config
+
+To see your current config:
+
+```shell
+$ solana config get
+```
+```ansi
+[1mConfig File:[0m /Users/test/.config/solana/cli/config.yml
+[1mRPC URL:[0m https://api.mainnet-beta.solana.com [3m[0m
+[1mWebSocket URL:[0m wss://api.mainnet-beta.solana.com/ [3m(computed)[0m
+[1mKeypair Path:[0m /Users/test/.config/solana/id.json [3m[0m
+[1mCommitment:[0m confirmed [3m[0m
+```
+
+The RPC URL and Websocket URL specify the Solana cluster the CLI will make requests to. By default this will be mainnet-beta.
+
+You can update the Solana CLI cluster using the following commands:
+
+```ansi
+solana config set --url mainnet-beta
+solana config set --url devnet
+solana config set --url localhost
+solana config set --url testnet
+```
+
+You can also use the following short options:
+
+```ansi
+solana config set -um    # For mainnet-beta
+solana config set -ud    # For devnet
+solana config set -ul    # For localhost
+solana config set -ut    # For testnet
+```
+
+The Keypair Path specifies the location of the default wallet used by the Solana CLI (to pay transaction fees and deploy programs). The default path is `~/.config/solana/id.json`. The next step walks through how to generate a keypair at the default location.
+
+</Step>
+<Step>
+
+### Create wallet
+
+To interact with the Solana network using the Solana CLI, you need a Solana wallet funded with SOL. To generate a keypair at the default Keypair Path, run the following command:
+
+```ansi
+solana-keygen new
+```
+
+You should see output similar to the following:
+
+```ansi
+Generating a new keypair
+
+For added security, enter a BIP39 passphrase
+
+NOTE! This passphrase improves security of the recovery seed phrase NOT the
+keypair file itself, which is stored as insecure plain text
+
+BIP39 Passphrase (empty for none):
+
+Wrote new keypair to /Users/test/.config/solana/id.json
+===========================================================================
+pubkey: 8dBTPrjnkXyuQK3KDt9wrZBfizEZijmmUQXVHpFbVwGT
+===========================================================================
+Save this seed phrase and your BIP39 passphrase to recover your new keypair:
+cream bleak tortoise ocean nasty game gift forget fancy salon mimic amazing
+===========================================================================
+```
+
+<Callout variant="note">
+
+If you already have a file system wallet saved at the default location, this command will **not** override it unless you explicitly force override using the `--force` flag.
+
+</Callout>
+
+Once a keypair is generated, you can get the address (public key) of the keypair with the following command:
+
+```ansi
+solana address
+```
+
+</Step>
+<Step>
+
+### Airdrop SOL
+
+Once you've set up your local wallet, request an airdrop of SOL to fund your wallet. You need SOL to pay for transaction fees and to deploy programs.
+
+Set your cluster to the devnet:
+
+```ansi
+solana config set -ud
+```
+
+Then request an airdrop of devnet SOL:
+
+```ansi
+solana airdrop 2
+```
+
+To check your wallet's SOL balance, run the following command:
+
+```ansi
+solana balance
+```
+
+<Callout>
+
+The `solana airdrop` command is currently limited to 5 SOL per request on devnet. Errors are likely due to rate limits.
+
+Alternatively, you can get devnet SOL using the [Solana Web Faucet](https://faucet.solana.com).
+
+</Callout>
+</Step>
+<Step>
+
+### Run local validator
+
+The Solana CLI comes with the [test validator](https://docs.anza.xyz/cli/examples/test-validator) built-in. Running a local validator will allow you to deploy and test your programs locally.
+
+In a separate terminal, run the following command to start a local validator:
+
+```ansi
+solana-test-validator
+```
+
+Make sure to update the Solana CLI config to localhost before commands.
+
+```ansi
+solana config set -ul
+```
+
+</Step>
+</Steps>
+
+## Anchor CLI basics
+
+This section will walk through some common Anchor CLI commands to get you started. For more information on the Anchor CLI, see the [Anchor documentation](https://www.anchor-lang.com/docs).
+
+<Steps>
+<Step>
+
+### Initialize project
+
+To create a new Anchor project, run the following command:
+
+```ansi title="Terminal"
+anchor init <project-name>
+```
+
+For example, to create a project called `my-project`, run:
+
+```ansi title="Terminal"
+anchor init my-project
+```
+
+This command creates a new directory with the project name and initializes a new Anchor project with a modular Rust program structure. By default, tests are written in Rust using the [LiteSVM](https://github.com/LiteSVM/litesvm) crate. Use `--test-template` to choose a different template (`mollusk`, `mocha`, `jest`, etc):
+
+```ansi title="Terminal"
+anchor init my-project --test-template mollusk
+```
+
+<Callout variant="note">
+
+By default, Anchor uses a **modular structure** with separate files for instructions, state, constants, and errors. This organization improves code maintainability and is recommended for production code.
+
+</Callout>
+
+Navigate to the project directory:
+
+```ansi title="Terminal"
+cd <project-name>
+```
+
+See the Anchor project's [file structure](https://www.anchor-lang.com/docs/quickstart/local#project-file-structure).
+
+</Step>
+
+<Step>
+### Build program
+
+To build your project, run the following command:
+
+```ansi title="Terminal"
+anchor build
+```
+
+The compiled program can be found in the `/target/deploy` directory.
+
+</Step>
+<Step>
+
+### Deploy program
+
+To deploy your project, run the following command:
+
+```ansi title="Terminal"
+anchor deploy
+```
+
+This command will deploy your program to the `cluster` specified in the [`Anchor.toml`](https://www.anchor-lang.com/docs/references/anchor-toml) file.
+
+</Step>
+<Step>
+
+### Test program
+
+To test your project, run the following command:
+
+```ansi title="Terminal"
+anchor test
+```
+
+<Callout>
+
+This command builds, deploys, and runs the tests for your project.
+
+When using `localnet` as the `cluster` in `Anchor.toml`, Anchor automatically starts a local validator, deploys your program, runs tests, and then stops the validator.
+
+</Callout>
+
+</Step>
+</Steps>
+
+## Shell completions
+
+Shell completions can be generated for [`bash`](#bash), [`fish`](#fish) and [`zsh`](#zsh).
+
+<Tabs groupId="shell-completions" items={["bash", "fish", "zsh"]}>
+  <Tab>
+    ```ansi title="Terminal"
+    mkdir -p $HOME/.local/share/bash-completion/completions
+    anchor completions bash > $HOME/.local/share/bash-completion/completions/anchor
+    avm completions bash > $HOME/.local/share/bash-completion/completions/avm
+    exec bash
+    ```
+  </Tab>
+  <Tab>
+    ```ansi title="Terminal"
+    mkdir -p $HOME/.config/fish/completions
+    anchor completions fish > $HOME/.config/fish/completions/anchor.fish
+    avm completions fish > $HOME/.config/fish/completions/avm.fish
+    source $HOME/.config/fish/config.fish
+    ```
+  </Tab>
+  <Tab>
+    First ensure the following is in your `.zshrc` file. If using `oh-my-zsh` this step can be skipped.
+
+    ```ansi title="Terminal"
+    autoload -U compinit
+    compinit -i
+    ```
+
+    Next, run:
+
+    ```ansi title="Terminal"
+    anchor completions zsh | sudo tee /usr/local/share/zsh/site-functions/_anchor
+    avm completions zsh | sudo tee /usr/local/share/zsh/site-functions/_avm
+    exec zsh
+    ```
+  </Tab>
+</Tabs>

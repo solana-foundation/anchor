@@ -1,0 +1,110 @@
+---
+import SearchTrigger from '@/components/docs/search-trigger.astro'
+import Sidebar from '@/components/docs/sidebar.astro'
+import Link from '@/components/link.astro'
+import ThemeToggle from '@/components/theme-toggle.astro'
+import { SITE, SOCIAL_LINKS } from '@/consts'
+import type { SidebarNode } from '@/types'
+import { Icon } from 'astro-icon/components'
+import { Image } from 'astro:assets'
+import wordmarkDark from '@/assets/wordmark-dark.svg'
+import wordmarkLight from '@/assets/wordmark-light.svg'
+
+interface Props {
+  tree: SidebarNode[]
+}
+
+const { tree } = Astro.props
+const gitHubLink = SOCIAL_LINKS.find((link) => link.label === 'GitHub')
+---
+
+<aside class="hidden xl:block" aria-label="Site navigation" transition:persist="docs-aside">
+  <div class="sticky top-0 flex h-screen flex-col gap-4 pt-16 pr-4 pb-6 pl-6">
+    <Link href="/" class="flex items-center no-underline" aria-label={SITE.title}>
+      <Image src={wordmarkLight} alt={SITE.title} class="block h-6 w-auto dark:hidden" />
+      <Image src={wordmarkDark} alt={SITE.title} class="hidden h-6 w-auto dark:block" />
+    </Link>
+
+    <SearchTrigger />
+
+    <nav class="-mx-2 min-h-0 flex-1" aria-label="Documentation" data-sidebar-nav>
+      <Sidebar tree={tree} class="h-full px-2" />
+    </nav>
+
+    <div class="border-border/70 flex h-12 items-center justify-between border-t">
+      <ThemeToggle transition:persist />
+      <div class="flex items-center gap-1">
+        {
+          gitHubLink && (
+            <Link
+              href={gitHubLink.href}
+              external
+              class="text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md no-underline transition-colors"
+              aria-label="GitHub"
+            >
+              <Icon name="lucide:github" class="size-4" />
+            </Link>
+          )
+        }
+        <a
+          id="docs-edit-link"
+          href="#"
+          target="_blank"
+          rel="noreferrer noopener nofollow"
+          hidden
+          aria-label="Edit this page"
+          title="Edit this page"
+          class="text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md no-underline transition-colors"
+        >
+          <Icon name="lucide:pencil" class="size-4" />
+        </a>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<script>
+  function setupScrollFades() {
+    const nav = document.querySelector<HTMLElement>('[data-sidebar-nav]')
+    const viewport = nav?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
+    if (!nav || !viewport) return
+
+    function update() {
+      const atTop = viewport!.scrollTop <= 1
+      const atBottom = viewport!.scrollTop + viewport!.clientHeight >= viewport!.scrollHeight - 1
+
+      nav!.style.maskImage =
+        atTop && atBottom
+          ? 'none'
+          : atTop
+            ? 'linear-gradient(to bottom, black calc(100% - 2rem), transparent)'
+            : atBottom
+              ? 'linear-gradient(to bottom, transparent, black 2rem)'
+              : 'linear-gradient(to bottom, transparent, black 2rem, black calc(100% - 2rem), transparent)'
+    }
+
+    update()
+    viewport.addEventListener('scroll', update, { passive: true })
+    new ResizeObserver(update).observe(viewport)
+  }
+
+  setupScrollFades()
+  document.addEventListener('astro:after-swap', setupScrollFades)
+
+  function updateEditLink() {
+    const link = document.getElementById('docs-edit-link')
+    if (!link) return
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="docs-edit-url"]')
+    const url = meta?.content ?? ''
+    if (url) {
+      link.setAttribute('href', url)
+      link.removeAttribute('hidden')
+    } else {
+      link.setAttribute('href', '#')
+      link.setAttribute('hidden', '')
+    }
+  }
+
+  updateEditLink()
+  document.addEventListener('astro:after-swap', updateEditLink)
+</script>

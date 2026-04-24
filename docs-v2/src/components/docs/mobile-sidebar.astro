@@ -1,0 +1,81 @@
+---
+import Sidebar from '@/components/docs/sidebar.astro'
+import Link from '@/components/link.astro'
+import { Button } from '@/components/ui/button'
+import { SITE } from '@/consts'
+import type { SidebarNode } from '@/types'
+import { Icon } from 'astro-icon/components'
+import { Image } from 'astro:assets'
+import wordmarkDark from '@/assets/wordmark-dark.svg'
+import wordmarkLight from '@/assets/wordmark-light.svg'
+
+interface Props {
+  tree: SidebarNode[]
+}
+
+const { tree } = Astro.props
+---
+
+<dialog
+  id="mobile-sidebar"
+  class="bg-background text-foreground fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-full border-r p-0 outline-none backdrop:bg-black/40 open:flex open:flex-col open:gap-2 open:p-4 xl:hidden"
+  aria-label="Documentation navigation"
+  transition:persist="mobile-sidebar"
+>
+  <header class="flex items-center justify-between pb-2">
+    <Link href="/" class="flex items-center no-underline" aria-label={SITE.title}>
+      <Image src={wordmarkLight} alt={SITE.title} class="block h-5 w-auto dark:hidden" />
+      <Image src={wordmarkDark} alt={SITE.title} class="hidden h-5 w-auto dark:block" />
+    </Link>
+    <Button
+      id="mobile-sidebar-close"
+      variant="ghost"
+      size="icon"
+      title="Close navigation"
+      aria-label="Close navigation"
+      className="size-8"
+    >
+      <Icon name="lucide:x" class="size-4" />
+    </Button>
+  </header>
+  <div class="min-h-0 flex-1">
+    <Sidebar tree={tree} class="h-full" />
+  </div>
+</dialog>
+
+<script>
+  function setupMobileSidebar() {
+    const dialog = document.getElementById('mobile-sidebar') as HTMLDialogElement | null
+    const trigger = document.getElementById('mobile-sidebar-trigger') as HTMLButtonElement | null
+    const closeBtn = document.getElementById('mobile-sidebar-close') as HTMLButtonElement | null
+
+    if (!dialog) return
+
+    const open = () => {
+      dialog.showModal()
+      trigger?.setAttribute('aria-expanded', 'true')
+    }
+    const close = () => {
+      if (dialog.open) dialog.close()
+      trigger?.setAttribute('aria-expanded', 'false')
+    }
+
+    trigger?.addEventListener('click', open)
+    closeBtn?.addEventListener('click', close)
+
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) close()
+    })
+
+    dialog.addEventListener('close', () => {
+      trigger?.setAttribute('aria-expanded', 'false')
+    })
+
+    dialog
+      .querySelectorAll<HTMLAnchorElement>('a[href]')
+      .forEach((link) => link.addEventListener('click', close))
+  }
+
+  setupMobileSidebar()
+  document.addEventListener('astro:after-swap', setupMobileSidebar)
+</script>

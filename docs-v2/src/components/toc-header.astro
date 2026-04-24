@@ -1,0 +1,376 @@
+---
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn, getHeadingMargin } from '@/lib/utils'
+import type { MarkdownHeading } from 'astro'
+import { Icon } from 'astro-icon/components'
+
+type Props = {
+  headings: MarkdownHeading[]
+  minDepth?: number
+  maxDepth?: number
+}
+
+const { headings, minDepth = 2, maxDepth = 4 } = Astro.props
+const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDepth)
+---
+
+{
+  visible.length > 0 && (
+    <div
+      id="mobile-toc-container"
+      class="bg-background/80 sticky top-14 z-30 border-b backdrop-blur-sm xl:hidden"
+    >
+      <details class="group">
+        <summary class="flex w-full cursor-pointer items-center justify-between">
+          <div class="mx-auto flex w-full max-w-3xl items-center px-4 py-3">
+            <div class="relative mr-2 size-4">
+              <svg class="h-4 w-4" viewBox="0 0 24 24">
+                <circle
+                  class="text-primary/20"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+                <circle
+                  id="mobile-toc-progress-circle"
+                  class="text-primary"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-dasharray="62.83"
+                  stroke-dashoffset="62.83"
+                  transform="rotate(-90 12 12)"
+                />
+              </svg>
+            </div>
+            <span
+              id="mobile-toc-current-section"
+              class="text-muted-foreground flex-grow truncate text-sm"
+            >
+              Overview
+            </span>
+            <span class="text-muted-foreground ml-2">
+              <Icon
+                name="lucide:chevron-down"
+                class="h-4 w-4 transition-transform duration-200 group-open:rotate-180"
+              />
+            </span>
+          </div>
+        </summary>
+
+        <ScrollArea client:load className="mx-auto max-w-3xl" data-toc-header-scroll>
+          <div class="max-h-[30vh]">
+            <ul class="flex list-none flex-col gap-y-2 px-4 pb-4" id="mobile-table-of-contents">
+              {visible.map((heading) => (
+                <li
+                  class={cn('px-4 text-sm', getHeadingMargin(heading.depth), 'text-foreground/60')}
+                >
+                  <a
+                    href={`#${heading.slug}`}
+                    class="mobile-toc-item underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
+                    data-heading-id={heading.slug}
+                  >
+                    {heading.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </ScrollArea>
+      </details>
+    </div>
+  )
+}
+
+<script>
+  const INITIAL_OVERVIEW_TEXT = 'Overview'
+  const HEADER_OFFSET = 120
+  const PROGRESS_CIRCLE_RADIUS = 10
+  const PROGRESS_CIRCLE_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_CIRCLE_RADIUS
+
+  class MobileTOCState {
+    progressCircle: HTMLElement | null = null
+    currentSectionText: HTMLElement | null = null
+    detailsElement: HTMLDetailsElement | null = null
+    listElement: HTMLElement | null = null
+    scrollArea: HTMLElement | null = null
+    headings: HTMLElement[] = []
+    regions: { id: string; start: number; end: number }[] = []
+    activeIds: string[] = []
+
+    reset() {
+      this.progressCircle = document.getElementById('mobile-toc-progress-circle')
+      this.currentSectionText = document.getElementById('mobile-toc-current-section')
+      this.detailsElement = document.querySelector('#mobile-toc-container details')
+      this.listElement = document.getElementById('mobile-table-of-contents')
+      const tocContainer = document.getElementById('mobile-toc-container')
+      this.scrollArea = tocContainer?.querySelector('[data-radix-scroll-area-viewport]') || null
+      this.headings = []
+      this.regions = []
+      this.activeIds = []
+
+      if (this.progressCircle) {
+        this.progressCircle.style.strokeDasharray = PROGRESS_CIRCLE_CIRCUMFERENCE.toString()
+        this.progressCircle.style.strokeDashoffset = PROGRESS_CIRCLE_CIRCUMFERENCE.toString()
+      }
+    }
+  }
+
+  const state = new MobileTOCState()
+
+  class HeadingRegions {
+    static build() {
+      state.headings = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '.prose h2, .prose h3, .prose h4, .prose h5, .prose h6',
+        ),
+      ).filter((h) => h.id)
+
+      if (state.headings.length === 0) {
+        state.regions = []
+        return
+      }
+
+      state.regions = state.headings.map((heading, index) => {
+        const nextHeading = state.headings[index + 1]
+        return {
+          id: heading.id,
+          start: heading.offsetTop,
+          end: nextHeading ? nextHeading.offsetTop : document.body.scrollHeight,
+        }
+      })
+    }
+
+    static getVisibleIds(): string[] {
+      if (state.headings.length === 0) return []
+
+      const viewportTop = window.scrollY + HEADER_OFFSET
+      const viewportBottom = window.scrollY + window.innerHeight
+      const visibleIds = new Set<string>()
+
+      const isInViewport = (top: number, bottom: number) =>
+        (top >= viewportTop && top <= viewportBottom) ||
+        (bottom >= viewportTop && bottom <= viewportBottom) ||
+        (top <= viewportTop && bottom >= viewportBottom)
+
+      state.headings.forEach((heading) => {
+        const headingBottom = heading.offsetTop + heading.offsetHeight
+        if (isInViewport(heading.offsetTop, headingBottom)) {
+          visibleIds.add(heading.id)
+        }
+      })
+
+      state.regions.forEach((region) => {
+        if (region.start <= viewportBottom && region.end >= viewportTop) {
+          const heading = document.getElementById(region.id)
+          if (heading) {
+            const headingBottom = heading.offsetTop + heading.offsetHeight
+            if (
+              region.end > headingBottom &&
+              (headingBottom < viewportBottom || viewportTop < region.end)
+            ) {
+              visibleIds.add(region.id)
+            }
+          }
+        }
+      })
+
+      return Array.from(visibleIds)
+    }
+  }
+
+  class TOCHeaderScrollMask {
+    static update() {
+      if (!state.scrollArea) return
+
+      const { scrollTop, scrollHeight, clientHeight } = state.scrollArea
+      const threshold = 5
+      const isAtTop = scrollTop <= threshold
+      const isAtBottom = scrollTop >= scrollHeight - clientHeight - threshold
+
+      state.scrollArea.classList.toggle('mask-t-from-80%', !isAtTop)
+      state.scrollArea.classList.toggle('mask-b-from-80%', !isAtBottom)
+    }
+  }
+
+  class MobileTOCLinks {
+    static update(headingIds: string[]) {
+      if (!state.listElement || !state.currentSectionText) return
+
+      state.listElement.querySelectorAll('.mobile-toc-item').forEach((item) => {
+        const tocItem = item as HTMLElement
+        const headingId = tocItem.dataset.headingId
+        if (headingId && headingIds.includes(headingId)) {
+          tocItem.classList.add('text-foreground')
+        } else {
+          tocItem.classList.remove('text-foreground')
+        }
+      })
+
+      if (headingIds.length > 0) {
+        this.scrollToActive(headingIds[0])
+      }
+
+      this.updateCurrentSectionText(headingIds)
+    }
+
+    static updateCurrentSectionText(headingIds: string[]) {
+      if (!state.currentSectionText) return
+
+      let textToShow = INITIAL_OVERVIEW_TEXT
+
+      if (headingIds.length > 0) {
+        const activeTexts = state.headings
+          .filter((heading) => headingIds.includes(heading.id))
+          .map((heading) => {
+            const clone = heading.cloneNode(true) as HTMLElement
+            clone.querySelectorAll('.heading-anchor').forEach((el) => el.remove())
+            return clone.textContent?.trim() ?? ''
+          })
+          .filter(Boolean)
+
+        if (activeTexts.length > 0) {
+          textToShow = activeTexts.join(', ')
+        }
+      }
+
+      state.currentSectionText.textContent = textToShow
+    }
+
+    static scrollToActive(activeHeadingId: string) {
+      if (!state.listElement) return
+
+      const activeItem = state.listElement.querySelector(`[data-heading-id="${activeHeadingId}"]`)
+      if (!activeItem) return
+
+      const scrollContainer = state.scrollArea
+      if (!scrollContainer) return
+
+      const { top: containerTop, height: containerHeight } = scrollContainer.getBoundingClientRect()
+      const { top: itemTop, height: itemHeight } = activeItem.getBoundingClientRect()
+
+      const currentItemTop = itemTop - containerTop + scrollContainer.scrollTop
+      const targetScroll = Math.max(
+        0,
+        Math.min(
+          currentItemTop - (containerHeight - itemHeight) / 2,
+          scrollContainer.scrollHeight - scrollContainer.clientHeight,
+        ),
+      )
+
+      if (Math.abs(targetScroll - scrollContainer.scrollTop) > 5) {
+        scrollContainer.scrollTop = targetScroll
+      }
+    }
+
+    static setupInteraction() {
+      if (!state.listElement) return
+
+      state.listElement.querySelectorAll('.mobile-toc-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          if (state.detailsElement) state.detailsElement.open = false
+        })
+      })
+
+      if (state.scrollArea) {
+        state.scrollArea.addEventListener('scroll', () => TOCHeaderScrollMask.update(), {
+          passive: true,
+        })
+      }
+
+      if (state.detailsElement) {
+        state.detailsElement.addEventListener('toggle', () => {
+          if (state.detailsElement?.open) {
+            setTimeout(TOCHeaderScrollMask.update, 100)
+          }
+        })
+      }
+    }
+  }
+
+  class ProgressCircle {
+    static update() {
+      if (!state.progressCircle) return
+
+      const scrollableDistance = document.documentElement.scrollHeight - window.innerHeight
+      const scrollProgress =
+        scrollableDistance > 0 ? Math.min(Math.max(window.scrollY / scrollableDistance, 0), 1) : 0
+
+      state.progressCircle.style.strokeDashoffset = (
+        PROGRESS_CIRCLE_CIRCUMFERENCE *
+        (1 - scrollProgress)
+      ).toString()
+    }
+  }
+
+  class MobileTOCController {
+    static handleScroll() {
+      const newActiveIds = HeadingRegions.getVisibleIds()
+
+      if (JSON.stringify(newActiveIds) !== JSON.stringify(state.activeIds)) {
+        state.activeIds = newActiveIds
+        MobileTOCLinks.update(state.activeIds)
+      }
+
+      ProgressCircle.update()
+    }
+
+    static handleResize() {
+      HeadingRegions.build()
+
+      const newActiveIds = HeadingRegions.getVisibleIds()
+      if (JSON.stringify(newActiveIds) !== JSON.stringify(state.activeIds)) {
+        state.activeIds = newActiveIds
+        MobileTOCLinks.update(state.activeIds)
+      }
+
+      ProgressCircle.update()
+    }
+
+    static init() {
+      state.reset()
+      HeadingRegions.build()
+
+      if (!state.currentSectionText) return
+
+      if (state.headings.length === 0) {
+        state.currentSectionText.textContent = INITIAL_OVERVIEW_TEXT
+        window.addEventListener('scroll', ProgressCircle.update, {
+          passive: true,
+        })
+        ProgressCircle.update()
+        return
+      }
+
+      state.activeIds = HeadingRegions.getVisibleIds()
+      MobileTOCLinks.update(state.activeIds)
+      ProgressCircle.update()
+
+      MobileTOCLinks.setupInteraction()
+      window.addEventListener('scroll', this.handleScroll, { passive: true })
+      window.addEventListener('resize', this.handleResize, { passive: true })
+    }
+
+    static cleanup() {
+      window.removeEventListener('scroll', this.handleScroll)
+      window.removeEventListener('scroll', ProgressCircle.update)
+      window.removeEventListener('resize', this.handleResize)
+      state.activeIds = []
+      state.headings = []
+      state.regions = []
+    }
+  }
+
+  document.addEventListener('astro:page-load', () => MobileTOCController.init())
+  document.addEventListener('astro:after-swap', () => {
+    MobileTOCController.cleanup()
+    MobileTOCController.init()
+  })
+  document.addEventListener('astro:before-swap', () => MobileTOCController.cleanup())
+</script>
