@@ -837,9 +837,8 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
                     // the next program ID, or else `execution.program()` will cause
                     // a panic during the next iteration.
                     if let Some(&next_log) = logs_iter.peek() {
-                        if next_log.ends_with("invoke [1]") {
-                            let next_instruction =
-                                regex.captures(next_log).unwrap().get(1).unwrap().as_str();
+                        if let Some(c) = regex.captures(next_log) {
+                            let next_instruction = c.get(1).unwrap().as_str();
                             // Within this if block, there will always be a regex match.
                             // Therefore it's safe to unwrap and the captured program ID
                             // at index 1 can also be safely unwrapped.
