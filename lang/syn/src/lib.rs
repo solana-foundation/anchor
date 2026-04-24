@@ -857,6 +857,8 @@ pub enum ConstraintToken {
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
     ExtensionPausableAuthority(Context<ConstraintExtensionAuthority>),
+    ExtensionInterestBearingMintRate(Context<ConstraintExtensionInterestBearingMintRate>),
+    ExtensionInterestBearingMintAuthority(Context<ConstraintExtensionAuthority>),
 }
 
 impl Parse for ConstraintToken {
@@ -1098,6 +1100,11 @@ pub struct ConstraintExtensionPermanentDelegate {
 }
 
 #[derive(Debug, Clone)]
+pub struct ConstraintExtensionInterestBearingMintRate {
+    pub rate: Expr,
+}
+
+#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum InitKind {
     Program {
@@ -1132,6 +1139,8 @@ pub enum InitKind {
         metadata_pointer_metadata_address: Option<Expr>,
         close_authority: Option<Expr>,
         permanent_delegate: Option<Expr>,
+        interest_bearing_mint_rate: Option<Expr>,
+        interest_bearing_mint_authority: Option<Expr>,
         transfer_hook_authority: Option<Expr>,
         transfer_hook_program_id: Option<Expr>,
         pausable_authority: Option<Expr>,

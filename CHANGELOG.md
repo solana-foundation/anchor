@@ -19,6 +19,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Add `program_id` verification to CPI return values ([#4411](https://github.com/solana-foundation/anchor/pull/4411)).
 - spl: Add pausable mint extension support ([#4092](https://github.com/solana-foundation/anchor/pull/4092)).
 - cli: Resolve the target directory via `cargo metadata` to support target directory overrides ([#3817](https://github.com/solana-foundation/anchor/pull/3817)).
+- spl: Add `Interest Bearing Config` Extension ([#4464](https://github.com/solana-foundation/anchor/pull/4464)).
 
 ### Fixes
 
