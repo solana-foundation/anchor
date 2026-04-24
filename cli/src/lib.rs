@@ -1126,21 +1126,8 @@ fn restore_toolchain(restore_cbs: RestoreToolchainCallbacks) -> Result<()> {
     Ok(())
 }
 
-/// Get the system's default license - what 'npm init' would use.
-fn get_npm_init_license() -> Result<String> {
-    let npm_init_license_output = std::process::Command::new("npm")
-        .arg("config")
-        .arg("get")
-        .arg("init-license")
-        .output()?;
-
-    if !npm_init_license_output.status.success() {
-        return Err(anyhow!("Failed to get npm init license"));
-    }
-
-    let license = String::from_utf8(npm_init_license_output.stdout)?;
-    Ok(license.trim().to_string())
-}
+/// Default license for generated package.json files.
+const DEFAULT_PACKAGE_LICENSE: &str = "ISC";
 
 fn process_command(opts: Opts) -> Result<()> {
     match opts.command {
@@ -1419,8 +1406,10 @@ fn init(
     // Initialize .gitignore file
     fs::write(".gitignore", rust_template::git_ignore())?;
 
-    // Initialize .prettierignore file
-    fs::write(".prettierignore", rust_template::prettier_ignore())?;
+    // Initialize .prettierignore file (only for JS/TS projects)
+    if !test_template.is_rust_based() {
+        fs::write(".prettierignore", rust_template::prettier_ignore())?;
+    }
 
     // Remove the default program if `--force` is passed
     if force {
@@ -1452,31 +1441,33 @@ fn init(
     let migrations_path = Path::new("migrations");
     fs::create_dir_all(migrations_path)?;
 
-    let license = get_npm_init_license()?;
+    if !test_template.is_rust_based() {
+        let license = DEFAULT_PACKAGE_LICENSE.to_string();
 
-    let jest = TestTemplate::Jest == test_template;
-    if javascript {
-        // Build javascript config
-        let mut package_json = File::create("package.json")?;
-        package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
+        let jest = TestTemplate::Jest == test_template;
+        if javascript {
+            // Build javascript config
+            let mut package_json = File::create("package.json")?;
+            package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
 
-        let mut deploy = File::create(migrations_path.join("deploy.js"))?;
-        deploy.write_all(rust_template::deploy_script().as_bytes())?;
-    } else {
-        // Build typescript config
-        let mut ts_config = File::create("tsconfig.json")?;
-        ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
+            let mut deploy = File::create(migrations_path.join("deploy.js"))?;
+            deploy.write_all(rust_template::deploy_script().as_bytes())?;
+        } else {
+            // Build typescript config
+            let mut ts_config = File::create("tsconfig.json")?;
+            ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
 
-        let mut ts_package_json = File::create("package.json")?;
-        ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
+            let mut ts_package_json = File::create("package.json")?;
+            ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
 
-        let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
-        deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
+            let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
+            deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
+        }
     }
 
     test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
-    if !no_install {
+    if !test_template.is_rust_based() && !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
 
         if !package_manager_result.status.success() && package_manager_cmd != "npm" {
@@ -3401,16 +3392,25 @@ fn run_test_suite(
     }
     let url = cluster_url(cfg, test_validator, surfpool_config);
 
-    let node_options = format!(
-        "{} {}",
-        match std::env::var_os("NODE_OPTIONS") {
-            Some(value) => value
-                .into_string()
-                .map_err(std::env::VarError::NotUnicode)?,
-            None => "".to_owned(),
-        },
-        get_node_dns_option()?,
-    );
+    let test_cmd = scripts
+        .get("test")
+        .expect("Not able to find script for `test`");
+    let is_rust_test = test_cmd.starts_with("cargo test");
+
+    let node_options = if is_rust_test {
+        String::new()
+    } else {
+        format!(
+            "{} {}",
+            match std::env::var_os("NODE_OPTIONS") {
+                Some(value) => value
+                    .into_string()
+                    .map_err(std::env::VarError::NotUnicode)?,
+                None => "".to_owned(),
+            },
+            get_node_dns_option()?,
+        )
+    };
 
     // Setup log reader - kept alive until end of scope
     let log_streams = match stream_logs(cfg, &url) {
@@ -4318,6 +4318,7 @@ fn upgrade(
 
 fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
     with_workspace(cfg_override, |cfg| -> Result<()> {
+        ensure_node_installed()?;
         println!("Running migration deploy script");
 
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
@@ -4628,6 +4629,7 @@ fn shell(cfg_override: &ConfigOverride) -> Result<()> {
                     .collect::<Vec<ProgramWorkspace>>(),
             }
         };
+        ensure_node_installed()?;
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
         let js_code = rust_template::node_shell(&url, &cfg.provider.wallet.to_string(), programs)?;
         let mut child = std::process::Command::new("node")
@@ -4979,6 +4981,16 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
         .to_str()
         .map(|s| s == "." || s.starts_with('.') || s == "target")
         .unwrap_or(false)
+}
+
+fn ensure_node_installed() -> Result<()> {
+    std::process::Command::new("node")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map_err(|_| anyhow!("Node.js is required for this command but was not found. Install it from https://nodejs.org"))?;
+    Ok(())
 }
 
 fn get_node_version() -> Result<Version> {
