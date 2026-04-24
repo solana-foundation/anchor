@@ -21,6 +21,7 @@ use {
         path::{Path, PathBuf},
         str::FromStr,
         thread,
+        time::Duration,
     },
 };
 
@@ -31,6 +32,7 @@ const DEFAULT_PARALLEL_FETCH_SIGNATURE_THRESHOLD: usize = 10;
 const DEFAULT_MAX_PARALLEL_FETCH_WORKERS: usize = 4;
 const DEFAULT_MAX_RETRIES: u32 = 5;
 const DEFAULT_RETRY_BACKOFF_MS: u64 = 500;
+const PROGRESS_TICK_INTERVAL_MS: u64 = 80;
 
 type ChunkData = Vec<u8>;
 type SlotChunk = (u64, ChunkData);
@@ -91,7 +93,7 @@ impl<'a> IdlFetcher<'a> {
             .iter()
             .filter_map(|sig| {
                 pb.inc(1);
-                collect_signature_chunks(self.client, sig, &self.tuning)
+                collect_signature_chunks(self.client, sig, &self.tuning, pb)
             })
             .flatten()
             .collect()
@@ -134,7 +136,7 @@ impl<'a> IdlFetcher<'a> {
                         .iter()
                         .filter_map(|sig| {
                             progress.inc(1);
-                            collect_signature_chunks(self.client, sig, &self.tuning)
+                            collect_signature_chunks(self.client, sig, &self.tuning, &progress)
                         })
                         .flatten()
                         .collect::<Vec<_>>()
@@ -153,9 +155,18 @@ fn collect_signature_chunks(
     client: &RpcClient,
     sig: &RpcConfirmedTransactionStatusWithSignature,
     tuning: &FetchTuning,
+    pb: &ProgressBar,
 ) -> Option<Vec<SlotChunk>> {
     let signature = Signature::from_str(&sig.signature).ok()?;
-    let chunks = extract_chunks_from_transaction(client, &signature, tuning).ok()?;
+    let chunks = match extract_chunks_from_transaction(client, &signature, tuning) {
+        Ok(chunks) => chunks,
+        // Route through the progress bar to avoid mangling its rendering with
+        // interleaved stdout writes.
+        Err(e) => {
+            pb.println(format!("{e}"));
+            return None;
+        }
+    };
 
     if chunks.is_empty() {
         None
@@ -274,6 +285,7 @@ pub fn idl_fetch_at_slot(
     let fetcher = IdlFetcher::new(client, tuning);
 
     let pb = ProgressBar::new(all_signatures.len() as u64);
+    pb.enable_steady_tick(Duration::from_millis(PROGRESS_TICK_INTERVAL_MS));
     pb.set_style(
         ProgressStyle::default_bar()
             .template(
@@ -425,6 +437,7 @@ pub fn idl_fetch_historical(
     }
 
     let pb = ProgressBar::new(signatures.len() as u64);
+    pb.enable_steady_tick(Duration::from_millis(PROGRESS_TICK_INTERVAL_MS));
     pb.set_style(
         ProgressStyle::default_bar()
             .template(
@@ -454,6 +467,7 @@ pub fn idl_fetch_historical(
         println!("Decompressing IDL data...");
     }
     let decompress_pb = ProgressBar::new(sessions.len() as u64);
+    decompress_pb.enable_steady_tick(Duration::from_millis(PROGRESS_TICK_INTERVAL_MS));
     decompress_pb.set_style(
         ProgressStyle::default_bar()
             .template(
@@ -463,8 +477,16 @@ pub fn idl_fetch_historical(
             .progress_chars("#>-"),
     );
 
-    let extracted_idls = decompress_sessions(&sessions, &signatures, &decompress_pb)?;
+    let (extracted_idls, skipped) = decompress_sessions(&sessions, &signatures, &decompress_pb)?;
     decompress_pb.finish_with_message("Decompression complete");
+
+    if skipped > 0 {
+        println!(
+            "Skipped {}/{} session(s): no zlib streams found (partial uploads)",
+            skipped,
+            sessions.len()
+        );
+    }
 
     if extracted_idls.is_empty() {
         println!("\nNo IDL data could be fetched from historical slots.");
@@ -577,7 +599,10 @@ fn decompress_sessions(
     sessions: &[SessionChunks],
     signatures: &[RpcConfirmedTransactionStatusWithSignature],
     pb: &ProgressBar,
-) -> Result<Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>> {
+) -> Result<(
+    Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>,
+    usize,
+)> {
     let mut failed = 0usize;
 
     let extracted: Vec<_> = sessions
@@ -606,15 +631,7 @@ fn decompress_sessions(
         })
         .collect();
 
-    if failed > 0 {
-        pb.println(format!(
-            "Skipped {}/{} session(s): no zlib streams found (partial uploads)",
-            failed,
-            sessions.len()
-        ));
-    }
-
-    Ok(extracted)
+    Ok((extracted, failed))
 }
 
 fn output_idls(
@@ -692,8 +709,7 @@ fn fetch_transaction(
                         if error.status() == Some(StatusCode::TOO_MANY_REQUESTS)
                 );
                 if !retryable || attempt >= tuning.max_retries {
-                    println!("Failed to fetch transaction: {}", e);
-                    return Err(anyhow!("Transaction fetch failed"));
+                    return Err(anyhow!("failed to fetch transaction {signature}: {e}"));
                 }
                 let backoff = tuning
                     .retry_backoff_ms
