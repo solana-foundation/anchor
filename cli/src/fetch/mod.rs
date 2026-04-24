@@ -240,17 +240,17 @@ pub fn idl_fetch_at_slot(
         .into_iter()
         .filter(|session| {
             session
-                .last()
+                .first()
                 .map(|(slot, _)| *slot <= target_slot)
                 .unwrap_or(false)
         })
         .collect();
     candidates
-        .sort_by_key(|session| std::cmp::Reverse(session.last().map(|(s, _)| *s).unwrap_or(0)));
+        .sort_by_key(|session| std::cmp::Reverse(session.first().map(|(s, _)| *s).unwrap_or(0)));
 
     if candidates.is_empty() {
         println!(
-            "\nNo completed IDL upload session at or before slot {}.",
+            "\nNo IDL upload session starting at or before slot {}.",
             target_slot
         );
         return Ok(());
