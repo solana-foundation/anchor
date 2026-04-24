@@ -192,6 +192,7 @@ fn historical_fetch_worker_count(signature_count: usize, tuning: &FetchTuning) -
     signature_count.min(available).min(cap).max(1)
 }
 
+/// Parses a `%Y-%m-%d` date into a UTC timestamp
 fn parse_date_to_timestamp(date_str: &str) -> Result<i64> {
     use chrono::NaiveDate;
 
