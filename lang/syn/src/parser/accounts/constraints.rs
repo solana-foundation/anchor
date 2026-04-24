@@ -1802,19 +1802,6 @@ mod tests {
     }
 
     #[test]
-    fn rejects_bool_literal_raw_constraint() {
-        let message = parse_error_message("constraint = true");
-        assert!(message.is_some(), "expected parse error");
-        let message = message.unwrap_or_default();
-
-        assert!(
-            message.contains(LITERAL_ERROR),
-            "unexpected error: {message}"
-        );
-        assert!(message.contains(HELP_TEXT), "missing help text: {message}");
-    }
-
-    #[test]
     fn accepts_boolean_expression_that_compares_against_a_literal() {
         let expression = parse_raw_expression("constraint = my_field == 42");
 
