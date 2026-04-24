@@ -10,7 +10,9 @@ use {
     solana_pubkey::Pubkey,
     solana_rpc_client::rpc_client::RpcClient,
     solana_rpc_client_api::{
-        config::RpcTransactionConfig, response::RpcConfirmedTransactionStatusWithSignature,
+        client_error::{reqwest::StatusCode, ErrorKind as RpcClientErrorKind},
+        config::RpcTransactionConfig,
+        response::RpcConfirmedTransactionStatusWithSignature,
     },
     solana_signature::Signature,
     solana_transaction_status_client_types::*,
@@ -611,11 +613,12 @@ fn fetch_transaction(
         match client.get_transaction_with_config(signature, config) {
             Ok(tx) => return Ok(tx),
             Err(e) => {
-                let msg = e.to_string();
-                let retryable = msg.contains("429")
-                    || msg.contains("Too Many Requests")
-                    || msg.contains("timed out")
-                    || msg.contains("connection");
+                let retryable = matches!(
+                    e.kind(),
+                    RpcClientErrorKind::Reqwest(error)
+                        // Explicitly check for 429 responses as retryable
+                        if error.status() == Some(StatusCode::TOO_MANY_REQUESTS)
+                );
                 if !retryable || attempt >= tuning.max_retries {
                     println!("Failed to fetch transaction: {}", e);
                     return Err(anyhow!("Transaction fetch failed"));
