@@ -20,50 +20,48 @@ const visible = headings.filter(
   visible.length > 0 && (
     <aside
       id="toc-sidebar-container"
-      class="sticky top-16 hidden h-[calc(100vh-8rem)] max-w-xs xl:block"
+      class="sticky top-16 hidden h-[calc(100vh-8rem)] max-w-xs flex-col xl:flex"
     >
+      {title && (
+        <div
+          id="toc-sidebar-title-wrapper"
+          data-open="false"
+          class="grid shrink-0 grid-rows-[0fr] px-4 transition-[grid-template-rows] duration-200 ease-out data-[open=true]:grid-rows-[1fr]"
+        >
+          <div class="overflow-hidden">
+            <span
+              id="toc-sidebar-title"
+              class="text-foreground block pb-3 text-base font-medium text-balance"
+            >
+              {title}
+            </span>
+          </div>
+        </div>
+      )}
       <ScrollArea
         client:load
-        className="flex max-h-[calc(100vh-10rem)] flex-col overflow-y-auto"
+        className="min-h-0 flex-1 overflow-y-auto"
         type="hover"
         data-toc-scroll-area
       >
-        <div class="flex flex-col px-4">
-          {title && (
-            <div
-              id="toc-sidebar-title-wrapper"
-              data-open="false"
-              class="grid grid-rows-[0fr] transition-[grid-template-rows] duration-200 ease-out data-[open=true]:grid-rows-[1fr]"
+        <ul class="flex list-none flex-col gap-y-1.5 px-4">
+          {visible.map((heading) => (
+            <li
+              class={cn(
+                'text-sm text-foreground/60',
+                getHeadingMargin(heading.depth),
+              )}
             >
-              <div class="overflow-hidden">
-                <span
-                  id="toc-sidebar-title"
-                  class="text-foreground block pb-3 text-base font-medium text-balance"
-                >
-                  {title}
-                </span>
-              </div>
-            </div>
-          )}
-          <ul class="flex list-none flex-col gap-y-1.5">
-            {visible.map((heading) => (
-              <li
-                class={cn(
-                  'text-sm text-foreground/60',
-                  getHeadingMargin(heading.depth),
-                )}
+              <a
+                href={`#${heading.slug}`}
+                data-heading-link={heading.slug}
+                class="hover:text-foreground block underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
               >
-                <a
-                  href={`#${heading.slug}`}
-                  data-heading-link={heading.slug}
-                  class="hover:text-foreground block underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
-                >
-                  {heading.text}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
+                {heading.text}
+              </a>
+            </li>
+          ))}
+        </ul>
       </ScrollArea>
     </aside>
   )
