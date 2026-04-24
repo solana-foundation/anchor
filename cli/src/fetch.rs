@@ -288,7 +288,7 @@ pub fn idl_fetch_at_slot(
     client: &RpcClient,
     all_signatures: &[RpcConfirmedTransactionStatusWithSignature],
     target_slot: u64,
-    out_dir: Option<String>,
+    out_dir: Option<PathBuf>,
     tuning: FetchTuning,
 ) -> Result<()> {
     let fetcher = IdlFetcher::new(client, tuning);
@@ -351,7 +351,11 @@ pub fn idl_fetch_at_slot(
                     last_slot,
                     idl_data.len()
                 );
-                return output_idl_data(&idl_data, target_slot, out_dir);
+                return write_idl_file(
+                    &idl_data,
+                    &PathBuf::from(format!("idl_{}.json", target_slot)),
+                    out_dir.as_deref(),
+                );
             }
             Ok(None) | Err(_) => {
                 if idx + 1 < total {
@@ -376,13 +380,6 @@ fn combine_chunks(chunks: &[SlotChunk]) -> Vec<u8> {
         .collect()
 }
 
-fn output_idl_data(idl_data: &[u8], slot: u64, out_dir: Option<String>) -> Result<()> {
-    let out_dir = resolve_idl_output_dir(out_dir.as_deref())?;
-    std::fs::create_dir_all(&out_dir)?;
-    output_idl(idl_data, &single_idl_output_path(slot, &out_dir))?;
-    Ok(())
-}
-
 /// Fetch historical IDL versions for the given program from a cluster.
 ///
 /// With no filters, fetches all historical versions.
@@ -396,7 +393,7 @@ pub fn idl_fetch_historical(
     slot: Option<u64>,
     before: Option<String>,
     after: Option<String>,
-    out_dir: Option<String>,
+    out_dir: Option<PathBuf>,
     tuning: FetchTuning,
 ) -> Result<()> {
     // Parse and validate the date range up-front so bad input fails before we
@@ -511,7 +508,7 @@ pub fn idl_fetch_historical(
         "\nSuccessfully extracted {} IDL version(s)",
         decompressed.extracted_idls.len()
     );
-    output_idls(decompressed.extracted_idls, out_dir)
+    save_historical_idls(decompressed.extracted_idls, out_dir)
 }
 
 fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
@@ -648,45 +645,36 @@ fn decompress_sessions(
     })
 }
 
-fn output_idls(
+// Writes every recovered historical IDL using the shared file writer and the
+// slot-based naming scheme i.e. idl_{slot}.json.
+fn save_historical_idls(
     idls: Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>,
-    out_dir: Option<String>,
+    out_dir: Option<PathBuf>,
 ) -> Result<()> {
-    let out_dir = resolve_idl_output_dir(out_dir.as_deref())?;
-    std::fs::create_dir_all(&out_dir)?;
-
-    for (i, (sig, idl_data)) in idls.iter().enumerate() {
-        output_idl(
+    for (sig, idl_data) in idls.iter() {
+        write_idl_file(
             idl_data,
-            &historical_idl_output_path(i + 1, sig.slot, &out_dir),
+            &PathBuf::from(format!("idl_{}.json", sig.slot)),
+            out_dir.as_deref(),
         )?;
     }
 
     Ok(())
 }
 
-fn output_idl(idl_data: &[u8], path: &Path) -> Result<()> {
-    std::fs::write(path, idl_data)?;
+// Shared primitive that resolves the output directory, creates it if needed,
+// and writes the IDL bytes to the requested relative path within it.
+fn write_idl_file(idl_data: &[u8], relative_path: &Path, out_dir: Option<&Path>) -> Result<()> {
+    let path = match out_dir {
+        Some(out_dir) => {
+            std::fs::create_dir_all(out_dir)?;
+            out_dir.join(relative_path)
+        }
+        None => relative_path.to_path_buf(),
+    };
+    std::fs::write(&path, idl_data)?;
     println!("Saved IDL to: {}", path.display());
     Ok(())
-}
-
-// Resolve the output directory for the IDL.
-// If no output directory is provided, use the current directory.
-fn resolve_idl_output_dir(out_dir: Option<&str>) -> Result<PathBuf> {
-    out_dir
-        .map(PathBuf::from)
-        .map_or_else(|| std::env::current_dir().map_err(Into::into), Ok)
-}
-
-// Generate the output path for a single IDL.
-fn single_idl_output_path(slot: u64, out_dir: &std::path::Path) -> PathBuf {
-    out_dir.join(format!("idl_{}.json", slot))
-}
-
-// Generate the output path for a historical IDL. Format: idl_v{version}_{slot}.json
-fn historical_idl_output_path(version: usize, slot: u64, out_dir: &std::path::Path) -> PathBuf {
-    out_dir.join(format!("idl_v{}_{}.json", version, slot))
 }
 
 fn extract_chunks_from_transaction(

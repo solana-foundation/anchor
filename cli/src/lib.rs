@@ -720,7 +720,7 @@ pub enum IdlCommand {
         after: Option<String>,
         /// Output directory for fetched versions (defaults to the current directory)
         #[clap(long)]
-        out_dir: Option<String>,
+        out_dir: Option<PathBuf>,
         /// Max parallel RPC workers for transaction fetches.
         #[clap(long)]
         rpc_workers: Option<usize>,
