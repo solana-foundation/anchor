@@ -114,7 +114,7 @@ pub struct NewAccount {
 
 <Callout variant="explanation" title="Code explanation" defaultOpen={false}>
 
-- `declare_id!{:rs}` specifies the on-chain address of your program. It will be automatically updated when you build.
+- `declare_id!(){:rs}` specifies the on-chain address of your program. It will be automatically updated when you build.
 
   ```rust startLineNumber={5}
   declare_id!("11111111111111111111111111111111");
@@ -134,7 +134,7 @@ pub struct NewAccount {
   }
   ```
 
-  The `initialize{:rs}` instruction takes a `Context<Initialize>{:rs}` (the required accounts) and a `data: u64{:rs}` parameter. It stores the value and logs it.
+  The `initialize(){:rs}` instruction takes a `Context<Initialize>{:rs}` (the required accounts) and a `data: u64{:rs}` parameter. It stores the value and logs it.
 
 - `#[derive(Accounts)]{:rs}` annotates a struct that declares the accounts required by an instruction. Field types and constraints let Anchor auto-generate security checks.
 
@@ -191,7 +191,7 @@ You can also use the `Build` and `Deploy` buttons on the left-side panel.
 <Step>
 ### Test program
 
-The starter code includes a test file at `tests/anchor.test.ts` that shows how to invoke the `initialize` instruction from the client.
+The starter code includes a test file at `tests/anchor.test.ts` that shows how to invoke the `initialize()` instruction from the client.
 
 ```ts title="anchor.test.ts"
 // No imports needed: web3, anchor, pg and more are globally available

@@ -108,6 +108,11 @@
       @apply bg-muted/50! text-foreground relative rounded-sm px-[0.3rem] py-[0.2rem] text-sm font-medium wrap-break-word;
     }
 
+    :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) .shiki {
+      font-size: 0.875em;
+      line-height: inherit;
+    }
+
     :where(.shiki code):not(:where(.not-prose, .not-prose *)) {
       @apply bg-transparent p-0;
     }

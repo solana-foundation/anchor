@@ -108,26 +108,7 @@ export default defineConfig({
           rel: ['nofollow', 'noreferrer', 'noopener'],
         },
       ],
-      rehypeHeadingIds,
       rehypeWrapTables,
-      [
-        rehypeAutolinkHeadings,
-        {
-          behavior: 'append',
-          properties: {
-            className: ['heading-anchor'],
-            'aria-label': 'Link to section',
-            tabindex: -1,
-            'data-pagefind-ignore': '',
-          },
-          content: {
-            type: 'text',
-            value: '#',
-          },
-          test: (node: { tagName: string }) =>
-            ['h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tagName),
-        },
-      ],
       rehypeKatex,
       [
         rehypeExpressiveCode,
@@ -206,6 +187,25 @@ export default defineConfig({
             dark: 'catppuccin-mocha',
           },
           inline: 'tailing-curly-colon',
+        },
+      ],
+      rehypeHeadingIds,
+      [
+        rehypeAutolinkHeadings,
+        {
+          behavior: 'append',
+          properties: {
+            className: ['heading-anchor'],
+            'aria-label': 'Link to section',
+            tabindex: -1,
+            'data-pagefind-ignore': '',
+          },
+          content: {
+            type: 'text',
+            value: '#',
+          },
+          test: (node: { tagName: string }) =>
+            ['h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tagName),
         },
       ],
     ],
