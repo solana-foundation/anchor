@@ -30,7 +30,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Bind `localnet` to `127.0.0.1` by default to fix a panic in `solana-test-validator` version `3.1.10` ([#4397](https://github.com/solana-foundation/anchor/pull/4397)).
 - cli: Fallback to a priority fee of 0 on localnet ([#4259](https://github.com/solana-foundation/anchor/pull/4259/)).
 - lang: Support module constants in `max_len` attribute ([#3879](https://github.com/solana-foundation/anchor/pull/3879)).
-- spl: Deprecate broken `cpi_guard_enable/disable` feature ([#4465](https://github.com/solana-foundation/anchor/pull/4465)).
+- spl: Deprecate broken `cpi_guard_enable/disable` functions ([#4465](https://github.com/solana-foundation/anchor/pull/4465)).
 
 ### Breaking
 
