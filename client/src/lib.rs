@@ -423,13 +423,20 @@ pub fn handle_program_log<T: anchor_lang::Event + anchor_lang::AnchorDeserialize
 }
 
 pub fn handle_system_log(this_program_str: &str, log: &str) -> (Option<String>, bool) {
+    let invoke_re = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[([\d]+)\]$").unwrap();
+    if let Some(invoke_match) = invoke_re.captures(log) {
+        if invoke_match.get(1).unwrap().as_str() == this_program_str {
+            return (Some(this_program_str.to_string()), false);
+
+            // `Invoke [1]` instructions are pushed to the stack in `parse_logs_response`,
+            // so this ensures we only push CPIs to the stack at this stage
+        } else if invoke_match.get(2).unwrap().as_str() != "1" {
+            return (Some("cpi".to_string()), false); // Any string will do.
+        }
+    }
+
     if log.starts_with(&format!("Program {this_program_str} log:")) {
         (Some(this_program_str.to_string()), false)
-
-        // `Invoke [1]` instructions are pushed to the stack in `parse_logs_response`,
-        // so this ensures we only push CPIs to the stack at this stage
-    } else if log.contains("invoke") && !log.ends_with("[1]") {
-        (Some("cpi".to_string()), false) // Any string will do.
     } else {
         let re = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) success$").unwrap();
         if re.is_match(log) {
@@ -858,7 +865,7 @@ mod tests {
     // Creating a mock struct that implements `anchor_lang::events`
     // for type inference in `test_logs`
     use {
-        anchor_lang::prelude::*,
+        anchor_lang::{prelude::*, Event},
         futures::{SinkExt, StreamExt},
         solana_rpc_client_api::response::RpcResponseContext,
         std::sync::atomic::{AtomicU64, Ordering},
@@ -1043,6 +1050,82 @@ mod tests {
             program_id_str,
         )
         .unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_log_response_inner_events() -> Result<()> {
+        use {
+            anchor_lang::__private::base64,
+            base64::{engine::general_purpose::STANDARD, Engine},
+        };
+
+        let mock_event = MockEvent {};
+        let program_data_log = format!("Program data: {}", STANDARD.encode(mock_event.data()));
+
+        let logs = vec![
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+            "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+            "Program ComputeBudget111111111111111111111111111111 success",
+            "Program term9YPb9mzAsABaqN71A4xdbxHmpBNZavpBiQKZzN3 invoke [1]",
+            "Program log: Instruction: ValidateNonce",
+            "Program term9YPb9mzAsABaqN71A4xdbxHmpBNZavpBiQKZzN3 consumed 4839 of 239700 compute \
+             units",
+            "Program term9YPb9mzAsABaqN71A4xdbxHmpBNZavpBiQKZzN3 success",
+            "Program term9YPb9mzAsABaqN71A4xdbxHmpBNZavpBiQKZzN3 invoke [1]",
+            "Program log: Instruction: SellExactInPumpFunV3",
+            "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [2]",
+            "Program log: Instruction: Sell",
+            "Program pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ invoke [3]",
+            "Program log: Instruction: GetFees",
+            "Program pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ consumed 3136 of 187774 compute \
+             units",
+            "Program return: pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ \
+             AAAAAAAAAABfAAAAAAAAAB4AAAAAAAAA",
+            "Program pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ success",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]",
+            "Program log: Instruction: TransferChecked",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2475 of 180928 compute \
+             units",
+            "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success",
+            &program_data_log,
+            "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [3]",
+            "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P consumed 2060 of 166037 compute \
+             units",
+            "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success",
+            "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P consumed 60634 of 223605 compute \
+             units",
+            "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success",
+            "Program term9YPb9mzAsABaqN71A4xdbxHmpBNZavpBiQKZzN3 consumed 72662 of 234861 compute \
+             units",
+            "Program term9YPb9mzAsABaqN71A4xdbxHmpBNZavpBiQKZzN3 success",
+            "Program 11111111111111111111111111111111 invoke [1]",
+            "Program 11111111111111111111111111111111 success",
+            "Program 11111111111111111111111111111111 invoke [1]",
+            "Program 11111111111111111111111111111111 success",
+        ];
+
+        // Converting to Vec<String> as expected in `RpcLogsResponse`
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+
+        let program_id_str = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
+
+        let events = parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs: logs.to_vec(),
+                },
+            },
+            program_id_str,
+        )
+        .unwrap();
+
+        assert_eq!(events.len(), 1);
 
         Ok(())
     }
