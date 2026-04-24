@@ -231,44 +231,6 @@ pub fn update_group_pointer_handler(
 }
 
 #[derive(Accounts)]
-pub struct EnableCpiGuard<'info> {
-    pub authority: Signer<'info>,
-    #[account(mut)]
-    /// CHECK: token account with CPI Guard extension
-    pub token_account: UncheckedAccount<'info>,
-    pub token_program: Program<'info, Token2022>,
-}
-
-pub fn enable_cpi_guard_handler(ctx: Context<EnableCpiGuard>) -> Result<()> {
-    let cpi_accounts = token_2022_extensions::cpi_guard::CpiGuard {
-        token_program_id: ctx.accounts.token_program.to_account_info(),
-        account: ctx.accounts.token_account.to_account_info(),
-        owner: ctx.accounts.authority.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new(*ctx.accounts.token_program.key, cpi_accounts);
-    token_2022_extensions::cpi_guard::cpi_guard_enable(cpi_ctx)
-}
-
-#[derive(Accounts)]
-pub struct DisableCpiGuard<'info> {
-    pub authority: Signer<'info>,
-    #[account(mut)]
-    /// CHECK: token account with CPI Guard extension
-    pub token_account: UncheckedAccount<'info>,
-    pub token_program: Program<'info, Token2022>,
-}
-
-pub fn disable_cpi_guard_handler(ctx: Context<DisableCpiGuard>) -> Result<()> {
-    let cpi_accounts = token_2022_extensions::cpi_guard::CpiGuard {
-        token_program_id: ctx.accounts.token_program.to_account_info(),
-        account: ctx.accounts.token_account.to_account_info(),
-        owner: ctx.accounts.authority.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new(*ctx.accounts.token_program.key, cpi_accounts);
-    token_2022_extensions::cpi_guard::cpi_guard_disable(cpi_ctx)
-}
-
-#[derive(Accounts)]
 #[instruction()]
 pub struct CheckTogglePause<'info> {
     #[account(mut)]

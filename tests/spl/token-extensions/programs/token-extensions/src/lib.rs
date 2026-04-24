@@ -40,14 +40,6 @@ pub mod token_extensions {
         instructions::update_group_pointer_handler(ctx, new_group_address)
     }
 
-    pub fn enable_cpi_guard(ctx: Context<EnableCpiGuard>) -> Result<()> {
-        instructions::enable_cpi_guard_handler(ctx)
-    }
-
-    pub fn disable_cpi_guard(ctx: Context<DisableCpiGuard>) -> Result<()> {
-        instructions::disable_cpi_guard_handler(ctx)
-    }
-
     pub fn check_toggle_pause(ctx: Context<CheckTogglePause>) -> Result<()> {
         instructions::toggle_pause_handler(ctx)
     }
