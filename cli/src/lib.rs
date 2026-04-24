@@ -736,6 +736,9 @@ pub enum IdlCommand {
         /// Base backoff in milliseconds between retries (doubled each attempt).
         #[clap(long, default_value_t = 500)]
         rpc_retry_backoff_ms: u64,
+        /// Print diagnostic progress messages.
+        #[clap(long)]
+        verbose: bool,
     },
     /// Convert legacy IDLs (pre Anchor 0.30) to the new IDL spec
     Convert {
@@ -2569,6 +2572,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             no_parallel,
             rpc_max_retries,
             rpc_retry_backoff_ms,
+            verbose,
         } => fetch::idl_fetch_historical(
             cfg_override,
             address,
@@ -2582,6 +2586,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
                 no_parallel,
                 max_retries: rpc_max_retries,
                 retry_backoff_ms: rpc_retry_backoff_ms,
+                verbose,
             },
         ),
         IdlCommand::Convert {

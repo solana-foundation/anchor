@@ -42,6 +42,7 @@ pub struct FetchTuning {
     pub no_parallel: bool,
     pub max_retries: u32,
     pub retry_backoff_ms: u64,
+    pub verbose: bool,
 }
 
 impl Default for FetchTuning {
@@ -51,6 +52,7 @@ impl Default for FetchTuning {
             no_parallel: false,
             max_retries: DEFAULT_MAX_RETRIES,
             retry_backoff_ms: DEFAULT_RETRY_BACKOFF_MS,
+            verbose: false,
         }
     }
 }
@@ -408,17 +410,21 @@ pub fn idl_fetch_historical(
         println!("The program doesn't have an IDL account");
         return Ok(());
     }
-    println!("Found {} transactions on the IDL account", signatures.len());
+    if tuning.verbose {
+        println!("Found {} transactions on the IDL account", signatures.len());
+    }
 
     if let Some(target_slot) = slot {
         fetcher.validate_slot(target_slot)?;
         return idl_fetch_at_slot(&client, &signatures, target_slot, out_dir, tuning);
     }
 
-    println!(
-        "Processing {} transactions on the IDL account...",
-        signatures.len()
-    );
+    if tuning.verbose {
+        println!(
+            "Processing {} transactions on the IDL account...",
+            signatures.len()
+        );
+    }
 
     let pb = ProgressBar::new(signatures.len() as u64);
     pb.set_style(
@@ -441,11 +447,14 @@ pub fn idl_fetch_historical(
         return Ok(());
     }
 
-    println!("Grouping {} chunks into sessions...", all_chunks.len());
+    if tuning.verbose {
+        println!("Grouping {} chunks into sessions...", all_chunks.len());
+    }
     let sessions = group_chunks_into_sessions(&all_chunks);
-    println!("Found {} IDL session(s)", sessions.len());
-
-    println!("Decompressing IDL data...");
+    if tuning.verbose {
+        println!("Found {} IDL session(s)", sessions.len());
+        println!("Decompressing IDL data...");
+    }
     let decompress_pb = ProgressBar::new(sessions.len() as u64);
     decompress_pb.set_style(
         ProgressStyle::default_bar()
