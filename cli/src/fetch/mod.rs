@@ -327,7 +327,7 @@ pub fn idl_fetch_historical(
         (before_timestamp, after_timestamp)
     };
 
-    let signatures = fetch_idl_signatures(&client, &address, filter_before, filter_after)?;
+    let signatures = fetch_idl_signatures(&client, &address, filter_before, filter_after, slot)?;
     if signatures.is_empty() {
         println!("The program doesn't have an IDL account");
         return Ok(());

@@ -20,6 +20,8 @@ use {
     std::str::FromStr,
 };
 
+const IDL_SIGNATURE_PAGE_SIZE: usize = 100;
+
 // Builds the RPC client used for historical IDL fetches from CLI cluster overrides.
 pub(super) fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
     let url = match Config::discover(cfg_override)? {
@@ -41,6 +43,7 @@ pub(super) fn fetch_idl_signatures(
     address: &Pubkey,
     before_timestamp: Option<i64>,
     after_timestamp: Option<i64>,
+    target_slot: Option<u64>,
 ) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     let program_signer = Pubkey::find_program_address(&[], address).0;
     let idl_account_address = Pubkey::create_with_seed(&program_signer, "anchor:idl", address)
@@ -53,7 +56,7 @@ pub(super) fn fetch_idl_signatures(
         let config = GetConfirmedSignaturesForAddress2Config {
             before: cursor,
             until: None,
-            limit: None,
+            limit: Some(IDL_SIGNATURE_PAGE_SIZE),
             commitment: None,
         };
         let page = client.get_signatures_for_address_with_config(&idl_account_address, config)?;
@@ -61,6 +64,9 @@ pub(super) fn fetch_idl_signatures(
         if page.is_empty() {
             break;
         }
+
+        let reached_target_slot =
+            target_slot.is_some_and(|slot| page.iter().any(|sig| sig.slot <= slot));
 
         let next_cursor = page
             .last()
@@ -85,7 +91,7 @@ pub(super) fn fetch_idl_signatures(
             signatures.push(sig);
         }
 
-        if crossed_after_bound {
+        if crossed_after_bound || reached_target_slot {
             break;
         }
         match next_cursor {
