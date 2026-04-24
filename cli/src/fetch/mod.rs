@@ -12,6 +12,7 @@ use {
 mod chunks;
 mod decompress;
 mod output;
+mod parallel;
 mod rpc;
 mod sessions;
 
@@ -19,11 +20,9 @@ use self::{
     chunks::extract_chunks_from_transaction,
     decompress::decompress_all_streams,
     output::{save_historical_idls, write_idl_file},
+    parallel::{historical_fetch_worker_count, should_parallelize_historical_fetch},
     rpc::{create_rpc_client, fetch_idl_signatures},
-    sessions::{
-        group_chunks_into_sessions, historical_fetch_worker_count,
-        should_parallelize_historical_fetch,
-    },
+    sessions::group_chunks_into_sessions,
 };
 
 const DEFAULT_MAX_RETRIES: u32 = 5;
