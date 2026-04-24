@@ -8,7 +8,7 @@ use {
     indicatif::{ProgressBar, ProgressStyle},
     solana_commitment_config::CommitmentConfig,
     solana_pubkey::Pubkey,
-    solana_rpc_client::rpc_client::RpcClient,
+    solana_rpc_client::rpc_client::{GetConfirmedSignaturesForAddress2Config, RpcClient},
     solana_rpc_client_api::{
         client_error::{reqwest::StatusCode, ErrorKind as RpcClientErrorKind},
         config::RpcTransactionConfig,
@@ -373,10 +373,37 @@ pub fn idl_fetch_historical(
     out_dir: Option<String>,
     tuning: FetchTuning,
 ) -> Result<()> {
+    // Parse and validate the date range up-front so bad input fails before we
+    // touch the RPC.
+    let before_timestamp = before.as_deref().map(parse_date_to_timestamp).transpose()?;
+    let after_timestamp = after.as_deref().map(parse_date_to_timestamp).transpose()?;
+    if let (Some(after_ts), Some(before_ts)) = (after_timestamp, before_timestamp) {
+        if after_ts > before_ts {
+            return Err(anyhow!(
+                "Invalid date range: --after ({}) must be on or before --before ({})",
+                after
+                    .as_deref()
+                    .expect("after_timestamp is Some implies --after was provided"),
+                before
+                    .as_deref()
+                    .expect("before_timestamp is Some implies --before was provided"),
+            ));
+        }
+    }
+
     let client = create_rpc_client(cfg_override)?;
     let fetcher = IdlFetcher::new(&client, tuning);
 
-    let signatures = fetch_idl_signatures(&client, &address)?;
+    // Date filters are pushed into the pagination loop so we can stop fetching
+    // once we cross the `after` bound. `--all` and `--slot` bypass filtering
+    // and walk the full history.
+    let (filter_before, filter_after) = if all || slot.is_some() {
+        (None, None)
+    } else {
+        (before_timestamp, after_timestamp)
+    };
+
+    let signatures = fetch_idl_signatures(&client, &address, filter_before, filter_after)?;
     if signatures.is_empty() {
         println!("The program doesn't have an IDL account");
         return Ok(());
@@ -388,20 +415,12 @@ pub fn idl_fetch_historical(
         return idl_fetch_at_slot(&client, &signatures, target_slot, out_dir, tuning);
     }
 
-    let filtered_signatures = if all {
-        signatures
-    } else {
-        apply_date_filters(signatures, before, after)?
-    };
-    if filtered_signatures.is_empty() {
-        return Ok(());
-    }
     println!(
         "Processing {} transactions on the IDL account...",
-        filtered_signatures.len()
+        signatures.len()
     );
 
-    let pb = ProgressBar::new(filtered_signatures.len() as u64);
+    let pb = ProgressBar::new(signatures.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
             .template(
@@ -413,7 +432,7 @@ pub fn idl_fetch_historical(
     );
     pb.set_message("Extracting IDL chunks from transactions...");
 
-    let all_chunks = collect_and_process_chunks(&fetcher, &filtered_signatures, Some(&pb));
+    let all_chunks = collect_and_process_chunks(&fetcher, &signatures, Some(&pb));
 
     pb.finish_with_message("Transaction processing complete");
 
@@ -437,8 +456,7 @@ pub fn idl_fetch_historical(
             .progress_chars("#>-"),
     );
 
-    let extracted_idls =
-        decompress_sessions(&sessions, &filtered_signatures, Some(&decompress_pb))?;
+    let extracted_idls = decompress_sessions(&sessions, &signatures, Some(&decompress_pb))?;
     decompress_pb.finish_with_message("Decompression complete");
 
     if extracted_idls.is_empty() {
@@ -470,31 +488,69 @@ fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
 fn fetch_idl_signatures(
     client: &RpcClient,
     address: &Pubkey,
+    before_timestamp: Option<i64>,
+    after_timestamp: Option<i64>,
 ) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     let program_signer = Pubkey::find_program_address(&[], address).0;
     let idl_account_address = Pubkey::create_with_seed(&program_signer, "anchor:idl", address)
         .map_err(|e| anyhow!("Failed to derive IDL account address: {e}"))?;
-    let mut signatures = client.get_signatures_for_address(&idl_account_address)?;
-    // Failed transactions land on-chain but do not mutate the IDL buffer.
-    // Including their Write payloads would duplicate bytes in the concatenated
-    // stream and break zlib decompression.
-    signatures.retain(|sig| sig.err.is_none());
-    Ok(signatures)
-}
 
-fn apply_date_filters(
-    mut signatures: Vec<RpcConfirmedTransactionStatusWithSignature>,
-    before: Option<String>,
-    after: Option<String>,
-) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
-    if let Some(before_date) = before {
-        let before_timestamp = parse_date_to_timestamp(&before_date)?;
-        signatures.retain(|sig| sig.block_time.is_some_and(|bt| bt <= before_timestamp));
-    }
+    // `get_signatures_for_address` caps each response at 1000 entries. Walk the
+    // full history by paginating with a `before` cursor set to the oldest
+    // signature we've seen so far.
+    let mut signatures = Vec::new();
+    let mut cursor: Option<Signature> = None;
 
-    if let Some(after_date) = after {
-        let after_timestamp = parse_date_to_timestamp(&after_date)?;
-        signatures.retain(|sig| sig.block_time.is_some_and(|bt| bt >= after_timestamp));
+    loop {
+        let config = GetConfirmedSignaturesForAddress2Config {
+            before: cursor,
+            until: None,
+            limit: None,
+            commitment: None,
+        };
+        let page = client.get_signatures_for_address_with_config(&idl_account_address, config)?;
+        if page.is_empty() {
+            break;
+        }
+
+        let next_cursor = page
+            .last()
+            .and_then(|sig| Signature::from_str(&sig.signature).ok());
+
+        // Pages arrive newest-first. Once we've paged past the `after` bound,
+        // every subsequent page is entirely out of range and we can stop.
+        let has_date_filter = before_timestamp.is_some() || after_timestamp.is_some();
+        let mut crossed_after_bound = false;
+        for sig in page {
+            // Failed transactions land on-chain but do not mutate the IDL
+            // buffer. Including their Write payloads would duplicate bytes in
+            // the concatenated stream and break zlib decompression.
+            if sig.err.is_some() {
+                continue;
+            }
+            if has_date_filter {
+                // With a date filter active, a signature without a block time
+                // can't be placed in the range, so drop it — matches the prior
+                // `retain(|sig| sig.block_time.is_some_and(...))` behavior.
+                let Some(bt) = sig.block_time else { continue };
+                if before_timestamp.is_some_and(|ts| bt > ts) {
+                    continue;
+                }
+                if after_timestamp.is_some_and(|ts| bt < ts) {
+                    crossed_after_bound = true;
+                    continue;
+                }
+            }
+            signatures.push(sig);
+        }
+
+        if crossed_after_bound {
+            break;
+        }
+        match next_cursor {
+            Some(sig) => cursor = Some(sig),
+            None => break,
+        }
     }
 
     Ok(signatures)
