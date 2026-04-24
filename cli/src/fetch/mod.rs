@@ -435,32 +435,36 @@ fn decompress_sessions(
     pb: &ProgressBar,
 ) -> Result<DecompressedSessions> {
     let mut failed = 0usize;
+    let mut extracted = Vec::new();
 
-    let extracted: Vec<_> = sessions
-        .iter()
-        .flat_map(|session| {
-            pb.inc(1);
-            let combined_data = combine_chunks(session);
-            let streams = decompress_all_streams(&combined_data);
-            if streams.is_empty() {
-                failed += 1;
-                return Vec::new();
-            }
-            let session_slot = session
-                .first()
-                .map(|(slot, _)| *slot)
-                .expect("could not reconstruct an IDL upload from the fetched transactions");
-            let session_sig = signatures
-                .iter()
-                .find(|sig| sig.slot == session_slot)
-                .expect("could not find the transaction for IDL upload at given slot")
-                .clone();
+    for session in sessions {
+        pb.inc(1);
+        let combined_data = combine_chunks(session);
+        let streams = decompress_all_streams(&combined_data);
+        if streams.is_empty() {
+            failed += 1;
+            continue;
+        }
+
+        let session_slot = session.first().map(|(slot, _)| *slot).ok_or_else(|| {
+            anyhow!("could not reconstruct an IDL upload from the fetched transactions")
+        })?;
+        let session_sig = signatures
+            .iter()
+            .find(|sig| sig.slot == session_slot)
+            .ok_or_else(|| {
+                anyhow!(
+                    "could not find the transaction for IDL upload at given slot {session_slot}"
+                )
+            })?
+            .clone();
+
+        extracted.extend(
             streams
                 .into_iter()
-                .map(|idl_data| (session_sig.clone(), idl_data))
-                .collect::<Vec<_>>()
-        })
-        .collect();
+                .map(|idl_data| (session_sig.clone(), idl_data)),
+        );
+    }
 
     Ok(DecompressedSessions {
         extracted_idls: extracted,
