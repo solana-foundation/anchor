@@ -362,6 +362,7 @@ fn output_idl_data(idl_data: &[u8], slot: u64, out_dir: Option<String>) -> Resul
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn idl_fetch_historical(
     cfg_override: &ConfigOverride,
     address: Pubkey,
@@ -528,10 +529,14 @@ fn decompress_sessions(
                 failed += 1;
                 return Vec::new();
             }
+            let session_slot = session
+                .first()
+                .map(|(slot, _)| *slot)
+                .expect("could not reconstruct an IDL upload from the fetched transactions");
             let session_sig = signatures
                 .iter()
-                .find(|sig| sig.slot == session.first().unwrap().0)
-                .unwrap_or(&signatures[0])
+                .find(|sig| sig.slot == session_slot)
+                .expect("could not find the transaction for IDL upload at given slot")
                 .clone();
             streams
                 .into_iter()
