@@ -426,21 +426,14 @@ The RPC URL and Websocket URL specify the Solana cluster the CLI will make reque
 
 You can update the Solana CLI cluster using the following commands:
 
-```ansi
-$ solana config set --url mainnet-beta
-$ solana config set --url devnet
-$ solana config set --url localhost
-$ solana config set --url testnet
-```
+| Cluster         | Long                         | Short                    |
+|-----------------|--------------------------------------------|-----------------------------------------|
+| mainnet-beta    | `solana config set --url mainnet-beta`   | `solana config set -um`               |
+| devnet          | `solana config set --url devnet`         | `solana config set -ud`               |
+| localhost       | `solana config set --url localhost`      | `solana config set -ul`               |
+| testnet         | `solana config set --url testnet`        | `solana config set -ut`               |
 
-You can also use the following short options:
-
-```ansi
-$ solana config set -um    # For mainnet-beta
-$ solana config set -ud    # For devnet
-$ solana config set -ul    # For localhost
-$ solana config set -ut    # For testnet
-```
+You can use either the long option (`--url`) or the short option (`-u<cluster_letter>`) for setting your desired cluster.
 
 The Keypair Path specifies the location of the default wallet used by the Solana CLI (to pay transaction fees and deploy programs). The default path is `~/.config/solana/id.json`. The next step walks through how to generate a keypair at the default location.
 
@@ -453,11 +446,6 @@ To interact with the Solana network using the Solana CLI, you need a Solana wall
 
 ```ansi
 $ solana-keygen new
-```
-
-You should see output similar to the following:
-
-```ansi
 Generating a new keypair
 
 For added security, enter a BIP39 passphrase
@@ -486,6 +474,7 @@ Once a keypair is generated, you can get the address (public key) of the keypair
 
 ```ansi
 $ solana address
+8dBTPrjnkXyuQK3KDt9wrZBfizEZijmmUQXVHpFbVwGT
 ```
 
 </Step>
@@ -497,8 +486,13 @@ Once you've set up your local wallet, request an airdrop of SOL to fund your wal
 
 Set your cluster to the devnet:
 
-```ansi
+```ansi {3,4}
 $ solana config set -ud
+[1mConfig File:[0m /Users/test/.config/solana/cli/config.yml
+[1mRPC URL:[0m https://api.devnet.solana.com [3m[0m
+[1mWebSocket URL:[0m wss://api.devnet.solana.com/ [3m(computed)[0m
+[1mKeypair Path:[0m /Users/test/.config/solana/id.json [3m[0m
+[1mCommitment:[0m confirmed [3m[0m
 ```
 
 Then request an airdrop of devnet SOL:
@@ -507,19 +501,22 @@ Then request an airdrop of devnet SOL:
 $ solana airdrop 2
 ```
 
+<Callout variant="important" title="Rate limits">
+  You may get the following error:
+  ```ansi
+  $ solana airdrop 2
+  Requesting airdrop of 2 SOL
+  Error: airdrop request failed. This can happen when the rate limit is reached.
+  ```
+  If this occurs, you can get devnet SOL using the [Solana Web Faucet](https://faucet.solana.com).
+</Callout>
+
 To check your wallet's SOL balance, run the following command:
 
 ```ansi
 $ solana balance
+2 SOL
 ```
-
-<Callout>
-
-The `solana airdrop` command is currently limited to 5 SOL per request on devnet. Errors are likely due to rate limits.
-
-Alternatively, you can get devnet SOL using the [Solana Web Faucet](https://faucet.solana.com).
-
-</Callout>
 </Step>
 <Step>
 
@@ -527,16 +524,18 @@ Alternatively, you can get devnet SOL using the [Solana Web Faucet](https://fauc
 
 The Solana CLI comes with the [test validator](https://docs.anza.xyz/cli/examples/test-validator) built-in. Running a local validator will allow you to deploy and test your programs locally.
 
-In a separate terminal, run the following command to start a local validator:
-
-```ansi
-$ solana-test-validator
-```
-
+<Callout variant="tip" title="localhost cluster">
 Make sure to update the Solana CLI config to localhost before commands.
 
 ```ansi
 $ solana config set -ul
+```
+</Callout>
+
+In a separate terminal, run the following command to start a local validator:
+
+```ansi
+$ solana-test-validator
 ```
 
 </Step>
@@ -554,31 +553,23 @@ This section will walk through some common Anchor CLI commands to get you starte
 To create a new Anchor project, run the following command:
 
 ```ansi
-$ anchor init <project-name>
+$ anchor init [2m<project-name>[0m
 ```
 
-For example, to create a project called `my-project`, run:
+This command creates a new directory with `[2m<project-name>[0m{:ansi}` and initializes a new Anchor project with a modular Rust program structure. By default, tests are written in Rust using the [LiteSVM](https://github.com/LiteSVM/litesvm) crate. Use `--test-template` to choose a different template (`mollusk`, `mocha`, `jest`, etc):
 
 ```ansi
-$ anchor init my-project
-```
-
-This command creates a new directory with the project name and initializes a new Anchor project with a modular Rust program structure. By default, tests are written in Rust using the [LiteSVM](https://github.com/LiteSVM/litesvm) crate. Use `--test-template` to choose a different template (`mollusk`, `mocha`, `jest`, etc):
-
-```ansi
-$ anchor init my-project --test-template mollusk
+$ anchor init [2m<project-name>[0m --test-template mollusk
 ```
 
 <Callout variant="note">
-
-By default, Anchor uses a **modular structure** with separate files for instructions, state, constants, and errors. This organization improves code maintainability and is recommended for production code.
-
+  By default, Anchor uses a modular structure with separate files for instructions, state, constants, and errors. This organization improves code maintainability and is recommended for production code.
 </Callout>
 
 Navigate to the project directory:
 
 ```ansi
-$ cd <project-name>
+$ cd [2m<project-name>[0m
 ```
 
 See the Anchor project's [file structure](https://www.anchor-lang.com/docs/quickstart/local#project-file-structure).

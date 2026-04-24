@@ -155,6 +155,7 @@ export default defineConfig({
           styleOverrides: {
             codeFontSize: '0.75rem',
             borderColor: 'var(--border)',
+            borderWidth: '2px',
             codeFontFamily: 'var(--font-mono)',
             codeBackground: ({ theme }: { theme: ExpressiveCodeTheme }) =>
               theme.name === 'catppuccin-latte' ? 'oklch(96% 0.008 286)' : 'oklch(24% 0.03 284)',
@@ -175,6 +176,23 @@ export default defineConfig({
             },
             lineNumbers: {
               foreground: 'var(--muted-foreground)',
+            },
+            collapsibleSections: {
+              closedBackgroundColor: 'color-mix(in oklab, var(--accent) 14%, transparent)',
+              closedBorderColor: 'color-mix(in oklab, var(--accent) 45%, transparent)',
+              closedTextColor: 'var(--muted-foreground)',
+              openBackgroundColorCollapsible: 'color-mix(in oklab, var(--accent) 7%, transparent)',
+              openBorderColor: 'transparent',
+            },
+            textMarkers: {
+              delBackground: 'color-mix(in oklab, var(--ctp-red) 22%, transparent)',
+              delBorderColor: 'color-mix(in oklab, var(--ctp-red) 65%, transparent)',
+              delDiffIndicatorColor: 'var(--ctp-red)',
+              insBackground: 'color-mix(in oklab, var(--ctp-green) 22%, transparent)',
+              insBorderColor: 'color-mix(in oklab, var(--ctp-green) 65%, transparent)',
+              insDiffIndicatorColor: 'var(--ctp-green)',
+              markBackground: 'color-mix(in oklab, var(--accent) 28%, transparent)',
+              markBorderColor: 'var(--accent)',
             },
             uiFontFamily: 'var(--font-sans)',
           },

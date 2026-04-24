@@ -12,7 +12,7 @@ interface Props {
 
 const { title, icon, href, class: className } = Astro.props
 
-const baseClass = cn('not-prose flex flex-col gap-2 rounded-lg border p-5', className)
+const baseClass = cn('not-prose flex flex-col gap-2 rounded-lg border-2 p-5', className)
 const linkClass = cn('group hover:border-foreground/30 no-underline', baseClass)
 ---
 

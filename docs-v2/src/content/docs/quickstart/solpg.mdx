@@ -168,8 +168,8 @@ To build the program, run `build` in the terminal.
 
 ```ansi title="Terminal"
 $ build
-Building...
-Build successful. Completed in 1.46s.
+[1;34mBuilding...[0m
+[1;32mBuild successful.[0m Completed in 1.46s.
 ```
 
 Notice that the address in `declare_id!(){:rs}` has been updated. This is your program's on-chain address.
@@ -178,9 +178,9 @@ Once built, run `deploy` to deploy to the network (devnet by default). Make sure
 
 ```ansi title="Terminal"
 $ deploy
-Deploying... This could take a while depending on the program size and network conditions.
-Warning: 1 transaction not confirmed, retrying...
-Deployment successful. Completed in 19s.
+[1;34mDeploying...[0m This could take a while depending on the program size and network conditions.
+[1;33mWarning[0m: 8 transactions not confirmed, retrying...
+[1;32mDeployment successful.[0m Completed in 18s.
 ```
 
 You can also use the `Build` and `Deploy` buttons on the left-side panel.
@@ -196,13 +196,13 @@ The starter code includes a test file at `tests/anchor.test.ts` that shows how t
 ```ts title="anchor.test.ts"
 // No imports needed: web3, anchor, pg and more are globally available
 
-describe('Test', () => {
-  it('initialize', async () => {
+describe("Test", () => {
+  it("initialize", async () => {
     // Generate keypair for the new account
-    const newAccountKp = new web3.Keypair()
+    const newAccountKp = new web3.Keypair();
 
     // Send transaction
-    const data = new BN(42)
+    const data = new BN(42);
     const txHash = await pg.program.methods
       .initialize(data)
       .accounts({
@@ -211,34 +211,36 @@ describe('Test', () => {
         systemProgram: web3.SystemProgram.programId,
       })
       .signers([newAccountKp])
-      .rpc()
-    console.log(`Use 'solana confirm -v ${txHash}' to see the logs`)
+      .rpc();
+    console.log(`Use 'solana confirm -v ${txHash}' to see the logs`);
 
     // Confirm transaction
-    await pg.connection.confirmTransaction(txHash)
+    await pg.connection.confirmTransaction(txHash);
 
     // Fetch the created account
-    const newAccount = await pg.program.account.newAccount.fetch(newAccountKp.publicKey)
+    const newAccount = await pg.program.account.newAccount.fetch(
+      newAccountKp.publicKey
+    );
 
-    console.log('On-chain data is:', newAccount.data.toString())
+    console.log("On-chain data is:", newAccount.data.toString());
 
     // Check whether the data on-chain is equal to local 'data'
-    assert(data.eq(newAccount.data))
-  })
-})
+    assert(data.eq(newAccount.data));
+  });
+});
 ```
 
 Run the tests with:
 
 ```ansi title="Terminal"
 $ test
-Running tests...
-  hello_anchor.test.ts:
-  hello_anchor
-    Use 'solana confirm -v 3TewJtiUz1EgtT88pLJHvKFzqrzDNuHVi8CfD2mWmHEBAaMfC5NAaHdmr19qQYfTiBace6XUmADvR4Qrhe8gH5uc' to see the logs
+[1;34mRunning tests...[0m
+  [1manchor.test.ts:[0m
+  Test
+    Use 'solana confirm -v h6JV2E4HKiFMHLVQaFDRma9h8K3RBHKTb7vMiT8cLBsVQoyBnZmF6wD5cSrEG1ai6Bu7x7ibJakAyqXE45BJti' to see the logs
     On-chain data is: 42
-    ✔ initialize (961ms)
-  1 passing (963ms)
+    [32m✓[0m initialize [2m(2139ms)[0m
+  [1;32m1 passing[0m [2m(2s)[0m
 ```
 
 You can also click the `Test` button on the left-side panel.
@@ -247,51 +249,45 @@ You can also click the `Test` button on the left-side panel.
 
 To view the transaction logs, run `solana confirm -v` with the transaction hash from the test output:
 
-```ansi title="Terminal"
-solana confirm -v 3TewJtiUz1EgtT88pLJHvKFzqrzDNuHVi8CfD2mWmHEBAaMfC5NAaHdmr19qQYfTiBace6XUmADvR4Qrhe8gH5uc
-```
+```ansi title="Terminal" collapse={8-37}
+$ solana confirm -v h6JV2E4HKiFMHLVQaFDRma9h8K3RBHKTb7vMiT8cLBsVQoyBnZmF6wD5cSrEG1ai6Bu7x7ibJakAyqXE45BJti
+[1;35mRPC URL:[0m https://api.devnet.solana.com
+[1;35mDefault Signer:[0m Playground Wallet
+[1;35mCommitment:[0m confirmed
 
-<Callout variant="remark" title="Transaction log output" defaultOpen={false}>
-```ansi title="Terminal" mark={29-35}
-$ solana confirm -v 3TewJtiUz1EgtT88pLJHvKFzqrzDNuHVi8CfD2mWmHEBAaMfC5NAaHdmr19qQYfTiBace6XUmADvR4Qrhe8gH5uc
-RPC URL: https://api.devnet.solana.com
-Default Signer: Playground Wallet
-Commitment: confirmed
-
-Transaction executed in slot 308150984:
-  Block Time: 2024-06-25T12:52:05-05:00
-  Version: legacy
-  Recent Blockhash: 7AnZvY37nMhCybTyVXJ1umcfHSZGbngnm4GZx6jNRTNH
-  Signature 0: 3TewJtiUz1EgtT88pLJHvKFzqrzDNuHVi8CfD2mWmHEBAaMfC5NAaHdmr19qQYfTiBace6XUmADvR4Qrhe8gH5uc
-  Signature 1: 3TrRbqeMYFCkjsxdPExxBkLAi9SB2pNUyg87ryBaTHzzYtGjbsAz9udfT9AkrjSo1ZjByJgJHBAdRVVTZv6B87PQ
-  Account 0: srw- 3z9vL1zjN6qyAFHhHQdWYRTFAcy69pJydkZmSFBKHg1R (fee payer)
-  Account 1: srw- c7yy8zdP8oeZ2ewbSb8WWY2yWjDpg3B43jk3478Nv7J
-  Account 2: -r-- 11111111111111111111111111111111
-  Account 3: -r-x 2VvQ11q8xrn5tkPNyeraRsPaATdiPx8weLAD8aD4dn2r
+[1;35mTransaction executed in slot 457828860:[0m
+  [1mBlock Time:[0m 2026-04-24T13:51:45-07:00
+  [1mVersion:[0m legacy
+  [1mRecent Blockhash:[0m FEfP1gMjVdNrLiHoxc67C2cXBsGF3cy9s8QPmEhjb7Q4
+  [1mSignature 0:[0m h6JV2E4HKiFMHLVQaFDRma9h8K3RBHKTb7vMiT8cLBsVQoyBnZmF6wD5cSrEG1ai6Bu7x7ibJakAyqEXE45BJti
+  [1mSignature 1:[0m 5TWWTnvJaiaooPR7zgACSUjxuZ6kz8eDnBjCd1AyVBMSWa9mvm3HedsN54Tu9iLJasbN4GpFcfSXqgrCri2cqRRc
+  [1mAccount 0:[0m srw- DY6arEvmJEfVXERsZ6LusRpjz5y5bqwQJRVcyE1zChBB [2m(fee payer)[0m
+  [1mAccount 1:[0m srw- 2vWvBBYP5PLczTuTm7nN7mhUEM45kxex9ASjXqrEh9Dh
+  [1mAccount 2:[0m -r-- 11111111111111111111111111111111
+  [1mAccount 3:[0m -r-x 3uCJdLdxY9fThNZ9U3oaBmhzxnEvZaRUiRYTJHZVxM4f
   Instruction 0
-    Program:   2VvQ11q8xrn5tkPNyeraRsPaATdiPx8weLAD8aD4dn2r (3)
-    Account 0: c7yy8zdP8oeZ2ewbSb8WWY2yWjDpg3B43jk3478Nv7J (1)
-    Account 1: 3z9vL1zjN6qyAFHhHQdWYRTFAcy69pJydkZmSFBKHg1R (0)
-    Account 2: 11111111111111111111111111111111 (2)
+    Program:   3uCJdLdxY9fThNZ9U3oaBmhzxnEvZaRUiRYTJHZVxM4f [2m(3)[0m
+    Account 0: 2vWvBBYP5PLczTuTm7nN7mhUEM45kxex9ASjXqrEh9Dh [2m(1)[0m
+    Account 1: DY6arEvmJEfVXERsZ6LusRpjz5y5bqwQJRVcyE1zChBB [2m(0)[0m
+    Account 2: 11111111111111111111111111111111 [2m(2)[0m
     Data: [175, 175, 109, 31, 13, 152, 155, 237, 42, 0, 0, 0, 0, 0, 0, 0]
-  Status: Ok
+  [1mStatus:[0m Ok
     Fee: ◎0.00001
-    Account 0 balance: ◎5.47001376 -> ◎5.46900152
+    Account 0 balance: ◎2.09821932 -> ◎2.09720708
     Account 1 balance: ◎0 -> ◎0.00100224
     Account 2 balance: ◎0.000000001
     Account 3 balance: ◎0.00139896
-  Log Messages:
-    Program 2VvQ11q8xrn5tkPNyeraRsPaATdiPx8weLAD8aD4dn2r invoke [1]
+  [1mLog Messages:[0m
+    Program 3uCJdLdxY9fThNZ9U3oaBmhzxnEvZaRUiRYTJHZVxM4f invoke [1]
     Program log: Instruction: Initialize
     Program 11111111111111111111111111111111 invoke [2]
     Program 11111111111111111111111111111111 success
     Program log: Changed data to: 42!
-    Program 2VvQ11q8xrn5tkPNyeraRsPaATdiPx8weLAD8aD4dn2r consumed 5661 of 200000 compute units
-    Program 2VvQ11q8xrn5tkPNyeraRsPaATdiPx8weLAD8aD4dn2r success
-
-Confirmed
+    Program 3uCJdLdxY9fThNZ9U3oaBmhzxnEvZaRUiRYTJHZVxM4f consumed 6266 of 200000 compute units
+    Program 3uCJdLdxY9fThNZ9U3oaBmhzxnEvZaRUiRYTJHZVxM4f success
+ 
+Finalized
 ```
-</Callout>
 
 </Step>
 <Step>
@@ -300,9 +296,9 @@ Confirmed
 You can close the program to reclaim the SOL allocated to it. To close a program, run:
 
 ```ansi title="Terminal"
-solana program close [PROGRAM_ID]
+$ solana program close [2m<program-id>[0m
+Closed Program Id [2m<program-id>[0m, 2.89823448 SOL reclaimed
 ```
 
 </Step>
-
 </Steps>

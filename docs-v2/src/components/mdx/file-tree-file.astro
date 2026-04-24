@@ -22,7 +22,7 @@ const { name, highlight = false, comment } = Astro.props
       name="lucide:file"
       class:list={['size-4 shrink-0', highlight ? 'text-primary' : 'text-muted-foreground']}
     />
-    <span>{name}</span>
-    {comment && <span class="text-muted-foreground ml-2 text-xs">{comment}</span>}
+    <span class="font-mono">{name}</span>
+    {comment && <span class="text-muted-foreground/75 ml-2">{comment}</span>}
   </span>
 </li>

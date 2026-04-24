@@ -9,7 +9,7 @@ const uid = `tabs-${Math.random().toString(36).slice(2, 9)}`
 ---
 
 <div class="my-6 overflow-hidden rounded-lg border-2" data-tabs={uid}>
-  <div role="tablist" class="border-border/70 bg-muted/30 flex gap-1 border-b-2 px-2 py-1.5">
+  <div role="tablist" class="border-border bg-muted/30 flex gap-1 border-b-2 px-2 py-1.5">
     {
       items.map((label, i) => (
         <button

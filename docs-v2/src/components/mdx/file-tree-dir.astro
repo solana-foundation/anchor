@@ -27,10 +27,10 @@ const hasChildren = Astro.slots.has('default')
             class="text-muted-foreground size-3 shrink-0 transition-transform group-open:rotate-90"
           />
           <Icon name="lucide:folder" class="size-4 shrink-0 text-muted-foreground" />
-          <span>{name}/</span>
-          {comment && <span class="text-muted-foreground ml-2 text-xs font-normal">{comment}</span>}
+          <span class="font-mono">{name}/</span>
+          {comment && <span class="text-muted-foreground/75 ml-2">{comment}</span>}
         </summary>
-        <ul class="mt-0.5 ml-[11px] list-none space-y-0.5 border-l pl-3">
+        <ul class="mt-0.5 ml-[11px] list-none space-y-0.5 border-l-2 pl-3">
           <slot />
         </ul>
       </details>
@@ -45,8 +45,8 @@ const hasChildren = Astro.slots.has('default')
       >
         <span class="size-3 shrink-0" aria-hidden="true" />
         <Icon name="lucide:folder" class="size-4 shrink-0 text-muted-foreground" />
-        <span>{name}/</span>
-        {comment && <span class="text-muted-foreground ml-2 text-xs">{comment}</span>}
+        <span class="font-mono">{name}/</span>
+        {comment && <span class="text-muted-foreground/75 ml-2">{comment}</span>}
       </span>
     </li>
   )
