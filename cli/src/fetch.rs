@@ -16,7 +16,12 @@ use {
     },
     solana_signature::Signature,
     solana_transaction_status_client_types::*,
-    std::{io::Read, path::PathBuf, str::FromStr, thread},
+    std::{
+        io::Read,
+        path::{Path, PathBuf},
+        str::FromStr,
+        thread,
+    },
 };
 
 // IDL Historical Fetch - Type Definitions and Constants
@@ -567,7 +572,7 @@ fn output_idls(
     Ok(())
 }
 
-fn output_idl(idl_data: &[u8], path: &PathBuf) -> Result<()> {
+fn output_idl(idl_data: &[u8], path: &Path) -> Result<()> {
     std::fs::write(path, idl_data)?;
     println!("Saved IDL to: {}", path.display());
     Ok(())
