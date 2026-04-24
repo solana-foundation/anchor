@@ -362,8 +362,8 @@ pub fn idl_fetch_at_slot(
     }
 
     Err(anyhow!(
-        "No decompressable IDL session found at or before slot {}. Try --all to see all \
-         recoverable versions.",
+        "No decompressable IDL session found at or before slot {}. Try fetching without --slot to \
+         see recoverable versions.",
         target_slot
     ))
 }
@@ -383,11 +383,16 @@ fn output_idl_data(idl_data: &[u8], slot: u64, out_dir: Option<String>) -> Resul
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Fetch historical IDL versions for the given program from a cluster.
+///
+/// With no filters, fetches all historical versions.
+///
+/// With a date filter, fetches IDL versions between the given dates.
+///
+/// With a slot filter, fetches the IDL version at the given slot.
 pub fn idl_fetch_historical(
     cfg_override: &ConfigOverride,
     address: Pubkey,
-    all: bool,
     slot: Option<u64>,
     before: Option<String>,
     after: Option<String>,
@@ -416,9 +421,9 @@ pub fn idl_fetch_historical(
     let fetcher = IdlFetcher::new(&client, tuning);
 
     // Date filters are pushed into the pagination loop so we can stop fetching
-    // once we cross the `after` bound. `--all` and `--slot` bypass filtering
-    // and walk the full history.
-    let (filter_before, filter_after) = if all || slot.is_some() {
+    // once we cross the `after` bound. `--slot` bypasses filtering and walks
+    // the full history.
+    let (filter_before, filter_after) = if slot.is_some() {
         (None, None)
     } else {
         (before_timestamp, after_timestamp)

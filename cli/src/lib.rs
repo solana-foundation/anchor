@@ -706,20 +706,17 @@ pub enum IdlCommand {
     },
     /// Fetches historical IDL versions for the given program from a cluster.
     ///
-    /// With no filters, fetches all historical versions (same as --all).
+    /// With no filters, fetches all historical versions.
     FetchHistorical {
         program_id: Pubkey,
-        /// Fetch all historical versions (default when no filter given)
-        #[clap(long)]
-        all: bool,
         /// Fetch IDL at specific slot
-        #[clap(long, conflicts_with_all = ["all", "before", "after"])]
+        #[clap(long, conflicts_with_all = ["before", "after"])]
         slot: Option<u64>,
         /// Fetch IDL before this date (YYYY-MM-DD)
-        #[clap(long, conflicts_with = "all")]
+        #[clap(long)]
         before: Option<String>,
         /// Fetch IDL after this date (YYYY-MM-DD)
-        #[clap(long, conflicts_with = "all")]
+        #[clap(long)]
         after: Option<String>,
         /// Output directory for fetched versions (defaults to the current directory)
         #[clap(long)]
@@ -2563,7 +2560,6 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => idl_fetch(cfg_override, address, out, non_canonical),
         IdlCommand::FetchHistorical {
             program_id: address,
-            all,
             slot,
             before,
             after,
@@ -2576,7 +2572,6 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => fetch::idl_fetch_historical(
             cfg_override,
             address,
-            all,
             slot,
             before,
             after,
