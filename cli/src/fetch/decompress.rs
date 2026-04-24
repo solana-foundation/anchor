@@ -1,10 +1,4 @@
-use {anyhow::Result, flate2::read::ZlibDecoder, std::io::Read};
-
-// Returns the newest valid zlib stream from a combined session buffer, if any.
-pub(super) fn decompress_idl_data(compressed_data: &[u8]) -> Result<Option<Vec<u8>>> {
-    let streams = decompress_all_streams(compressed_data);
-    Ok(streams.into_iter().last())
-}
+use {flate2::read::ZlibDecoder, std::io::Read};
 
 // Walks concatenated zlib streams and keeps only those that decode into valid IDL JSON.
 pub(super) fn decompress_all_streams(compressed_data: &[u8]) -> Vec<Vec<u8>> {

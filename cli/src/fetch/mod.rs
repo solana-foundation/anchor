@@ -17,7 +17,7 @@ mod sessions;
 
 use self::{
     chunks::extract_chunks_from_transaction,
-    decompress::{decompress_all_streams, decompress_idl_data},
+    decompress::decompress_all_streams,
     output::{save_historical_idls, write_idl_file},
     rpc::{create_rpc_client, fetch_idl_signatures},
     sessions::{
@@ -259,25 +259,21 @@ pub fn idl_fetch_at_slot(
     let total = candidates.len();
     for (idx, session) in candidates.into_iter().enumerate() {
         let combined = combine_chunks(&session);
-        match decompress_idl_data(&combined) {
-            Ok(Some(idl_data)) => {
-                let last_slot = session.last().map(|(s, _)| *s).unwrap_or(target_slot);
-                println!(
-                    "Decompressed IDL from session ending at slot {} ({} bytes)",
-                    last_slot,
-                    idl_data.len()
-                );
-                return write_idl_file(
-                    &idl_data,
-                    &PathBuf::from(format!("idl_{}.json", target_slot)),
-                    out_dir.as_deref(),
-                );
-            }
-            Ok(None) | Err(_) => {
-                if idx + 1 < total {
-                    continue;
-                }
-            }
+        if let Some(idl_data) = decompress_all_streams(&combined).into_iter().last() {
+            let last_slot = session.last().map(|(s, _)| *s).unwrap_or(target_slot);
+            println!(
+                "Decompressed IDL from session ending at slot {} ({} bytes)",
+                last_slot,
+                idl_data.len()
+            );
+            return write_idl_file(
+                &idl_data,
+                &PathBuf::from(format!("idl_{}.json", target_slot)),
+                out_dir.as_deref(),
+            );
+        }
+        if idx + 1 < total {
+            continue;
         }
     }
 
