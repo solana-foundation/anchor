@@ -645,10 +645,7 @@ fn parse_transaction_data(
             transaction: EncodedTransaction::Json(ui_tx),
             ..
         } => Ok(ui_tx),
-        _ => {
-            println!("Transaction not in JSON format");
-            Err(anyhow!("Invalid transaction format"))
-        }
+        _ => Err(anyhow!("Invalid transaction format")),
     }
 }
 
@@ -738,11 +735,6 @@ fn extract_compressed_chunk(data_str: &str) -> Result<Option<ChunkData>> {
     let vec_len = extract_payload_length(&data);
 
     if !has_complete_payload(&data, vec_len) {
-        println!(
-            "Incomplete data: expected {} bytes, got {}",
-            IDL_HEADER_SIZE + vec_len,
-            data.len()
-        );
         return Ok(None);
     }
 
@@ -757,7 +749,6 @@ fn is_valid_idl_write_instruction(data: &[u8]) -> bool {
     }
 
     if data[0..8] != IDL_IX_TAG {
-        println!("Not an IDL instruction (tag mismatch)");
         return false;
     }
 
