@@ -12,9 +12,14 @@ import { TokenExtensions } from "../target/types/token_extensions";
 import { ASSOCIATED_PROGRAM_ID } from "@anchor-lang/core/dist/cjs/utils/token";
 import {
   createInitializeAccountInstruction,
+  createInitializeMintInstruction,
   createMint,
   ExtensionType,
   getAccountLen,
+  getExtensionTypes,
+  getMint,
+  getMintLen,
+  NATIVE_MINT_2022,
 } from "@solana/spl-token";
 import { it } from "node:test";
 
@@ -257,6 +262,126 @@ describe("token extensions", () => {
       );
       assert.equal((err as AnchorError).error.errorCode.number, 2044);
     }
+  });
+
+  describe("create_native_mint", () => {
+    it("Creates the Token-2022 native mint via CPI", async () => {
+      const before = await provider.connection.getAccountInfo(NATIVE_MINT_2022);
+      if (before !== null) {
+        // The canonical native mint can only be created once per cluster.
+        // If a previous test run already created it, skip to keep the suite rerunnable.
+        return;
+      }
+
+      await program.methods
+        .cpiCreateNativeMint()
+        .accountsStrict({
+          payer: payer.publicKey,
+          nativeMint: NATIVE_MINT_2022,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([payer])
+        .rpc();
+
+      const mintAccount = await getMint(
+        provider.connection,
+        NATIVE_MINT_2022,
+        "confirmed",
+        TOKEN_2022_PROGRAM_ID
+      );
+      assert.equal(mintAccount.decimals, 9);
+      assert.equal(mintAccount.mintAuthority, null);
+      assert.equal(mintAccount.freezeAuthority, null);
+    });
+  });
+
+  describe("initialize_non_transferable_mint", () => {
+    it("Initializes the non-transferable extension on a new mint via CPI", async () => {
+      const mintKeypair = Keypair.generate();
+      const mintLen = getMintLen([ExtensionType.NonTransferable]);
+      const lamports =
+        await provider.connection.getMinimumBalanceForRentExemption(mintLen);
+
+      const tx = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: mintKeypair.publicKey,
+          space: mintLen,
+          lamports,
+          programId: TOKEN_2022_PROGRAM_ID,
+        })
+      );
+      await sendAndConfirmTransaction(
+        provider.connection,
+        tx,
+        [payer, mintKeypair],
+        { commitment: "confirmed" }
+      );
+
+      await program.methods
+        .cpiInitializeNonTransferableMint()
+        .accountsStrict({
+          mint: mintKeypair.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .postInstructions([
+          createInitializeMintInstruction(
+            mintKeypair.publicKey,
+            0,
+            payer.publicKey,
+            null,
+            TOKEN_2022_PROGRAM_ID
+          ),
+        ])
+        .rpc();
+
+      const mintAccount = await getMint(
+        provider.connection,
+        mintKeypair.publicKey,
+        "confirmed",
+        TOKEN_2022_PROGRAM_ID
+      );
+      const extensions = getExtensionTypes(mintAccount.tlvData);
+      assert.ok(
+        extensions.includes(ExtensionType.NonTransferable),
+        "mint should have the NonTransferable extension"
+      );
+    });
+
+    it("Fails when the mint account is too small for the extension", async () => {
+      const mintKeypair = Keypair.generate();
+      // Allocate only the base mint size — no room for the NonTransferable TLV.
+      const mintLen = getMintLen([]);
+      const lamports =
+        await provider.connection.getMinimumBalanceForRentExemption(mintLen);
+
+      const tx = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: mintKeypair.publicKey,
+          space: mintLen,
+          lamports,
+          programId: TOKEN_2022_PROGRAM_ID,
+        })
+      );
+      await sendAndConfirmTransaction(
+        provider.connection,
+        tx,
+        [payer, mintKeypair],
+        { commitment: "confirmed" }
+      );
+
+      await assert.rejects(
+        program.methods
+          .cpiInitializeNonTransferableMint()
+          .accountsStrict({
+            mint: mintKeypair.publicKey,
+            tokenProgram: TOKEN_2022_PROGRAM_ID,
+          })
+          .rpc()
+      );
+    });
   });
 
   it("pausable authority constraint fails when mint has no pausable extension", async () => {
