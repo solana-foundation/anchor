@@ -83,14 +83,12 @@ impl<'a> IdlFetcher<'a> {
     fn collect_chunks(
         &self,
         signatures: &[&RpcConfirmedTransactionStatusWithSignature],
-        pb: Option<&ProgressBar>,
+        pb: &ProgressBar,
     ) -> Vec<SlotChunk> {
         signatures
             .iter()
             .filter_map(|sig| {
-                if let Some(pb) = pb {
-                    pb.inc(1);
-                }
+                pb.inc(1);
                 collect_signature_chunks(self.client, sig, &self.tuning)
             })
             .flatten()
@@ -100,7 +98,7 @@ impl<'a> IdlFetcher<'a> {
     fn collect_chunks_owned(
         &self,
         signatures: &[RpcConfirmedTransactionStatusWithSignature],
-        pb: Option<&ProgressBar>,
+        pb: &ProgressBar,
     ) -> Vec<SlotChunk> {
         if should_parallelize_historical_fetch(signatures.len(), &self.tuning) {
             return self.collect_chunks_owned_parallel(signatures, pb);
@@ -113,7 +111,7 @@ impl<'a> IdlFetcher<'a> {
     fn collect_chunks_owned_parallel(
         &self,
         signatures: &[RpcConfirmedTransactionStatusWithSignature],
-        pb: Option<&ProgressBar>,
+        pb: &ProgressBar,
     ) -> Vec<SlotChunk> {
         let worker_count = historical_fetch_worker_count(signatures.len(), &self.tuning);
         if worker_count <= 1 {
@@ -123,20 +121,17 @@ impl<'a> IdlFetcher<'a> {
         }
 
         let chunk_size = signatures.len().div_ceil(worker_count);
-        let progress = pb.cloned();
 
         thread::scope(|scope| {
             let mut handles = Vec::new();
 
             for signature_chunk in signatures.chunks(chunk_size) {
-                let progress = progress.clone();
+                let progress = pb.clone();
                 handles.push(scope.spawn(move || {
                     signature_chunk
                         .iter()
                         .filter_map(|sig| {
-                            if let Some(pb) = progress.as_ref() {
-                                pb.inc(1);
-                            }
+                            progress.inc(1);
                             collect_signature_chunks(self.client, sig, &self.tuning)
                         })
                         .flatten()
@@ -287,7 +282,7 @@ pub fn idl_fetch_at_slot(
     );
     pb.set_message("Processing transactions...");
 
-    let all_chunks = collect_and_process_chunks(&fetcher, all_signatures, Some(&pb));
+    let all_chunks = collect_and_process_chunks(&fetcher, all_signatures, &pb);
     pb.finish_with_message("Transaction processing complete");
 
     if all_chunks.is_empty() {
@@ -438,7 +433,7 @@ pub fn idl_fetch_historical(
     );
     pb.set_message("Extracting IDL chunks from transactions...");
 
-    let all_chunks = collect_and_process_chunks(&fetcher, &signatures, Some(&pb));
+    let all_chunks = collect_and_process_chunks(&fetcher, &signatures, &pb);
 
     pb.finish_with_message("Transaction processing complete");
 
@@ -465,7 +460,7 @@ pub fn idl_fetch_historical(
             .progress_chars("#>-"),
     );
 
-    let extracted_idls = decompress_sessions(&sessions, &signatures, Some(&decompress_pb))?;
+    let extracted_idls = decompress_sessions(&sessions, &signatures, &decompress_pb)?;
     decompress_pb.finish_with_message("Decompression complete");
 
     if extracted_idls.is_empty() {
@@ -568,7 +563,7 @@ fn fetch_idl_signatures(
 fn collect_and_process_chunks(
     fetcher: &IdlFetcher,
     signatures: &[RpcConfirmedTransactionStatusWithSignature],
-    pb: Option<&ProgressBar>,
+    pb: &ProgressBar,
 ) -> Vec<SlotChunk> {
     let mut all_chunks = fetcher.collect_chunks_owned(signatures, pb);
     all_chunks.sort_by_key(|(slot, _)| *slot);
@@ -578,16 +573,14 @@ fn collect_and_process_chunks(
 fn decompress_sessions(
     sessions: &[SessionChunks],
     signatures: &[RpcConfirmedTransactionStatusWithSignature],
-    pb: Option<&ProgressBar>,
+    pb: &ProgressBar,
 ) -> Result<Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>> {
     let mut failed = 0usize;
 
     let extracted: Vec<_> = sessions
         .iter()
         .flat_map(|session| {
-            if let Some(pb) = pb {
-                pb.inc(1);
-            }
+            pb.inc(1);
             let combined_data = combine_chunks(session);
             let streams = decompress_all_streams(&combined_data);
             if streams.is_empty() {
@@ -611,15 +604,11 @@ fn decompress_sessions(
         .collect();
 
     if failed > 0 {
-        let msg = format!(
+        pb.println(format!(
             "Skipped {}/{} session(s): no zlib streams found (partial uploads)",
             failed,
             sessions.len()
-        );
-        match pb {
-            Some(pb) => pb.println(msg),
-            None => println!("{msg}"),
-        }
+        ));
     }
 
     Ok(extracted)
