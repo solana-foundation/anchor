@@ -51,6 +51,8 @@ describe("token extensions", () => {
   });
 
   let mint = new Keypair();
+  let mintTokenAccount = new Keypair();
+  let mintImmutableTokenAccount = new Keypair();
 
   it("Create mint account test passes", async () => {
     const [extraMetasAccount] = PublicKey.findProgramAddressSync(
@@ -71,16 +73,14 @@ describe("token extensions", () => {
         authority: payer.publicKey,
         receiver: payer.publicKey,
         mint: mint.publicKey,
-        mintTokenAccount: associatedAddress({
-          mint: mint.publicKey,
-          owner: payer.publicKey,
-        }),
+        mintTokenAccount: mintTokenAccount.publicKey,
+        mintImmutableTokenAccount: mintImmutableTokenAccount.publicKey,
         extraMetasAccount: extraMetasAccount,
         systemProgram: anchor.web3.SystemProgram.programId,
         associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
       })
-      .signers([mint, payer])
+      .signers([mint, mintTokenAccount, mintImmutableTokenAccount, payer])
       .rpc();
   });
 
@@ -229,6 +229,18 @@ describe("token extensions", () => {
       .rpc();
   });
 
+  it("token account extension constraints test", async () => {
+    await program.methods
+      .checkTokenAccountExtensionsConstraints()
+      .accountsStrict({
+        authority: payer.publicKey,
+        mint: mint.publicKey,
+        mintImmutableTokenAccount: mintImmutableTokenAccount.publicKey,
+      })
+      .signers([payer])
+      .rpc();
+  });
+
   it("pausable authority constraint fails on mismatched authority", async () => {
     const wrongAuthority = Keypair.generate();
     await provider.connection.confirmTransaction(
@@ -302,5 +314,23 @@ describe("token extensions", () => {
       })
       .signers([payer])
       .rpc();
+  });
+
+  it("missing token account extension constraints test", async () => {
+    try {
+      await program.methods
+        .checkMissingTokenAccountExtensionsConstraints()
+        .accountsStrict({
+          authority: payer.publicKey,
+          mint: mint.publicKey,
+          mintTokenAccount: mintTokenAccount.publicKey,
+        })
+        .signers([payer])
+        .rpc();
+      assert.fail("Transaction should fail");
+    } catch (e) {
+      // "Error Code: ConstraintTokenAccountImmutableOwnerExtension. Error Number: 2040. Error Message: A immutable owner extension constraint was violated."
+      assert.strictEqual(e.error.errorCode.number, 2040);
+    }
   });
 });

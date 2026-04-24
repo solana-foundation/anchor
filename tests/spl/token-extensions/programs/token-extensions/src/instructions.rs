@@ -63,11 +63,21 @@ pub struct CreateMintAccount<'info> {
     #[account(
         init,
         payer = payer,
-        associated_token::token_program = token_program,
-        associated_token::mint = mint,
-        associated_token::authority = receiver,
+        token::token_program = token_program,
+        token::mint = mint,
+        token::authority = receiver,
     )]
     pub mint_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(
+        init,
+        payer = payer,
+        token::token_program = token_program,
+        token::mint = mint,
+        token::authority = receiver,
+        extensions::immutable_owner,
+    )]
+    pub mint_immutable_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
     /// CHECK: This account's data is a buffer of TLV data
     #[account(
         init,
@@ -189,6 +199,19 @@ pub struct CheckMintExtensionConstraints<'info> {
         extensions::pausable::authority = authority,
     )]
     pub mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
+#[instruction()]
+pub struct CheckTokenAccountExtensionConstraints<'info> {
+    pub authority: Signer<'info>,
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(
+        token::mint = mint,
+        token::authority = authority,
+        extensions::immutable_owner,
+    )]
+    pub mint_immutable_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 }
 
 #[derive(Accounts)]
@@ -391,4 +414,17 @@ pub fn update_and_remove_token_metadata_handler(
     let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
     assert_eq!(metadata.additional_metadata.len(), 0);
     Ok(())
+}
+
+#[derive(Accounts)]
+#[instruction()]
+pub struct CheckMissingTokenAccountExtensionConstraints<'info> {
+    pub authority: Signer<'info>,
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(
+        token::mint = mint,
+        token::authority = authority,
+        extensions::immutable_owner,
+    )]
+    pub mint_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 }
