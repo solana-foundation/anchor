@@ -37,6 +37,15 @@ const PROGRESS_TICK_INTERVAL_MS: u64 = 80;
 type ChunkData = Vec<u8>;
 type SlotChunk = (u64, ChunkData);
 type SessionChunks = Vec<SlotChunk>;
+// A recovered IDL blob paired with the transaction metadata for its session.
+type ExtractedIdl = (RpcConfirmedTransactionStatusWithSignature, Vec<u8>);
+
+// Named return value keeps the decompression pipeline readable and avoids a
+// hard-to-scan tuple signature at the call site.
+struct DecompressedSessions {
+    extracted_idls: Vec<ExtractedIdl>,
+    skipped_sessions: usize,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct FetchTuning {
@@ -477,27 +486,27 @@ pub fn idl_fetch_historical(
             .progress_chars("#>-"),
     );
 
-    let (extracted_idls, skipped) = decompress_sessions(&sessions, &signatures, &decompress_pb)?;
+    let decompressed = decompress_sessions(&sessions, &signatures, &decompress_pb)?;
     decompress_pb.finish_with_message("Decompression complete");
 
-    if skipped > 0 {
+    if decompressed.skipped_sessions > 0 {
         println!(
             "Skipped {}/{} session(s): no zlib streams found (partial uploads)",
-            skipped,
+            decompressed.skipped_sessions,
             sessions.len()
         );
     }
 
-    if extracted_idls.is_empty() {
+    if decompressed.extracted_idls.is_empty() {
         println!("\nNo IDL data could be fetched from historical slots.");
         return Ok(());
     }
 
     println!(
         "\nSuccessfully extracted {} IDL version(s)",
-        extracted_idls.len()
+        decompressed.extracted_idls.len()
     );
-    output_idls(extracted_idls, out_dir)
+    output_idls(decompressed.extracted_idls, out_dir)
 }
 
 fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
@@ -599,10 +608,7 @@ fn decompress_sessions(
     sessions: &[SessionChunks],
     signatures: &[RpcConfirmedTransactionStatusWithSignature],
     pb: &ProgressBar,
-) -> Result<(
-    Vec<(RpcConfirmedTransactionStatusWithSignature, Vec<u8>)>,
-    usize,
-)> {
+) -> Result<DecompressedSessions> {
     let mut failed = 0usize;
 
     let extracted: Vec<_> = sessions
@@ -631,7 +637,10 @@ fn decompress_sessions(
         })
         .collect();
 
-    Ok((extracted, failed))
+    Ok(DecompressedSessions {
+        extracted_idls: extracted,
+        skipped_sessions: failed,
+    })
 }
 
 fn output_idls(
