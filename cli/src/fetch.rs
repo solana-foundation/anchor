@@ -67,6 +67,8 @@ impl<'a> IdlFetcher<'a> {
         Self { client, tuning }
     }
 
+    /// Validates that `target_slot` is not a future slot by comparing it to
+    /// the current client slot.
     fn validate_slot(&self, target_slot: u64) -> Result<()> {
         let current_slot = self.client.get_slot()?;
         if target_slot > current_slot {
