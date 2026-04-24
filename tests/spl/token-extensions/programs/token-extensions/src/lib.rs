@@ -57,4 +57,14 @@ pub mod token_extensions {
     ) -> Result<()> {
         instructions::check_pausable_authority_constraint_handler(ctx)
     }
+
+    pub fn cpi_create_native_mint(ctx: Context<CpiCreateNativeMint>) -> Result<()> {
+        instructions::cpi_create_native_mint_handler(ctx)
+    }
+
+    pub fn cpi_initialize_non_transferable_mint(
+        ctx: Context<CpiInitializeNonTransferableMint>,
+    ) -> Result<()> {
+        instructions::cpi_initialize_non_transferable_mint_handler(ctx)
+    }
 }
