@@ -360,6 +360,7 @@ fn output_idl_data(idl_data: &[u8], slot: u64, out_dir: Option<String>) -> Resul
 pub fn idl_fetch_historical(
     cfg_override: &ConfigOverride,
     address: Pubkey,
+    all: bool,
     slot: Option<u64>,
     before: Option<String>,
     after: Option<String>,
@@ -381,7 +382,11 @@ pub fn idl_fetch_historical(
         return idl_fetch_at_slot(&client, &signatures, target_slot, out_dir, tuning);
     }
 
-    let filtered_signatures = apply_date_filters(signatures, before, after)?;
+    let filtered_signatures = if all {
+        signatures
+    } else {
+        apply_date_filters(signatures, before, after)?
+    };
     if filtered_signatures.is_empty() {
         return Ok(());
     }

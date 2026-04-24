@@ -2560,7 +2560,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => idl_fetch(cfg_override, address, out, non_canonical),
         IdlCommand::FetchHistorical {
             program_id: address,
-            all: _,
+            all,
             slot,
             before,
             after,
@@ -2572,6 +2572,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => fetch::idl_fetch_historical(
             cfg_override,
             address,
+            all,
             slot,
             before,
             after,
