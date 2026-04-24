@@ -9,10 +9,10 @@ const { title } = Astro.props
 <div class="step grid grid-cols-[1.75rem_1fr] gap-x-3 sm:grid-cols-[2rem_1fr] sm:gap-x-4">
   <div class="flex flex-col items-center">
     <div
-      class="step-num bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums sm:size-8 sm:text-sm"
+      class="step-num bg-(--ctp-surface-1) leading-none text-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums sm:size-8 sm:text-sm"
     >
     </div>
-    <div class="step-connector bg-border mt-1 w-px grow"></div>
+    <div class="step-connector w-px grow bg-(--ctp-surface-1)"></div>
   </div>
   <div class="step-content min-w-0 pb-6 pt-1 sm:pb-8">
     {
@@ -27,10 +27,10 @@ const { title } = Astro.props
 </div>
 
 <style>
-  [data-step-content] :global(*:first-child) {
+  [data-step-content] > :global(*:first-child) {
     margin-top: 0 !important;
   }
-  [data-step-content] :global(*:last-child) {
+  [data-step-content] > :global(*:last-child) {
     margin-bottom: 0 !important;
   }
 

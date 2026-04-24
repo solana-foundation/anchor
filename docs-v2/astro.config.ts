@@ -18,6 +18,9 @@ import { pluginCollapsibleSections } from '@expressive-code/plugin-collapsible-s
 import { pluginLineNumbers } from '@expressive-code/plugin-line-numbers'
 import type { ExpressiveCodeTheme } from 'rehype-expressive-code'
 
+import { pluginShellPrompt } from './src/lib/ec-shell-prompt'
+import { pluginOutputSeparator } from './src/lib/ec-output-separator'
+
 import tailwindcss from '@tailwindcss/vite'
 import { extname, resolve } from 'node:path'
 import { readFile } from 'node:fs/promises'
@@ -129,11 +132,16 @@ export default defineConfig({
       [
         rehypeExpressiveCode,
         {
-          themes: ['github-light', 'github-dark'],
-          plugins: [pluginCollapsibleSections(), pluginLineNumbers()],
+          themes: ['catppuccin-latte', 'catppuccin-mocha'],
+          plugins: [
+            pluginCollapsibleSections(),
+            pluginLineNumbers(),
+            pluginShellPrompt(),
+            pluginOutputSeparator(),
+          ],
           useDarkModeMediaQuery: false,
           themeCssSelector: (theme: ExpressiveCodeTheme) =>
-            `[data-theme="${theme.name.split('-')[1]}"]`,
+            `[data-theme="${theme.name === 'catppuccin-latte' ? 'light' : 'dark'}"]`,
           defaultProps: {
             wrap: true,
             showLineNumbers: true,
@@ -148,17 +156,19 @@ export default defineConfig({
             codeFontSize: '0.75rem',
             borderColor: 'var(--border)',
             codeFontFamily: 'var(--font-mono)',
-            codeBackground: 'color-mix(in oklab, var(--muted) 25%, transparent)',
+            codeBackground: ({ theme }: { theme: ExpressiveCodeTheme }) =>
+              theme.name === 'catppuccin-latte' ? 'oklch(96% 0.008 286)' : 'oklch(24% 0.03 284)',
             frames: {
               editorActiveTabForeground: 'var(--muted-foreground)',
-              editorActiveTabBackground: 'color-mix(in oklab, var(--muted) 25%, transparent)',
+              editorActiveTabBackground: ({ theme }: { theme: ExpressiveCodeTheme }) =>
+                theme.name === 'catppuccin-latte' ? 'oklch(96% 0.008 286)' : 'oklch(24% 0.03 284)',
               editorActiveTabIndicatorBottomColor: 'transparent',
               editorActiveTabIndicatorTopColor: 'transparent',
-              editorTabBorderRadius: '0',
               editorTabBarBackground: 'transparent',
               editorTabBarBorderBottomColor: 'transparent',
               frameBoxShadowCssValue: 'none',
-              terminalBackground: 'color-mix(in oklab, var(--muted) 25%, transparent)',
+              terminalBackground: ({ theme }: { theme: ExpressiveCodeTheme }) =>
+                theme.name === 'catppuccin-latte' ? 'oklch(96% 0.008 286)' : 'oklch(24% 0.03 284)',
               terminalTitlebarBackground: 'transparent',
               terminalTitlebarBorderBottomColor: 'transparent',
               terminalTitlebarForeground: 'var(--muted-foreground)',
@@ -174,8 +184,8 @@ export default defineConfig({
         rehypeShiki,
         {
           themes: {
-            light: 'github-light',
-            dark: 'github-dark',
+            light: 'catppuccin-latte',
+            dark: 'catppuccin-mocha',
           },
           inline: 'tailing-curly-colon',
         },

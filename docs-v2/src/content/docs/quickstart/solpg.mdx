@@ -136,7 +136,7 @@ pub struct NewAccount {
 
   The `initialize{:rs}` instruction takes a `Context<Initialize>{:rs}` (the required accounts) and a `data: u64{:rs}` parameter. It stores the value and logs it.
 
-- `#[derive(Accounts){:rs}]` annotates a struct that declares the accounts required by an instruction. Field types and constraints let Anchor auto-generate security checks.
+- `#[derive(Accounts)]{:rs}` annotates a struct that declares the accounts required by an instruction. Field types and constraints let Anchor auto-generate security checks.
 
   ```rust startLineNumber={16}
   #[derive(Accounts)]

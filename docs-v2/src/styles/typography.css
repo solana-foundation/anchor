@@ -27,7 +27,7 @@
 
 @layer components {
   .prose {
-    @apply text-foreground text-base leading-7;
+    @apply text-foreground text-base leading-6.5;
 
     :where(p):not(:where(.not-prose, .not-prose *)) {
       @apply text-foreground/80 my-5;
@@ -89,7 +89,7 @@
     }
 
     :where(li):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground/80 pl-2 [&>p]:my-0;
+      @apply text-foreground/80 pl-2 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0;
     }
 
     :where(ul ul, ol ol, ul ol, ol ul):not(:where(.not-prose, .not-prose *)) {
@@ -113,7 +113,16 @@
     }
 
     :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
+      font-style: var(--shiki-light-font-style);
+      font-weight: var(--shiki-light-font-weight);
+      text-decoration: var(--shiki-light-text-decoration);
       @apply dark:text-(--shiki-dark)!;
+    }
+
+    [data-theme='dark'] :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
+      font-style: var(--shiki-dark-font-style);
+      font-weight: var(--shiki-dark-font-weight);
+      text-decoration: var(--shiki-dark-text-decoration);
     }
 
     :where(blockquote):not(:where(.not-prose, .not-prose *)) {
@@ -183,5 +192,5 @@
 }
 
 @utility small {
-  @apply text-sm leading-6 [&_code]:text-xs [&_img,video,figure,details,blockquote,.katex-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
+  @apply text-sm leading-6 [&_code]:text-xs [&_code]:px-[0.25rem] [&_code]:py-[0.1rem] [&_.shiki]:text-xs [&_.shiki]:px-[0.15rem] [&_.shiki]:py-[0.125rem] [&_img,video,figure,details,blockquote,.katex-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
 }
