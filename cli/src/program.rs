@@ -1,10 +1,11 @@
 use {
     crate::{
-        config::{Config, Manifest, Program, WithPath},
+        config::{Config, Program, WithPath},
         target_dir, ConfigOverride, ProgramCommand,
     },
     anchor_lang_idl::types::Idl,
     anyhow::{anyhow, bail, Result},
+    cargo_metadata::{Metadata, MetadataCommand, Package, TargetKind},
     solana_client::send_and_confirm_transactions_in_parallel::{
         send_and_confirm_transactions_in_parallel_blocking_v2, SendAndConfirmConfigV2,
     },
@@ -23,6 +24,7 @@ use {
     solana_signer::{EncodableKey, Signer},
     solana_transaction::Transaction,
     std::{
+        collections::{BTreeMap, HashSet},
         fs::{self, File},
         io::Write,
         path::{Path, PathBuf},
@@ -39,61 +41,58 @@ fn parse_priority_fee_from_args(args: &[String]) -> Option<u64> {
         .and_then(|pair| pair[1].parse().ok())
 }
 
-/// Discover Solana programs from a non-Anchor Cargo workspace
-pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Program>> {
-    let current_dir = std::env::current_dir()?;
-    let mut program_paths = Vec::new();
-
-    // Check if current directory has Cargo.toml
-    let cargo_toml_path = current_dir.join("Cargo.toml");
-    if cargo_toml_path.exists() {
-        let cargo_content = fs::read_to_string(&cargo_toml_path)?;
-        let cargo_toml: toml::Value = toml::from_str(&cargo_content)?;
-
-        // Check if it's a workspace Cargo.toml
-        if let Some(workspace) = cargo_toml.get("workspace") {
-            // It's a workspace - iterate over members
-            if let Some(members) = workspace.get("members").and_then(|m| m.as_array()) {
-                for member in members {
-                    if let Some(member_path) = member.as_str() {
-                        let full_path = current_dir.join(member_path);
-                        if full_path.is_dir() && full_path.join("Cargo.toml").exists() {
-                            program_paths.push(full_path);
-                        }
-                    }
-                }
+fn discover_cargo_metadata(start_dir: &Path) -> Result<Option<Metadata>> {
+    match MetadataCommand::new()
+        .current_dir(start_dir)
+        .no_deps()
+        .exec()
+    {
+        Ok(metadata) => Ok(Some(metadata)),
+        Err(cargo_metadata::Error::CargoMetadata { stderr }) => {
+            if stderr.contains("could not find `Cargo.toml`") {
+                Ok(None)
+            } else {
+                bail!(stderr);
             }
-        } else if is_solana_program(&current_dir)? {
-            // It's a single program Cargo.toml with cdylib - use current directory
-            program_paths.push(current_dir.clone());
+        }
+        Err(err) => Err(err.into()),
+    }
+}
+
+fn package_lib_name(package: &Package) -> Option<String> {
+    package
+        .targets
+        .iter()
+        .find(|target| target.kind.iter().any(|kind| kind == &TargetKind::CDyLib))
+        .map(|target| target.name.clone())
+}
+
+fn discover_solana_programs_from_path(
+    current_dir: &Path,
+    program_name: Option<String>,
+) -> Result<Vec<Program>> {
+    let mut candidates = BTreeMap::new();
+    let metadata = discover_cargo_metadata(current_dir)?;
+
+    if let Some(metadata) = &metadata {
+        let workspace_members = metadata.workspace_members.iter().collect::<HashSet<_>>();
+
+        for package in &metadata.packages {
+            if !workspace_members.contains(&package.id) {
+                continue;
+            }
+
+            let Some(lib_name) = package_lib_name(package) else {
+                continue;
+            };
+            let manifest_path = package.manifest_path.clone().into_std_path_buf();
+            let path = manifest_path.parent().unwrap().to_path_buf();
+            candidates.insert(path, lib_name);
         }
     }
 
-    // If no programs found yet, fallback to looking in programs/ directory
-    if program_paths.is_empty() {
-        let programs_dir = current_dir.join("programs");
-        if programs_dir.is_dir() {
-            for entry in fs::read_dir(programs_dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() && path.join("Cargo.toml").exists() {
-                    program_paths.push(path);
-                }
-            }
-        }
-    }
-
-    // Filter to only Solana programs and build Program structs
     let mut programs = Vec::new();
-    for path in program_paths {
-        if !is_solana_program(&path)? {
-            continue;
-        }
-
-        let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
-        let lib_name = cargo.lib_name()?;
-
-        // Check if this is the program we're looking for (if name specified)
+    for (path, lib_name) in candidates {
         if let Some(ref name) = program_name {
             let matches = *name == lib_name || *name == path.file_name().unwrap().to_str().unwrap();
             if !matches {
@@ -101,7 +100,6 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
             }
         }
 
-        // Try to read IDL if it exists (will be None for non-Anchor programs)
         let idl_filepath = target_dir()?
             .join("idl")
             .join(&lib_name)
@@ -120,28 +118,9 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
     Ok(programs)
 }
 
-/// Check if a given Cargo project is a Solana program
-/// A deployable Solana program must have crate-type = ["cdylib", ...]
-fn is_solana_program(path: &Path) -> Result<bool> {
-    let cargo_path = path.join("Cargo.toml");
-    if !cargo_path.exists() {
-        return Ok(false);
-    }
-
-    let cargo_content = fs::read_to_string(&cargo_path)?;
-    let cargo_toml: toml::Value = toml::from_str(&cargo_content)?;
-
-    // Check if it has cdylib (required for deployable Solana programs)
-    // This is the definitive marker - libraries and client tools won't have this
-    if let Some(lib) = cargo_toml.get("lib") {
-        if let Some(crate_type) = lib.get("crate-type").and_then(|ct| ct.as_array()) {
-            if crate_type.iter().any(|ct| ct.as_str() == Some("cdylib")) {
-                return Ok(true);
-            }
-        }
-    }
-
-    Ok(false)
+/// Discover Solana programs from a non-Anchor Cargo workspace
+pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Program>> {
+    discover_solana_programs_from_path(&std::env::current_dir()?, program_name)
 }
 
 /// Get programs from workspace (Anchor or non-Anchor)
@@ -161,15 +140,13 @@ pub fn get_programs_from_workspace(
         if let Some(name) = program_name {
             return Err(anyhow!(
                 "Program '{}' not found. Make sure you're in a Solana workspace (Anchor or \
-                 non-Anchor) with programs in the programs/ directory, or provide a program \
-                 filepath.",
+                 non-Anchor), or provide a program filepath.",
                 name
             ));
         } else {
             return Err(anyhow!(
                 "No Solana programs found. Make sure you're in a Solana workspace (Anchor or \
-                 non-Anchor) with programs in the programs/ directory, or provide a program \
-                 filepath."
+                 non-Anchor), or provide a program filepath."
             ));
         }
     }
@@ -2005,4 +1982,100 @@ fn send_messages_in_batches(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        std::{collections::BTreeSet, fs, path::Path},
+        tempfile::tempdir,
+    };
+
+    fn write_file(path: &Path, contents: &str) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents).unwrap();
+    }
+
+    fn create_program(root: &Path, name: &str) {
+        write_file(
+            &root.join("Cargo.toml"),
+            &format!(
+                r#"[package]
+name = "{name}"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+"#
+            ),
+        );
+        write_file(&root.join("src").join("lib.rs"), "");
+    }
+
+    fn create_workspace(root: &Path) {
+        write_file(
+            &root.join("Cargo.toml"),
+            r#"[workspace]
+members = ["programs/*"]
+resolver = "2"
+"#,
+        );
+        create_program(&root.join("programs").join("foo"), "foo");
+        create_program(&root.join("programs").join("bar"), "bar");
+    }
+
+    #[test]
+    fn discover_solana_programs_finds_sibling_programs_from_nested_member() {
+        let dir = tempdir().unwrap();
+        create_workspace(dir.path());
+
+        let root_programs =
+            discover_solana_programs_from_path(dir.path(), Some("bar".into())).unwrap();
+        let nested_programs = discover_solana_programs_from_path(
+            &dir.path().join("programs").join("foo"),
+            Some("bar".into()),
+        )
+        .unwrap();
+
+        assert_eq!(root_programs.len(), 1);
+        assert_eq!(nested_programs.len(), 1);
+        assert_eq!(root_programs[0].lib_name, "bar");
+        assert_eq!(nested_programs[0].lib_name, "bar");
+        assert_eq!(root_programs[0].path, nested_programs[0].path);
+    }
+
+    #[test]
+    fn discover_solana_programs_lists_all_members_from_nested_member() {
+        let dir = tempdir().unwrap();
+        create_workspace(dir.path());
+
+        let programs =
+            discover_solana_programs_from_path(&dir.path().join("programs").join("foo"), None)
+                .unwrap();
+
+        let names = programs
+            .into_iter()
+            .map(|program| program.lib_name)
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(
+            names,
+            BTreeSet::from(["bar".to_string(), "foo".to_string()])
+        );
+    }
+
+    #[test]
+    fn discover_solana_programs_errors_for_nonmember_current_crate() {
+        let dir = tempdir().unwrap();
+        create_workspace(dir.path());
+        create_program(&dir.path().join("tools").join("baz"), "baz");
+
+        let err = discover_solana_programs_from_path(&dir.path().join("tools").join("baz"), None)
+            .unwrap_err()
+            .to_string();
+
+        assert!(err.contains("current package believes it's in a workspace when it's not"));
+    }
 }
