@@ -3706,10 +3706,18 @@ fn debugger_anchor_workspace(
             ));
         }
 
+        let cwd = std::env::current_dir().ok();
+        let display_path = |p: &Path| -> String {
+            cwd.as_ref()
+                .and_then(|c| p.strip_prefix(c).ok())
+                .map(|rel| rel.display().to_string())
+                .unwrap_or_else(|| p.display().to_string())
+        };
+
         println!("\nResolved programs:");
         for (pk, so) in &pubkey_to_so {
             let src = sources.get(pk).copied().unwrap_or("unknown");
-            println!("  {pk} → {} [{src}]", so.display());
+            println!("  {pk}  →  {}  [{src}]", display_path(so));
         }
 
         debugger::run(
@@ -4003,11 +4011,40 @@ fn render_profile(cfg: &WithPath<Config>, profile_dir: &Path) -> Result<()> {
         return Ok(());
     }
 
+    let cwd = std::env::current_dir().ok();
+    let display_path = |p: &Path| -> String {
+        cwd.as_ref()
+            .and_then(|c| p.strip_prefix(c).ok())
+            .map(|rel| rel.display().to_string())
+            .unwrap_or_else(|| p.display().to_string())
+    };
+
+    let mut sorted: Vec<&profile::RenderedTest> = rendered.iter().collect();
+    sorted.sort_by(|a, b| a.test_name.cmp(&b.test_name));
+
+    // Column width for the two-column single-tx layout. Multi-tx tests are
+    // rendered nested so they don't influence alignment.
+    let max_name = sorted
+        .iter()
+        .filter(|t| t.svg_paths.len() == 1)
+        .map(|t| t.test_name.len())
+        .max()
+        .unwrap_or(0);
+
     println!("\nFlamegraphs:");
-    for test in &rendered {
-        println!("  {}", test.test_name);
-        for svg in &test.svg_paths {
-            println!("    →  {}", svg.display());
+    for test in &sorted {
+        if test.svg_paths.len() == 1 {
+            println!(
+                "  {:<width$}  →  {}",
+                test.test_name,
+                display_path(&test.svg_paths[0]),
+                width = max_name,
+            );
+        } else {
+            println!("  {}", test.test_name);
+            for (i, svg) in test.svg_paths.iter().enumerate() {
+                println!("    tx{}  →  {}", i + 1, display_path(svg));
+            }
         }
     }
 
