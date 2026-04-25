@@ -3671,14 +3671,45 @@ fn debugger_anchor_workspace(
         let workspace_root = cfg.path().parent().unwrap().to_owned();
         let profile_dir = workspace_root.join(crate::profile::DEFAULT_PROFILE_DIR);
 
-        // Rebuild the pubkey → deployed `.so` map the same way render_profile does,
-        // so symbolication + disassembly have the same ELFs the flamegraph has.
+        // Build pubkey → deployed `.so` map. Two sources, in priority order:
+        //   1. Anchor.toml `[programs.*]` — explicit, authoritative.
+        //   2. `target/deploy/*-keypair.json` (loose-mode discovery) —
+        //      filled-in for projects whose Anchor.toml omits the program
+        //      mapping (common in scaffolded test workspaces). Anchor.toml
+        //      always wins on conflict.
         let deploy_dir = workspace_root.join("target").join("deploy");
         let mut pubkey_to_so: BTreeMap<String, PathBuf> = BTreeMap::new();
+        let mut sources: BTreeMap<String, &'static str> = BTreeMap::new();
         for programs in cfg.programs.values() {
             for (name, deployment) in programs {
-                pubkey_to_so.insert(deployment.address.to_string(), deploy_dir.join(format!("{name}.so")));
+                let pk = deployment.address.to_string();
+                pubkey_to_so.insert(pk.clone(), deploy_dir.join(format!("{name}.so")));
+                sources.insert(pk, "Anchor.toml");
             }
+        }
+        if let Ok(discovered) = debugger::loose::discover_programs(&workspace_root, None) {
+            for (pk, so) in discovered {
+                if !pubkey_to_so.contains_key(&pk) {
+                    pubkey_to_so.insert(pk.clone(), so);
+                    sources.insert(pk, "target/deploy");
+                }
+            }
+        }
+
+        if pubkey_to_so.is_empty() {
+            return Err(anyhow!(
+                "no programs resolved for the debugger.\n\n\
+                 Either declare them in Anchor.toml:\n  \
+                   [programs.localnet]\n  \
+                   <name> = \"<pubkey>\"\n\n\
+                 or run `anchor build` so `target/deploy/<name>-keypair.json` exists."
+            ));
+        }
+
+        println!("\nResolved programs:");
+        for (pk, so) in &pubkey_to_so {
+            let src = sources.get(pk).copied().unwrap_or("unknown");
+            println!("  {pk} → {} [{src}]", so.display());
         }
 
         debugger::run(
