@@ -1,0 +1,46 @@
+---
+import Link from '@/components/link.astro'
+import { cn } from '@/lib/utils'
+import { Icon } from 'astro-icon/components'
+
+interface Props {
+  title: string
+  icon?: string
+  href?: string
+  class?: string
+}
+
+const { title, icon, href, class: className } = Astro.props
+
+const baseClass = cn('not-prose flex flex-col gap-2 rounded-lg border-2 p-5', className)
+const linkClass = cn('group hover:border-foreground/30 no-underline', baseClass)
+---
+
+{
+  href ? (
+    <Link href={href} class={linkClass}>
+      {icon && (
+        <Icon name={icon} class="text-muted-foreground group-hover:text-foreground size-5" />
+      )}
+      <h3 class="text-foreground text-base font-medium leading-tight m-0">{title}</h3>
+      <div class="text-muted-foreground text-sm leading-relaxed [&_p]:m-0">
+        <slot />
+      </div>
+      {/* <span class="text-muted-foreground group-hover:text-foreground mt-2 inline-flex items-center gap-1 text-xs">
+        Learn more
+        <Icon
+          name="lucide:arrow-right"
+          class="size-3"
+        />
+      </span> */}
+    </Link>
+  ) : (
+    <div class={baseClass}>
+      {icon && <Icon name={icon} class="text-muted-foreground size-5" />}
+      <h3 class="text-foreground text-base font-medium leading-tight m-0">{title}</h3>
+      <div class="text-muted-foreground text-sm leading-relaxed [&_p]:m-0">
+        <slot />
+      </div>
+    </div>
+  )
+}

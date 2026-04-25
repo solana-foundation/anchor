@@ -1,0 +1,59 @@
+---
+import { DOCS } from '@/consts'
+import { Icon } from 'astro-icon/components'
+import Link from '@/components/link.astro'
+
+const announcement = DOCS.announcement
+---
+
+{
+  announcement && (
+    <div
+      id={`announcement-${announcement.id}`}
+      data-announcement-id={announcement.id}
+      class="bg-foreground text-background relative flex items-center justify-center gap-3 px-4 py-2 text-center text-sm"
+    >
+      {announcement.href ? (
+        <Link
+          href={announcement.href}
+          class="text-background hover:text-background decoration-background/50 hover:decoration-background inline-flex items-center gap-1.5 font-medium"
+          external={announcement.href.startsWith('http')}
+        >
+          <span>{announcement.message}</span>
+          <Icon name="lucide:arrow-right" class="size-3.5" />
+        </Link>
+      ) : (
+        <span>{announcement.message}</span>
+      )}
+      <button
+        type="button"
+        class="text-background/70 hover:text-background absolute right-2 inline-flex size-6 items-center justify-center"
+        aria-label="Dismiss announcement"
+        data-announcement-dismiss
+      >
+        <Icon name="lucide:x" class="size-4" />
+      </button>
+    </div>
+  )
+}
+
+<script>
+  function setupAnnouncement() {
+    document.querySelectorAll<HTMLElement>('[data-announcement-id]').forEach((el) => {
+      const id = el.dataset.announcementId
+      if (!id) return
+      const storageKey = `announcement-dismissed:${id}`
+      if (localStorage.getItem(storageKey) === '1') {
+        el.remove()
+        return
+      }
+      el.querySelector('[data-announcement-dismiss]')?.addEventListener('click', () => {
+        localStorage.setItem(storageKey, '1')
+        el.remove()
+      })
+    })
+  }
+
+  setupAnnouncement()
+  document.addEventListener('astro:after-swap', setupAnnouncement)
+</script>

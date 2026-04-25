@@ -1,0 +1,85 @@
+---
+import Link from '@/components/link.astro'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import type { HeroAction } from '@/types'
+import { Icon } from 'astro-icon/components'
+import { Image } from 'astro:assets'
+import type { ImageMetadata } from 'astro'
+
+interface HeroData {
+  title?: string
+  tagline?: string
+  image?: ImageMetadata
+  actions?: HeroAction[]
+}
+
+interface Props {
+  hero: HeroData
+}
+
+const { hero } = Astro.props
+const actions = hero.actions ?? []
+
+const variantClass: Record<NonNullable<HeroAction['variant']>, string> = {
+  primary: buttonVariants({ variant: 'default' }),
+  secondary: buttonVariants({ variant: 'outline' }),
+  ghost: buttonVariants({ variant: 'ghost' }),
+}
+---
+
+<section
+  class="relative grid gap-8 py-16 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-12 md:py-24"
+>
+  <div class="flex flex-col gap-6 text-balance">
+    {
+      hero.title && (
+        <h1 class="text-4xl leading-[1.1] font-medium sm:text-5xl md:text-6xl">{hero.title}</h1>
+      )
+    }
+    {
+      hero.tagline && (
+        <p class="text-muted-foreground max-w-2xl text-lg leading-relaxed text-pretty md:text-xl">
+          {hero.tagline}
+        </p>
+      )
+    }
+    {
+      actions.length > 0 && (
+        <div class="mt-2 flex flex-wrap gap-3">
+          {actions.map((action) => (
+            <Link
+              href={action.link}
+              class={cn(
+                variantClass[action.variant ?? 'primary'],
+                'group inline-flex items-center gap-2',
+              )}
+              external={action.external}
+            >
+              {action.icon && <Icon name={action.icon} class="size-4" />}
+              <span>{action.label}</span>
+              {(action.variant ?? 'primary') === 'primary' && (
+                <Icon
+                  name="lucide:arrow-right"
+                  class="size-4 transition-transform group-hover:translate-x-0.5"
+                />
+              )}
+            </Link>
+          ))}
+        </div>
+      )
+    }
+  </div>
+
+  {
+    hero.image && (
+      <Image
+        src={hero.image}
+        alt=""
+        width={480}
+        height={480}
+        class="hidden rounded-lg object-cover md:block"
+      />
+    )
+  }
+</section>

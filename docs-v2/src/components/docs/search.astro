@@ -1,0 +1,212 @@
+---
+import { Icon } from 'astro-icon/components'
+---
+
+<dialog
+  id="search-dialog"
+  class="bg-background text-foreground fixed top-24 left-1/2 m-0 w-[min(40rem,90vw)] -translate-x-1/2 overflow-hidden rounded-lg border p-0 shadow-lg backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col"
+  aria-label="Search documentation"
+>
+  <form method="dialog" class="border-border/70 flex items-center gap-2 border-b px-3 py-2">
+    <Icon name="lucide:search" class="text-muted-foreground size-4" />
+    <input
+      type="search"
+      id="search-input"
+      placeholder="Search documentation..."
+      autocomplete="off"
+      aria-controls="search-results"
+      class="flex-1 border-0 bg-transparent py-1 text-sm outline-none"
+    />
+    <kbd
+      class="text-muted-foreground bg-muted rounded border px-1.5 py-0.5 font-mono text-[0.625rem]"
+      >Esc</kbd
+    >
+  </form>
+  <div
+    id="search-results"
+    class="flex max-h-[min(24rem,60vh)] flex-col overflow-y-auto p-2 text-sm"
+  >
+    <p id="search-empty" class="text-muted-foreground px-3 py-8 text-center text-sm">
+      Start typing to search the docs.
+    </p>
+  </div>
+</dialog>
+
+<script>
+  type PagefindResult = {
+    id: string
+    data: () => Promise<{
+      url: string
+      raw_url?: string
+      meta: { title?: string; image?: string }
+      excerpt: string
+      sub_results?: Array<{
+        title: string
+        url: string
+        excerpt: string
+      }>
+    }>
+  }
+
+  type Pagefind = {
+    search: (query: string) => Promise<{ results: PagefindResult[] }>
+    init?: () => Promise<void>
+  }
+
+  let pagefindPromise: Promise<Pagefind | null> | null = null
+
+  async function loadPagefind(): Promise<Pagefind | null> {
+    if (pagefindPromise) return pagefindPromise
+    pagefindPromise = (async () => {
+      try {
+        // @ts-ignore — runtime-only module
+        const mod = await import(
+          /* @vite-ignore */ `${window.location.origin}/pagefind/pagefind.js`
+        )
+        if (mod.init) await mod.init()
+        return mod as Pagefind
+      } catch {
+        return null
+      }
+    })()
+    return pagefindPromise
+  }
+
+  function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    return ((...args: Parameters<T>) => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => fn(...args), ms)
+    }) as T
+  }
+
+  function highlight(excerpt: string): string {
+    return excerpt
+      .replace(/<mark>/g, '<mark class="bg-foreground/10 text-foreground rounded px-0.5">')
+      .replace(/<\/mark>/g, '</mark>')
+  }
+
+  async function runSearch(query: string) {
+    const results = document.getElementById('search-results')
+    if (!results) return
+
+    const empty = document.getElementById('search-empty')
+    if (empty) empty.remove()
+    results.innerHTML = ''
+
+    if (!query.trim()) {
+      const p = document.createElement('p')
+      p.id = 'search-empty'
+      p.className = 'text-muted-foreground px-3 py-8 text-center text-sm'
+      p.textContent = 'Start typing to search the docs.'
+      results.appendChild(p)
+      return
+    }
+
+    const pagefind = await loadPagefind()
+    if (!pagefind) {
+      const p = document.createElement('p')
+      p.className = 'text-muted-foreground px-3 py-8 text-center text-sm'
+      p.textContent = 'Search index not available. Run `bun run build` to generate it.'
+      results.appendChild(p)
+      return
+    }
+
+    const { results: found } = await pagefind.search(query)
+    if (found.length === 0) {
+      const p = document.createElement('p')
+      p.className = 'text-muted-foreground px-3 py-8 text-center text-sm'
+      p.textContent = 'No results found.'
+      results.appendChild(p)
+      return
+    }
+
+    const list = document.createElement('ul')
+    list.className = 'flex flex-col gap-1'
+
+    const top = await Promise.all(found.slice(0, 8).map((r) => r.data()))
+    top.forEach((data, index) => {
+      const li = document.createElement('li')
+      const a = document.createElement('a')
+      a.href = data.url
+      a.className =
+        'hover:bg-muted focus:bg-muted flex flex-col gap-1 rounded-md px-3 py-2 no-underline outline-none'
+      a.dataset.searchResult = String(index)
+
+      const title = document.createElement('span')
+      title.className = 'text-foreground text-sm font-medium'
+      title.textContent = data.meta.title ?? 'Untitled'
+
+      const excerpt = document.createElement('span')
+      excerpt.className = 'text-muted-foreground text-xs leading-relaxed'
+      excerpt.innerHTML = highlight(data.excerpt)
+
+      a.appendChild(title)
+      a.appendChild(excerpt)
+      li.appendChild(a)
+      list.appendChild(li)
+    })
+
+    results.appendChild(list)
+  }
+
+  const debouncedSearch = debounce(runSearch, 120)
+
+  function setupSearch() {
+    const dialog = document.getElementById('search-dialog') as HTMLDialogElement | null
+    const triggers = document.querySelectorAll<HTMLButtonElement>('[data-search-trigger]')
+    const input = document.getElementById('search-input') as HTMLInputElement | null
+
+    if (!dialog || !input) return
+
+    const open = () => {
+      if (!dialog.open) dialog.showModal()
+      setTimeout(() => input.focus(), 20)
+    }
+    const close = () => {
+      if (dialog.open) dialog.close()
+    }
+
+    triggers.forEach((trigger) => trigger.addEventListener('click', open))
+
+    input.addEventListener('input', () => debouncedSearch(input.value))
+
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) close()
+    })
+
+    document.addEventListener('keydown', (event) => {
+      const isHotkey = (event.key === 'k' || event.key === 'K') && (event.metaKey || event.ctrlKey)
+      if (isHotkey) {
+        event.preventDefault()
+        dialog.open ? close() : open()
+      }
+      if (event.key === 'Escape' && dialog.open) {
+        event.preventDefault()
+        close()
+      }
+      if (!dialog.open) return
+      const results = dialog.querySelectorAll<HTMLAnchorElement>('[data-search-result]')
+      if (results.length === 0) return
+      const active = dialog.querySelector<HTMLAnchorElement>('[data-search-result]:focus')
+      const index = active ? Array.from(results).indexOf(active) : -1
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        const next = results[Math.min(results.length - 1, index + 1)]
+        next?.focus()
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        if (index <= 0) input.focus()
+        else results[index - 1].focus()
+      }
+    })
+
+    dialog
+      .querySelectorAll<HTMLAnchorElement>('a[href]')
+      .forEach((link) => link.addEventListener('click', close))
+  }
+
+  setupSearch()
+  document.addEventListener('astro:after-swap', setupSearch)
+</script>

@@ -1,0 +1,90 @@
+---
+import { cn } from '@/lib/utils'
+import { Icon } from 'astro-icon/components'
+
+const calloutConfig = {
+  note: { color: 'blue', icon: 'lucide:info' },
+  tip: { color: 'green', icon: 'lucide:lightbulb' },
+  warning: { color: 'yellow', icon: 'lucide:alert-triangle' },
+  danger: { color: 'red', icon: 'lucide:shield-alert' },
+  important: { color: 'mauve', icon: 'lucide:message-square-warning' },
+  definition: { color: 'mauve', icon: 'lucide:book-open' },
+  theorem: { color: 'teal', icon: 'lucide:check-circle' },
+  lemma: { color: 'sky', icon: 'lucide:puzzle' },
+  proof: { color: 'overlay-1', icon: 'lucide:check-square' },
+  corollary: { color: 'sapphire', icon: 'lucide:git-branch' },
+  proposition: { color: 'overlay-2', icon: 'lucide:file-text' },
+  axiom: { color: 'lavender', icon: 'lucide:anchor' },
+  conjecture: { color: 'pink', icon: 'lucide:help-circle' },
+  notation: { color: 'overlay-2', icon: 'lucide:pen-tool' },
+  remark: { color: 'overlay-1', icon: 'lucide:message-circle' },
+  intuition: { color: 'yellow', icon: 'lucide:lightbulb' },
+  recall: { color: 'sapphire', icon: 'lucide:rotate-ccw' },
+  explanation: { color: 'green', icon: 'lucide:help-circle' },
+  example: { color: 'green', icon: 'lucide:code' },
+  exercise: { color: 'lavender', icon: 'lucide:dumbbell' },
+  problem: { color: 'peach', icon: 'lucide:alert-circle' },
+  answer: { color: 'teal', icon: 'lucide:check' },
+  solution: { color: 'green', icon: 'lucide:check-circle-2' },
+  summary: { color: 'sky', icon: 'lucide:list' },
+} as const
+
+const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
+
+interface Props {
+  title?: string
+  class?: string
+  variant?: keyof typeof calloutConfig
+  defaultOpen?: boolean
+}
+
+const { title, variant = 'note', defaultOpen = true, ...rest } = Astro.props
+const { color, icon } = calloutConfig[variant]
+---
+
+<details
+  class={cn(
+    'relative my-6 border-l-4 border-l-[var(--callout-color)] px-4 py-3 text-sm',
+    '[&[open]>summary_svg:last-child]:rotate-180 [&[open]>summary]:mb-3',
+    rest.class,
+  )}
+  style={`--callout-color: var(--ctp-${color})`}
+  {...rest}
+  open={defaultOpen}
+>
+  <summary class="flex cursor-pointer items-center font-medium [&::-webkit-details-marker]:hidden">
+    <Icon name={icon} class="mr-2 size-4 shrink-0 text-[var(--callout-color)]" />
+    <span class="mr-2 font-medium text-[var(--callout-color)]">
+      {capitalize(variant)}
+      {title && <span class="font-normal opacity-70"> ({title})</span>}
+    </span>
+    <Icon
+      name="lucide:chevron-down"
+      class="ml-auto h-4 w-4 shrink-0 text-[var(--callout-color)] transition-transform duration-200"
+    />
+  </summary>
+  <div data-callout-body>
+    <slot />
+  </div>
+</details>
+
+<style>
+  @layer components {
+    [data-callout-body] > :global(*:first-child) {
+      margin-top: 0 !important;
+    }
+    [data-callout-body] > :global(*:last-child),
+    [data-callout-body] > :global(*:last-child) > :global(*:last-child),
+    [data-callout-body]
+      > :global(*:last-child)
+      > :global(*:last-child)
+      > :global(*:last-child),
+    [data-callout-body]
+      > :global(*:last-child)
+      > :global(*:last-child)
+      > :global(*:last-child)
+      > :global(*:last-child) {
+      margin-bottom: 0 !important;
+    }
+  }
+</style>

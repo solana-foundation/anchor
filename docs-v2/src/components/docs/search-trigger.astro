@@ -1,0 +1,43 @@
+---
+import { Button } from '@/components/ui/button'
+import { DOCS } from '@/consts'
+import { Icon } from 'astro-icon/components'
+
+const { mac, windows } = DOCS.search.hotkey
+---
+
+<Button
+  data-search-trigger
+  variant="outline"
+  size="sm"
+  className="text-muted-foreground flex h-8 items-center gap-2 px-2 text-xs font-normal sm:min-w-40 sm:px-3"
+  aria-label="Search documentation"
+  aria-haspopup="dialog"
+  aria-controls="search-dialog"
+>
+  <Icon name="lucide:search" class="size-3.5" />
+  <span class="hidden sm:inline">Search docs...</span>
+  <kbd
+    class="bg-muted text-muted-foreground hidden rounded border px-1.5 py-0.5 font-mono text-[0.625rem] xl:ml-auto xl:inline-flex"
+    data-hotkey
+    data-hotkey-mac={mac}
+    data-hotkey-other={windows}
+  >
+    {windows}
+  </kbd>
+</Button>
+
+<script>
+  function applyOsHotkey() {
+    const ua = navigator.userAgent
+    const isMac =
+      /Mac|iPhone|iPad|iPod/i.test(ua) || (navigator.platform ?? '').toLowerCase().includes('mac')
+    document.querySelectorAll<HTMLElement>('[data-hotkey]').forEach((el) => {
+      const label = isMac ? (el.dataset.hotkeyMac ?? '') : (el.dataset.hotkeyOther ?? '')
+      if (label) el.textContent = label
+    })
+  }
+
+  applyOsHotkey()
+  document.addEventListener('astro:after-swap', applyOsHotkey)
+</script>

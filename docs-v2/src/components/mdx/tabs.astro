@@ -1,0 +1,86 @@
+---
+interface Props {
+  items: string[]
+  defaultIndex?: number
+}
+
+const { items, defaultIndex = 0 } = Astro.props
+const uid = `tabs-${Math.random().toString(36).slice(2, 9)}`
+---
+
+<div class="my-6 overflow-hidden rounded-lg border-2" data-tabs={uid}>
+  <div role="tablist" class="border-border bg-muted/30 flex gap-1 border-b-2 px-2 py-1.5">
+    {
+      items.map((label, i) => (
+        <button
+          type="button"
+          role="tab"
+          data-tab-index={i}
+          aria-selected={i === defaultIndex}
+          tabindex={i === defaultIndex ? 0 : -1}
+          class="data-[selected=true]:bg-muted data-[selected=true]:text-foreground text-muted-foreground hover:text-foreground rounded-md px-3 py-1 text-sm font-medium transition-colors"
+          data-selected={i === defaultIndex}
+        >
+          {label}
+        </button>
+      ))
+    }
+  </div>
+  <div data-tabs-panels class="p-4" data-default-index={defaultIndex}>
+    <slot />
+  </div>
+</div>
+
+<script>
+  function setupTabs() {
+    document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((root) => {
+      if (root.dataset.tabsInit === '1') return
+      root.dataset.tabsInit = '1'
+
+      const tabs = root.querySelectorAll<HTMLButtonElement>('[data-tab-index]')
+      const panelsWrapper = root.querySelector<HTMLElement>('[data-tabs-panels]')
+      if (!panelsWrapper) return
+      const panels = Array.from(panelsWrapper.children) as HTMLElement[]
+      const defaultIndex = Number(panelsWrapper.dataset.defaultIndex ?? 0)
+
+      const select = (index: number) => {
+        tabs.forEach((tab, i) => {
+          const active = i === index
+          tab.setAttribute('aria-selected', String(active))
+          tab.dataset.selected = String(active)
+          tab.tabIndex = active ? 0 : -1
+        })
+        panels.forEach((panel, i) => {
+          panel.hidden = i !== index
+        })
+      }
+
+      select(defaultIndex)
+
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => select(i))
+        tab.addEventListener('keydown', (event) => {
+          if (event.key === 'ArrowRight') {
+            event.preventDefault()
+            const next = (i + 1) % tabs.length
+            ;(tabs[next] as HTMLButtonElement).focus()
+            select(next)
+          } else if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            const prev = (i - 1 + tabs.length) % tabs.length
+            ;(tabs[prev] as HTMLButtonElement).focus()
+            select(prev)
+          }
+        })
+      })
+    })
+  }
+
+  setupTabs()
+  document.addEventListener('astro:after-swap', () => {
+    document
+      .querySelectorAll<HTMLElement>('[data-tabs]')
+      .forEach((el) => delete el.dataset.tabsInit)
+    setupTabs()
+  })
+</script>
