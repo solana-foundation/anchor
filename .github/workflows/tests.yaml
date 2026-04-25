@@ -137,30 +137,47 @@ jobs:
       # pipeline: `cargo build-sbf` → `cargo test --features profile` →
       # TUI. We wrap in `script` so crossterm can enter raw mode on a
       # pty (GHA stdin/stdout aren't ttys) and `timeout` kills the TUI
-      # once it's in its event loop. Exit 124 ("still alive when
-      # killed") is the success signal; anything else is a real failure
-      # we want to see, so we tee the pty log to a file and dump it
-      # when a run exits non-124-non-zero.
+      # once it's in its event loop.
+      #
+      # Failure handling: each `prog` is run in its own subshell so
+      # `cd` is scoped (no `popd` bookkeeping) and so `|| rc=$?`
+      # captures the inner pipeline's exit status directly. Build and
+      # TUI phases are kept distinct so a build break is reported as
+      # such instead of bleeding into a confusing TUI failure.
+      #
+      # Exit-code semantics for the TUI phase:
+      #   124 → timeout-killed (TUI was still alive — success)
+      #     0 → clean exit (rare in CI; legal)
+      #   else → real failure; dump the pty log
       - name: anchor debugger TUI launches for bench anchor-v2 programs
         run: |
-          set -u
+          set -euo pipefail
           fail=0
           for prog in bench/programs/*/anchor-v2; do
             echo "::group::anchor debugger in $prog"
             log=$(mktemp)
-            set +e
-            pushd $prog
-            cargo build-sbf --tools-version v1.52
-            timeout --kill-after=30 30 \
-              script -qec 'anchor debugger' "$log"
-            popd
-            rc=$?
-            set -e
+
+            # Build phase — surface build breaks as a distinct error.
+            if ! ( cd "$prog" && cargo build-sbf --tools-version v1.52 ); then
+              echo "::error::cargo build-sbf failed in $prog"
+              fail=1
+              rm -f "$log"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # TUI phase — `|| rc=$?` captures the subshell exit cleanly
+            # without toggling `set +e`/`set -e` around it.
+            rc=0
+            ( cd "$prog" && timeout --kill-after=30 30 \
+                script -qec 'anchor debugger' "$log" ) || rc=$?
+
             if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
-              echo "anchor debugger failed in $prog (exit $rc)"
+              echo "::error::anchor debugger failed in $prog (exit $rc)"
               cat "$log"
               fail=1
             fi
+
             rm -f "$log"
             echo "::endgroup::"
           done
