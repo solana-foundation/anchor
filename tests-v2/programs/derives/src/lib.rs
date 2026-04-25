@@ -126,7 +126,7 @@ pub mod derives_test {
 
     /// Emits a bytemuck-mode event. Pure `sol_log_data` — no state changes.
     #[discrim = 5]
-    pub fn snapshot(ctx: &mut Context<BumpView>) -> Result<()> {
+    pub fn snapshot(ctx: &mut Context<Bump>) -> Result<()> {
         let c = &ctx.accounts.counter;
         emit!(SnapshotTaken {
             value: c.value.get(),
@@ -139,7 +139,7 @@ pub mod derives_test {
     /// Uses `checked_sub`/`saturating_sub` + comparison ops so the coverage
     /// trace hits the non-inlined arithmetic branches.
     #[discrim = 2]
-    pub fn verify_invariants(ctx: &mut Context<BumpView>) -> Result<()> {
+    pub fn verify_invariants(ctx: &mut Context<Bump>) -> Result<()> {
         let c = &ctx.accounts.counter;
         // Comparison ops (PartialOrd + PartialEq<native>).
         if c.value == 0u64 {
@@ -149,10 +149,7 @@ pub mod derives_test {
             return Err(ProgramError::InvalidAccountData.into());
         }
         // Checked arith — should succeed for values < MAX.
-        let _ = c
-            .value
-            .checked_add(1u64)
-            .ok_or(ProgramError::ArithmeticOverflow)?;
+        let _ = c.value.checked_add(1u64).ok_or(ProgramError::ArithmeticOverflow)?;
         let _ = c.value.saturating_sub(1u64);
         // pod_wrapper comparison crosses the PodMode ↔ Mode boundary.
         if c.mode == Mode::Idle {
@@ -215,23 +212,12 @@ pub struct Initialize {
 }
 
 #[derive(Accounts)]
-#[instruction(amount: u64, step: i32)]
 pub struct Bump {
     #[account(mut, seeds = [DATA_SEED], bump)]
     pub counter: Account<Counter>,
 }
 
-// Read-only view of `Bump` for handlers that don't take instruction args.
-// Same account shape; separated so the constraint-side deser matches the
-// handler's empty arg list.
 #[derive(Accounts)]
-pub struct BumpView {
-    #[account(mut, seeds = [DATA_SEED], bump)]
-    pub counter: Account<Counter>,
-}
-
-#[derive(Accounts)]
-#[instruction(amount: u64)]
 pub struct Privileged {
     #[account(mut, seeds = [DATA_SEED], bump)]
     pub counter: Account<Counter>,
@@ -240,7 +226,6 @@ pub struct Privileged {
 }
 
 #[derive(Accounts)]
-#[instruction(tier: u8)]
 pub struct InitProfile {
     #[account(mut)]
     pub payer: Signer,

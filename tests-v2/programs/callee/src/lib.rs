@@ -35,7 +35,6 @@ pub struct Initialize {
 }
 
 #[derive(Accounts)]
-#[instruction(value: u64)]
 pub struct SetData {
     #[account(mut, seeds = [b"data"], bump)]
     pub data: Account<DataAccount>,
@@ -53,13 +52,12 @@ pub struct DataAccount {
 #[cfg(feature = "cpi")]
 pub mod cpi {
     extern crate alloc;
-    use {
-        alloc::{vec, vec::Vec},
-        anchor_lang_v2::{
-            cpi::InstructionAccount, CpiContext, CpiHandle, InstructionData, ToCpiAccounts,
-        },
-        solana_program_error::ProgramError,
+    use alloc::vec;
+    use alloc::vec::Vec;
+    use anchor_lang_v2::{
+        cpi::InstructionAccount, CpiContext, CpiHandle, InstructionData, ToCpiAccounts,
     };
+    use solana_program_error::ProgramError;
 
     pub mod accounts {
         use super::*;

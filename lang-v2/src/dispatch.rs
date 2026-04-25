@@ -31,25 +31,17 @@ pub trait TryAccounts: Bumps + Sized {
     /// does today.
     const MUT_MASK: [u64; 4];
 
-    /// Parsed `#[instruction(...)]` args carried alongside the validated
-    /// accounts. A single Borsh parse of `ix_data` inside `try_accounts`
-    /// builds this value, and the handler wrapper consumes it directly —
-    /// the handler params and the constraint-side view of the args are
-    /// the exact same bytes, decoded once. Structs without
-    /// `#[instruction(...)]` define this as `()`.
-    type IxArgs<'ix>;
-
     /// `base_offset` is the index of the first view in the global bitvec.
     /// Top-level callers pass 0; `Nested<T>` passes its field's offset so
     /// the inner struct's duplicate-mutable-account checks hit the correct
     /// global bits.
-    fn try_accounts<'ix>(
+    fn try_accounts(
         program_id: &Address,
         views: &[AccountView],
         duplicates: Option<&AccountBitvec>,
         base_offset: usize,
-        ix_data: &'ix [u8],
-    ) -> Result<(Self, Self::Bumps, Self::IxArgs<'ix>), ProgramError>;
+        ix_data: &[u8],
+    ) -> Result<(Self, Self::Bumps), ProgramError>;
 
     fn exit_accounts(&mut self) -> Result<(), ProgramError>;
 }
@@ -64,14 +56,14 @@ pub trait TryAccounts: Bumps + Sized {
 pub fn run_handler<'a, T: TryAccounts>(
     program_id: &'a Address,
     cursor: &'a mut AccountCursor,
-    ix_data: &'a [u8],
+    ix_data: &[u8],
     num_accounts: usize,
-    handler: impl FnOnce(&mut Context<'a, T>, T::IxArgs<'a>) -> Result<(), ProgramError>,
+    handler: impl FnOnce(&mut Context<'a, T>) -> Result<(), ProgramError>,
 ) -> Result<(), ProgramError> {
     if num_accounts < T::HEADER_SIZE {
         return Err(crate::ErrorCode::AccountNotEnoughKeys.into());
     }
-    let (ctx_accounts, bumps, ix_args) = {
+    let (ctx_accounts, bumps) = {
         let mut loader = AccountLoader::new(program_id, cursor);
         let (views, duplicates) = loader.walk_n(T::HEADER_SIZE);
         // Single AND+test across the whole struct tree — replaces the
@@ -90,7 +82,7 @@ pub fn run_handler<'a, T: TryAccounts>(
     };
     let remaining_num = (num_accounts - T::HEADER_SIZE) as u8;
     let mut ctx = Context::new(program_id, ctx_accounts, bumps, cursor, remaining_num);
-    handler(&mut ctx, ix_args)?;
+    handler(&mut ctx)?;
     ctx.accounts.exit_accounts()?;
     Ok(())
 }
