@@ -125,7 +125,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         &mut __reallocs,
                     )?;
 
-                    unsafe fn __shrink_lifetime<'from, 'to, T>(value: &'from mut T) -> &'to mut T {
+
+                    #[inline(always)]
+                    unsafe fn __shorten_invariant_lifetime_remaining_accounts<'a, 'info: 'a>(
+                        value: &'a [AccountInfo<'info>],
+                    ) -> &'a [AccountInfo<'a>] {
                         unsafe { ::core::mem::transmute(value) }
                     }
 
@@ -150,10 +154,8 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                             // This lifetime narrowing is required to conform to the `Context`
                             // struct’s single-lifetime parameterization, which uses a single
                             // lifetime to keep the API simple and ergonomic.
-                            unsafe {
-                                __shrink_lifetime(&mut __accounts)
-                            },
-                            __remaining_accounts,
+                            unsafe { #accounts_struct_name::__shorten_invariant_lifetime(&mut __accounts) },
+                            unsafe { __shorten_invariant_lifetime_remaining_accounts(__remaining_accounts) },
                             __bumps,
                         ),
                         #(#ix_arg_names),*
