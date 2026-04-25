@@ -1,6 +1,6 @@
 [package]
 name = "anchor-lang-idl-spec"
-version = "0.1.0"
+version = "0.2.0"
 publish = false
 authors = ["Anchor Maintainers <accounts@200ms.io>"]
 repository = "https://github.com/solana-foundation/anchor"

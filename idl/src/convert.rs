@@ -18,9 +18,12 @@ pub fn convert_idl(idl: &[u8]) -> Result<Idl> {
         .and_then(|m| m.get("spec"))
         .and_then(|spec| spec.as_str());
     match spec {
-        // New standard
+        // New standard. `0.2.0` was bumped from `0.1.0` once IdlAccount/IdlEvent gained the
+        // required `discriminator` field in Anchor `0.31`. Both versions deserialize through the
+        // same struct (newer IDLs carry discriminators, older ones do not), so we accept either
+        // marker here rather than refusing newly-tagged IDLs.
         Some(spec) => match spec {
-            "0.1.0" => serde_json::from_value(value).map_err(Into::into),
+            "0.1.0" | "0.2.0" => serde_json::from_value(value).map_err(Into::into),
             _ => Err(anyhow!("IDL spec not supported: `{spec}`")),
         },
         // Legacy
