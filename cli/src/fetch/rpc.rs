@@ -27,8 +27,11 @@ const IDL_SIGNATURE_PAGE_SIZE: usize = 100;
 pub(super) fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
     // Match `anchor idl fetch` cluster resolution so historical fetch talks to the same localnet
     // validator that the rest of the IDL CLI commands use.
-    let url = match Config::discover(cfg_override)? {
-        Some(_) => get_cluster_and_wallet(cfg_override)?.0,
+    let workspace_cluster = Config::discover(cfg_override)?
+        .map(|_| get_cluster_and_wallet(cfg_override))
+        .transpose()?;
+    let url = match workspace_cluster {
+        Some(cluster_url) => cluster_url.0,
         None => {
             if let Some(cluster) = cfg_override.cluster.as_ref() {
                 cluster.url().to_string()
