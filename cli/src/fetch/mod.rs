@@ -1,28 +1,32 @@
 use {
     crate::config::ConfigOverride,
     anyhow::{anyhow, Result},
-    indicatif::{ProgressBar, ProgressStyle},
+    indicatif::ProgressBar,
     solana_pubkey::Pubkey,
     solana_rpc_client::rpc_client::RpcClient,
     solana_rpc_client_api::response::RpcConfirmedTransactionStatusWithSignature,
     solana_signature::Signature,
-    std::{path::PathBuf, str::FromStr, thread, time::Duration},
+    std::{path::PathBuf, str::FromStr, thread},
 };
 
 mod chunks;
 mod decompress;
+mod history;
+mod legacy;
 mod output;
 mod parallel;
+mod pmp;
 mod rpc;
 mod sessions;
 
 use self::{
     chunks::extract_chunks_from_transaction,
-    decompress::decompress_all_streams,
+    history::{merge_historical_idls, HistoricalIdlVersion, IdlHistorySource},
+    legacy::fetch_legacy_historical_idls,
     output::{save_historical_idls, write_idl_file},
     parallel::{historical_fetch_worker_count, should_parallelize_historical_fetch},
-    rpc::{create_rpc_client, fetch_idl_signatures},
-    sessions::group_chunks_into_sessions,
+    pmp::fetch_pmp_historical_idls,
+    rpc::{create_rpc_client, fetch_idl_signatures, fetch_pmp_idl_signatures},
 };
 
 const DEFAULT_MAX_RETRIES: u32 = 5;
@@ -32,7 +36,7 @@ const PROGRESS_TICK_INTERVAL_MS: u64 = 80;
 type ChunkData = Vec<u8>;
 type SlotChunk = (u64, ChunkData);
 type SessionChunks = Vec<SlotChunk>;
-type ExtractedIdl = (RpcConfirmedTransactionStatusWithSignature, Vec<u8>);
+type ExtractedIdl = HistoricalIdlVersion;
 
 struct DecompressedSessions {
     extracted_idls: Vec<ExtractedIdl>,
@@ -203,99 +207,12 @@ fn parse_date_to_timestamp(date_str: &str) -> Result<i64> {
     Ok(datetime.and_utc().timestamp())
 }
 
-// Fetches the newest IDL visible at or before a target slot and writes it to disk.
-pub fn idl_fetch_at_slot(
-    client: &RpcClient,
-    all_signatures: &[RpcConfirmedTransactionStatusWithSignature],
-    target_slot: u64,
-    out_dir: Option<PathBuf>,
-    tuning: FetchTuning,
-) -> Result<()> {
-    let fetcher = IdlFetcher::new(client, tuning);
-
-    let pb = ProgressBar::new(all_signatures.len() as u64);
-    pb.enable_steady_tick(Duration::from_millis(PROGRESS_TICK_INTERVAL_MS));
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} \
-                 transactions ({eta})",
-            )
-            .unwrap()
-            .progress_chars("#>-"),
-    );
-    pb.set_message("Processing transactions...");
-
-    let all_chunks = collect_and_process_chunks(&fetcher, all_signatures, &pb);
-    pb.finish_with_message("Transaction processing complete");
-
-    if all_chunks.is_empty() {
-        println!("\nNo IDL chunks found in transactions");
-        return Ok(());
-    }
-
-    let sessions = group_chunks_into_sessions(&all_chunks);
-    let mut candidates: Vec<SessionChunks> = sessions
-        .into_iter()
-        .filter(|session| {
-            session
-                .first()
-                .map(|(slot, _)| *slot <= target_slot)
-                .unwrap_or(false)
-        })
-        .collect();
-    candidates
-        .sort_by_key(|session| std::cmp::Reverse(session.first().map(|(s, _)| *s).unwrap_or(0)));
-
-    if candidates.is_empty() {
-        println!(
-            "\nNo IDL upload session starting at or before slot {}.",
-            target_slot
-        );
-        return Ok(());
-    }
-
-    let total = candidates.len();
-    for (idx, session) in candidates.into_iter().enumerate() {
-        let combined = combine_chunks(&session);
-        if let Some(idl_data) = decompress_all_streams(&combined).into_iter().last() {
-            let last_slot = session.last().map(|(s, _)| *s).unwrap_or(target_slot);
-            println!(
-                "Decompressed IDL from session ending at slot {} ({} bytes)",
-                last_slot,
-                idl_data.len()
-            );
-            return write_idl_file(
-                &idl_data,
-                &PathBuf::from(format!("idl_{}.json", target_slot)),
-                out_dir.as_deref(),
-            );
-        }
-        if idx + 1 < total {
-            continue;
-        }
-    }
-
-    Err(anyhow!(
-        "No decompressable IDL session found at or before slot {}. Try fetching without --slot to \
-         see recoverable versions.",
-        target_slot
-    ))
-}
-
-// Concatenates all chunk payload bytes for a reconstructed upload session.
-fn combine_chunks(chunks: &[SlotChunk]) -> Vec<u8> {
-    chunks
-        .iter()
-        .flat_map(|(_, chunk)| chunk.iter())
-        .copied()
-        .collect()
-}
-
 // Fetches all historical IDL uploads matching the requested slot/date filters.
+#[allow(clippy::too_many_arguments)]
 pub fn idl_fetch_historical(
     cfg_override: &ConfigOverride,
     address: Pubkey,
+    authority: Option<Pubkey>,
     slot: Option<u64>,
     before: Option<String>,
     after: Option<String>,
@@ -327,142 +244,101 @@ pub fn idl_fetch_historical(
         (before_timestamp, after_timestamp)
     };
 
-    let signatures = fetch_idl_signatures(&client, &address, filter_before, filter_after, slot)?;
-    if signatures.is_empty() {
-        println!("The program doesn't have an IDL account");
+    let legacy_signatures = if authority.is_none() {
+        fetch_idl_signatures(&client, &address, filter_before, filter_after, slot)?
+    } else {
+        Vec::new()
+    };
+    let pmp_signatures = fetch_pmp_idl_signatures(
+        &client,
+        &address,
+        authority.as_ref(),
+        filter_before,
+        filter_after,
+        slot,
+    )?;
+
+    if legacy_signatures.is_empty() && pmp_signatures.is_empty() {
+        if let Some(authority) = authority {
+            println!(
+                "No historical IDLs found for authority-scoped metadata account {} on program {}",
+                authority, address
+            );
+        } else {
+            println!("The program doesn't have an IDL account");
+        }
         return Ok(());
     }
     if tuning.verbose {
-        println!("Found {} transactions on the IDL account", signatures.len());
+        println!(
+            "Found {} legacy transactions and {} PMP transactions",
+            legacy_signatures.len(),
+            pmp_signatures.len()
+        );
     }
 
     if let Some(target_slot) = slot {
         fetcher.validate_slot(target_slot)?;
-        return idl_fetch_at_slot(&client, &signatures, target_slot, out_dir, tuning);
     }
 
-    if tuning.verbose {
-        println!(
-            "Processing {} transactions on the IDL account...",
-            signatures.len()
-        );
-    }
-
-    let pb = ProgressBar::new(signatures.len() as u64);
-    pb.enable_steady_tick(Duration::from_millis(PROGRESS_TICK_INTERVAL_MS));
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} \
-                 transactions ({eta})",
-            )
-            .unwrap()
-            .progress_chars("#>-"),
+    // An explicit authority means "only inspect that authority-scoped PMP metadata account".
+    // Without an authority filter we merge legacy embedded-IDL history with canonical PMP
+    // history so historical fetch stays source-agnostic for the common path.
+    let mut historical_idls =
+        fetch_legacy_historical_idls(&fetcher, &legacy_signatures, tuning.verbose)?;
+    let pmp_idls = fetch_pmp_historical_idls(
+        &client,
+        &address,
+        authority.as_ref(),
+        &pmp_signatures,
+        &tuning,
     );
-    pb.set_message("Extracting IDL chunks from transactions...");
-
-    let all_chunks = collect_and_process_chunks(&fetcher, &signatures, &pb);
-
-    pb.finish_with_message("Transaction processing complete");
-
-    if all_chunks.is_empty() {
-        println!("\nNo IDL chunks found in transactions");
-        return Ok(());
-    }
-
     if tuning.verbose {
-        println!("Grouping {} chunks into sessions...", all_chunks.len());
-    }
-    let sessions = group_chunks_into_sessions(&all_chunks);
-    if tuning.verbose {
-        println!("Found {} IDL session(s)", sessions.len());
-        println!("Decompressing IDL data...");
-    }
-    let decompress_pb = ProgressBar::new(sessions.len() as u64);
-    decompress_pb.enable_steady_tick(Duration::from_millis(PROGRESS_TICK_INTERVAL_MS));
-    decompress_pb.set_style(
-        ProgressStyle::default_bar()
-            .template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} sessions",
-            )
-            .unwrap()
-            .progress_chars("#>-"),
-    );
-
-    let decompressed = decompress_sessions(&sessions, &signatures, &decompress_pb)?;
-    decompress_pb.finish_with_message("Decompression complete");
-
-    if decompressed.skipped_sessions > 0 {
-        println!(
-            "Skipped {}/{} session(s): no zlib streams found (partial uploads)",
-            decompressed.skipped_sessions,
-            sessions.len()
-        );
-    }
-
-    if decompressed.extracted_idls.is_empty() {
-        println!("\nNo IDL data could be fetched from historical slots.");
-        return Ok(());
-    }
-
-    println!(
-        "\nSuccessfully extracted {} IDL version(s)",
-        decompressed.extracted_idls.len()
-    );
-    save_historical_idls(decompressed.extracted_idls, out_dir)
-}
-
-// Collects all chunks for a signature set and sorts them by slot for session reconstruction.
-fn collect_and_process_chunks(
-    fetcher: &IdlFetcher,
-    signatures: &[RpcConfirmedTransactionStatusWithSignature],
-    pb: &ProgressBar,
-) -> Vec<SlotChunk> {
-    let mut all_chunks = fetcher.collect_chunks_owned(signatures, pb);
-    all_chunks.sort_by_key(|(slot, _)| *slot);
-    all_chunks
-}
-
-// Decompresses every reconstructed session and pairs recovered IDLs with their source transaction.
-fn decompress_sessions(
-    sessions: &[SessionChunks],
-    signatures: &[RpcConfirmedTransactionStatusWithSignature],
-    pb: &ProgressBar,
-) -> Result<DecompressedSessions> {
-    let mut failed = 0usize;
-    let mut extracted = Vec::new();
-
-    for session in sessions {
-        pb.inc(1);
-        let combined_data = combine_chunks(session);
-        let streams = decompress_all_streams(&combined_data);
-        if streams.is_empty() {
-            failed += 1;
-            continue;
+        for warning in &pmp_idls.warnings {
+            println!("Skipping PMP slot {}: {}", warning.slot, warning.detail);
         }
+    }
+    // Merge the two sources together so the rest of the flow can treat them uniformly, preferring PMP
+    historical_idls = merge_historical_idls(
+        historical_idls,
+        pmp_idls.idls
+            .into_iter()
+            .map(|idl| HistoricalIdlVersion {
+                slot: idl.slot,
+                signature: idl.signature,
+                source: IdlHistorySource::Pmp,
+                idl_data: idl.idl_data,
+            })
+            .collect(),
+    );
 
-        let session_slot = session.first().map(|(slot, _)| *slot).ok_or_else(|| {
-            anyhow!("could not reconstruct an IDL upload from the fetched transactions")
-        })?;
-        let session_sig = signatures
-            .iter()
-            .find(|sig| sig.slot == session_slot)
-            .ok_or_else(|| {
-                anyhow!(
-                    "could not find the transaction for IDL upload at given slot {session_slot}"
-                )
-            })?
-            .clone();
-
-        extracted.extend(
-            streams
-                .into_iter()
-                .map(|idl_data| (session_sig.clone(), idl_data)),
-        );
+    if historical_idls.is_empty() {
+        if let Some(authority) = authority {
+            println!(
+                "\nNo recoverable historical IDLs found for authority-scoped metadata account {} on program {}.",
+                authority, address
+            );
+        } else {
+            println!("\nNo IDL data could be fetched from historical slots.");
+        }
+        return Ok(());
     }
 
-    Ok(DecompressedSessions {
-        extracted_idls: extracted,
-        skipped_sessions: failed,
-    })
+    if let Some(target_slot) = slot {
+        if let Some(selected) = historical_idls.iter().find(|entry| entry.slot <= target_slot) {
+            return write_idl_file(
+                &selected.idl_data,
+                &PathBuf::from(format!("idl_{}.json", selected.slot)),
+                out_dir.as_deref(),
+            );
+        }
+        println!(
+            "\nNo IDL upload session or PMP metadata update found at or before slot {}.",
+            target_slot
+        );
+        return Ok(());
+    }
+
+    println!("\nSuccessfully extracted {} IDL version(s)", historical_idls.len());
+    save_historical_idls(&historical_idls, out_dir)
 }

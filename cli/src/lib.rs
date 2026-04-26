@@ -709,6 +709,9 @@ pub enum IdlCommand {
     /// With no filters, fetches all historical versions.
     FetchHistorical {
         program_id: Pubkey,
+        /// Fetch authority-scoped PMP metadata account history for this authority
+        #[clap(long)]
+        authority: Option<Pubkey>,
         /// Fetch IDL at specific slot
         #[clap(long, conflicts_with_all = ["before", "after"])]
         slot: Option<u64>,
@@ -2560,6 +2563,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => idl_fetch(cfg_override, address, out, non_canonical),
         IdlCommand::FetchHistorical {
             program_id: address,
+            authority,
             slot,
             before,
             after,
@@ -2572,6 +2576,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
         } => fetch::idl_fetch_historical(
             cfg_override,
             address,
+            authority,
             slot,
             before,
             after,

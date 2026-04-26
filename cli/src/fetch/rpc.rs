@@ -1,8 +1,9 @@
 use {
     super::FetchTuning,
     crate::{
-        cluster_url,
         config::{get_solana_cfg_url, Config, ConfigOverride},
+        fetch::pmp::pmp_metadata_address,
+        get_cluster_and_wallet,
     },
     anyhow::{anyhow, Result},
     solana_commitment_config::CommitmentConfig,
@@ -24,8 +25,10 @@ const IDL_SIGNATURE_PAGE_SIZE: usize = 100;
 
 // Builds the RPC client used for historical IDL fetches from CLI cluster overrides.
 pub(super) fn create_rpc_client(cfg_override: &ConfigOverride) -> Result<RpcClient> {
+    // Match `anchor idl fetch` cluster resolution so historical fetch talks to the same localnet
+    // validator that the rest of the IDL CLI commands use.
     let url = match Config::discover(cfg_override)? {
-        Some(cfg) => cluster_url(&cfg, &cfg.test_validator, &cfg.surfpool_config),
+        Some(_) => get_cluster_and_wallet(cfg_override)?.0,
         None => {
             if let Some(cluster) = cfg_override.cluster.as_ref() {
                 cluster.url().to_string()
@@ -48,18 +51,57 @@ pub(super) fn fetch_idl_signatures(
     let program_signer = Pubkey::find_program_address(&[], address).0;
     let idl_account_address = Pubkey::create_with_seed(&program_signer, "anchor:idl", address)
         .map_err(|e| anyhow!("Failed to derive IDL account address: {e}"))?;
+    fetch_signatures_for_address(
+        client,
+        &idl_account_address,
+        before_timestamp,
+        after_timestamp,
+        target_slot,
+    )
+}
 
+// Derives the PMP metadata PDA for the requested authority scope and paginates its history.
+pub(super) fn fetch_pmp_idl_signatures(
+    client: &RpcClient,
+    program_id: &Pubkey,
+    authority: Option<&Pubkey>,
+    before_timestamp: Option<i64>,
+    after_timestamp: Option<i64>,
+    target_slot: Option<u64>,
+) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
+    let metadata_address = pmp_metadata_address(program_id, authority);
+    fetch_signatures_for_address(
+        client,
+        &metadata_address,
+        before_timestamp,
+        after_timestamp,
+        target_slot,
+    )
+}
+
+// Paginates signatures for any account address without applying IDL-account-specific derivation.
+pub(super) fn fetch_signatures_for_address(
+    client: &RpcClient,
+    address: &Pubkey,
+    before_timestamp: Option<i64>,
+    after_timestamp: Option<i64>,
+    target_slot: Option<u64>,
+) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     let mut signatures = Vec::new();
     let mut cursor: Option<Signature> = None;
 
+    // Mirror the legacy pagination behavior so date/slot filtering stays consistent across both
+    // history sources before they are merged.
     loop {
         let config = GetConfirmedSignaturesForAddress2Config {
             before: cursor,
             until: None,
             limit: Some(IDL_SIGNATURE_PAGE_SIZE),
-            commitment: None,
+            // The server defaults `commitment: None` to finalized, which lags fresh
+            // localnet transactions; honor the client's configured commitment instead.
+            commitment: Some(client.commitment()),
         };
-        let page = client.get_signatures_for_address_with_config(&idl_account_address, config)?;
+        let page = client.get_signatures_for_address_with_config(address, config)?;
 
         if page.is_empty() {
             break;
