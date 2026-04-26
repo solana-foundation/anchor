@@ -1,6 +1,6 @@
-use {
-    std::collections::HashSet,
-    std::hash::{Hash, Hasher},
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
 };
 
 // Identifies which on-chain storage path produced a recovered historical IDL so merge and output

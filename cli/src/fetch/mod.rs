@@ -301,7 +301,8 @@ pub fn idl_fetch_historical(
     // Merge the two sources together so the rest of the flow can treat them uniformly, preferring PMP
     historical_idls = merge_historical_idls(
         historical_idls,
-        pmp_idls.idls
+        pmp_idls
+            .idls
             .into_iter()
             .map(|idl| HistoricalIdlVersion {
                 slot: idl.slot,
@@ -315,7 +316,8 @@ pub fn idl_fetch_historical(
     if historical_idls.is_empty() {
         if let Some(authority) = authority {
             println!(
-                "\nNo recoverable historical IDLs found for authority-scoped metadata account {} on program {}.",
+                "\nNo recoverable historical IDLs found for authority-scoped metadata account {} \
+                 on program {}.",
                 authority, address
             );
         } else {
@@ -325,7 +327,10 @@ pub fn idl_fetch_historical(
     }
 
     if let Some(target_slot) = slot {
-        if let Some(selected) = historical_idls.iter().find(|entry| entry.slot <= target_slot) {
+        if let Some(selected) = historical_idls
+            .iter()
+            .find(|entry| entry.slot <= target_slot)
+        {
             return write_idl_file(
                 &selected.idl_data,
                 &PathBuf::from(format!("idl_{}.json", selected.slot)),
@@ -339,6 +344,9 @@ pub fn idl_fetch_historical(
         return Ok(());
     }
 
-    println!("\nSuccessfully extracted {} IDL version(s)", historical_idls.len());
+    println!(
+        "\nSuccessfully extracted {} IDL version(s)",
+        historical_idls.len()
+    );
     save_historical_idls(&historical_idls, out_dir)
 }

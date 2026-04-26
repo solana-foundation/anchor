@@ -320,7 +320,13 @@ pub fn fetch_pmp_historical_idls(
             continue;
         };
 
-        match fetch_pmp_idl_from_transaction(client, &metadata_address, &signature, sig.slot, tuning) {
+        match fetch_pmp_idl_from_transaction(
+            client,
+            &metadata_address,
+            &signature,
+            sig.slot,
+            tuning,
+        ) {
             Ok(idls) => result
                 .idls
                 .extend(idls.into_iter().map(|idl_data| PmpHistoricalIdl {
@@ -347,8 +353,8 @@ fn fetch_pmp_idl_from_transaction(
     slot: u64,
     tuning: &FetchTuning,
 ) -> std::result::Result<Vec<Vec<u8>>, PmpFetchError> {
-    let transaction = fetch_transaction(client, signature, tuning)
-        .map_err(|err| PmpFetchError {
+    let transaction =
+        fetch_transaction(client, signature, tuning).map_err(|err| PmpFetchError {
             kind: PmpHistoryWarningKind::RpcError,
             detail: err.to_string(),
         })?;
@@ -448,15 +454,16 @@ fn reconstruct_prior_writes(
 ) -> std::result::Result<PriorWriteReconstruction, PmpFetchError> {
     // Reuse the shared account-signature pagination so slot filtering semantics stay aligned
     // across legacy and PMP historical fetch paths.
-    let mut eligible = fetch_signatures_for_address(client, account_address, None, None, Some(before_or_at_slot))
-        .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?
-        .into_iter()
-        .map(|status| {
-            let signature = Signature::from_str(&status.signature)
-                .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?;
-            Ok((status.slot, signature))
-        })
-        .collect::<std::result::Result<Vec<_>, PmpFetchError>>()?;
+    let mut eligible =
+        fetch_signatures_for_address(client, account_address, None, None, Some(before_or_at_slot))
+            .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?
+            .into_iter()
+            .map(|status| {
+                let signature = Signature::from_str(&status.signature)
+                    .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?;
+                Ok((status.slot, signature))
+            })
+            .collect::<std::result::Result<Vec<_>, PmpFetchError>>()?;
 
     // Signature pagination is newest-first; replay must be oldest-first so later writes win.
     eligible.reverse();
@@ -633,9 +640,9 @@ fn extract_buffer_writes_for_signature(
                 }
             };
             match kind {
-                PmpInstruction::Write => Some(
-                    parse_write_data(&instruction.data).map(BufferReplayOp::Write),
-                ),
+                PmpInstruction::Write => {
+                    Some(parse_write_data(&instruction.data).map(BufferReplayOp::Write))
+                }
                 PmpInstruction::Allocate => Some(Ok(BufferReplayOp::Allocate)),
                 PmpInstruction::Extend => Some(Ok(BufferReplayOp::Extend)),
                 PmpInstruction::Trim => Some(Ok(BufferReplayOp::Trim)),
@@ -729,7 +736,9 @@ impl CompiledInstructionView {
                 .iter()
                 .filter_map(|index| account_keys.get(*index as usize).copied())
                 .collect(),
-            data: bs58::decode(&ix.data).into_vec().unwrap_or_else(|_| vec![u8::MAX]),
+            data: bs58::decode(&ix.data)
+                .into_vec()
+                .unwrap_or_else(|_| vec![u8::MAX]),
         }
     }
 
