@@ -228,22 +228,22 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                 // This doesn't catch cases like account.key() or account.key.
                 // My guess is that doesn't happen often and we can revisit
                 // this if I'm wrong.
-                InitKind::Token { mint, .. } | InitKind::AssociatedToken { mint, .. } => {
+                InitKind::Token { mint, .. } | InitKind::AssociatedToken { mint, .. }
                     if !fields.iter().any(|f| {
                         f.ident()
                             .to_string()
                             .starts_with(&mint.to_token_stream().to_string())
-                    }) {
-                        return Err(ParseError::new(
-                            field.ident.span(),
-                            "the mint constraint has to be an account field for token \
-                             initializations (not a public key)",
-                        ));
-                    }
+                    }) =>
+                {
+                    return Err(ParseError::new(
+                        field.ident.span(),
+                        "the mint constraint has to be an account field for token initializations \
+                         (not a public key)",
+                    ));
                 }
 
                 // Make sure initialized token accounts are always declared after their corresponding mint.
-                InitKind::Mint { .. } => {
+                InitKind::Mint { .. }
                     if init_fields.iter().enumerate().any(|(f_pos, f)| {
                         #[allow(
                             clippy::unwrap_used,
@@ -256,13 +256,13 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                             }
                             _ => false,
                         }
-                    }) {
-                        return Err(ParseError::new(
-                            field.ident.span(),
-                            "because of the init constraint, the mint has to be declared before \
-                             the corresponding token account",
-                        ));
-                    }
+                    }) =>
+                {
+                    return Err(ParseError::new(
+                        field.ident.span(),
+                        "because of the init constraint, the mint has to be declared before the \
+                         corresponding token account",
+                    ));
                 }
                 _ => (),
             }

@@ -23,6 +23,7 @@ use {
     regex::{Regex, RegexBuilder},
     rust_template::{ProgramTemplate, TestTemplate},
     semver::{Version, VersionReq},
+    serde::Deserialize,
     serde_json::{json, Map, Value as JsonValue},
     solana_cli_config::Config as SolanaCliConfig,
     solana_commitment_config::CommitmentConfig,
@@ -46,7 +47,7 @@ use {
         path::{Path, PathBuf},
         process::{Child, ExitStatus, Stdio},
         string::ToString,
-        sync::LazyLock,
+        sync::{LazyLock, OnceLock},
     },
 };
 
@@ -100,7 +101,7 @@ pub enum Command {
         /// Don't install JavaScript dependencies
         #[clap(long)]
         no_install: bool,
-        /// Package Manager to use
+        /// Package Manager to use (defaults to yarn if not specified)
         #[clap(value_enum, long, default_value = "yarn")]
         package_manager: PackageManager,
         /// Don't initialize git
@@ -1383,6 +1384,15 @@ fn process_command(opts: Opts) -> Result<()> {
     }
 }
 
+fn is_package_manager_available(pm: &PackageManager) -> bool {
+    std::process::Command::new(pm.to_string())
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok()
+}
+
 #[allow(clippy::too_many_arguments)]
 fn init(
     cfg_override: &ConfigOverride,
@@ -1420,6 +1430,13 @@ fn init(
         ));
     }
 
+    if !is_package_manager_available(&package_manager) {
+        return Err(anyhow!(
+            "Package manager {package_manager} not found. Install it or pass --package-manager \
+             <pm>."
+        ));
+    }
+
     if force {
         fs::create_dir_all(&project_name)?;
     } else {
@@ -1435,20 +1452,6 @@ fn init(
 
     let package_manager_cmd = package_manager.to_string();
     cfg.toolchain.package_manager = Some(package_manager);
-
-    let mut localnet = BTreeMap::new();
-    let program_id = rust_template::get_or_create_program_id(&rust_name);
-    localnet.insert(
-        rust_name,
-        ProgramDeployment {
-            address: program_id,
-            path: None,
-            idl: None,
-        },
-    );
-    cfg.programs.insert(Cluster::Localnet, localnet);
-    let toml = cfg.to_string();
-    fs::write("Anchor.toml", toml)?;
 
     // Initialize .gitignore file
     fs::write(".gitignore", rust_template::git_ignore())?;
@@ -1467,6 +1470,20 @@ fn init(
 
     // Build the program.
     rust_template::create_program(&project_name, template, Some(&test_template))?;
+
+    let program_id = rust_template::get_or_create_program_id(&rust_name, target_dir()?);
+    let mut localnet = BTreeMap::new();
+    localnet.insert(
+        rust_name,
+        ProgramDeployment {
+            address: program_id,
+            path: None,
+            idl: None,
+        },
+    );
+    cfg.programs.insert(Cluster::Localnet, localnet);
+    let toml = cfg.to_string();
+    fs::write("Anchor.toml", toml)?;
 
     // Build the migrations directory.
     let migrations_path = Path::new("migrations");
@@ -1626,7 +1643,7 @@ fn new(
                 programs.insert(
                     name.clone(),
                     ProgramDeployment {
-                        address: rust_template::get_or_create_program_id(&name),
+                        address: rust_template::get_or_create_program_id(&name, target_dir()?),
                         path: None,
                         idl: None,
                     },
@@ -1863,13 +1880,13 @@ pub fn build(
 
     let idl_out = match idl {
         Some(idl) => Some(PathBuf::from(idl)),
-        None => Some(cfg_parent.join("target").join("idl")),
+        None => Some(target_dir()?.join("idl")),
     };
     fs::create_dir_all(idl_out.as_ref().unwrap())?;
 
     let idl_ts_out = match idl_ts {
         Some(idl_ts) => Some(PathBuf::from(idl_ts)),
-        None => Some(cfg_parent.join("target").join("types")),
+        None => Some(target_dir()?.join("types")),
     };
     fs::create_dir_all(idl_ts_out.as_ref().unwrap())?;
 
@@ -2036,7 +2053,7 @@ fn build_cwd_verifiable(
 ) -> Result<()> {
     // Create output dirs.
     let workspace_dir = cfg.path().parent().unwrap().canonicalize()?;
-    let target_dir = workspace_dir.join("target");
+    let target_dir = target_dir()?;
     fs::create_dir_all(target_dir.join("verifiable"))?;
     fs::create_dir_all(target_dir.join("idl"))?;
     fs::create_dir_all(target_dir.join("types"))?;
@@ -2068,8 +2085,7 @@ fn build_cwd_verifiable(
             let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
             // Write out the JSON file.
             println!("Writing the IDL file");
-            let out_file = workspace_dir
-                .join("target")
+            let out_file = target_dir
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -2077,8 +2093,7 @@ fn build_cwd_verifiable(
 
             // Write out the TypeScript type.
             println!("Writing the .ts file");
-            let ts_file = workspace_dir
-                .join("target")
+            let ts_file = target_dir
                 .join("types")
                 .join(&idl.metadata.name)
                 .with_extension("ts");
@@ -2275,14 +2290,10 @@ fn docker_build_bpf(
 
     // Copy the binary out of the docker image.
     println!("Copying out the build artifacts");
-    let out_file = cfg_parent
-        .canonicalize()?
-        .join(
-            Path::new("target")
-                .join("verifiable")
-                .join(&binary_name)
-                .with_extension("so"),
-        )
+    let out_file = crate::target_dir()?
+        .join("verifiable")
+        .join(&binary_name)
+        .with_extension("so")
         .display()
         .to_string();
 
@@ -3339,7 +3350,7 @@ fn test(
                         .unwrap()
                         .captures_iter(&test_script.clone())
                         .last()
-                        .and_then(|c| c.get(1).and_then(|mtch| c.get(2).map(|ext| (mtch, ext))))
+                        .and_then(|c| c.get(1).zip(c.get(2)))
                         .map(|(mtch, ext)| {
                             (
                                 mtch.as_str(),
@@ -3550,7 +3561,7 @@ fn validator_flags(
     let mut flags = Vec::new();
     for mut program in cfg.read_all_programs()? {
         let verifiable = false;
-        let binary_path = program.binary_path(verifiable).display().to_string();
+        let binary_path = program.binary_path(verifiable)?.display().to_string();
         // Use the [programs.cluster] override and fallback to the keypair
         // files if no override is given.
         let address = programs
@@ -3574,7 +3585,7 @@ fn validator_flags(
             idl.address = address;
 
             // Persist it.
-            let idl_out = Path::new("target")
+            let idl_out = target_dir()?
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -3725,7 +3736,7 @@ fn surfpool_flags(
         if let Some(idl) = program.idl.as_mut() {
             // Creating the idl files
             idl.address = address;
-            let idl_out = Path::new("target")
+            let idl_out = target_dir()?
                 .join("idl")
                 .join(&idl.metadata.name)
                 .with_extension("json");
@@ -3935,7 +3946,7 @@ fn stream_solana_logs(config: &WithPath<Config>, rpc_url: &str) -> Result<Vec<Lo
 
     // Subscribe to logs for all workspace programs
     for program in config.read_all_programs()? {
-        let idl_path = Path::new("target")
+        let idl_path = target_dir()?
             .join("idl")
             .join(&program.lib_name)
             .with_extension("json");
@@ -4256,7 +4267,7 @@ fn clean(cfg_override: &ConfigOverride) -> Result<()> {
     };
 
     let dot_anchor_dir = workspace_root.join(".anchor");
-    let target_dir = workspace_root.join("target");
+    let target_dir = crate::target_dir()?;
     let deploy_dir = target_dir.join("deploy");
 
     if dot_anchor_dir.exists() {
@@ -4317,7 +4328,7 @@ fn deploy(
         println!("Upgrade authority: {keypair}");
 
         for program in cfg.get_programs(program_name)? {
-            let binary_path = program.binary_path(verifiable);
+            let binary_path = program.binary_path(verifiable)?;
 
             println!("Deploying program {:?}...", program.lib_name);
             println!("Program path: {}...", binary_path.display());
@@ -4967,6 +4978,43 @@ fn localnet(
     })?
 }
 
+/// Return the cargo build artifacts directory. The successful result is
+/// cached.
+pub fn target_dir() -> Result<&'static Path> {
+    static TARGET_DIR: OnceLock<PathBuf> = OnceLock::new();
+    if let Some(path) = TARGET_DIR.get() {
+        return Ok(path.as_path());
+    }
+    let path = target_dir_no_cache()?;
+    let _ = TARGET_DIR.set(path);
+    Ok(TARGET_DIR.get().expect("just set").as_path())
+}
+
+/// Return the cargo build artifacts directory.
+fn target_dir_no_cache() -> Result<PathBuf> {
+    // `cargo metadata` produces a JSON blob from which we extract the
+    // `target_directory` field.
+    let output = std::process::Command::new("cargo")
+        .args(["metadata", "--no-deps", "--format-version=1"])
+        .output()
+        .context("Failed to execute 'cargo metadata'")?;
+
+    if !output.status.success() {
+        let stderr_msg = String::from_utf8_lossy(&output.stderr);
+        bail!("'cargo metadata' failed with: {stderr_msg}");
+    }
+
+    #[derive(Deserialize)]
+    struct CargoMetadata {
+        target_directory: PathBuf,
+    }
+
+    let metadata: CargoMetadata = serde_json::from_slice(&output.stdout)
+        .context("Failed to parse 'cargo metadata' output")?;
+
+    Ok(metadata.target_directory)
+}
+
 // with_workspace ensures the current working directory is always the top level
 // workspace directory, i.e., where the `Anchor.toml` file is located, before
 // and after the closure invocation.
@@ -5186,9 +5234,7 @@ fn epoch_info(cfg_override: &ConfigOverride) -> Result<()> {
                 )
             });
 
-        if total_slots > 0 {
-            let avg_slot_time_ms = (total_secs * 1000) / total_slots;
-
+        if let Some(avg_slot_time_ms) = (total_secs * 1000).checked_div(total_slots) {
             // Calculate time_remaining using average slot time (always estimated)
             let remaining_secs = (remaining_slots * avg_slot_time_ms) / 1000;
 

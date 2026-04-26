@@ -8,8 +8,7 @@ use anchor_lang::prelude::*;
 
 pub mod instructions;
 pub mod utils;
-pub use instructions::*;
-pub use utils::*;
+pub use {instructions::*, utils::*};
 
 declare_id!("tKEkkQtgMXhdaz5NMTR3XbdUu215sZyHSj6Menvous1");
 
@@ -30,9 +29,7 @@ pub mod token_extensions {
         Ok(())
     }
 
-    pub fn create_group_pointer_mint(
-        _ctx: Context<CreateGroupPointerMint>,
-    ) -> Result<()> {
+    pub fn create_group_pointer_mint(_ctx: Context<CreateGroupPointerMint>) -> Result<()> {
         Ok(())
     }
 
@@ -43,11 +40,19 @@ pub mod token_extensions {
         instructions::update_group_pointer_handler(ctx, new_group_address)
     }
 
-    pub fn enable_cpi_guard(ctx: Context<EnableCpiGuard>) -> Result<()> {
-        instructions::enable_cpi_guard_handler(ctx)
+    pub fn check_toggle_pause(ctx: Context<CheckTogglePause>) -> Result<()> {
+        instructions::toggle_pause_handler(ctx)
     }
 
-    pub fn disable_cpi_guard(ctx: Context<DisableCpiGuard>) -> Result<()> {
-        instructions::disable_cpi_guard_handler(ctx)
+    pub fn check_pausable_authority_constraint(
+        ctx: Context<CheckPausableAuthorityConstraint>,
+    ) -> Result<()> {
+        instructions::check_pausable_authority_constraint_handler(ctx)
+    }
+
+    pub fn update_and_remove_token_metadata(
+        ctx: Context<UpdateAndRemoveTokenMetadata>,
+    ) -> Result<()> {
+        instructions::update_and_remove_token_metadata_handler(ctx)
     }
 }

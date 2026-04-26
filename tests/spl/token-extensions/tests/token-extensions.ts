@@ -1,21 +1,10 @@
 import * as anchor from "@anchor-lang/core";
-import { Program } from "@anchor-lang/core";
-import {
-  PublicKey,
-  Keypair,
-  SystemProgram,
-  Transaction,
-  sendAndConfirmTransaction,
-} from "@solana/web3.js";
+import { AnchorError, Program } from "@anchor-lang/core";
+import { strict as assert } from "node:assert";
+import { PublicKey, Keypair } from "@solana/web3.js";
 import { TokenExtensions } from "../target/types/token_extensions";
 import { ASSOCIATED_PROGRAM_ID } from "@anchor-lang/core/dist/cjs/utils/token";
-import {
-  createInitializeAccountInstruction,
-  createMint,
-  ExtensionType,
-  getAccountLen,
-} from "@solana/spl-token";
-import { it } from "node:test";
+import { createMint } from "@solana/spl-token";
 
 const TOKEN_2022_PROGRAM_ID = new anchor.web3.PublicKey(
   "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
@@ -137,82 +126,90 @@ describe("token extensions", () => {
     });
   });
 
-  describe("cpi_guard", () => {
-    let cpiGuardMint: PublicKey;
-    let enableAccount = Keypair.generate();
-    let disableAccount = Keypair.generate();
+  it("pausable toggle test passes", async () => {
+    await program.methods
+      .checkTogglePause()
+      .accountsStrict({
+        authority: payer.publicKey,
+        mint: mint.publicKey,
+        tokenProgram: TOKEN_2022_PROGRAM_ID,
+      })
+      .signers([payer])
+      .rpc();
+  });
 
-    async function createCpiGuardTokenAccount(
-      tokenAccountKeypair: Keypair
-    ): Promise<void> {
-      const accountLen = getAccountLen([ExtensionType.CpiGuard]);
-      const lamports =
-        await provider.connection.getMinimumBalanceForRentExemption(accountLen);
+  it("pausable authority constraint fails on mismatched authority", async () => {
+    const wrongAuthority = Keypair.generate();
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(
+        wrongAuthority.publicKey,
+        1000000000
+      ),
+      "confirmed"
+    );
 
-      const tx = new Transaction().add(
-        SystemProgram.createAccount({
-          fromPubkey: payer.publicKey,
-          newAccountPubkey: tokenAccountKeypair.publicKey,
-          space: accountLen,
-          lamports,
-          programId: TOKEN_2022_PROGRAM_ID,
-        }),
-        createInitializeAccountInstruction(
-          tokenAccountKeypair.publicKey,
-          cpiGuardMint,
-          payer.publicKey,
-          TOKEN_2022_PROGRAM_ID
-        )
+    try {
+      await program.methods
+        .checkPausableAuthorityConstraint()
+        .accountsStrict({
+          authority: wrongAuthority.publicKey,
+          mint: mint.publicKey,
+        })
+        .signers([wrongAuthority])
+        .rpc();
+      assert.fail("expected ConstraintMintPausableAuthority");
+    } catch (err) {
+      assert.ok(err instanceof AnchorError);
+      assert.equal(
+        (err as AnchorError).error.errorCode.code,
+        "ConstraintMintPausableAuthority"
       );
-
-      await sendAndConfirmTransaction(
-        provider.connection,
-        tx,
-        [payer, tokenAccountKeypair],
-        { commitment: "confirmed" }
-      );
+      assert.equal((err as AnchorError).error.errorCode.number, 2044);
     }
+  });
 
-    it("Create mint and token accounts with CPI Guard extension", async () => {
-      cpiGuardMint = await createMint(
-        provider.connection,
-        payer,
-        payer.publicKey,
-        null,
-        9,
-        Keypair.generate(),
-        { commitment: "confirmed" },
-        TOKEN_2022_PROGRAM_ID
+  it("pausable authority constraint fails when mint has no pausable extension", async () => {
+    const plainMint = await createMint(
+      provider.connection,
+      payer,
+      payer.publicKey,
+      null,
+      9,
+      Keypair.generate(),
+      { commitment: "confirmed" },
+      TOKEN_2022_PROGRAM_ID
+    );
+
+    try {
+      await program.methods
+        .checkPausableAuthorityConstraint()
+        .accountsStrict({
+          authority: payer.publicKey,
+          mint: plainMint,
+        })
+        .signers([payer])
+        .rpc();
+      assert.fail("expected ConstraintMintPausableExtension");
+    } catch (err) {
+      assert.ok(err instanceof AnchorError);
+      assert.equal(
+        (err as AnchorError).error.errorCode.code,
+        "ConstraintMintPausableExtension"
       );
+      assert.equal((err as AnchorError).error.errorCode.number, 2043);
+    }
+  });
 
-      await createCpiGuardTokenAccount(enableAccount);
-      await createCpiGuardTokenAccount(disableAccount);
-    });
-
-    it("Enable CPI Guard via CPI succeeds", async () => {
-      await program.methods
-        .enableCpiGuard()
-        .accountsStrict({
-          authority: payer.publicKey,
-          tokenAccount: enableAccount.publicKey,
-          tokenProgram: TOKEN_2022_PROGRAM_ID,
-        })
-        .signers([payer])
-        .rpc();
-    });
-
-    it("Disable CPI Guard via CPI succeeds", async () => {
-      // Uses a separate account where guard is not active,
-      // since an active CPI Guard blocks disable via CPI
-      await program.methods
-        .disableCpiGuard()
-        .accountsStrict({
-          authority: payer.publicKey,
-          tokenAccount: disableAccount.publicKey,
-          tokenProgram: TOKEN_2022_PROGRAM_ID,
-        })
-        .signers([payer])
-        .rpc();
-    });
+  it("mint metadata update and remove test passes", async () => {
+    //update_and_remove_token_metadata
+    await program.methods
+      .updateAndRemoveTokenMetadata()
+      .accountsStrict({
+        authority: payer.publicKey,
+        mint: mint.publicKey,
+        tokenProgram: TOKEN_2022_PROGRAM_ID,
+      })
+      .signers([payer])
+      .rpc();
   });
 });
