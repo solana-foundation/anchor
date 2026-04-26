@@ -23,6 +23,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- client: Avoid panic in `parse_logs_response` when a program-emitted log line ends with `invoke [1]` ([#4461](https://github.com/solana-foundation/anchor/issues/4461)).
 - client: Replace `solana-program` with `solana-hash` ([#4468](https://github.com/solana-foundation/anchor/pull/4468)).
 - cli: Correctly honor `--skip-seed-phrase-validation` in `keygen recover` ([#4417](https://github.com/solana-foundation/anchor/pull/4417)).
 - spl: Fix wrong owner pubkey in CPI Guard enable/disable ([#4322](https://github.com/solana-foundation/anchor/pull/4322)).
