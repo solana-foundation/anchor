@@ -497,6 +497,8 @@ dependencies = [
  "pinocchio-token-2022",
  "solana-address 2.6.0",
  "solana-program-error 3.0.0",
+ "solana-program-pack 3.1.0",
+ "spl-token-interface",
 ]
 
 [[package]]

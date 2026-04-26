@@ -14,6 +14,33 @@ pub use pinocchio::instruction::{InstructionAccount, InstructionView};
 #[cfg(feature = "const-rent")]
 const MAX_SAFE_SPACE: u64 = (u64::MAX / DEFAULT_LAMPORTS_PER_BYTE) - ACCOUNT_STORAGE_OVERHEAD;
 
+/// System program `Transfer` instruction discriminant (variant index).
+/// Encoded as `u32 LE` in the first 4 bytes of the instruction data.
+#[cfg(feature = "account-resize")]
+const SYSTEM_TRANSFER_VARIANT: u8 = 2;
+
+// Pin the protocol-mandated discriminant at compile time. Without this,
+// the wire-format Kani harness below would still pass if someone edited
+// `SYSTEM_TRANSFER_VARIANT` (both sides of its byte-equality reference
+// the same constant).
+#[cfg(feature = "account-resize")]
+const _: () = assert!(SYSTEM_TRANSFER_VARIANT == 2);
+
+/// Encode a System program `Transfer` instruction body.
+///
+/// Extracted as a pure helper so the Kani harness in this module can verify
+/// the real encoder byte-for-byte against the documented wire format. The
+/// encoding is otherwise only reachable through `realloc_account`'s unsafe
+/// CPI path, which Kani cannot model (the CPI syscall is opaque to CBMC).
+#[cfg(feature = "account-resize")]
+#[inline]
+fn encode_system_transfer(lamports: u64) -> [u8; 12] {
+    let mut data = [0u8; 12];
+    data[0] = SYSTEM_TRANSFER_VARIANT;
+    data[4..12].copy_from_slice(&lamports.to_le_bytes());
+    data
+}
+
 /// Compute the rent-exempt minimum balance for an account of `space` bytes.
 ///
 /// Default path calls `Rent::get()` (picks up runtime formula changes).
@@ -478,14 +505,12 @@ pub fn realloc_account(
             // bytes — disjoint region, no aliasing. The unchecked path
             // bypasses pinocchio's borrow-flag check which would otherwise
             // reject the CPI while the RefMut is held.
+            let ix_data = encode_system_transfer(deficit);
             unsafe {
                 let cpi_accounts: [pinocchio::cpi::CpiAccount; 2] = [
                     pinocchio::cpi::CpiAccount::from(payer),
                     pinocchio::cpi::CpiAccount::from(&*account as &AccountView),
                 ];
-                let mut ix_data = [0u8; 12];
-                ix_data[0] = 2;
-                ix_data[4..12].copy_from_slice(&deficit.to_le_bytes());
                 let instruction = pinocchio::instruction::InstructionView {
                     program_id: &pinocchio_system::ID,
                     accounts: &[
@@ -534,4 +559,132 @@ pub fn realloc_account(
     }
 
     Ok(())
+}
+
+#[cfg(all(test, feature = "const-rent"))]
+mod const_rent_tests {
+    use super::*;
+
+    // `space > MAX_SAFE_SPACE` must short-circuit to an error before the
+    // formula runs. Covered by unit test because the branch is boolean —
+    // a couple of boundary values suffice and Kani adds no value.
+    #[test]
+    fn rejects_oversized_space() {
+        assert!(rent_exempt_lamports(MAX_SAFE_SPACE as usize + 1).is_err());
+        assert!(rent_exempt_lamports(usize::MAX).is_err());
+    }
+
+    // Base case: space == 0 charges only the fixed storage overhead.
+    #[test]
+    fn zero_space_returns_overhead_only() {
+        assert_eq!(
+            rent_exempt_lamports(0).unwrap(),
+            ACCOUNT_STORAGE_OVERHEAD * DEFAULT_LAMPORTS_PER_BYTE,
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Kani proofs — CPI helper invariants
+// ---------------------------------------------------------------------------
+
+#[cfg(all(kani, feature = "const-rent"))]
+mod kani_proofs_const_rent {
+    use super::*;
+
+    // For accepted inputs, the wrapping_mul does not actually wrap.
+    // The comment "Bounded by MAX_SAFE_SPACE → no overflow" is load-bearing.
+    #[kani::proof]
+    #[kani::solver(z3)]
+    fn accepted_inputs_do_not_overflow() {
+        let space: usize = kani::any();
+        kani::assume(space as u64 <= MAX_SAFE_SPACE);
+        // The wrapping_mul in the implementation must equal the checked_mul
+        // result (no overflow actually happened).
+        let sum = (ACCOUNT_STORAGE_OVERHEAD + space as u64);
+        let wrapping = sum.wrapping_mul(DEFAULT_LAMPORTS_PER_BYTE);
+        let checked = sum.checked_mul(DEFAULT_LAMPORTS_PER_BYTE);
+        assert!(checked == Some(wrapping));
+    }
+
+    // At the boundary space == MAX_SAFE_SPACE, the computed result
+    // fits in u64.
+    #[kani::proof]
+    #[kani::solver(z3)]
+    fn boundary_space_value_fits_u64() {
+        let result = rent_exempt_lamports(MAX_SAFE_SPACE as usize);
+        assert!(result.is_ok());
+    }
+
+    // Monotonicity: larger space ⇒ ≥ rent. (Logic invariant — required
+    // by any sensible fee schedule.)
+    #[kani::proof]
+    #[kani::solver(z3)]
+    fn rent_is_monotonic_in_space() {
+        let a: usize = kani::any();
+        let b: usize = kani::any();
+        kani::assume(a <= b);
+        kani::assume(b as u64 <= MAX_SAFE_SPACE);
+        let ra = rent_exempt_lamports(a).unwrap();
+        let rb = rent_exempt_lamports(b).unwrap();
+        assert!(ra <= rb);
+    }
+}
+
+#[cfg(kani)]
+mod kani_proofs_pda {
+    use super::*;
+
+    // Length-guard only. Proves that `try_find_program_address` rejects
+    // inputs with more than 16 seeds (Solana runtime cap). Does NOT
+    // verify PDA derivation correctness, bump-search behavior, or seed
+    // content handling — those live in the Solana runtime's own test
+    // suite and are exercised end-to-end by the litesvm tests.
+    #[kani::proof]
+    fn seventeen_seeds_rejected() {
+        let empty: &[u8] = &[];
+        let seeds: [&[u8]; 17] = [empty; 17];
+        let pid = Address::new_from_array([0u8; 32]);
+        assert!(try_find_program_address(&seeds, &pid).is_err());
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Kani proofs — System program Transfer wire format byte-identity
+//
+// `realloc_account` hand-encodes a System Transfer instruction instead of
+// going through `pinocchio_system::instructions::Transfer` (to bypass the
+// borrow-flag check while a BorshAccount RefMut is live). This harness
+// verifies that the hand encoding matches the documented wire format:
+//   [variant u32 LE] [lamports u64 LE]
+// The `SYSTEM_TRANSFER_VARIANT` constant is shared with the production
+// encoder — if someone edits it, both sides move together.
+//
+// Allocate / Assign / CreateAccount go through pinocchio-system directly,
+// so their encoding lives outside anchor-v2 and isn't verified here.
+// ---------------------------------------------------------------------------
+
+#[cfg(all(kani, feature = "account-resize"))]
+mod kani_proofs_cpi_wire {
+    use super::{encode_system_transfer, SYSTEM_TRANSFER_VARIANT};
+
+    // Calls the real `encode_system_transfer` helper (the same one
+    // `realloc_account` uses) so a layout change in the encoder — moving a
+    // field, swapping endianness, truncating bytes — fails this harness.
+    // Paired with the `const _: () = assert!(SYSTEM_TRANSFER_VARIANT == 2)`
+    // guard near the constant definition, this proves both "the encoder
+    // produces the protocol format" and "the protocol constant is correct."
+    #[kani::proof]
+    fn anchor_transfer_encoding_matches_wire_format() {
+        let lamports: u64 = kani::any();
+
+        let anchor_encoded = encode_system_transfer(lamports);
+
+        // Documented wire format: [variant u32 LE] [lamports u64 LE].
+        let mut wire_format = [0u8; 12];
+        wire_format[0..4].copy_from_slice(&(SYSTEM_TRANSFER_VARIANT as u32).to_le_bytes());
+        wire_format[4..12].copy_from_slice(&lamports.to_le_bytes());
+
+        assert!(anchor_encoded == wire_format);
+    }
 }

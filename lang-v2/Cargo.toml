@@ -71,7 +71,7 @@ sha2 = "0.10"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(target_os, values("solana"))']
+check-cfg = ['cfg(target_os, values("solana"))', 'cfg(kani)']
 
 # Integration tests that exercise `unsafe` paths via the `testing`
 # scaffold. Gated behind the `testing` feature so the mock types never
@@ -94,4 +94,24 @@ required-features = ["testing"]
 
 [[test]]
 name = "cursor_and_remaining_accounts"
+required-features = ["testing"]
+
+[[test]]
+name = "miri_account_view_aliasing"
+required-features = ["testing"]
+
+[[test]]
+name = "miri_cursor_walk"
+required-features = ["testing"]
+
+[[test]]
+name = "miri_slab_alignment"
+required-features = ["testing"]
+
+[[test]]
+name = "miri_slab_construction"
+required-features = ["testing"]
+
+[[test]]
+name = "miri_wrapper_accounts"
 required-features = ["testing"]

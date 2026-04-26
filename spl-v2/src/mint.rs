@@ -38,6 +38,7 @@ pub struct Mint {
 unsafe impl Pod for Mint {}
 unsafe impl Zeroable for Mint {}
 
+
 // Mint is defined by the SPL Token program, not by the user's program — its
 // layout is known to any SPL-aware client. Default `__IDL_TYPE = None` keeps
 // it out of the user's IDL `types[]` array (matches v1's `impl_idl_build!`
@@ -70,6 +71,7 @@ impl SlabSchema for Mint {
         Ok(())
     }
 }
+
 
 /// Init params for `#[account(init, mint::decimals = 6, mint::authority = ..., ...)]`.
 #[derive(Default)]

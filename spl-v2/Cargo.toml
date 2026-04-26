@@ -18,6 +18,12 @@ bytemuck = { version = "1", features = ["derive"] }
 solana-address = { version = "2.0", features = ["bytemuck"] }
 solana-program-error = "3.0"
 
+[dev-dependencies]
+# Cross-checks `Mint` / `TokenAccount` layout against the canonical
+# `spl-token-interface` types (see `tests/miri_spl_pod.rs`). Dev-only.
+spl-token-interface = "2"
+solana-program-pack = "3"
+
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(target_os, values("solana"))']
+check-cfg = ['cfg(target_os, values("solana"))', 'cfg(kani)']
