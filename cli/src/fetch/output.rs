@@ -1,6 +1,6 @@
 use {
     super::history::{HistoricalIdlVersion, IdlHistorySource},
-    anyhow::Result,
+    anyhow::{anyhow, Result},
     std::{
         collections::BTreeMap,
         path::{Path, PathBuf},
@@ -19,7 +19,14 @@ pub(super) fn save_historical_idls(
         // through the precomputed filename map before writing.
         let file_name = output_names
             .get(&(idl.slot, idl.signature.clone(), idl.source))
-            .expect("historical output name to exist");
+            .ok_or_else(|| {
+                anyhow!(
+                    "missing historical output name for slot {}, signature {}, source {:?}",
+                    idl.slot,
+                    idl.signature,
+                    idl.source
+                )
+            })?;
         write_idl_file(&idl.idl_data, &PathBuf::from(file_name), out_dir.as_deref())?;
     }
 
