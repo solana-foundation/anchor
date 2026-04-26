@@ -143,7 +143,9 @@ describe("Test CLI IDL commands", () => {
     );
 
     execSync(
-      `anchor idl fetch-historical ${programOne.programId} --out-dir ${slotDir} --slot ${oldestSlot!}`,
+      `anchor idl fetch-historical ${
+        programOne.programId
+      } --out-dir ${slotDir} --slot ${oldestSlot!}`,
       { stdio: "inherit" }
     );
 
@@ -171,7 +173,11 @@ describe("Test CLI IDL commands", () => {
     );
 
     execSync(
-      `solana --keypair ${process.env.ANCHOR_WALLET ?? "./keypairs/deployer-keypair.json"} --url ${provider.connection.rpcEndpoint} transfer ${nonCanonicalAuthority.publicKey.toBase58()} 2 --allow-unfunded-recipient`,
+      `solana --keypair ${
+        process.env.ANCHOR_WALLET ?? "./keypairs/deployer-keypair.json"
+      } --url ${
+        provider.connection.rpcEndpoint
+      } transfer ${nonCanonicalAuthority.publicKey.toBase58()} 2 --allow-unfunded-recipient`,
       { stdio: "inherit" }
     );
 
@@ -194,11 +200,15 @@ describe("Test CLI IDL commands", () => {
       assert.isAtLeast(signatures.filter((sig) => sig.err === null).length, 1);
 
       execSync(
-        `anchor idl fetch-historical ${programOne.programId} --authority ${nonCanonicalAuthority.publicKey.toBase58()} --out-dir ${nonCanonicalDir}`,
+        `anchor idl fetch-historical ${
+          programOne.programId
+        } --authority ${nonCanonicalAuthority.publicKey.toBase58()} --out-dir ${nonCanonicalDir}`,
         { stdio: "inherit" }
       );
 
-      const fetchedIdls = readFetchedIdls(nonCanonicalDir).map(({ idl }) => idl);
+      const fetchedIdls = readFetchedIdls(nonCanonicalDir).map(
+        ({ idl }) => idl
+      );
       assert.isAtLeast(fetchedIdls.length, 1);
       assert.deepInclude(fetchedIdls, programOne.rawIdl);
     } finally {
