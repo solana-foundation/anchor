@@ -913,7 +913,7 @@ fn generate_constraint_init_group(
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::Pausable})
             }
 
-            if interest_bearing_mint_rate.is_some() {
+            if interest_bearing_mint_rate.is_some() || interest_bearing_mint_authority.is_some() {
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::InterestBearingConfig});
             }
 
@@ -977,8 +977,8 @@ fn generate_constraint_init_group(
             };
 
             let interest_bearing_mint_rate = match interest_bearing_mint_rate {
-                Some(ibmr) => quote! { Option::<i16>::Some(#ibmr) },
-                None => quote! { Option::<i16>::None },
+                Some(ibmr) => quote! { #ibmr },
+                None => quote! { 0i16 },
             };
 
             let interest_bearing_mint_authority = match interest_bearing_mint_authority {
@@ -1089,7 +1089,7 @@ fn generate_constraint_init_group(
                                         ::anchor_spl::token_interface::interest_bearing_mint_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::InterestBearingMintInitialize {
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
-                                        }), #interest_bearing_mint_authority, #interest_bearing_mint_rate.unwrap())?;
+                                        }), #interest_bearing_mint_authority, #interest_bearing_mint_rate)?;
                                     },
                                     // All extensions specified by the user should be implemented.
                                     // If this line runs, it means there is a bug in the codegen.
