@@ -1354,8 +1354,11 @@ fn init(
     force: bool,
     install_agent_skills: bool,
 ) -> Result<()> {
-    // Skip node setup for Rust and Mollusk templates
-    let skip_node = matches!(test_template, TestTemplate::Rust | TestTemplate::Mollusk);
+    // Skip node setup for Rust-based test templates
+    let skip_node = matches!(
+        test_template,
+        TestTemplate::Rust | TestTemplate::Mollusk | TestTemplate::Litesvm
+    );
     if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
     }
