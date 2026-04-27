@@ -2,9 +2,8 @@ use {
     super::{
         decompress::decompress_all_streams,
         history::{HistoricalIdlVersion, IdlHistorySource},
-        sessions::group_chunks_into_sessions,
-        DecompressedSessions, IdlFetcher, RpcConfirmedTransactionStatusWithSignature,
-        SessionChunks, SlotChunk, PROGRESS_TICK_INTERVAL_MS,
+        sessions::group_chunks_into_sessions, DecompressedSessions, IdlFetcher, SessionChunks,
+        SlotChunk, PROGRESS_TICK_INTERVAL_MS, RpcConfirmedTransactionStatusWithSignature,
     },
     anyhow::{anyhow, Result},
     indicatif::{ProgressBar, ProgressStyle},
@@ -15,7 +14,7 @@ use {
 fn combine_chunks(chunks: &[SlotChunk]) -> Vec<u8> {
     chunks
         .iter()
-        .flat_map(|(_, chunk)| chunk.iter())
+        .flat_map(|(_, _, chunk)| chunk.iter())
         .copied()
         .collect()
 }
@@ -28,7 +27,7 @@ fn collect_and_process_chunks(
     pb: &ProgressBar,
 ) -> Vec<SlotChunk> {
     let mut all_chunks = fetcher.collect_chunks_owned(signatures, pb);
-    all_chunks.sort_by_key(|(slot, _)| *slot);
+    all_chunks.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
     all_chunks
 }
 
@@ -36,7 +35,6 @@ fn collect_and_process_chunks(
 // merged historical timeline needs later on.
 fn decompress_sessions(
     sessions: &[SessionChunks],
-    signatures: &[RpcConfirmedTransactionStatusWithSignature],
     pb: &ProgressBar,
 ) -> Result<DecompressedSessions> {
     let mut failed = 0usize;
@@ -51,24 +49,18 @@ fn decompress_sessions(
             continue;
         }
 
-        let session_slot = session.first().map(|(slot, _)| *slot).ok_or_else(|| {
-            anyhow!("could not reconstruct an IDL upload from the fetched transactions")
-        })?;
-        let session_sig = signatures
-            .iter()
-            .find(|sig| sig.slot == session_slot)
+        let (session_slot, session_sig) = session
+            .first()
+            .map(|(slot, signature, _)| (*slot, signature.clone()))
             .ok_or_else(|| {
-                anyhow!(
-                    "could not find the transaction for IDL upload at given slot {session_slot}"
-                )
-            })?
-            .clone();
+                anyhow!("could not reconstruct an IDL upload from the fetched transactions")
+            })?;
 
         // A single legacy upload session can contain multiple complete IDL streams, so emit one
         // historical version per recovered stream while keeping the session slot/signature.
         extracted.extend(streams.into_iter().map(|idl_data| HistoricalIdlVersion {
-            slot: session_sig.slot,
-            signature: session_sig.signature.clone(),
+            slot: session_slot,
+            signature: session_sig.clone(),
             source: IdlHistorySource::Legacy,
             idl_data,
         }));
@@ -138,7 +130,8 @@ pub(super) fn fetch_legacy_historical_idls(
             .unwrap()
             .progress_chars("#>-"),
     );
-    let decompressed = decompress_sessions(&sessions, signatures, &decompress_pb)?;
+    decompress_pb.set_message("Decompressing reconstructed legacy upload sessions...");
+    let decompressed = decompress_sessions(&sessions, &decompress_pb)?;
     decompress_pb.finish_with_message("Legacy decompression complete");
 
     if decompressed.skipped_sessions > 0 {

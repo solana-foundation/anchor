@@ -123,6 +123,9 @@ pub(super) fn fetch_signatures_for_address(
             if sig.err.is_some() {
                 continue;
             }
+            if target_slot.is_some_and(|slot| sig.slot > slot) {
+                continue;
+            }
             if has_date_filter {
                 let Some(bt) = sig.block_time else { continue };
                 if before_timestamp.is_some_and(|ts| bt > ts) {
@@ -174,9 +177,10 @@ pub(super) fn fetch_transaction(
                 if !retryable || attempt >= tuning.max_retries {
                     return Err(anyhow!("failed to fetch transaction {signature}: {e}"));
                 }
+                let shift = (attempt - 1).min(20);
                 let backoff = tuning
                     .retry_backoff_ms
-                    .saturating_mul(1u64 << (attempt - 1));
+                    .saturating_mul(1u64 << shift);
                 std::thread::sleep(std::time::Duration::from_millis(backoff));
             }
         }

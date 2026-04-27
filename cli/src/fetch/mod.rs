@@ -34,7 +34,7 @@ const DEFAULT_RETRY_BACKOFF_MS: u64 = 500;
 const PROGRESS_TICK_INTERVAL_MS: u64 = 80;
 
 type ChunkData = Vec<u8>;
-type SlotChunk = (u64, ChunkData);
+type SlotChunk = (u64, String, ChunkData);
 type SessionChunks = Vec<SlotChunk>;
 type ExtractedIdl = HistoricalIdlVersion;
 
@@ -182,7 +182,7 @@ fn collect_signature_chunks(
         Some(
             chunks
                 .into_iter()
-                .map(|chunk| (sig.slot, chunk))
+                .map(|chunk| (sig.slot, sig.signature.clone(), chunk))
                 .collect::<Vec<_>>(),
         )
     }
@@ -223,14 +223,14 @@ pub fn idl_fetch_historical(
     let after_timestamp = after.as_deref().map(parse_date_to_timestamp).transpose()?;
     if let Some((after_ts, before_ts)) = after_timestamp.zip(before_timestamp) {
         if after_ts > before_ts {
+            // `zip` only yields `Some` when both original CLI arguments were present and parsed,
+            // so these borrowed flag values are guaranteed to exist here.
+            let after_value = after.as_deref().unwrap();
+            let before_value = before.as_deref().unwrap();
             return Err(anyhow!(
                 "Invalid date range: --after ({}) must be on or before --before ({})",
-                after
-                    .as_deref()
-                    .expect("after_timestamp is Some implies --after was provided"),
-                before
-                    .as_deref()
-                    .expect("before_timestamp is Some implies --before was provided"),
+                after_value,
+                before_value,
             ));
         }
     }
@@ -293,8 +293,13 @@ pub fn idl_fetch_historical(
         &pmp_signatures,
         &tuning,
     );
-    if tuning.verbose {
-        for warning in &pmp_idls.warnings {
+    for warning in &pmp_idls.warnings {
+        if tuning.verbose
+            || matches!(
+                warning.kind,
+                pmp::PmpHistoryWarningKind::RpcError | pmp::PmpHistoryWarningKind::MissingBuffer
+            )
+        {
             println!("Skipping PMP slot {}: {}", warning.slot, warning.detail);
         }
     }

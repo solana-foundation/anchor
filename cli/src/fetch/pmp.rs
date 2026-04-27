@@ -26,6 +26,7 @@ const METADATA_SEED_PADDING: usize = 14;
 
 // Buffer accounts include a fixed header before the staged metadata payload bytes begin.
 const PMP_BUFFER_HEADER_SIZE: usize = 1 + 32 + 32 + 1 + SEED_SIZE + METADATA_SEED_PADDING;
+const MAX_RECONSTRUCTED_BUFFER_BYTES: usize = 16 * 1024 * 1024;
 
 // Mirrors the Program Metadata instruction discriminators so historical fetch can decode the raw
 // compiled instructions it replays from transaction history.
@@ -383,7 +384,11 @@ fn fetch_pmp_idl_from_transaction(
             .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?
         {
             PmpInstruction::Initialize => {
-                let (header, inline_bytes) = parse_initialize_data(&instruction.data)?;
+                let (header, inline_bytes) = parse_initialize_data(
+                    instruction
+                        .data_bytes()
+                        .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?,
+                )?;
                 if !inline_bytes.is_empty() {
                     recovered.push(header.decode_direct(inline_bytes)?);
                     continue;
@@ -401,7 +406,11 @@ fn fetch_pmp_idl_from_transaction(
                 recovered.push(header.decode_direct(&staged_bytes)?);
             }
             PmpInstruction::SetData => {
-                let (header, inline_bytes) = parse_set_data(&instruction.data)?;
+                let (header, inline_bytes) = parse_set_data(
+                    instruction
+                        .data_bytes()
+                        .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?,
+                )?;
                 if !inline_bytes.is_empty() {
                     recovered.push(header.decode_direct(inline_bytes)?);
                     continue;
@@ -483,6 +492,12 @@ fn apply_buffer_writes_to_bytes(buffer_writes: Vec<BufferWrite>) -> Result<Vec<u
 
     if highest_end == 0 {
         bail!("did not contain any recoverable PMP buffer write");
+    }
+    if highest_end > MAX_RECONSTRUCTED_BUFFER_BYTES {
+        bail!(
+            "reconstructed PMP buffer exceeds safety limit of {} bytes",
+            MAX_RECONSTRUCTED_BUFFER_BYTES
+        );
     }
 
     let mut buffer = vec![0u8; highest_end];
@@ -610,7 +625,10 @@ fn extract_buffer_writes_for_signature(
     tuning: &FetchTuning,
 ) -> std::result::Result<Vec<BufferReplayOp>, PmpFetchError> {
     let transaction = fetch_transaction(client, signature, tuning)
-        .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?;
+        .map_err(|err| PmpFetchError {
+            kind: PmpHistoryWarningKind::RpcError,
+            detail: err.to_string(),
+        })?;
     let ui_tx = parse_transaction_data(transaction)
         .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?;
     let account_keys = account_keys(&ui_tx.message)
@@ -641,7 +659,13 @@ fn extract_buffer_writes_for_signature(
             };
             match kind {
                 PmpInstruction::Write => {
-                    Some(parse_write_data(&instruction.data).map(BufferReplayOp::Write))
+                    Some(
+                        instruction
+                            .data_bytes()
+                            .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))
+                            .and_then(parse_write_data)
+                            .map(BufferReplayOp::Write),
+                    )
                 }
                 PmpInstruction::Allocate => Some(Ok(BufferReplayOp::Allocate)),
                 PmpInstruction::Extend => Some(Ok(BufferReplayOp::Extend)),
@@ -714,7 +738,7 @@ fn flatten_compiled_instructions(
 struct CompiledInstructionView {
     program_id_index: u8,
     accounts: Vec<Pubkey>,
-    data: Vec<u8>,
+    data: std::result::Result<Vec<u8>, bs58::decode::Error>,
 }
 
 // Enumerates the subset of PMP instructions that matter for reconstructing staged buffer content.
@@ -736,9 +760,7 @@ impl CompiledInstructionView {
                 .iter()
                 .filter_map(|index| account_keys.get(*index as usize).copied())
                 .collect(),
-            data: bs58::decode(&ix.data)
-                .into_vec()
-                .unwrap_or_else(|_| vec![u8::MAX]),
+            data: bs58::decode(&ix.data).into_vec(),
         }
     }
 
@@ -758,15 +780,20 @@ impl CompiledInstructionView {
 
     // Decodes the first instruction byte into the typed PMP instruction kind.
     fn kind(&self) -> Result<PmpInstruction> {
-        if self.data.first().copied() == Some(u8::MAX) {
-            bail!("invalid base58 PMP instruction data");
-        }
-        let value = self
-            .data
+        let data = self.data_bytes()?;
+        let value = data
             .first()
             .copied()
             .ok_or_else(|| anyhow!("empty PMP instruction data"))?;
         PmpInstruction::try_from(value).map_err(|err| anyhow!(err.detail))
+    }
+
+    // Returns the decoded instruction bytes or a descriptive error if the RPC payload was not
+    // valid base58.
+    fn data_bytes(&self) -> Result<&[u8]> {
+        self.data
+            .as_deref()
+            .map_err(|err| anyhow!("invalid base58 PMP instruction data: {err}"))
     }
 }
 

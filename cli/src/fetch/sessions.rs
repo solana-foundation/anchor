@@ -1,5 +1,7 @@
 use super::{SessionChunks, SlotChunk};
 
+// Legacy uploads normally write their chunks in a tight slot range. A 5k-slot break is large
+// enough to avoid splitting slow uploads while still separating unrelated historical sessions.
 const SESSION_SLOT_GAP_THRESHOLD: u64 = 5_000;
 
 // Groups ordered chunks into upload sessions using chunk-size transitions and slot gaps.
@@ -9,10 +11,10 @@ pub(super) fn group_chunks_into_sessions(all_chunks: &[SlotChunk]) -> Vec<Sessio
     let mut terminator_seen = false;
 
     for chunk in all_chunks {
-        let size = chunk.1.len();
+        let size = chunk.2.len();
         let last = current.last();
-        let prev_size = last.map(|(_, data)| data.len());
-        let prev_slot = last.map(|(slot, _)| *slot);
+        let prev_size = last.map(|(_, _, data)| data.len());
+        let prev_slot = last.map(|(slot, _, _)| *slot);
 
         let slot_gap_break = matches!(
             prev_slot,
