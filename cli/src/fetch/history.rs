@@ -1,7 +1,7 @@
-use std::{
-    collections::HashSet,
+use {
+    sha2::{Digest, Sha256},
+    std::collections::HashSet,
 };
-use sha2::{Digest, Sha256};
 
 // Identifies which on-chain storage path produced a recovered historical IDL so merge and output
 // logic can preserve provenance when legacy and PMP histories overlap.

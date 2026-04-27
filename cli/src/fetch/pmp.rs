@@ -624,8 +624,8 @@ fn extract_buffer_writes_for_signature(
     signature: &Signature,
     tuning: &FetchTuning,
 ) -> std::result::Result<Vec<BufferReplayOp>, PmpFetchError> {
-    let transaction = fetch_transaction(client, signature, tuning)
-        .map_err(|err| PmpFetchError {
+    let transaction =
+        fetch_transaction(client, signature, tuning).map_err(|err| PmpFetchError {
             kind: PmpHistoryWarningKind::RpcError,
             detail: err.to_string(),
         })?;
@@ -658,15 +658,13 @@ fn extract_buffer_writes_for_signature(
                 }
             };
             match kind {
-                PmpInstruction::Write => {
-                    Some(
-                        instruction
-                            .data_bytes()
-                            .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))
-                            .and_then(parse_write_data)
-                            .map(BufferReplayOp::Write),
-                    )
-                }
+                PmpInstruction::Write => Some(
+                    instruction
+                        .data_bytes()
+                        .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))
+                        .and_then(parse_write_data)
+                        .map(BufferReplayOp::Write),
+                ),
                 PmpInstruction::Allocate => Some(Ok(BufferReplayOp::Allocate)),
                 PmpInstruction::Extend => Some(Ok(BufferReplayOp::Extend)),
                 PmpInstruction::Trim => Some(Ok(BufferReplayOp::Trim)),

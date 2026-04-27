@@ -2,8 +2,9 @@ use {
     super::{
         decompress::decompress_all_streams,
         history::{HistoricalIdlVersion, IdlHistorySource},
-        sessions::group_chunks_into_sessions, DecompressedSessions, IdlFetcher, SessionChunks,
-        SlotChunk, PROGRESS_TICK_INTERVAL_MS, RpcConfirmedTransactionStatusWithSignature,
+        sessions::group_chunks_into_sessions,
+        DecompressedSessions, IdlFetcher, RpcConfirmedTransactionStatusWithSignature,
+        SessionChunks, SlotChunk, PROGRESS_TICK_INTERVAL_MS,
     },
     anyhow::{anyhow, Result},
     indicatif::{ProgressBar, ProgressStyle},

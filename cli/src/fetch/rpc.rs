@@ -178,9 +178,7 @@ pub(super) fn fetch_transaction(
                     return Err(anyhow!("failed to fetch transaction {signature}: {e}"));
                 }
                 let shift = (attempt - 1).min(20);
-                let backoff = tuning
-                    .retry_backoff_ms
-                    .saturating_mul(1u64 << shift);
+                let backoff = tuning.retry_backoff_ms.saturating_mul(1u64 << shift);
                 std::thread::sleep(std::time::Duration::from_millis(backoff));
             }
         }
