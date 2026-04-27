@@ -1198,40 +1198,38 @@ const miscTest = (
       );
       await program.provider.connection.confirmTransaction(signature);
       // Create all the accounts.
-      await Promise.all([
-        program.rpc.testFetchAll(filterable1, {
-          accounts: {
-            data: data1.publicKey,
-            authority: provider.wallet.publicKey,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          },
-          signers: [data1],
-        }),
-        program.rpc.testFetchAll(filterable1, {
-          accounts: {
-            data: data2.publicKey,
-            authority: provider.wallet.publicKey,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          },
-          signers: [data2],
-        }),
-        program.rpc.testFetchAll(filterable2, {
-          accounts: {
-            data: data3.publicKey,
-            authority: provider.wallet.publicKey,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          },
-          signers: [data3],
-        }),
-        anotherProgram.rpc.testFetchAll(filterable1, {
-          accounts: {
-            data: data4.publicKey,
-            authority: anotherProvider.wallet.publicKey,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          },
-          signers: [data4],
-        }),
-      ]);
+      await program.rpc.testFetchAll(filterable1, {
+        accounts: {
+          data: data1.publicKey,
+          authority: provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        signers: [data1],
+      });
+      await program.rpc.testFetchAll(filterable1, {
+        accounts: {
+          data: data2.publicKey,
+          authority: provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        signers: [data2],
+      });
+      await program.rpc.testFetchAll(filterable2, {
+        accounts: {
+          data: data3.publicKey,
+          authority: provider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        signers: [data3],
+      });
+      await anotherProgram.rpc.testFetchAll(filterable1, {
+        accounts: {
+          data: data4.publicKey,
+          authority: anotherProvider.wallet.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        signers: [data4],
+      });
       // Call for multiple kinds of .all.
       const allAccounts = await program.account.dataWithFilter.all();
       const allAccountsFilteredByBuffer =

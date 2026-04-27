@@ -46,15 +46,11 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         // - PDA is not init, but marked with bump without a target
 
                         match c {
-                            Constraint::Seeds(c) => {
-                                if !c.is_init && c.bump.is_none() {
-                                    return Some((bump_field, bump_default_field));
-                                }
+                            Constraint::Seeds(c) if !c.is_init && c.bump.is_none() => {
+                                return Some((bump_field, bump_default_field));
                             }
-                            Constraint::Init(c) => {
-                                if c.seeds.is_some() {
-                                    return Some((bump_field, bump_default_field));
-                                }
+                            Constraint::Init(c) if c.seeds.is_some() => {
+                                return Some((bump_field, bump_default_field));
                             }
                             _ => (),
                         }
