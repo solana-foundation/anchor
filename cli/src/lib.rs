@@ -55,6 +55,7 @@ mod abs_path;
 mod account;
 mod checks;
 pub mod config;
+pub mod fetch;
 mod keygen;
 mod metadata;
 mod program;
@@ -703,6 +704,42 @@ pub enum IdlCommand {
         /// Fetch non-canonical metadata account (third-party metadata)
         #[clap(long)]
         non_canonical: bool,
+    },
+    /// Fetches historical IDL versions for the given program from a cluster.
+    ///
+    /// With no filters, fetches all historical versions.
+    FetchHistorical {
+        program_id: Pubkey,
+        /// Fetch authority-scoped PMP metadata account history for this authority
+        #[clap(long)]
+        authority: Option<Pubkey>,
+        /// Fetch IDL at specific slot
+        #[clap(long, conflicts_with_all = ["before", "after"])]
+        slot: Option<u64>,
+        /// Fetch IDL before this date (YYYY-MM-DD)
+        #[clap(long)]
+        before: Option<String>,
+        /// Fetch IDL after this date (YYYY-MM-DD)
+        #[clap(long)]
+        after: Option<String>,
+        /// Output directory for fetched versions (defaults to the current directory)
+        #[clap(long)]
+        out_dir: Option<PathBuf>,
+        /// Max parallel RPC workers for transaction fetches.
+        #[clap(long)]
+        rpc_workers: Option<usize>,
+        /// Force sequential transaction fetches (equivalent to --rpc-workers 1).
+        #[clap(long, conflicts_with = "rpc_workers")]
+        no_parallel: bool,
+        /// Max retry attempts per transaction on 429/timeout errors.
+        #[clap(long, default_value_t = 5)]
+        rpc_max_retries: u32,
+        /// Base backoff in milliseconds between retries (doubled each attempt).
+        #[clap(long, default_value_t = 500)]
+        rpc_retry_backoff_ms: u64,
+        /// Print diagnostic progress messages.
+        #[clap(long)]
+        verbose: bool,
     },
     /// Convert legacy IDLs (pre Anchor 0.30) to the new IDL spec
     Convert {
@@ -2535,6 +2572,34 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             out,
             non_canonical,
         } => idl_fetch(cfg_override, address, out, non_canonical),
+        IdlCommand::FetchHistorical {
+            program_id: address,
+            authority,
+            slot,
+            before,
+            after,
+            out_dir,
+            rpc_workers,
+            no_parallel,
+            rpc_max_retries,
+            rpc_retry_backoff_ms,
+            verbose,
+        } => fetch::idl_fetch_historical(
+            cfg_override,
+            address,
+            authority,
+            slot,
+            before,
+            after,
+            out_dir,
+            fetch::FetchTuning {
+                workers: rpc_workers,
+                no_parallel,
+                max_retries: rpc_max_retries,
+                retry_backoff_ms: rpc_retry_backoff_ms,
+                verbose,
+            },
+        ),
         IdlCommand::Convert {
             path,
             out,
