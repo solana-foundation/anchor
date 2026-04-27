@@ -40,7 +40,7 @@ mod bpf_upgradeable_state;
 mod bpf_writer;
 mod common;
 pub mod context;
-pub mod error;
+pub use anchor_lang_error as error;
 #[doc(hidden)]
 pub mod event;
 #[doc(hidden)]

@@ -1,0 +1,21 @@
+[package]
+name = "anchor-lang-error"
+version.workspace = true
+publish = true
+edition = "2021"
+repository = "https://github.com/solana-foundation/anchor"
+license = "Apache-2.0"
+description = "Error definitions for anchor-lang"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+borsh = "1.5.7"
+
+solana-msg.workspace = true
+solana-program-error = { workspace = true, features = ["borsh"] }
+solana-pubkey.workspace = true
+
+anchor-attribute-error = { path = "../attribute/error", version = "1.0.1" }

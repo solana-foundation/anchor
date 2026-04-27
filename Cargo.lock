@@ -324,6 +324,7 @@ dependencies = [
  "anchor-derive-accounts",
  "anchor-derive-serde",
  "anchor-derive-space",
+ "anchor-lang-error",
  "anchor-lang-idl",
  "base64 0.21.7",
  "bincode",
@@ -352,6 +353,17 @@ dependencies = [
  "solana-sysvar",
  "solana-sysvar-id",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "anchor-lang-error"
+version = "1.0.1"
+dependencies = [
+ "anchor-attribute-error",
+ "borsh 1.6.1",
+ "solana-msg",
+ "solana-program-error",
+ "solana-pubkey 3.0.0",
 ]
 
 [[package]]
