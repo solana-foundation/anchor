@@ -14,6 +14,9 @@ pub(super) fn should_parallelize_historical_fetch(
     if matches!(tuning.workers, Some(1)) {
         return false;
     }
+    if tuning.workers.is_some_and(|workers| workers > 1) {
+        return signature_count > 1;
+    }
     signature_count > DEFAULT_PARALLEL_FETCH_SIGNATURE_THRESHOLD
 }
 
