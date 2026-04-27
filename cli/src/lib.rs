@@ -4330,18 +4330,16 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
         let cur_dir = std::env::current_dir()?;
         let migrations_dir = cur_dir.join("migrations");
-        let deploy_ts = Path::new("deploy.ts");
-        let deploy_js = Path::new("deploy.js");
 
-        if !migrations_dir.join(deploy_ts).exists() && !migrations_dir.join(deploy_js).exists() {
+        if !migrations_dir.exists() {
             return Err(anyhow!(
-                "No migration script found. Expected `migrations/deploy.ts` or \
-                 `migrations/deploy.js`. Rust-based test templates (rust, mollusk, litesvm) do \
-                 not generate migration scripts; create one manually or initialize the workspace \
-                 with a JS/TS test template."
+                "No `migrations/` directory found. Rust-based test templates (rust, mollusk, \
+                 litesvm) do not generate migration scripts; create one manually or initialize \
+                 the workspace with a JS/TS test template."
             ));
         }
 
+        let deploy_ts = Path::new("deploy.ts");
         let use_ts = Path::new("tsconfig.json").exists() && migrations_dir.join(deploy_ts).exists();
 
         if !Path::new(".anchor").exists() {
