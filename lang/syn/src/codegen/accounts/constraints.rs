@@ -1682,6 +1682,44 @@ fn generate_constraint_mint(
         None => quote! {},
     };
 
+    let interest_bearing_check = match (
+        &c.interest_bearing_mint_rate,
+        &c.interest_bearing_mint_authority,
+    ) {
+        (None, None) => quote! {},
+        (rate, authority) => {
+            let rate_check = match rate {
+                Some(rate) => quote! {
+                    if i16::from(interest_bearing.current_rate) != #rate {
+                        return Err(anchor_lang::error::ErrorCode::ConstraintMintInterestBearingRate.into());
+                    }
+                },
+                None => quote! {},
+            };
+            let authority_check = match authority {
+                Some(authority) => {
+                    let authority_optional_check = optional_check_scope.generate_check(authority);
+                    quote! {
+                        #authority_optional_check
+                        if interest_bearing.rate_authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#authority.key()))? {
+                            return Err(anchor_lang::error::ErrorCode::ConstraintMintInterestBearingAuthority.into());
+                        }
+                    }
+                }
+                None => quote! {},
+            };
+            quote! {
+                let interest_bearing = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::interest_bearing_mint::InterestBearingConfig>(#account_ref);
+                if interest_bearing.is_err() {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintInterestBearingExtension.into());
+                }
+                let interest_bearing = interest_bearing.unwrap();
+                #rate_check
+                #authority_check
+            }
+        }
+    };
+
     quote! {
         {
             #decimal_check
@@ -1699,6 +1737,7 @@ fn generate_constraint_mint(
             #transfer_hook_authority_check
             #transfer_hook_program_id_check
             #pausable_authority_check
+            #interest_bearing_check
         }
     }
 }

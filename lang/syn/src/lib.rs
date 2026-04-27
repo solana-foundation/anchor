@@ -1263,6 +1263,8 @@ pub struct ConstraintTokenMintGroup {
     pub transfer_hook_authority: Option<Expr>,
     pub transfer_hook_program_id: Option<Expr>,
     pub pausable_authority: Option<Expr>,
+    pub interest_bearing_mint_rate: Option<Expr>,
+    pub interest_bearing_mint_authority: Option<Expr>,
 }
 
 // Syntax context object for preserving metadata about the inner item.

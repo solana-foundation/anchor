@@ -976,8 +976,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             &extension_transfer_hook_program_id,
             &extension_permanent_delegate,
             &extension_pausable_authority,
+            &extension_interest_bearing_mint_rate,
+            &extension_interest_bearing_mint_authority,
         ) {
             (
+                None,
+                None,
                 None,
                 None,
                 None,
@@ -1039,6 +1043,12 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     .as_ref()
                     .map(|a| a.clone().into_inner().program_id),
                 pausable_authority: extension_pausable_authority
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().authority),
+                interest_bearing_mint_rate: extension_interest_bearing_mint_rate
+                    .as_ref()
+                    .map(|a| a.clone().into_inner().rate),
+                interest_bearing_mint_authority: extension_interest_bearing_mint_authority
                     .as_ref()
                     .map(|a| a.clone().into_inner().authority),
             }),
