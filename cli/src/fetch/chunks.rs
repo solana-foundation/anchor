@@ -12,6 +12,7 @@ use {
 
 const IDL_IX_TAG: [u8; 8] = [0x40, 0xf4, 0xbc, 0x78, 0xa7, 0xe9, 0x69, 0x0a];
 const WRITE_VARIANT: u8 = 0x02;
+const IDL_HEADER_SIZE: usize = 13;
 
 // Fetches a transaction and extracts any IDL write payload chunks from its instructions.
 pub(super) fn extract_chunks_from_transaction(
@@ -74,8 +75,6 @@ fn extract_from_raw_instructions(instructions: &[UiCompiledInstruction]) -> Resu
 
 // Decodes one instruction's base58 data and returns its compressed IDL payload when present.
 fn extract_compressed_chunk(data_str: &str) -> Result<Option<ChunkData>> {
-    const IDL_HEADER_SIZE: usize = 13;
-
     let data = bs58::decode(data_str).into_vec()?;
 
     if !is_valid_idl_write_instruction(&data) {
@@ -95,7 +94,7 @@ fn extract_compressed_chunk(data_str: &str) -> Result<Option<ChunkData>> {
 
 // Checks whether the instruction data matches Anchor's IDL write discriminator and variant.
 fn is_valid_idl_write_instruction(data: &[u8]) -> bool {
-    if data.len() < 13 {
+    if data.len() < IDL_HEADER_SIZE {
         return false;
     }
 
@@ -117,5 +116,5 @@ fn extract_payload_length(data: &[u8]) -> usize {
 
 // Ensures the instruction buffer actually contains the full declared payload bytes.
 fn has_complete_payload(data: &[u8], payload_len: usize) -> bool {
-    data.len() >= 13 + payload_len
+    data.len() >= IDL_HEADER_SIZE + payload_len
 }
