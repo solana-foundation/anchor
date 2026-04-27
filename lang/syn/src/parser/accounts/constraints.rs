@@ -1864,7 +1864,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         if self.extension_interest_bearing_mint_authority.is_some() {
             return Err(ParseError::new(
                 c.span(),
-                "extension interest bearing mint rate authority already provided",
+                "extension interest bearing mint authority already provided",
             ));
         }
         self.extension_interest_bearing_mint_authority.replace(c);
