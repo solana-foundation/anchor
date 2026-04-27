@@ -338,7 +338,7 @@ pub fn idl_fetch_historical(
         {
             return write_idl_file(
                 &selected.idl_data,
-                &PathBuf::from(format!("idl_{}.json", selected.slot)),
+                &PathBuf::from(format!("idl_{}.json", target_slot)),
                 out_dir.as_deref(),
             );
         }

@@ -110,9 +110,6 @@ pub(super) fn fetch_signatures_for_address(
             break;
         }
 
-        let reached_target_slot =
-            target_slot.is_some_and(|slot| page.iter().any(|sig| sig.slot <= slot));
-
         let next_cursor = page
             .last()
             .and_then(|sig| Signature::from_str(&sig.signature).ok());
@@ -139,7 +136,10 @@ pub(super) fn fetch_signatures_for_address(
             signatures.push(sig);
         }
 
-        if crossed_after_bound || reached_target_slot {
+        // For slot-based historical fetches we still need to keep paginating after crossing the
+        // target slot, because legacy embedded-IDL uploads span multiple older transactions and
+        // truncating the history here can leave only partial chunk sessions to decompress.
+        if crossed_after_bound {
             break;
         }
         match next_cursor {
