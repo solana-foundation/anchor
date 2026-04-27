@@ -857,6 +857,16 @@ fn generate_constraint_init_group(
                 None => quote! {},
             };
 
+            let interest_bearing_mint_rate_check = match interest_bearing_mint_rate {
+                Some(r) => check_scope.generate_check(r),
+                None => quote! {},
+            };
+
+            let interest_bearing_mint_authority_check = match interest_bearing_mint_authority {
+                Some(a) => check_scope.generate_check(a),
+                None => quote! {},
+            };
+
             let system_program_optional_check = check_scope.generate_check(system_program);
             let token_program_optional_check = check_scope.generate_check(&token_program);
             let rent_optional_check = check_scope.generate_check(rent);
@@ -878,6 +888,8 @@ fn generate_constraint_init_group(
                 #transfer_hook_program_id_check
                 #permanent_delegate_check
                 #pausable_authority_check
+                #interest_bearing_mint_rate_check
+                #interest_bearing_mint_authority_check
             };
 
             let payer_optional_check = check_scope.generate_check(payer);
