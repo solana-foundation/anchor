@@ -8,8 +8,8 @@ const { items, defaultIndex = 0 } = Astro.props
 const uid = `tabs-${Math.random().toString(36).slice(2, 9)}`
 ---
 
-<div class="my-6 overflow-hidden rounded-lg border-2" data-tabs={uid}>
-  <div role="tablist" class="border-border bg-muted/30 flex gap-1 border-b-2 px-2 py-1.5">
+<div class="my-6 rounded-lg border-2" data-tabs={uid}>
+  <div role="tablist" class="border-border bg-muted/30 flex gap-1 rounded-t-[6px] border-b-2 px-2 py-1.5">
     {
       items.map((label, i) => (
         <button
@@ -31,14 +31,22 @@ const uid = `tabs-${Math.random().toString(36).slice(2, 9)}`
   </div>
 </div>
 
+
 <script>
   function setupTabs() {
     document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((root) => {
       if (root.dataset.tabsInit === '1') return
       root.dataset.tabsInit = '1'
 
-      const tabs = root.querySelectorAll<HTMLButtonElement>('[data-tab-index]')
-      const panelsWrapper = root.querySelector<HTMLElement>('[data-tabs-panels]')
+      // `:scope >` keeps the queries from matching nested <Tabs> descendants —
+      // otherwise a click on an inner tab triggers the outer handler with an
+      // out-of-range index, which hides every outer panel.
+      const tabs = root.querySelectorAll<HTMLButtonElement>(
+        ':scope > [role="tablist"] > [data-tab-index]',
+      )
+      const panelsWrapper = root.querySelector<HTMLElement>(
+        ':scope > [data-tabs-panels]',
+      )
       if (!panelsWrapper) return
       const panels = Array.from(panelsWrapper.children) as HTMLElement[]
       const defaultIndex = Number(panelsWrapper.dataset.defaultIndex ?? 0)

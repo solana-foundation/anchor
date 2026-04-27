@@ -44,7 +44,7 @@ const { color, icon } = calloutConfig[variant]
 
 <details
   class={cn(
-    'relative my-6 border-l-4 border-l-[var(--callout-color)] px-4 py-3 text-sm',
+    'relative my-6 border-l-4 border-l-(--callout-color) px-4 py-3 text-sm',
     '[&[open]>summary_svg:last-child]:rotate-180 [&[open]>summary]:mb-3',
     rest.class,
   )}
@@ -53,14 +53,14 @@ const { color, icon } = calloutConfig[variant]
   open={defaultOpen}
 >
   <summary class="flex cursor-pointer items-center font-medium [&::-webkit-details-marker]:hidden">
-    <Icon name={icon} class="mr-2 size-4 shrink-0 text-[var(--callout-color)]" />
-    <span class="mr-2 font-medium text-[var(--callout-color)]">
+    <Icon name={icon} class="mr-2 size-4 shrink-0 text-(--callout-color)" />
+    <span class="mr-2 font-medium text-(--callout-color)">
       {capitalize(variant)}
       {title && <span class="font-normal opacity-70"> ({title})</span>}
     </span>
     <Icon
       name="lucide:chevron-down"
-      class="ml-auto h-4 w-4 shrink-0 text-[var(--callout-color)] transition-transform duration-200"
+      class="ml-auto h-4 w-4 shrink-0 text-(--callout-color) transition-transform duration-200"
     />
   </summary>
   <div data-callout-body>

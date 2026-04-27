@@ -17,5 +17,39 @@ import { DOCS, SITE } from '@/consts'
     <AnnouncementBar />
     <slot />
     {DOCS.search.enabled && <Search />}
+
+    <script>
+      const w = window as Window & { __inlineShellCmdBound?: boolean }
+      if (!w.__inlineShellCmdBound) {
+        w.__inlineShellCmdBound = true
+        document.addEventListener('click', async (event) => {
+          const target = event.target as HTMLElement | null
+          const button = target?.closest<HTMLButtonElement>('.inline-shell-cmd')
+          if (!button) return
+          if (button.dataset.copying === '1') return
+
+          const cmd = button.getAttribute('data-copy')
+          if (!cmd) return
+
+          try {
+            await navigator.clipboard.writeText(cmd)
+          } catch {
+            return
+          }
+
+          button.dataset.copying = '1'
+          const prompt = button.querySelector<HTMLSpanElement>('.shell-prompt')
+          const original = prompt?.textContent ?? '$'
+          if (prompt) prompt.textContent = '✓'
+          button.classList.add('copied')
+
+          window.setTimeout(() => {
+            if (prompt) prompt.textContent = original
+            button.classList.remove('copied')
+            delete button.dataset.copying
+          }, 1200)
+        })
+      }
+    </script>
   </body>
 </html>

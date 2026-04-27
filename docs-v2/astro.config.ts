@@ -20,6 +20,8 @@ import type { ExpressiveCodeTheme } from 'rehype-expressive-code'
 
 import { pluginShellPrompt } from './src/lib/ec-shell-prompt'
 import { pluginOutputSeparator } from './src/lib/ec-output-separator'
+import { rehypeInlineShellCmd } from './src/lib/rehype-inline-shell-cmd'
+import { rehypeInlinePathIcon } from './src/lib/rehype-inline-path-icon'
 
 import tailwindcss from '@tailwindcss/vite'
 import { extname, resolve } from 'node:path'
@@ -189,6 +191,8 @@ export default defineConfig({
           inline: 'tailing-curly-colon',
         },
       ],
+      rehypeInlineShellCmd,
+      rehypeInlinePathIcon,
       rehypeHeadingIds,
       [
         rehypeAutolinkHeadings,

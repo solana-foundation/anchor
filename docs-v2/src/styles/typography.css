@@ -97,7 +97,7 @@
     }
 
     :where(code):not(:where(.not-prose, .not-prose *)) {
-      @apply bg-muted/50 text-accent relative rounded-sm px-[0.3rem] py-[0.2rem] text-sm font-medium wrap-break-word;
+      @apply bg-muted/50 text-foreground relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) code {
@@ -105,7 +105,7 @@
     }
 
     :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
-      @apply bg-muted/50! text-foreground relative rounded-sm px-[0.3rem] py-[0.2rem] text-sm font-medium wrap-break-word;
+      @apply bg-muted/50! text-foreground relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) .shiki {
@@ -113,21 +113,62 @@
       line-height: inherit;
     }
 
-    :where(.shiki code):not(:where(.not-prose, .not-prose *)) {
+    /* Specificity must beat the .small variant rule (`summary ~ * code`,
+       which is 0,1,1). Using a real class selector (not :where) gets us
+       to 0,2,1 so the inner <code> stays unpadded inside callouts too. */
+    .shiki code {
       @apply bg-transparent p-0;
     }
 
+    :where(.inline-shell-cmd):not(:where(.not-prose, .not-prose *)) {
+      @apply bg-muted/50 text-foreground font-mono relative inline-flex cursor-pointer items-baseline rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium align-baseline transition-colors leading-[1.2] border-0;
+    }
+
+    :where(.inline-shell-cmd):hover:not(:where(.not-prose, .not-prose *)) {
+      @apply bg-muted;
+    }
+
+    :where(.inline-shell-cmd):focus-visible:not(:where(.not-prose, .not-prose *)) {
+      @apply outline-ring outline-2 outline-offset-2;
+    }
+
+    /* Specificity must beat the .small variant rule (`summary ~ * code`,
+       which is 0,1,1). Using a real class selector (not :where) gets us
+       to 0,2,1 so the inner <code> stays unpadded inside callouts too. */
+    .inline-shell-cmd code {
+      @apply bg-transparent p-0 text-inherit;
+    }
+
+    /* Mirror the .shiki span color rules for tokens inside the command pill.
+       The outer .shiki wrapper is dropped by the rehype plugin, so these spans
+       would otherwise lose their dark-mode color. */
+    :where(.inline-shell-cmd span):not(.shell-prompt):not(:where(.not-prose, .not-prose *)) {
+      @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)] dark:text-(--shiki-dark)!;
+    }
+
+    [data-theme='dark']
+      :where(.inline-shell-cmd span):not(.shell-prompt):not(:where(.not-prose, .not-prose *)) {
+      @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)];
+    }
+
+    :where(.inline-shell-cmd .shell-prompt):not(:where(.not-prose, .not-prose *)) {
+      @apply text-accent font-bold select-none transition-colors mr-[1ch];
+    }
+
+    :where(.inline-shell-cmd.copied .shell-prompt):not(:where(.not-prose, .not-prose *)) {
+      @apply text-(--ctp-green);
+    }
+
+    :where(.inline-path-icon):not(:where(.not-prose, .not-prose *)) {
+      @apply inline-block w-[0.95em] h-[0.95em] mr-[0.4ch] align-[-0.15em] text-muted-foreground shrink-0;
+    }
+
     :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
-      font-style: var(--shiki-light-font-style);
-      font-weight: var(--shiki-light-font-weight);
-      text-decoration: var(--shiki-light-text-decoration);
-      @apply dark:text-(--shiki-dark)!;
+      @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)] dark:text-(--shiki-dark)!;
     }
 
     [data-theme='dark'] :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
-      font-style: var(--shiki-dark-font-style);
-      font-weight: var(--shiki-dark-font-weight);
-      text-decoration: var(--shiki-dark-text-decoration);
+      @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)];
     }
 
     :where(blockquote):not(:where(.not-prose, .not-prose *)) {
@@ -196,6 +237,35 @@
   }
 }
 
+/* Stepper-inside-tabs merge: the tab wrapper's left border becomes the
+   stepper's connector line. The panel keeps its full p-4 padding so non-step
+   content (callouts, paragraphs, code blocks) sits within normal padding —
+   ONLY the .step rows reach leftward past the padding and the wrapper border
+   via negative margin, so the numbered circles sit centered on the border.
+
+   These rules sit OUTSIDE @layer on purpose: Tailwind's .p-4 / .gap-x-3
+   utilities live in @layer utilities, which beats @layer components
+   regardless of selector specificity. Default-layer rules beat all @layer
+   rules, so this override actually applies. */
+[data-tabs-panels]:has(.steps) {
+  @apply overflow-visible;
+}
+
+[data-tabs-panels] [data-tab-panel] {
+  @apply overflow-visible;
+}
+
+[data-tabs-panels] .step-connector {
+  @apply hidden;
+}
+
+[data-tabs-panels] .step {
+  /* Negate (panel padding + half circle + half border):
+     base = -(1rem + 0.875rem + 1px) ≈ -31px; sm: = -(1rem + 1rem + 1px) ≈ -33px.
+     Tight column-gap pulls the title flush against the circle. */
+  @apply -ml-[calc(1rem+0.875rem+1px)] gap-x-1 sm:-ml-[calc(1rem+1rem+1px)] sm:gap-x-1.5;
+}
+
 @utility small {
-  @apply text-sm leading-6 [&_code]:text-xs [&_code]:px-[0.25rem] [&_code]:py-[0.1rem] [&_.shiki]:text-xs [&_.shiki]:px-[0.15rem] [&_.shiki]:py-[0.125rem] [&_img,video,figure,details,blockquote,.katex-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
+  @apply text-sm leading-6 [&_code]:text-xs [&_code]:px-[0.25rem] [&_code]:py-[0.1rem] [&_.shiki]:text-xs [&_.shiki]:px-[0.15rem] [&_.shiki]:py-[0.125rem] [&_.inline-shell-cmd]:text-xs [&_.inline-shell-cmd]:px-[0.25rem] [&_.inline-shell-cmd]:py-[0.1rem] [&_img,video,figure,details,blockquote,.katex-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
 }

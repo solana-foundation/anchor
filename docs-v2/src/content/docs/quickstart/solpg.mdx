@@ -52,17 +52,11 @@ Some useful terms:
 
 ### Get Devnet SOL
 
-Before we start building, we need some devnet SOL. SOL is required to create accounts on the network and to pay transaction fees. There are two methods to fund your wallet:
+Before we start building, we need some devnet SOL. SOL is required to create accounts on the network and to pay transaction fees.
 
-1. In the Playground terminal, run:
+In the Playground terminal, run `$ [34msolana[0m airdrop 5{:ansi}`. If the airdrop command doesn't work (due to rate limits), use the [Web Faucet](https://faucet.solana.com/). Enter your wallet address (found at the bottom of the Playground screen), select an amount, and click "Confirm Airdrop".
 
-    ```ansi title="Terminal"
-    solana airdrop 5
-    ```
-
-2. If the airdrop command doesn't work (due to rate limits), use the [Web Faucet](https://faucet.solana.com/). Enter your wallet address (found at the bottom of the Playground screen), select an amount, and click "Confirm Airdrop".
-
-    ![Faucet Airdrop](/docs/quickstart/faucet-airdrop.gif)
+![Faucet Airdrop](/docs/quickstart/faucet-airdrop.gif)
 
 </Step>
 
@@ -167,17 +161,17 @@ pub struct NewAccount {
 To build the program, run `build` in the terminal.
 
 ```ansi title="Terminal"
-$ build
+$ [34mbuild[0m
 [1;34mBuilding...[0m
 [1;32mBuild successful.[0m Completed in 1.46s.
 ```
 
 Notice that the address in `declare_id!(){:rs}` has been updated. This is your program's on-chain address.
 
-Once built, run `deploy` to deploy to the network (devnet by default). Make sure you have enough SOL first; if needed, run `solana airdrop 5` or use the [Web Faucet](https://faucet.solana.com/).
+Once built, run `$ [34mdeploy[0m{:ansi}` to deploy to the network (devnet by default). Make sure you have enough SOL first.
 
 ```ansi title="Terminal"
-$ deploy
+$ [34mdeploy[0m
 [1;34mDeploying...[0m This could take a while depending on the program size and network conditions.
 [1;33mWarning[0m: 8 transactions not confirmed, retrying...
 [1;32mDeployment successful.[0m Completed in 18s.
@@ -191,7 +185,7 @@ You can also use the `Build` and `Deploy` buttons on the left-side panel.
 <Step>
 ### Test program
 
-The starter code includes a test file at `tests/anchor.test.ts` that shows how to invoke the `initialize()` instruction from the client.
+The starter code includes a test file at `tests/anchor.test.ts` that shows how to invoke the `initialize(){:ts}` instruction from the client.
 
 ```ts title="anchor.test.ts"
 // No imports needed: web3, anchor, pg and more are globally available
@@ -230,10 +224,10 @@ describe("Test", () => {
 });
 ```
 
-Run the tests with:
+Run the tests with `$ [34mtest[0m{:ansi}`:
 
 ```ansi title="Terminal"
-$ test
+$ [34mtest[0m
 [1;34mRunning tests...[0m
   [1manchor.test.ts:[0m
   Test
@@ -247,10 +241,10 @@ You can also click the `Test` button on the left-side panel.
 
 ![Run Test](/docs/quickstart/pg-test.png)
 
-To view the transaction logs, run `solana confirm -v` with the transaction hash from the test output:
+To view the transaction logs, run `$ [34msolana[0m confirm [2m-v[0m{:ansi}` with the transaction hash from the test output:
 
 ```ansi title="Terminal" collapse={8-37}
-$ solana confirm -v h6JV2E4HKiFMHLVQaFDRma9h8K3RBHKTb7vMiT8cLBsVQoyBnZmF6wD5cSrEG1ai6Bu7x7ibJakAyqXE45BJti
+$ [34msolana[0m confirm [2m-v[0m h6JV2E4HKiFMHLVQaFDRma9h8K3RBHKTb7vMiT8cLBsVQoyBnZmF6wD5cSrEG1ai6Bu7x7ibJakAyqXE45BJti
 [1;35mRPC URL:[0m https://api.devnet.solana.com
 [1;35mDefault Signer:[0m Playground Wallet
 [1;35mCommitment:[0m confirmed
@@ -296,7 +290,7 @@ Finalized
 You can close the program to reclaim the SOL allocated to it. To close a program, run:
 
 ```ansi title="Terminal"
-$ solana program close [2m<program-id>[0m
+$ [34msolana[0m program close [2m<program-id>[0m
 Closed Program Id [2m<program-id>[0m, 2.89823448 SOL reclaimed
 ```
 

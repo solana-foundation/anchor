@@ -17,14 +17,7 @@ Before you begin, ensure you have Rust, the Solana CLI, and the Anchor CLI insta
 
 ### Create a new project
 
-To start a new project, use the `anchor init` command followed by your project's name. This creates a new directory with the specified name and scaffolds a default program and test file:
-
-```ansi
-$ anchor init [2m<project-name>[0m
-$ cd [2m<project-name>[0m
-```
-
-By default, Anchor generates a modular program structure to promote better code organization and maintainability:
+To start a new project, use the `$ anchor init [2m<project-name>[0m{:ansi}` (for our examples, we will use `my-project{:ansi}` for `[2m<project-name>[0m{:ansi}`). This creates a new directory with the specified name and scaffolds a default program and test file. By default, Anchor generates a modular program structure to promote better code organization and maintainability:
 
 <FileTree>
   <Dir name="programs">
@@ -36,14 +29,14 @@ By default, Anchor generates a modular program structure to promote better code 
         <File name="constants.rs" comment="Program constants" />
         <File name="error.rs" comment="Custom error definitions" />
         <File name="instructions.rs" comment="Instructions module root" />
-        <File name="lib.rs" comment="Main entry point" />
+        <File name="lib.rs" comment="Main entry point" highlight />
         <File name="state.rs" comment="Account state module root" />
       </Dir>
     </Dir>
   </Dir>
 </FileTree>
 
-`lib.rs` is the program's entry point. It declares each submodule and wires instruction handlers into the `#[program]` block. The `declare_id!(){:rs}` value is your program's on-chain address (by default, the public key of the keypair at `/target/deploy/my_project-keypair.json`).
+`lib.rs` is the program's entry point. It declares each submodule and wires instruction handlers into the `#[program]{:rs}` block. The `declare_id!(){:rs}` value is your program's on-chain address (by default, the public key of the keypair at `/target/deploy/my_project-keypair.json`).
 
 <Tabs items={["lib.rs", "instructions/initialize.rs"]}>
 <Tab>
@@ -87,16 +80,16 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
 </Tabs>
 
 <Callout variant="tip" title="Single-file template">
-  For quick prototypes, skip the module split with `anchor init --template single`. The modular layout is recommended for anything you plan to maintain.
+  For quick prototypes, skip the module split with `$ anchor init [2m--template[0m single{:ansi}`. The modular layout is recommended for anything you plan to maintain.
 </Callout>
 
 ### Test file
 
-Anchor generates a test file alongside the program. TypeScript is the default. To get a Rust test instead, pass `--test-template rust` ([Rust client](/docs/clients/rust)) or `--test-template mollusk` ([Mollusk](/docs/testing/mollusk)).
+Anchor generates a test file alongside the program. TypeScript is the default. To get a Rust test instead, pass `[2m--test-template[0m rust{:ansi}` ([Rust client](/docs/clients/rust)) or `[2m--test-template[0m mollusk{:ansi}` ([Mollusk](/docs/testing/mollusk)).
 
 <Tabs items={["TypeScript", "Rust"]}>
 <Tab>
-Located at `/tests/my-project.ts`. Invokes the `initialize()` instruction via the generated client.
+Located at `/tests/my-project.ts`. Invokes the `initialize(){:ts}` instruction via the generated client.
 
 ```ts title="tests/my-project.ts"
 import * as anchor from '@anchor-lang/core'
@@ -115,7 +108,7 @@ describe('my-project', () => {
 ```
 </Tab>
 <Tab>
-Located at `/tests/src/test_initialize.rs`. Uses `anchor_client` to call the program against localnet.
+Located at `/tests/src/test_initialize.rs`. Uses `[33manchor_client[0m{:ansi}` to call the program against localnet.
 
 ```rust title="tests/src/test_initialize.rs"
 use std::str::FromStr;
@@ -155,38 +148,20 @@ fn test_initialize() {
 
 ### Build the program
 
-Run `anchor build` to compile the program:
-
-```ansi
-$ anchor build
-```
-
-The compiled artifact is written to `/target/deploy/my_project.so`. This binary is the executable bytecode uploaded to the chain during deployment.
+Run `$ [34manchor[0m build{:ansi}` to compile the program. The compiled artifact is written to `/target/deploy/my_project.so`. This binary is the executable bytecode uploaded to the chain during deployment.
 
 </Step>
 <Step>
 
 ### Test the program
 
-Run `anchor test` to execute the test suite against a local cluster:
-
-```ansi
-$ anchor test
-```
+Run `$ [34manchor[0m test{:ansi}` to execute the test suite against a local cluster.
 
 With the default `Anchor.toml` targeting `localnet`, this starts a local validator, builds and deploys the program, runs the tests in `/tests`, then shuts the validator down.
 
-To keep the validator running between iterations so you can inspect accounts and transaction logs on the [Solana Explorer](https://explorer.solana.com/?cluster=custom) while developing, start it in a separate terminal:
-
-```ansi
-$ solana-test-validator
-```
-
-Then pass `--skip-local-validator` so tests attach to the running instance instead of spawning their own:
-
-```ansi
-$ anchor test --skip-local-validator
-```
+<Callout variant="tip" title="Persistent validator for debugging">
+To keep the validator running between iterations so you can inspect accounts and transaction logs on the [Solana Explorer](https://explorer.solana.com/?cluster=custom) while developing, start `$ [34msolana-test-validator[0m{:ansi}` in a separate terminal. From there, pass `[2m--skip-local-validator[0m{:ansi}` to `$ [34manchor[0m test [2m--skip-local-validator[0m{:ansi}` so tests attach to the running instance instead of spawning their own.
+</Callout>
 
 </Step>
 <Step>
@@ -218,11 +193,7 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
   Note that deploying to devnet requires your wallet to have enough SOL to cover deployment cost. You can get devnet SOL using the [Web Faucet](https://faucet.solana.com/).
 </Callout>
 
-Run `anchor deploy` to push the program to the cluster specified in `Anchor.toml`. The `anchor test` command also respects this setting:
-
-```ansi
-$ anchor deploy
-```
+Run `$ [34manchor[0m deploy{:ansi}` to push the program to the cluster specified in `Anchor.toml`. The `$ [34manchor[0m test{:ansi}` command also respects this setting.
 
 To deploy to mainnet, update the `Anchor.toml` file to specify the mainnet cluster:
 
@@ -238,22 +209,17 @@ wallet = "~/.config/solana/id.json"
 
 ### Update the program
 
-Solana programs are updated in place by redeploying a new build to the same program ID. After making code changes, run `anchor build` to produce an updated `.so` artifact, then `anchor deploy` to upload it:
-
-```ansi
-$ anchor build
-$ anchor deploy
-```
+Solana programs are updated in place by redeploying a new build to the same program ID. After making code changes, run `$ [34manchor[0m build{:ansi}` to produce an updated `.so` artifact, then `$ [34manchor[0m deploy{:ansi}` to upload it.
 
 </Step>
 <Step>
 
 ### Close the program
 
-Closing a program reclaims the SOL allocated to its on-chain account. Run `solana program close <PROGRAM_ID>` to retire it:
+Closing a program reclaims the SOL allocated to its on-chain account. Run `$ solana program close [2m<program-id>[0m{:ansi}` to retire it:
 
 ```ansi
-$ solana program close 3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg --bypass-warning
+$ [34msolana[0m program close [2m<program-id>[0m --bypass-warning
 ```
 
 The program ID is permanently retired once closed. You cannot redeploy to the same address.
@@ -264,7 +230,7 @@ The program ID is permanently retired once closed. You cannot redeploy to the sa
 
 ## Project file structure
 
-A default Anchor workspace contains the following top-level files and directories. A single workspace may host multiple programs under `/programs`, though `anchor init` generates one by default.
+A default Anchor workspace contains the following top-level files and directories. A single workspace may host multiple programs under `programs/`, though `$ [34manchor[0m init{:ansi}` generates one by default.
 
 {/* cspell:disable */}
 
