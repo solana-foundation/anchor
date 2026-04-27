@@ -1351,6 +1351,7 @@ fn process_command(opts: Opts) -> Result<()> {
             run,
             validator,
             profile,
+            false, // gdb — only `anchor debugger --gdb` enables this
             args,
             env,
             cargo_args,
@@ -1653,8 +1654,11 @@ fn install_solana_skill() {
 /// older Anchor defaults, npm as the universal fallback since it ships with
 /// Node. Bun stays out of the waterfall: users who want it must opt in
 /// explicitly since it's not commonly installed.
-const PACKAGE_MANAGER_WATERFALL: &[PackageManager] =
-    &[PackageManager::PNPM, PackageManager::Yarn, PackageManager::NPM];
+const PACKAGE_MANAGER_WATERFALL: &[PackageManager] = &[
+    PackageManager::PNPM,
+    PackageManager::Yarn,
+    PackageManager::NPM,
+];
 
 /// Check whether a package manager binary is on `PATH` without installing
 /// anything. Runs `<cmd> --version` and discards output.
@@ -1692,8 +1696,8 @@ fn resolve_package_manager(explicit: Option<PackageManager>) -> Result<PackageMa
     if let Some(pm) = explicit {
         if !package_manager_available(&pm) {
             return Err(anyhow!(
-                "`{pm}` was requested but is not on PATH. Install it or pick a \
-                 different package manager with `--package-manager`."
+                "`{pm}` was requested but is not on PATH. Install it or pick a different package \
+                 manager with `--package-manager`."
             ));
         }
         return Ok(pm);
@@ -1716,8 +1720,8 @@ fn resolve_package_manager(explicit: Option<PackageManager>) -> Result<PackageMa
     }
 
     Err(anyhow!(
-        "No supported package manager found on PATH (tried pnpm, yarn, npm). \
-         Install one of them, or re-run with `--no-install`."
+        "No supported package manager found on PATH (tried pnpm, yarn, npm). Install one of them, \
+         or re-run with `--no-install`."
     ))
 }
 
@@ -3383,6 +3387,7 @@ fn test(
     tests_to_run: Vec<String>,
     validator_type: ValidatorType,
     profile: bool,
+    gdb: bool,
     extra_args: Vec<String>,
     env_vars: Vec<String>,
     cargo_args: Vec<String>,
@@ -3410,7 +3415,7 @@ fn test(
         // at our profile directory before the child `cargo test` runs.
         let workspace_root = cfg.path().parent().unwrap().to_owned();
         let profile_dir = workspace_root.join(crate::profile::DEFAULT_PROFILE_DIR);
-        if profile {
+        let _gdb_guard: Option<crate::debugger::gdb::GdbDriver> = if profile {
             let _ = fs::remove_dir_all(&profile_dir);
             std::env::set_var("ANCHOR_PROFILE_DIR", &profile_dir);
 
@@ -3424,25 +3429,45 @@ fn test(
 
             // Rewrite `cargo test` → `cargo test --features profile` so the
             // user's test project picks up `anchor_v2_testing`'s profile
-            // feature. We touch only the `test` script — BENCH_IX_TRACE and
-            // custom scripts are left alone.
+            // feature. For gdb mode also append `--test-threads=1` (libtest
+            // flag, must come after `--`) because sbpf's `VM_DEBUG_PORT` is
+            // process-wide env state and parallel tests race on bind.
             if let Some(test_script) = cfg.scripts.get_mut("test") {
                 if test_script.contains("cargo test") {
-                    *test_script = test_script
-                        .replacen("cargo test", "cargo test --features profile", 1);
+                    *test_script =
+                        test_script.replacen("cargo test", "cargo test --features profile", 1);
+                    if gdb {
+                        let sep = if test_script.contains(" -- ") {
+                            " "
+                        } else {
+                            " -- "
+                        };
+                        *test_script = format!("{test_script}{sep}--test-threads=1");
+                    }
                 } else {
                     eprintln!(
-                        "warning: --profile requires the `test` script in Anchor.toml to \
-                         invoke `cargo test`; got: {test_script:?}. Profiling will not activate."
+                        "warning: --profile requires the `test` script in Anchor.toml to invoke \
+                         `cargo test`; got: {test_script:?}. Profiling will not activate."
                     );
                 }
             } else {
                 eprintln!(
-                    "warning: --profile requires a [scripts] test entry in Anchor.toml; \
-                     none found. Profiling will not activate."
+                    "warning: --profile requires a [scripts] test entry in Anchor.toml; none \
+                     found. Profiling will not activate."
                 );
             }
-        }
+
+            if gdb {
+                let driver = crate::debugger::gdb::start_gdb_driver(&profile_dir)?;
+                std::env::set_var(crate::debugger::gdb::SOCKET_ENV, driver.sock_path());
+                std::env::set_var("RUST_TEST_THREADS", "1");
+                Some(driver)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         // Build if needed. Note: we don't inject `--debug` for --profile
         // because that flag leaks from `cargo_args` into other cargo
@@ -3607,13 +3632,6 @@ fn debugger(
         }
     };
 
-    if gdb && has_anchor_toml {
-        return Err(anyhow!(
-            "`--gdb` isn't supported with an Anchor.toml workspace yet; \
-             run it from a loose cargo workspace (see `anchor debugger --help`)."
-        ));
-    }
-
     if has_anchor_toml {
         debugger_anchor_workspace(
             cfg_override,
@@ -3621,6 +3639,7 @@ fn debugger(
             skip_run,
             skip_build,
             skip_lint,
+            gdb,
             cargo_args,
         )
     } else {
@@ -3642,6 +3661,7 @@ fn debugger_anchor_workspace(
     skip_run: bool,
     skip_build: bool,
     skip_lint: bool,
+    gdb: bool,
     cargo_args: Vec<String>,
 ) -> Result<()> {
     if !skip_run {
@@ -3661,6 +3681,7 @@ fn debugger_anchor_workspace(
             Vec::new(), // tests_to_run
             ValidatorType::Surfpool,
             true,       // profile — always on for --debugger
+            gdb,        // gdb — drives traces via sbpf gdb-stub instead of inline
             Vec::new(), // extra_args
             Vec::new(), // env_vars
             cargo_args,
@@ -3670,54 +3691,20 @@ fn debugger_anchor_workspace(
     with_workspace(cfg_override, |cfg| -> Result<()> {
         let workspace_root = cfg.path().parent().unwrap().to_owned();
         let profile_dir = workspace_root.join(crate::profile::DEFAULT_PROFILE_DIR);
-
-        // Build pubkey → deployed `.so` map. Two sources, in priority order:
-        //   1. Anchor.toml `[programs.*]` — explicit, authoritative.
-        //   2. `target/deploy/*-keypair.json` (loose-mode discovery) —
-        //      filled-in for projects whose Anchor.toml omits the program
-        //      mapping (common in scaffolded test workspaces). Anchor.toml
-        //      always wins on conflict.
-        let deploy_dir = workspace_root.join("target").join("deploy");
-        let mut pubkey_to_so: BTreeMap<String, PathBuf> = BTreeMap::new();
-        let mut sources: BTreeMap<String, &'static str> = BTreeMap::new();
-        for programs in cfg.programs.values() {
-            for (name, deployment) in programs {
-                let pk = deployment.address.to_string();
-                pubkey_to_so.insert(pk.clone(), deploy_dir.join(format!("{name}.so")));
-                sources.insert(pk, "Anchor.toml");
-            }
-        }
-        if let Ok(discovered) = debugger::loose::discover_programs(&workspace_root, None) {
-            for (pk, so) in discovered {
-                if !pubkey_to_so.contains_key(&pk) {
-                    pubkey_to_so.insert(pk.clone(), so);
-                    sources.insert(pk, "target/deploy");
-                }
-            }
-        }
+        let (pubkey_to_so, sources) = resolve_anchor_workspace_programs(cfg);
 
         if pubkey_to_so.is_empty() {
             return Err(anyhow!(
-                "no programs resolved for the debugger.\n\n\
-                 Either declare them in Anchor.toml:\n  \
-                   [programs.localnet]\n  \
-                   <name> = \"<pubkey>\"\n\n\
-                 or run `anchor build` so `target/deploy/<name>-keypair.json` exists."
+                "no programs resolved for the debugger.\n\nEither declare them in Anchor.toml:\n  \
+                 [programs.localnet]\n  <name> = \"<pubkey>\"\n\nor run `anchor build` so \
+                 `target/deploy/<name>-keypair.json` exists."
             ));
         }
-
-        let cwd = std::env::current_dir().ok();
-        let display_path = |p: &Path| -> String {
-            cwd.as_ref()
-                .and_then(|c| p.strip_prefix(c).ok())
-                .map(|rel| rel.display().to_string())
-                .unwrap_or_else(|| p.display().to_string())
-        };
 
         println!("\nResolved programs:");
         for (pk, so) in &pubkey_to_so {
             let src = sources.get(pk).copied().unwrap_or("unknown");
-            println!("  {pk}  →  {}  [{src}]", display_path(so));
+            println!("  {pk}  →  {}  [{src}]", display_path_relative_to_cwd(so));
         }
 
         debugger::run(
@@ -3774,13 +3761,10 @@ fn debugger_loose(
         // by setting RUSTC_WRAPPER to the anchor binary itself — a hidden
         // wrapper mode (see `debugger::rustc_wrapper`) that rewrites the
         // flag to `-Zremap-cwd-prefix=$CWD`, preserving absolute paths.
-        let anchor_exe = std::env::current_exe()
-            .context("resolve anchor binary path for RUSTC_WRAPPER")?;
+        let anchor_exe =
+            std::env::current_exe().context("resolve anchor binary path for RUSTC_WRAPPER")?;
         std::env::set_var("RUSTC_WRAPPER", &anchor_exe);
-        std::env::set_var(
-            debugger::rustc_wrapper::WRAPPER_SENTINEL,
-            "1",
-        );
+        std::env::set_var(debugger::rustc_wrapper::WRAPPER_SENTINEL, "1");
 
         // Build the SBF program first so `target/deploy/<name>.so` exists
         // (post-linked, sbpf-loadable). Skipping build-sbf is the #1 cause
@@ -3838,20 +3822,19 @@ fn debugger_loose(
     let pubkey_to_so = debugger::loose::discover_programs(&ws.root, ws.current_package.as_deref())?;
     if pubkey_to_so.is_empty() {
         eprintln!(
-            "warning: no programs found under {}/target/deploy/.\n\
-             ELFs are required for source/disasm symbolication. The debugger \
-             will still open but the static disasm pane will be empty.",
+            "warning: no programs found under {}/target/deploy/.\nELFs are required for \
+             source/disasm symbolication. The debugger will still open but the static disasm pane \
+             will be empty.",
             ws.root.display()
         );
     }
 
     if !profile_dir.exists() {
         return Err(anyhow!(
-            "no traces produced at {}.\n\n\
-             Did the test actually run? Check that:\n\
-             - the test calls `anchor_v2_testing::svm()` (NOT `LiteSVM::new()`)\n\
-             - the `{profile_feature}` feature is enabled in the test build\n\
-             - the test sent at least one transaction that hit a BPF program",
+            "no traces produced at {}.\n\nDid the test actually run? Check that:\n- the test \
+             calls `anchor_v2_testing::svm()` (NOT `LiteSVM::new()`)\n- the `{profile_feature}` \
+             feature is enabled in the test build\n- the test sent at least one transaction that \
+             hit a BPF program",
             profile_dir.display()
         ));
     }
@@ -3894,8 +3877,8 @@ fn run_coverage(
         // `build_program()` spawns `cargo build-sbf` from within the test
         // harness — those subprocess builds must inherit the wrapper to
         // produce DWARF with preserved paths.
-        let anchor_exe = std::env::current_exe()
-            .context("resolve anchor binary path for RUSTC_WRAPPER")?;
+        let anchor_exe =
+            std::env::current_exe().context("resolve anchor binary path for RUSTC_WRAPPER")?;
         std::env::set_var("RUSTC_WRAPPER", &anchor_exe);
         std::env::set_var(debugger::rustc_wrapper::WRAPPER_SENTINEL, "1");
 
@@ -3970,6 +3953,51 @@ fn run_coverage(
     Ok(())
 }
 
+/// Render path `p` as cwd-relative when possible, falling back to absolute.
+fn display_path_relative_to_cwd(p: &Path) -> String {
+    std::env::current_dir()
+        .ok()
+        .as_deref()
+        .and_then(|c| p.strip_prefix(c).ok())
+        .map(|rel| rel.display().to_string())
+        .unwrap_or_else(|| p.display().to_string())
+}
+
+/// Build pubkey → deployed `.so` map for an Anchor.toml workspace.
+///
+/// Two sources, in priority order:
+///   1. `[programs.*]` in `Anchor.toml` — explicit, authoritative.
+///   2. `target/deploy/*-keypair.json` (loose-mode discovery) —
+///      filled-in for projects whose Anchor.toml omits the program
+///      mapping. Anchor.toml always wins on conflict.
+///
+/// Returns `(pubkey_to_so, sources)` where `sources[pk]` is `"Anchor.toml"`
+/// or `"target/deploy"` for diagnostics.
+fn resolve_anchor_workspace_programs(
+    cfg: &WithPath<Config>,
+) -> (BTreeMap<String, PathBuf>, BTreeMap<String, &'static str>) {
+    let workspace_root = cfg.path().parent().unwrap();
+    let deploy_dir = workspace_root.join("target").join("deploy");
+    let mut pubkey_to_so: BTreeMap<String, PathBuf> = BTreeMap::new();
+    let mut sources: BTreeMap<String, &'static str> = BTreeMap::new();
+    for programs in cfg.programs.values() {
+        for (name, deployment) in programs {
+            let pk = deployment.address.to_string();
+            pubkey_to_so.insert(pk.clone(), deploy_dir.join(format!("{name}.so")));
+            sources.insert(pk, "Anchor.toml");
+        }
+    }
+    if let Ok(discovered) = debugger::loose::discover_programs(workspace_root, None) {
+        for (pk, so) in discovered {
+            if !pubkey_to_so.contains_key(&pk) {
+                pubkey_to_so.insert(pk.clone(), so);
+                sources.insert(pk, "target/deploy");
+            }
+        }
+    }
+    (pubkey_to_so, sources)
+}
+
 /// Walks the per-test trace directories left behind by
 /// `anchor-v2-testing`'s profile callback and renders one flamegraph
 /// SVG per transaction under `<profile_dir>/<test>__tx<N>.svg`.
@@ -3978,46 +4006,20 @@ fn run_coverage(
 /// tx that calls into spl-token shows spl-token's frames alongside
 /// the program under test, not dropped or lumped under `[unknown]`.
 fn render_profile(cfg: &WithPath<Config>, profile_dir: &Path) -> Result<()> {
-    if !profile_dir.exists() {
-        eprintln!(
-            "warning: no traces produced at {} — did your tests call \
-             `anchor_v2_testing::svm()` with the `profile` feature?",
-            profile_dir.display()
-        );
-        return Ok(());
-    }
-
-    // Build pubkey → deployed `.so` path map from Anchor.toml [programs.*].
-    // Every cluster mapped in the config is fair game; duplicates collapse.
     let workspace_root = cfg.path().parent().unwrap().to_owned();
-    let deploy_dir = workspace_root.join("target").join("deploy");
-    let mut pubkey_to_so: BTreeMap<String, PathBuf> = BTreeMap::new();
-    for programs in cfg.programs.values() {
-        for (name, deployment) in programs {
-            let so = deploy_dir.join(format!("{name}.so"));
-            pubkey_to_so.insert(deployment.address.to_string(), so);
-        }
-    }
+    let (pubkey_to_so, _sources) = resolve_anchor_workspace_programs(cfg);
 
     let rendered = profile::render_all_tests(profile_dir, Some(&workspace_root), &pubkey_to_so)
         .context("failed to render flamegraphs from trace directory")?;
 
     if rendered.is_empty() {
         eprintln!(
-            "warning: no per-test trace directories found under {}. \
-             No flamegraphs produced.",
+            "warning: no per-test trace directories found under {}. Did your tests call \
+             `anchor_v2_testing::svm()` with the `profile` feature?",
             profile_dir.display()
         );
         return Ok(());
     }
-
-    let cwd = std::env::current_dir().ok();
-    let display_path = |p: &Path| -> String {
-        cwd.as_ref()
-            .and_then(|c| p.strip_prefix(c).ok())
-            .map(|rel| rel.display().to_string())
-            .unwrap_or_else(|| p.display().to_string())
-    };
 
     let mut sorted: Vec<&profile::RenderedTest> = rendered.iter().collect();
     sorted.sort_by(|a, b| a.test_name.cmp(&b.test_name));
@@ -4037,13 +4039,13 @@ fn render_profile(cfg: &WithPath<Config>, profile_dir: &Path) -> Result<()> {
             println!(
                 "  {:<width$}  →  {}",
                 test.test_name,
-                display_path(&test.svg_paths[0]),
+                display_path_relative_to_cwd(&test.svg_paths[0]),
                 width = max_name,
             );
         } else {
             println!("  {}", test.test_name);
             for (i, svg) in test.svg_paths.iter().enumerate() {
-                println!("    tx{}  →  {}", i + 1, display_path(svg));
+                println!("    tx{}  →  {}", i + 1, display_path_relative_to_cwd(svg));
             }
         }
     }
@@ -4681,9 +4683,9 @@ fn start_surfpool_validator(
     .is_ok()
     {
         return Err(anyhow!(
-            "port {port} on {host} is already in use — another validator is running \
-             there. Kill it (e.g. `pkill -f surfpool`) or set `[surfpool] rpc_port = N` \
-             in Anchor.toml to pick a free port."
+            "port {port} on {host} is already in use — another validator is running there. Kill \
+             it (e.g. `pkill -f surfpool`) or set `[surfpool] rpc_port = N` in Anchor.toml to \
+             pick a free port."
         ));
     }
 
@@ -4719,9 +4721,9 @@ fn start_surfpool_validator(
         // to whatever foreign process happens to be answering on the port.
         if let Ok(Some(status)) = validator_handle.try_wait() {
             return Err(anyhow!(
-                "`surfpool` exited during startup with {status} — see the stderr \
-                 output above. Common causes: port {port} in use, missing deploy \
-                 artifacts in `target/deploy/`, invalid Anchor.toml config."
+                "`surfpool` exited during startup with {status} — see the stderr output above. \
+                 Common causes: port {port} in use, missing deploy artifacts in `target/deploy/`, \
+                 invalid Anchor.toml config."
             ));
         }
         let r = client.get_latest_blockhash();
@@ -6176,7 +6178,10 @@ mod tests {
         assert_eq!(extract_url_port("http://127.0.0.1:8899"), Some(8899));
         assert_eq!(extract_url_port("http://127.0.0.1:8899/"), Some(8899));
         assert_eq!(extract_url_port("ws://localhost:8900/path?q=1"), Some(8900));
-        assert_eq!(extract_url_port("https://api.mainnet-beta.solana.com"), None);
+        assert_eq!(
+            extract_url_port("https://api.mainnet-beta.solana.com"),
+            None
+        );
         assert_eq!(extract_url_port("http://127.0.0.1"), None);
         assert_eq!(extract_url_port("not a url"), None);
     }
