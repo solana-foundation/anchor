@@ -8,6 +8,7 @@ members = [
     "lang",
     "lang/attribute/*",
     "lang/derive/*",
+    "lang/error",
     "lang/syn",
     "spl",
 ]
