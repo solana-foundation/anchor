@@ -1,7 +1,7 @@
 use std::{
     collections::HashSet,
-    hash::{Hash, Hasher},
 };
+use sha2::{Digest, Sha256};
 
 // Identifies which on-chain storage path produced a recovered historical IDL so merge and output
 // logic can preserve provenance when legacy and PMP histories overlap.
@@ -50,7 +50,7 @@ pub fn merge_historical_idls(
     let mut merged = Vec::new();
     // Deduplicate by slot plus payload hash so identical legacy/PMP recoveries collapse without
     // cloning the full IDL bytes into the seen set.
-    let mut seen: HashSet<(u64, u64)> = HashSet::new();
+    let mut seen: HashSet<(u64, [u8; 32])> = HashSet::new();
 
     for item in candidates {
         let key = (item.slot, payload_hash(&item.idl_data));
@@ -74,11 +74,10 @@ fn source_rank(source: IdlHistorySource) -> u8 {
 
 // Hashes the payload bytes for in-memory deduplication without storing another full IDL copy in
 // the seen set.
-fn payload_hash(bytes: &[u8]) -> u64 {
-    // The hash only drives in-process dedup and output selection, not any persisted identifier.
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    bytes.hash(&mut hasher);
-    hasher.finish()
+fn payload_hash(bytes: &[u8]) -> [u8; 32] {
+    // Use a stable digest so deduplication is deterministic across runs and does not depend on
+    // randomized hash seeds.
+    Sha256::digest(bytes).into()
 }
 
 #[cfg(test)]
