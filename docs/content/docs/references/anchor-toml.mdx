@@ -233,8 +233,8 @@ airdrop_addresses = ["addr1...", "addr2..."]               # Addresses to airdro
 manifest_file_path = "./Cargo.toml"                       # Path to the Cargo.toml manifest file.
 runbooks = ["./runbooks/setup.json"]                       # Paths to runbook files to execute on startup.
 slot_time = 400                                            # Simulated slot time in milliseconds.
-log_level = "info"                                         # Log level for Surfpool (e.g. "info", "debug").
-block_production_mode = "clock"                            # Block production mode (e.g. "clock", "transaction").
+log_level = "info"                                         # Log level for Surfpool. Default: "none".
+block_production_mode = "clock"                            # Block production mode. Default: "transaction".
 ```
 
 ### startup_wait
@@ -263,7 +263,8 @@ The IP address to bind the Surfpool validator ports to. Default: `"127.0.0.1"`.
 ### online
 
 When set to `true`, Surfpool operates in online mode, allowing it to clone
-accounts from a remote cluster specified by `datasource_rpc_url`.
+accounts from a remote cluster specified by `datasource_rpc_url`. Default:
+`false` (offline mode).
 
 ### datasource_rpc_url
 
@@ -321,11 +322,12 @@ Surfpool simulator.
 ### log_level
 
 Sets the log verbosity level for the Surfpool process. Common values include
-`"info"`, `"debug"`, `"warn"`, and `"error"`.
+`"none"`, `"info"`, `"debug"`, `"warn"`, and `"error"`. Default: `"none"`.
 
 ### block_production_mode
 
-Controls how Surfpool produces blocks. Known values include:
+Controls how Surfpool produces blocks. Default: `"transaction"`. Known values
+include:
 
 - `"clock"` -- Produces blocks at regular time intervals based on `slot_time`.
 - `"transaction"` -- Produces a new block for each incoming transaction.
