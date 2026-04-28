@@ -70,9 +70,9 @@ pub use {
     anchor_lang,
     cluster::Cluster,
     solana_commitment_config::CommitmentConfig,
+    solana_hash::Hash,
     solana_instruction::Instruction,
     solana_message::AddressLookupTableAccount,
-    solana_program::hash::Hash,
     solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError,
     solana_rpc_client_api::{
         client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,

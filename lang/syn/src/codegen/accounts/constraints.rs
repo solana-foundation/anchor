@@ -867,6 +867,14 @@ fn generate_constraint_init_group(
                 None => quote! {},
             };
 
+            let if_needed_interest_bearing_check = generate_interest_bearing_extension_check(
+                &account_ref,
+                &name_str,
+                interest_bearing_mint_rate.as_ref(),
+                interest_bearing_mint_authority.as_ref(),
+                &mut check_scope,
+            );
+
             let system_program_optional_check = check_scope.generate_check(system_program);
             let token_program_optional_check = check_scope.generate_check(&token_program);
             let rent_optional_check = check_scope.generate_check(rent);
@@ -1135,6 +1143,7 @@ fn generate_constraint_init_group(
                         if owner_program != &#token_program.key() {
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintTokenProgram).with_account_name(#name_str).with_pubkeys((*owner_program, #token_program.key())));
                         }
+                        #if_needed_interest_bearing_check
                     }
                     Ok(pa)
                 }})()?;
@@ -1682,43 +1691,13 @@ fn generate_constraint_mint(
         None => quote! {},
     };
 
-    let interest_bearing_check = match (
-        &c.interest_bearing_mint_rate,
-        &c.interest_bearing_mint_authority,
-    ) {
-        (None, None) => quote! {},
-        (rate, authority) => {
-            let rate_check = match rate {
-                Some(rate) => quote! {
-                    if i16::from(interest_bearing.current_rate) != #rate {
-                        return Err(anchor_lang::error::ErrorCode::ConstraintMintInterestBearingRate.into());
-                    }
-                },
-                None => quote! {},
-            };
-            let authority_check = match authority {
-                Some(authority) => {
-                    let authority_optional_check = optional_check_scope.generate_check(authority);
-                    quote! {
-                        #authority_optional_check
-                        if interest_bearing.rate_authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#authority.key()))? {
-                            return Err(anchor_lang::error::ErrorCode::ConstraintMintInterestBearingAuthority.into());
-                        }
-                    }
-                }
-                None => quote! {},
-            };
-            quote! {
-                let interest_bearing = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::interest_bearing_mint::InterestBearingConfig>(#account_ref);
-                if interest_bearing.is_err() {
-                    return Err(anchor_lang::error::ErrorCode::ConstraintMintInterestBearingExtension.into());
-                }
-                let interest_bearing = interest_bearing.unwrap();
-                #rate_check
-                #authority_check
-            }
-        }
-    };
+    let interest_bearing_check = generate_interest_bearing_extension_check(
+        &account_ref,
+        &name.to_string(),
+        c.interest_bearing_mint_rate.as_ref(),
+        c.interest_bearing_mint_authority.as_ref(),
+        &mut optional_check_scope,
+    );
 
     quote! {
         {
@@ -1739,6 +1718,51 @@ fn generate_constraint_mint(
             #pausable_authority_check
             #interest_bearing_check
         }
+    }
+}
+
+fn generate_interest_bearing_extension_check(
+    account_ref: &proc_macro2::TokenStream,
+    name_str: &str,
+    rate: Option<&Expr>,
+    authority: Option<&Expr>,
+    optional_check_scope: &mut OptionalCheckScope,
+) -> proc_macro2::TokenStream {
+    if rate.is_none() && authority.is_none() {
+        return quote! {};
+    }
+    let rate_check = match rate {
+        Some(rate) => quote! {
+            if i16::from(interest_bearing.current_rate) != #rate {
+                return Err(anchor_lang::error::Error::from(
+                    anchor_lang::error::ErrorCode::ConstraintMintInterestBearingRate,
+                ).with_account_name(#name_str));
+            }
+        },
+        None => quote! {},
+    };
+    let authority_check = match authority {
+        Some(authority) => {
+            let authority_optional_check = optional_check_scope.generate_check(authority);
+            quote! {
+                #authority_optional_check
+                if interest_bearing.rate_authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#authority.key()))? {
+                    return Err(anchor_lang::error::Error::from(
+                        anchor_lang::error::ErrorCode::ConstraintMintInterestBearingAuthority,
+                    ).with_account_name(#name_str));
+                }
+            }
+        }
+        None => quote! {},
+    };
+    quote! {
+        let interest_bearing = ::anchor_spl::token_interface::get_mint_extension_data::<
+            ::anchor_spl::token_interface::spl_token_2022::extension::interest_bearing_mint::InterestBearingConfig,
+        >(#account_ref).map_err(|_| anchor_lang::error::Error::from(
+            anchor_lang::error::ErrorCode::ConstraintMintInterestBearingExtension,
+        ).with_account_name(#name_str))?;
+        #rate_check
+        #authority_check
     }
 }
 

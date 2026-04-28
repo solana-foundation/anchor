@@ -18,8 +18,10 @@ use {
         token_2022_extensions,
         token_interface::{
             get_mint_extension_data, pausable_pause, pausable_resume,
-            spl_token_metadata_interface::state::TokenMetadata, token_metadata_initialize, Mint,
-            PausableToggle, Token2022, TokenAccount, TokenMetadataInitialize,
+            spl_token_metadata_interface::state::{Field, TokenMetadata},
+            token_metadata_initialize, token_metadata_remove_key, token_metadata_update_field,
+            Mint, PausableToggle, Token2022, TokenAccount, TokenMetadataInitialize,
+            TokenMetadataRemoveKey, TokenMetadataUpdateField,
         },
     },
     spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool},
@@ -243,44 +245,6 @@ pub fn update_group_pointer_handler(
 }
 
 #[derive(Accounts)]
-pub struct EnableCpiGuard<'info> {
-    pub authority: Signer<'info>,
-    #[account(mut)]
-    /// CHECK: token account with CPI Guard extension
-    pub token_account: UncheckedAccount<'info>,
-    pub token_program: Program<'info, Token2022>,
-}
-
-pub fn enable_cpi_guard_handler(ctx: Context<EnableCpiGuard>) -> Result<()> {
-    let cpi_accounts = token_2022_extensions::cpi_guard::CpiGuard {
-        token_program_id: ctx.accounts.token_program.to_account_info(),
-        account: ctx.accounts.token_account.to_account_info(),
-        owner: ctx.accounts.authority.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new(*ctx.accounts.token_program.key, cpi_accounts);
-    token_2022_extensions::cpi_guard::cpi_guard_enable(cpi_ctx)
-}
-
-#[derive(Accounts)]
-pub struct DisableCpiGuard<'info> {
-    pub authority: Signer<'info>,
-    #[account(mut)]
-    /// CHECK: token account with CPI Guard extension
-    pub token_account: UncheckedAccount<'info>,
-    pub token_program: Program<'info, Token2022>,
-}
-
-pub fn disable_cpi_guard_handler(ctx: Context<DisableCpiGuard>) -> Result<()> {
-    let cpi_accounts = token_2022_extensions::cpi_guard::CpiGuard {
-        token_program_id: ctx.accounts.token_program.to_account_info(),
-        account: ctx.accounts.token_account.to_account_info(),
-        owner: ctx.accounts.authority.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new(*ctx.accounts.token_program.key, cpi_accounts);
-    token_2022_extensions::cpi_guard::cpi_guard_disable(cpi_ctx)
-}
-
-#[derive(Accounts)]
 #[instruction()]
 pub struct CheckTogglePause<'info> {
     #[account(mut)]
@@ -337,5 +301,68 @@ pub struct CheckPausableAuthorityConstraint<'info> {
 pub fn check_pausable_authority_constraint_handler(
     _ctx: Context<CheckPausableAuthorityConstraint>,
 ) -> Result<()> {
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct UpdateAndRemoveTokenMetadata<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(mut)]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+
+    pub token_program: Program<'info, Token2022>,
+}
+
+impl<'info> UpdateAndRemoveTokenMetadata<'info> {
+    fn update_token_metadata(&self, field: String, value: String) -> ProgramResult {
+        let cpi_accounts = TokenMetadataUpdateField {
+            program_id: self.token_program.to_account_info(),
+            metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
+            update_authority: self.authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.key(), cpi_accounts);
+        token_metadata_update_field(cpi_ctx, Field::Key(field), value)?;
+        Ok(())
+    }
+
+    fn remove_token_metadata(&self, key: String) -> ProgramResult {
+        let cpi_accounts = TokenMetadataRemoveKey {
+            program_id: self.token_program.to_account_info(),
+            metadata: self.mint.to_account_info(), // metadata account is the mint, since data is stored in mint
+            update_authority: self.authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.key(), cpi_accounts);
+        token_metadata_remove_key(cpi_ctx, key, true)?;
+        Ok(())
+    }
+}
+
+pub fn update_and_remove_token_metadata_handler(
+    ctx: Context<UpdateAndRemoveTokenMetadata>,
+) -> Result<()> {
+    let key = "dummy_key";
+    let value = "dummy_value";
+    ctx.accounts
+        .update_token_metadata(key.to_string(), value.to_string())?;
+    ctx.accounts.mint.reload()?;
+
+    let mint_data = &mut ctx.accounts.mint.to_account_info();
+    let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
+    assert_eq!(metadata.additional_metadata.len(), 1);
+
+    if let Some((k, v)) = metadata.additional_metadata.get(0) {
+        assert_eq!(k, key);
+        assert_eq!(v, value);
+    } else {
+        assert!(false);
+    }
+
+    ctx.accounts.remove_token_metadata(key.to_string())?;
+    ctx.accounts.mint.reload()?;
+
+    let mint_data = &mut ctx.accounts.mint.to_account_info();
+    let metadata = get_mint_extensible_extension_data::<TokenMetadata>(mint_data)?;
+    assert_eq!(metadata.additional_metadata.len(), 0);
     Ok(())
 }

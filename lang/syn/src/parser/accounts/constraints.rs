@@ -520,7 +520,23 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                 "constraint" => ConstraintToken::Raw(Context::new(
                     span,
                     ConstraintRaw {
-                        raw: stream.parse()?,
+                        raw: {
+                            let expr = stream.parse()?;
+
+                            if let syn::Expr::Lit(syn::ExprLit { lit, .. }) = &expr {
+                                if !matches!(lit, syn::Lit::Bool(_)) {
+                                    return Err(ParseError::new(
+                                        expr.span(),
+                                        "constraint must be a boolean expression, not a \
+                                         literal.\nHelp: Raw constraints expect expressions that \
+                                         evaluate to boolean values.\nIf you need to compare a \
+                                         field to a value, use: constraint = my_field == <value>",
+                                    ));
+                                }
+                            }
+
+                            expr
+                        },
                         error: parse_optional_custom_error(&stream)?,
                     },
                 )),
@@ -1879,5 +1895,49 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         }
         self.extension_interest_bearing_mint_authority.replace(c);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{parser::tts_to_string, ConstraintToken},
+        syn::parse_str,
+    };
+
+    const LITERAL_ERROR: &str = "constraint must be a boolean expression, not a literal";
+    const HELP_TEXT: &str = "constraint = my_field == <value>";
+
+    fn parse_error_message(input: &str) -> Option<String> {
+        parse_str::<ConstraintToken>(input)
+            .err()
+            .map(|error| error.to_string())
+    }
+
+    fn parse_raw_expression(input: &str) -> Option<String> {
+        match parse_str::<ConstraintToken>(input) {
+            Ok(ConstraintToken::Raw(raw)) => Some(tts_to_string(&raw.raw)),
+            Ok(_) | Err(_) => None,
+        }
+    }
+
+    #[test]
+    fn rejects_string_literal_raw_constraint() {
+        let message = parse_error_message(r#"constraint = "hello""#);
+        assert!(message.is_some(), "expected parse error");
+        let message = message.unwrap_or_default();
+
+        assert!(
+            message.contains(LITERAL_ERROR),
+            "unexpected error: {message}"
+        );
+        assert!(message.contains(HELP_TEXT), "missing help text: {message}");
+    }
+
+    #[test]
+    fn accepts_boolean_expression_that_compares_against_a_literal() {
+        let expression = parse_raw_expression("constraint = my_field == 42");
+
+        assert_eq!(expression.as_deref(), Some("my_field == 42"));
     }
 }
