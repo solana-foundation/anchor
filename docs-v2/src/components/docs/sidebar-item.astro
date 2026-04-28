@@ -2,6 +2,7 @@
 import SidebarBadge from '@/components/docs/sidebar-badge.astro'
 import Link from '@/components/link.astro'
 import { cn } from '@/lib/utils'
+import { renderDescription } from '@/lib/render-description'
 import type { SidebarNode } from '@/types'
 import { Icon } from 'astro-icon/components'
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 const { node, depth = 0 } = Astro.props
+const renderedLabel = await renderDescription(node.label)
 ---
 
 {
@@ -28,7 +30,7 @@ const { node, depth = 0 } = Astro.props
         'aria-[current=page]:hover:text-accent',
       )}
     >
-      <span class="break-words">{node.label}</span>
+      <span class="wrap-break-word" data-doc-title set:html={renderedLabel.html} />
       {node.badge && <SidebarBadge badge={node.badge} />}
     </Link>
   ) : node.forceOpen ? (
@@ -39,7 +41,7 @@ const { node, depth = 0 } = Astro.props
         )}
       >
         <span class="flex min-w-0 items-center gap-2">
-          <span class="break-words">{node.label}</span>
+          <span class="wrap-break-word" data-doc-title set:html={renderedLabel.html} />
           {node.badge && <SidebarBadge badge={node.badge} />}
         </span>
       </div>
@@ -65,7 +67,7 @@ const { node, depth = 0 } = Astro.props
         )}
       >
         <span class="flex min-w-0 items-center gap-2">
-          <span class="break-words">{node.label}</span>
+          <span class="wrap-break-word" data-doc-title set:html={renderedLabel.html} />
           {node.badge && <SidebarBadge badge={node.badge} />}
         </span>
         <Icon

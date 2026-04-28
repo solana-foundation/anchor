@@ -101,15 +101,29 @@
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) code {
-      font-size: 0.875em;
+      font-size: 1em;
     }
 
     :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
       @apply bg-muted/50! text-foreground relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
     }
 
+    /* When inline `<code>` or a `.shiki` pill sits inside an `<a>`, the
+       parent's underline is visually blocked by the pill's bg/padding.
+       Mirror the link's underline directly onto the pill so code-in-links
+       show the same affordance + hover transition as plain prose links. */
+    :where(a) :where(code):not(:where(.not-prose, .not-prose *)),
+    :where(a) :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
+      @apply underline decoration-muted-foreground underline-offset-[3px] transition-colors;
+    }
+
+    :where(a:hover) :where(code):not(:where(.not-prose, .not-prose *)),
+    :where(a:hover) :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
+      @apply decoration-foreground;
+    }
+
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) .shiki {
-      font-size: 0.875em;
+      font-size: 1em;
       line-height: inherit;
     }
 
@@ -121,7 +135,7 @@
     }
 
     :where(.inline-shell-cmd):not(:where(.not-prose, .not-prose *)) {
-      @apply bg-muted/50 text-foreground font-mono relative inline-flex cursor-pointer items-baseline rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium align-baseline transition-colors leading-[1.2] border-0;
+      @apply bg-muted/50 text-foreground font-mono relative cursor-pointer rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium align-baseline transition-colors leading-[1.2] border-0 [box-decoration-break:clone];
     }
 
     :where(.inline-shell-cmd):hover:not(:where(.not-prose, .not-prose *)) {
@@ -269,7 +283,7 @@
    instead of staying at full `text-foreground` opacity. */
 [data-toc-text] code,
 [data-toc-text] .shiki {
-  @apply bg-muted/50! relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] font-mono wrap-break-word align-baseline leading-[1.2];
+  @apply bg-muted/50! relative rounded-sm px-[0.3rem] py-[0.15rem] font-mono wrap-break-word align-baseline leading-[1.2] underline decoration-transparent underline-offset-[3px] transition-colors duration-200 [box-decoration-break:clone];
 }
 
 /* Inline shiki output is `.shiki > code`, which would double the pill —
@@ -277,6 +291,15 @@
    `.shiki` wrapper renders the pill. */
 [data-toc-text] .shiki code {
   @apply bg-transparent! p-0 rounded-none;
+}
+
+/* The path-icon rule is scoped inside `.prose`, which the TOC isn't part
+   of. When a heading containing a filename (e.g. `Anchor.toml`) is cloned
+   into the TOC, the SVG icon falls outside the prose scope and renders at
+   its default size (huge). Hide it in TOC entries — the icon is body
+   decoration, not nav decoration. */
+[data-toc-text] .inline-path-icon {
+  @apply hidden;
 }
 
 /* Mirror the prose `.shiki span` rules so syntax highlighting carries over.
@@ -293,15 +316,66 @@
 /* Token spans carry their own inline `color:` from shiki and don't
    inherit the link's text-foreground/60 ↔ text-foreground fade. Dim
    the entire shiki wrapper on inactive entries to match the rest of
-   the link, restore full opacity on the active entry. */
+   the link, restore full opacity on the active entry. Use `transition`
+   (covers both opacity and text-decoration-color) so the underline
+   fade-in from the rule above isn't clobbered to opacity-only. */
 [data-toc-text] .shiki {
-  @apply opacity-60 transition-opacity duration-200;
+  @apply opacity-60 transition duration-200;
 }
 
 [data-heading-link].text-foreground [data-toc-text] .shiki,
+[data-heading-link]:hover [data-toc-text] .shiki,
 .mobile-toc-item.text-foreground [data-toc-text] .shiki,
+.mobile-toc-item:hover [data-toc-text] .shiki,
 #mobile-toc-current-section .shiki {
   @apply opacity-100;
+}
+
+/* The TOC link's hover underline doesn't propagate across the inline-block
+   shiki/code pill (inline-block creates its own text-decoration context).
+   Apply the underline directly to the pill on hover so code-bearing
+   entries get the same visual hover affordance as plain-text entries. */
+[data-heading-link]:hover [data-toc-text] .shiki,
+[data-heading-link]:hover [data-toc-text] code,
+.mobile-toc-item:hover [data-toc-text] .shiki,
+.mobile-toc-item:hover [data-toc-text] code {
+  @apply decoration-current;
+}
+
+/* Pills tagged by TOCHeadingSync as exceeding the long-pill threshold
+   (e.g. `#[account(extensions::metadata_pointer::*)]`). Default pill
+   styling uses overflow-wrap: break-word, which keeps the container's
+   min-content width at the longest token and lets long pills overflow
+   the narrow TOC column. `anywhere` lets the pill break at any character
+   when (and only when) it would otherwise overflow. */
+[data-toc-text] [data-long-pill='true'] {
+  overflow-wrap: anywhere;
+}
+
+/* Page title (h1), page description, and card title/description all live
+   outside `.prose`, so the prose pill rules don't reach them. Mirror them
+   here so inline `` `code` `` and `` `code{:lang}` `` annotations render as
+   the same pill used in headings, TOC entries, and tabs. */
+[data-doc-description] code,
+[data-doc-description] .shiki,
+[data-doc-title] code,
+[data-doc-title] .shiki {
+  @apply bg-muted/50! text-foreground relative rounded-sm px-[0.3rem] py-[0.15rem] font-mono font-medium wrap-break-word align-baseline leading-[1.2] [box-decoration-break:clone];
+}
+
+[data-doc-description] .shiki code,
+[data-doc-title] .shiki code {
+  @apply bg-transparent! p-0 rounded-none;
+}
+
+[data-doc-description] .shiki span,
+[data-doc-title] .shiki span {
+  @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)];
+}
+
+[data-theme='dark'] [data-doc-description] .shiki span,
+[data-theme='dark'] [data-doc-title] .shiki span {
+  @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)] text-(--shiki-dark)!;
 }
 
 /* Tab labels rendered through shiki via the `{:lang}` annotation. The
@@ -312,8 +386,12 @@
   @apply font-mono;
 }
 
+.tab-label-code span {
+  @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)];
+}
+
 [data-theme='dark'] .tab-label-code span {
-  @apply text-(--shiki-dark)!;
+  @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)] text-(--shiki-dark)!;
 }
 
 @utility small {

@@ -3,6 +3,7 @@ import Link from '@/components/link.astro'
 import { buttonVariants } from '@/components/ui/button'
 import type { FlatDoc } from '@/types'
 import { cn } from '@/lib/utils'
+import { renderDescription } from '@/lib/render-description'
 import { Icon } from 'astro-icon/components'
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
 }
 
 const { prev, next } = Astro.props
+const prevLabel = prev ? await renderDescription(prev.label) : null
+const nextLabel = next ? await renderDescription(next.label) : null
 ---
 
 {
@@ -30,7 +33,12 @@ const { prev, next } = Astro.props
           />
           <div class="flex flex-col items-start overflow-hidden text-wrap">
             <span class="text-muted-foreground text-left text-xs">Previous</span>
-            <span class="w-full text-left text-sm text-balance text-ellipsis">{prev.label}</span>
+            <span
+              class="w-full text-left text-sm text-balance text-ellipsis"
+              data-doc-title
+              set:html={prevLabel!.html}
+            />
+
           </div>
         </Link>
       ) : (
@@ -47,7 +55,12 @@ const { prev, next } = Astro.props
         >
           <div class="flex flex-col items-end overflow-hidden text-wrap">
             <span class="text-muted-foreground text-right text-xs">Next</span>
-            <span class="w-full text-right text-sm text-balance text-ellipsis">{next.label}</span>
+            <span
+              class="w-full text-right text-sm text-balance text-ellipsis"
+              data-doc-title
+              set:html={nextLabel!.html}
+            />
+
           </div>
           <Icon
             name="lucide:arrow-right"

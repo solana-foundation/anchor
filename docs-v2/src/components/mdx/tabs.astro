@@ -1,6 +1,8 @@
 ---
 import { codeToHtml } from 'shiki'
 
+import { latte, mocha } from '@/lib/shiki-themes'
+
 interface Props {
   items: string[]
   defaultIndex?: number
@@ -18,7 +20,7 @@ const renderedItems = await Promise.all(
     const lang = match[1]
     const html = await codeToHtml(code, {
       lang,
-      themes: { light: 'catppuccin-latte', dark: 'catppuccin-mocha' },
+      themes: { light: latte, dark: mocha },
       structure: 'inline',
     })
     return { html: true as const, value: html }

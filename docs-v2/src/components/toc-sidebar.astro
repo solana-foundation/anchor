@@ -1,6 +1,7 @@
 ---
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn, getHeadingMargin } from '@/lib/utils'
+import { renderDescription } from '@/lib/render-description'
 import type { MarkdownHeading } from 'astro'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 const { headings, minDepth = 2, maxDepth = 4, title } = Astro.props
+const renderedTitle = title ? await renderDescription(title) : null
 const visible = headings.filter(
   (h) => h.depth >= minDepth && h.depth <= maxDepth,
 )
@@ -22,7 +24,7 @@ const visible = headings.filter(
       id="toc-sidebar-container"
       class="sticky top-16 hidden h-[calc(100vh-8rem)] max-w-xs flex-col xl:flex"
     >
-      {title && (
+      {renderedTitle && (
         <div
           id="toc-sidebar-title-wrapper"
           data-open="false"
@@ -32,9 +34,9 @@ const visible = headings.filter(
             <span
               id="toc-sidebar-title"
               class="text-foreground block pb-3 text-base font-medium text-balance"
-            >
-              {title}
-            </span>
+              data-doc-title
+              set:html={renderedTitle.html}
+            />
           </div>
         </div>
       )}
@@ -239,6 +241,12 @@ const visible = headings.filter(
   }
 
   class TOCHeadingSync {
+    // Pills longer than this in the narrow TOC column overflow when their
+    // text has no break opportunities (e.g. `#[account(extensions::*)]`).
+    // Mark them so CSS can opt them into `overflow-wrap: anywhere` — which
+    // we don't want universally, since short pills look better unbroken.
+    static LONG_PILL = 24
+
     static run() {
       state.links.forEach((link) => {
         const slug = (link as HTMLElement).dataset.headingLink
@@ -251,6 +259,11 @@ const visible = headings.filter(
         clone.querySelectorAll('.heading-anchor').forEach((el) => el.remove())
         clone.querySelectorAll<HTMLElement>('.shiki').forEach((el) => {
           el.removeAttribute('style')
+        })
+        clone.querySelectorAll<HTMLElement>('.shiki, code').forEach((el) => {
+          if ((el.textContent ?? '').length > TOCHeadingSync.LONG_PILL) {
+            el.dataset.longPill = 'true'
+          }
         })
         target.innerHTML = clone.innerHTML
       })

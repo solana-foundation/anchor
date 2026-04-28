@@ -16,7 +16,8 @@ import remarkMath from 'remark-math'
 
 import { rehypeInlineShellCmd } from './src/lib/rehype-inline-shell-cmd'
 import { rehypeInlinePathIcon } from './src/lib/rehype-inline-path-icon'
-import { ecOptions, EC_THEME_NAMES } from './src/lib/ec-config'
+import { ecOptions } from './src/lib/ec-config'
+import { latte, mocha } from './src/lib/shiki-themes'
 
 import tailwindcss from '@tailwindcss/vite'
 import { extname, resolve } from 'node:path'
@@ -107,14 +108,11 @@ export default defineConfig({
       ],
       rehypeWrapTables,
       rehypeKatex,
-      [rehypeExpressiveCode, { themes: [...EC_THEME_NAMES], ...ecOptions }],
+      [rehypeExpressiveCode, { themes: [latte, mocha], ...ecOptions }],
       [
         rehypeShiki,
         {
-          themes: {
-            light: 'catppuccin-latte',
-            dark: 'catppuccin-mocha',
-          },
+          themes: { light: latte, dark: mocha },
           inline: 'tailing-curly-colon',
         },
       ],

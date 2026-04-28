@@ -1,23 +1,15 @@
-import { ExpressiveCodeEngine, ExpressiveCodeTheme } from '@expressive-code/core'
-import { ecOptions, ecDefaultPlugins, EC_THEME_NAMES } from './ec-config'
+import { ExpressiveCodeEngine } from '@expressive-code/core'
+import { ecOptions, ecDefaultPlugins } from './ec-config'
+import { latte, mocha } from './shiki-themes'
 
 let enginePromise: Promise<ExpressiveCodeEngine> | null = null
 let stylesPromise: Promise<string> | null = null
 
-async function loadTheme(name: string): Promise<ExpressiveCodeTheme> {
-  const { bundledThemes } = await import('shiki')
-  const loader = bundledThemes[name as keyof typeof bundledThemes]
-  if (!loader) throw new Error(`Unknown shiki theme: ${name}`)
-  const themeData = await loader()
-  return new ExpressiveCodeTheme(themeData.default as any)
-}
-
 export function getEcEngine(): Promise<ExpressiveCodeEngine> {
   if (!enginePromise) {
     enginePromise = (async () => {
-      const themes = await Promise.all(EC_THEME_NAMES.map(loadTheme))
       return new ExpressiveCodeEngine({
-        themes,
+        themes: [latte, mocha],
         ...ecOptions,
         plugins: [...ecDefaultPlugins(), ...ecOptions.plugins],
       })

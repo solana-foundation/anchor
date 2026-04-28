@@ -62,7 +62,7 @@ struct Data {
 }
 ```
 
-### Use AccountLoader for zero-copy accounts
+### Use `AccountLoader<'info, T>{:rs}` for zero-copy accounts
 
 To deserialize a zero-copy account, use `AccountLoader<'info, T>{:rs}`, where `T` is the zero-copy account type defined with the `#[account(zero_copy)]{:rs}` attribute:
 
@@ -289,7 +289,7 @@ pub struct ValidData {
 }
 ```
 
-### Choosing between load_init and load_mut
+### Choosing between `load_init(){:rs}` and `load_mut(){:rs}`
 
 Call `load_init(){:rs}` for first-time initialization (which sets the discriminator), and `load_mut(){:rs}` for subsequent updates:
 

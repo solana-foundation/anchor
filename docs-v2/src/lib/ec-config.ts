@@ -6,8 +6,6 @@ import { pluginTextMarkers } from '@expressive-code/plugin-text-markers'
 import { pluginShellPrompt } from './ec-shell-prompt'
 import { pluginOutputSeparator } from './ec-output-separator'
 
-export const EC_THEME_NAMES = ['catppuccin-latte', 'catppuccin-mocha'] as const
-
 const isLatte = (theme: { name: string }) => theme.name === 'catppuccin-latte'
 
 export const ecOptionalPlugins = () => [
@@ -22,6 +20,11 @@ export const ecDefaultPlugins = () => [pluginShiki(), pluginFrames(), pluginText
 export const ecOptions = {
   plugins: ecOptionalPlugins(),
   useDarkModeMediaQuery: false,
+  // Themes are pre-adjusted in shiki-themes.ts so EC and inline shiki render
+  // identical colors. Skip EC's per-render readjustment, which would otherwise
+  // redo the contrast pass against the codeBg override and drift EC's
+  // tokens away from the inline pills.
+  minSyntaxHighlightingColorContrast: 0,
   themeCssSelector: (theme: { name: string }) =>
     `[data-theme="${isLatte(theme) ? 'light' : 'dark'}"]`,
   defaultProps: {

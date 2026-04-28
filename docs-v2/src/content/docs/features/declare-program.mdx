@@ -91,28 +91,28 @@ The caller program imports the generated `cpi{:rs}`, `accounts{:rs}`, and `progr
 
 `declare_program!(){:rs}` takes the IDL filename (without extension) as its single argument:
 
-<Code code={caller} lang="rust" title="lib.rs" meta="{5} collapse={1-3,7-65}" />
+<Code code={caller} lang="rust" title="lib.rs" meta="collapse={1-4,7-65}" />
 
 </Step>
 <Step>
 
 Bring the generated modules into scope:
 
-<Code code={caller} lang="rust" title="lib.rs" meta="{6-13} collapse={1-4,15-65}" />
+<Code code={caller} lang="rust" title="lib.rs" meta="collapse={1-4,14-65}" />
 
 </Step>
 <Step>
 
 Use the imported types in the account validation struct:
 
-<Code code={caller} lang="rust" title="lib.rs" meta="{57-65} collapse={1-55}" />
+<Code code={caller} lang="rust" title="lib.rs" meta="collapse={1-56}" />
 
 </Step>
 <Step>
 
 Use the `cpi{:rs}` module to invoke the callee's instructions:
 
-<Code code={caller} lang="rust" title="lib.rs" meta="{20-32} collapse={1-19,33-65}" />
+<Code code={caller} lang="rust" title="lib.rs" meta="collapse={1-19,33-65}" />
 
 <Code code={caller} lang="rust" title="lib.rs" meta="{34-44} collapse={1-19,45-65}" />
 
@@ -168,21 +168,21 @@ The client script uses the generated `client{:rs}` module to build instructions 
 
 `declare_program!(){:rs}` takes the IDL filename (without extension) as its single argument:
 
-<Code code={client} lang="rust" title="src/main.rs" meta="{13} collapse={1-12,14-82}" />
+<Code code={client} lang="rust" title="src/main.rs" meta="collapse={1-12,14-82}" />
 
 </Step>
 <Step>
 
 Bring the generated modules into scope:
 
-<Code code={client} lang="rust" title="src/main.rs" meta="{14-18} collapse={1-13,19-82}" />
+<Code code={client} lang="rust" title="src/main.rs" meta="collapse={1-13,19-82}" />
 
 </Step>
 <Step>
 
 Use the `client{:rs}` module to build the program's instructions:
 
-<Code code={client} lang="rust" title="src/main.rs" meta="{49-58} collapse={1-48,59-82}" />
+<Code code={client} lang="rust" title="src/main.rs" meta="collapse={1-48,59-82}" />
 
 <Code code={client} lang="rust" title="src/main.rs" meta="{60-67} collapse={1-48,68-82}" />
 
@@ -191,14 +191,14 @@ Use the `client{:rs}` module to build the program's instructions:
 
 Add the instructions to a transaction and send it:
 
-<Code code={client} lang="rust" title="src/main.rs" meta="{69-75} collapse={1-68,76-82}" />
+<Code code={client} lang="rust" title="src/main.rs" meta="collapse={1-68,76-82}" />
 
 </Step>
 <Step>
 
 Use the `accounts{:rs}` module to fetch and deserialize the program's account data:
 
-<Code code={client} lang="rust" title="src/main.rs" meta="{79} collapse={1-78,80-82}" />
+<Code code={client} lang="rust" title="src/main.rs" meta="collapse={1-78,80-82}" />
 
 </Step>
 </Steps>

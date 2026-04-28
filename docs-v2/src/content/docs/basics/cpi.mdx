@@ -48,14 +48,14 @@ A CPI is constructed the same way as any other Solana instruction. The caller mu
 
 The System Program's `transfer(){:rs}` instruction requires a `from{:rs}` account that sends the SOL and a `to{:rs}` account that receives it. The `SolTransfer{:rs}` struct declares both accounts plus the System Program itself, since the CPI invokes that program:
 
-<Code code={lib} lang="rust" title="lib.rs" meta="{27-34} collapse={1-25}" />
+<Code code={lib} lang="rust" title="lib.rs" meta="collapse={1-26}" />
 
 The tabs below present three approaches to implementing the same CPI, each at a different level of abstraction:
 
 <Tabs groupId="language" items={['CpiContext{:rs}', 'invoke(){:rs}', 'Manual']}>
 <Tab>
 
-The first approach uses Anchor's [`CpiContext`](https://docs.rs/anchor-lang/latest/anchor_lang/context/struct.CpiContext.html), which bundles the `program_id{:rs}` and accounts required by the instruction. The `cpi_context{:rs}` is then passed to the `transfer(){:rs}` helper to invoke the instruction:
+The first approach uses Anchor's [`CpiContext{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/context/struct.CpiContext.html), which bundles the `program_id{:rs}` and accounts required by the instruction. The `cpi_context{:rs}` is then passed to the `transfer(){:rs}` helper to invoke the instruction:
 
 <Code code={lib} lang="rust" title="lib.rs" meta="{15-22} collapse={1-9, 24-34}" />
 
@@ -201,7 +201,7 @@ The tabs below present two approaches to implementing the same PDA-signed CPI:
 <Tabs groupId="language" items={['CpiContext{:rs}', 'invoke_signed(){:rs}']}>
 <Tab>
 
-The first approach uses [`CpiContext`](https://docs.rs/anchor-lang/latest/anchor_lang/context/struct.CpiContext.html), then attaches the signer seeds via `with_signer(){:rs}`:
+The first approach uses [`CpiContext{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/context/struct.CpiContext.html), then attaches the signer seeds via `with_signer(){:rs}`:
 
 <Code code={libPda} lang="rust" title="lib.rs" meta="{15-17,26,28} collapse={1-9, 30-44}" />
 

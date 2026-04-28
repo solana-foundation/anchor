@@ -43,9 +43,13 @@ function classify(text: string): 'file' | 'folder' | null {
   if (text.startsWith('@')) return null
   if (text.startsWith('-')) return null
   if (text.startsWith('$ ')) return null
-  // A single token like "x" or "foo" without a real signal isn't a path.
   if (text.endsWith('/')) return 'folder'
-  if (text.includes('/')) return 'file'
+  // Require an explicit path signal: leading /, ./, or ../; multiple slashes;
+  // a recognized file extension; or a known dotfile name. A single-slash
+  // kebab token like `anchor-spl/idl-build` (a Cargo feature spec) is NOT
+  // a path even though it contains a slash.
+  if (text.startsWith('/') || text.startsWith('./') || text.startsWith('../')) return 'file'
+  if ((text.match(/\//g) || []).length >= 2) return 'file'
   if (EXT_RE.test(text)) return 'file'
   if (DOTFILE_RE.test(text)) return 'file'
   return null

@@ -13,6 +13,7 @@ import Card from '@/components/mdx/card.astro'
 import CardGrid from '@/components/mdx/card-grid.astro'
 import Base from '@/layouts/base.astro'
 import type { Doc } from '@/lib/docs'
+import { renderDescription } from '@/lib/render-description'
 import type { IndexChild } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
 import type { MarkdownHeading } from 'astro'
@@ -50,10 +51,21 @@ const isSplash = doc.data.template === 'splash'
 const showToc = tocEnabled && !isSplash
 
 const offsetClass = 'xl:ml-[max(0px,calc((100vw-16rem-96rem)/2))]'
+
+const renderedTitle = await renderDescription(doc.data.title)
+const renderedDescription = doc.data.description ? await renderDescription(doc.data.description) : null
+
+const renderedIndexChildren = await Promise.all(
+  indexChildren.map(async (child) => ({
+    ...child,
+    renderedLabel: await renderDescription(child.label),
+    rendered: child.description ? await renderDescription(child.description) : null,
+  })),
+)
 ---
 
 <Base>
-  <PageHead slot="head" title={doc.data.title} description={doc.data.description} />
+  <PageHead slot="head" title={renderedTitle.plain} description={renderedDescription?.plain} />
   {editUrl && <meta slot="head" name="docs-edit-url" content={editUrl} />}
 
   <div class="grid flex-1 grid-cols-1 xl:grid-cols-[16rem_minmax(0,1fr)]">
@@ -75,11 +87,19 @@ const offsetClass = 'xl:ml-[max(0px,calc((100vw-16rem-96rem)/2))]'
                 doc.data.hero && <Hero hero={doc.data.hero} />
               ) : (
                 <header class="mt-6 mb-8 flex flex-col gap-3 xl:-mt-3">
-                  <h1 id="post-title" class="text-3xl leading-tight font-medium sm:text-4xl">
-                    {doc.data.title}
-                  </h1>
-                  {doc.data.description && (
-                    <p class="text-muted-foreground text-lg text-pretty">{doc.data.description}</p>
+                  <h1
+                    id="post-title"
+                    class="text-3xl leading-tight font-medium sm:text-4xl"
+                    data-doc-title
+                    set:html={renderedTitle.html}
+                  />
+
+                  {renderedDescription && (
+                    <p
+                      class="text-muted-foreground text-lg text-pretty"
+                      data-doc-description
+                      set:html={renderedDescription.html}
+                    />
                   )}
                 </header>
               )
@@ -90,11 +110,13 @@ const offsetClass = 'xl:ml-[max(0px,calc((100vw-16rem-96rem)/2))]'
             </div>
 
             {
-              indexChildren.length > 0 && (
+              renderedIndexChildren.length > 0 && (
                 <CardGrid class="not-prose mt-8">
-                  {indexChildren.map((child) => (
-                    <Card title={child.label} href={child.href}>
-                      {child.description}
+                  {renderedIndexChildren.map((child) => (
+                    <Card title={child.label} titleHtml={child.renderedLabel.html} href={child.href}>
+                      {child.rendered && (
+                        <span data-doc-description set:html={child.rendered.html} />
+                      )}
                     </Card>
                   ))}
                 </CardGrid>

@@ -23,7 +23,7 @@ The following program exposes a single `initialize(){:rs}` instruction that crea
 
 The [`declare_id!(){:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/macro.declare_id.html) macro embeds the program's on-chain address, known as the program ID, into the compiled binary:
 
-<Code code={lib} lang="rust" title="lib.rs" meta="{3} collapse={5-27}" />
+<Code code={lib} lang="rust" title="lib.rs" meta="{3} collapse={4-27}" />
 
 By default, the program ID is the public key of the keypair at `/target/deploy/<program_name>-keypair.json`. To rewrite the `declare_id!(){:rs}` string to match the on-disk keypair, run `$ [34manchor[0m keys sync{:ansi}`.
 
