@@ -1,25 +1,27 @@
-use crate::{
-    config::ProgramWorkspace, create_files, override_or_create_files, Files, PackageManager,
-    VERSION,
-};
-use anyhow::Result;
-use clap::{Parser, ValueEnum};
-use heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase};
-use solana_keypair::{read_keypair_file, write_keypair_file, Keypair};
-use solana_pubkey::Pubkey;
-use solana_signer::Signer;
-use std::{
-    fmt::Write as _,
-    fs::{self, File},
-    io::Write as _,
-    path::Path,
-    process::Stdio,
+use {
+    crate::{
+        config::ProgramWorkspace, create_files, override_or_create_files, AbsolutePath, Files,
+        PackageManager, VERSION,
+    },
+    anyhow::Result,
+    clap::{Parser, ValueEnum},
+    heck::{ToLowerCamelCase, ToPascalCase, ToSnakeCase},
+    solana_keypair::{read_keypair_file, write_keypair_file, Keypair},
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    std::{
+        fmt::Write as _,
+        fs::{self, File},
+        io::Write as _,
+        path::Path,
+        process::Stdio,
+    },
 };
 
 const ANCHOR_MSRV: &str = "1.89.0";
 
 /// Program initialization template
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, AbsolutePath)]
 pub enum ProgramTemplate {
     /// Program with a single `lib.rs` file (not recommended for production)
     Single,
@@ -35,25 +37,42 @@ pub fn create_program(
     test_template: Option<&TestTemplate>,
 ) -> Result<()> {
     let program_path = Path::new("programs").join(name);
+    let lib_rs_path = program_path.join("src").join("lib.rs");
     let common_files = vec![
-        ("Cargo.toml".into(), workspace_manifest().into()),
+        ("Cargo.toml".into(), workspace_manifest()),
         ("rust-toolchain.toml".into(), rust_toolchain_toml()),
         (
             program_path.join("Cargo.toml"),
             cargo_toml(name, test_template),
         ),
-        // Note: Xargo.toml is no longer needed for modern Solana builds using SBF
+        // One of the create_program_template_* functions will write the full
+        // lib.rs, but we need an empty stub for now so cargo won't throw an
+        // error when asking it where the `target` dir is located.
+        (lib_rs_path.clone(), "".into()),
+        // Note: Xargo.toml is no longer needed for modern Solana builds using SBF.
     ];
+
+    create_files(&common_files)?;
+
+    let target_path = crate::target_dir()?;
+
+    // Remove the stub version
+    fs::remove_file(&lib_rs_path)?;
 
     let template_files = match template {
         ProgramTemplate::Single => {
-            println!("Note: Using single-file template. For better code organization and maintainability, consider using --template multiple (default).");
-            create_program_template_single(name, &program_path)
+            println!(
+                "Note: Using single-file template. For better code organization and \
+                 maintainability, consider using --template multiple (default)."
+            );
+            create_program_template_single(name, &program_path, target_path)
         }
-        ProgramTemplate::Multiple => create_program_template_multiple(name, &program_path),
+        ProgramTemplate::Multiple => {
+            create_program_template_multiple(name, &program_path, target_path)
+        }
     };
 
-    create_files(&[common_files, template_files].concat())
+    create_files(&template_files)
 }
 
 /// Helper to create a rust-toolchain.toml at the workspace root
@@ -68,7 +87,7 @@ profile = "minimal"
 }
 
 /// Create a program with a single `lib.rs` file.
-fn create_program_template_single(name: &str, program_path: &Path) -> Files {
+fn create_program_template_single(name: &str, program_path: &Path, target_path: &Path) -> Files {
     vec![(
         program_path.join("src").join("lib.rs"),
         format!(
@@ -89,14 +108,14 @@ pub mod {} {{
 #[derive(Accounts)]
 pub struct Initialize {{}}
 "#,
-            get_or_create_program_id(name),
+            get_or_create_program_id(name, target_path),
             name.to_snake_case(),
         ),
     )]
 }
 
 /// Create a program with multiple files for instructions, state...
-fn create_program_template_multiple(name: &str, program_path: &Path) -> Files {
+fn create_program_template_multiple(name: &str, program_path: &Path, target_path: &Path) -> Files {
     let src_path = program_path.join("src");
     vec![
         (
@@ -124,7 +143,7 @@ pub mod {} {{
     }}
 }}
 "#,
-                get_or_create_program_id(name),
+                get_or_create_program_id(name, target_path),
                 name.to_snake_case(),
             ),
         ),
@@ -175,12 +194,17 @@ pub fn handler(ctx: Context<Initialize>) -> Result<()> {
     ]
 }
 
-const fn workspace_manifest() -> &'static str {
-    r#"[workspace]
+fn workspace_manifest() -> String {
+    format!(
+        r#"[workspace]
 members = [
     "programs/*"
 ]
 resolver = "2"
+
+[workspace.package]
+edition = "2021"
+rust-version = "{ANCHOR_MSRV}"
 
 [profile.release]
 overflow-checks = true
@@ -191,6 +215,7 @@ opt-level = 3
 incremental = false
 codegen-units = 1
 "#
+    )
 }
 
 fn cargo_toml(name: &str, test_template: Option<&TestTemplate>) -> String {
@@ -209,10 +234,10 @@ mollusk-svm = "~0.10"
             r#"
 [dev-dependencies]
 litesvm = "0.10.0"
-solana-message = "3.0.0"
-solana-transaction = "3.0.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
 solana-signer = "3.0.0"
-solana-keypair = "3.0.0"
+solana-keypair = "3.0.1"
 "#
         }
         _ => "",
@@ -223,7 +248,8 @@ solana-keypair = "3.0.0"
 name = "{0}"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -257,8 +283,9 @@ unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_os, values("solana
 }
 
 /// Read the program keypair file or create a new one if it doesn't exist.
-pub fn get_or_create_program_id(name: &str) -> Pubkey {
-    let keypair_path = Path::new("target")
+pub fn get_or_create_program_id(name: &str, target_path: impl AsRef<Path>) -> Pubkey {
+    let keypair_path = target_path
+        .as_ref()
         .join("deploy")
         .join(format!("{}-keypair.json", name.to_snake_case()));
 
@@ -371,7 +398,7 @@ describe("{}", () => {{
     )
 }
 
-pub fn jest(name: &str) -> String {
+pub fn js_jest(name: &str) -> String {
     format!(
         r#"const anchor = require("@anchor-lang/core");
 
@@ -638,7 +665,7 @@ anchor.workspace.{} = new anchor.Program({}, provider);
 }
 
 /// Test initialization template
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, AbsolutePath)]
 pub enum TestTemplate {
     /// Generate template for Mocha unit-test
     Mocha,
@@ -702,8 +729,13 @@ impl TestTemplate {
                 // Build the test suite.
                 fs::create_dir_all("tests")?;
 
-                let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
-                test.write_all(jest(project_name).as_bytes())?;
+                if js {
+                    let mut test = File::create(format!("tests/{}.test.js", &project_name))?;
+                    test.write_all(js_jest(project_name).as_bytes())?;
+                } else {
+                    let mut test = File::create(format!("tests/{}.test.ts", &project_name))?;
+                    test.write_all(ts_jest(project_name).as_bytes())?;
+                }
             }
             Self::Rust => {
                 // Do not initialize git repo
@@ -872,9 +904,9 @@ fn create_program_template_litesvm_test(name: &str, tests_path: &Path) -> Files 
 use {{
     anchor_lang::{{solana_program::instruction::Instruction, InstructionData, ToAccountMetas}},
     litesvm::LiteSVM,
+    solana_keypair::Keypair,
     solana_message::{{Message, VersionedMessage}},
     solana_signer::Signer,
-    solana_keypair::Keypair,
     solana_transaction::versioned::VersionedTransaction,
 }};
 
@@ -883,10 +915,13 @@ fn test_initialize() {{
     let program_id = {0}::id();
     let payer = Keypair::new();
     let mut svm = LiteSVM::new();
-    let bytes = include_bytes!("../../../target/deploy/{0}.so");
+    let bytes = include_bytes!(concat!(
+        env!("CARGO_TARGET_TMPDIR"),
+        "/../deploy/{0}.so"
+    ));
     svm.add_program(program_id, bytes).unwrap();
     svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
-    
+
     let instruction = Instruction::new_with_bytes(
         program_id,
         &{0}::instruction::Initialize {{}}.data(),

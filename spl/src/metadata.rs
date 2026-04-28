@@ -1,12 +1,13 @@
-use anchor_lang::context::CpiContext;
-use anchor_lang::error::ErrorCode;
-use anchor_lang::solana_program::account_info::AccountInfo;
-use anchor_lang::solana_program::pubkey::Pubkey;
-use anchor_lang::{system_program, Accounts, Result, ToAccountInfos};
-use std::ops::Deref;
-
-pub use mpl_token_metadata;
-pub use mpl_token_metadata::ID;
+pub use mpl_token_metadata::{self, ID};
+use {
+    anchor_lang::{
+        context::CpiContext,
+        error::ErrorCode,
+        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        system_program, Accounts, Result, ToAccountInfos,
+    },
+    std::ops::Deref,
+};
 
 pub fn approve_collection_authority<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, ApproveCollectionAuthority<'info>>,

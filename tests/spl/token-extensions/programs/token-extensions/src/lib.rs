@@ -8,8 +8,7 @@ use anchor_lang::prelude::*;
 
 pub mod instructions;
 pub mod utils;
-pub use instructions::*;
-pub use utils::*;
+pub use {instructions::*, utils::*};
 
 declare_id!("tKEkkQtgMXhdaz5NMTR3XbdUu215sZyHSj6Menvous1");
 
@@ -28,5 +27,32 @@ pub mod token_extensions {
         _ctx: Context<CheckMintExtensionConstraints>,
     ) -> Result<()> {
         Ok(())
+    }
+
+    pub fn create_group_pointer_mint(_ctx: Context<CreateGroupPointerMint>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn update_group_pointer(
+        ctx: Context<UpdateGroupPointer>,
+        new_group_address: Option<Pubkey>,
+    ) -> Result<()> {
+        instructions::update_group_pointer_handler(ctx, new_group_address)
+    }
+
+    pub fn check_toggle_pause(ctx: Context<CheckTogglePause>) -> Result<()> {
+        instructions::toggle_pause_handler(ctx)
+    }
+
+    pub fn check_pausable_authority_constraint(
+        ctx: Context<CheckPausableAuthorityConstraint>,
+    ) -> Result<()> {
+        instructions::check_pausable_authority_constraint_handler(ctx)
+    }
+
+    pub fn update_and_remove_token_metadata(
+        ctx: Context<UpdateAndRemoveTokenMetadata>,
+    ) -> Result<()> {
+        instructions::update_and_remove_token_metadata_handler(ctx)
     }
 }

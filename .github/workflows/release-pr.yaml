@@ -2,15 +2,20 @@ name: Release Dry-run
 
 on:
   pull_request:
-    branches:
-      - master
-
     paths:
       - VERSION
       - .github/workflows/release-pr.yaml
       - .github/workflows/build-cli.yaml
       - .github/workflows/publish-crates.yaml
       - .github/workflows/publish-npmjs.yaml
+      - .github/scripts/publish-npmjs.sh
+      # Package manifests
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "ts/**/package.json"
+      - "ts/**/yarn.lock"
+      - "!tests/**"
+      - "!examples/**"
 
   workflow_dispatch:
 

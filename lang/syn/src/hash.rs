@@ -1,10 +1,12 @@
 // Utility hashing module copied from `solana_program::program::hash`, since we
 // can't import solana_program for compile time hashing for some reason.
 
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-use std::{fmt, mem, str::FromStr};
-use thiserror::Error;
+use {
+    serde::{Deserialize, Serialize},
+    sha2::{Digest, Sha256},
+    std::{fmt, mem, str::FromStr},
+    thiserror::Error,
+};
 
 pub const HASH_BYTES: usize = 32;
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -26,11 +28,12 @@ impl Hasher {
         }
     }
     pub fn result(self) -> Hash {
-        // `generic-array ^0.14.8` logs deprecation warnings
-        //
-        // TODO: Remove once `sha2` (transitively) depends on `generic-array` v1.
-        #[allow(deprecated)]
-        Hash(<[u8; HASH_BYTES]>::try_from(self.hasher.finalize().as_slice()).unwrap())
+        #[allow(
+            clippy::unwrap_used,
+            reason = "SHA256 always produces exactly HASH_BYTES (32) bytes"
+        )]
+        let hash = Hash(<[u8; HASH_BYTES]>::try_from(self.hasher.finalize().as_slice()).unwrap());
+        hash
     }
 }
 
@@ -77,7 +80,12 @@ impl FromStr for Hash {
 
 impl Hash {
     pub fn new(hash_slice: &[u8]) -> Self {
-        Hash(<[u8; HASH_BYTES]>::try_from(hash_slice).unwrap())
+        #[allow(
+            clippy::unwrap_used,
+            reason = "SHA256 always produces exactly HASH_BYTES (32) bytes"
+        )]
+        let hash = Hash(<[u8; HASH_BYTES]>::try_from(hash_slice).unwrap());
+        hash
     }
 
     pub fn to_bytes(self) -> [u8; HASH_BYTES] {

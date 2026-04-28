@@ -343,7 +343,7 @@ pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
         to: ctx.accounts.token_account.to_account_info(),
         authority: ctx.accounts.mint.to_account_info(),
     };
-    let cpi_program = ctx.accounts.token_program.to_account_info();
+    let cpi_program = ctx.accounts.token_program.key();
     // [!code highlight:2]
     let cpi_context = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
     token_interface::mint_to(cpi_context, amount)?;

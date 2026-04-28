@@ -160,7 +160,7 @@ Generates the IDL for the program using the compilation method.
 ### Idl Init
 
 ```shell
-anchor idl init -f <target/idl/program.json> <program-id>
+anchor idl init -f <target/idl/program.json> [program-id]
 ```
 
 Creates an idl account, writing the given `<target/idl/program.json>` file into
@@ -168,13 +168,15 @@ a program owned account. By default, the size of the account is double the size
 of the IDL, allowing room for growth in case the idl needs to be upgraded in the
 future.
 
+The `program-id` argument is optional — when omitted, `idl.address` is used.
+
 ### Idl Fetch
 
 ```shell
 anchor idl fetch -o <out-file.json> <program-id>
 ```
 
-Fetches an IDL from the configured blockchain. For example, make sure your
+Fetches an IDL from the configured blockchain. For example, make sure your  
 `Anchor.toml` is pointing to the `mainnet` cluster and run
 
 ```shell
@@ -202,11 +204,12 @@ configured wallet must be the current authority.
 ### Idl Upgrade
 
 ```shell
-anchor idl upgrade <program-id> -f <target/idl/program.json>
+anchor idl upgrade -f <target/idl/program.json>
 ```
 
 Upgrades the IDL file on chain to the new `target/idl/program.json` idl. The
-configured wallet must be the current authority.
+configured wallet must be the current authority. The `program-id` argument is 
+optional — when omitted, `idl.address` is used.
 
 ```shell
 anchor idl set-authority -n <new-authority> -p <program-id>
@@ -327,7 +330,9 @@ Run an integration test suit against the configured cluster, deploying new
 versions of all workspace programs before running them.
 
 If the configured network is a localnet, then automatically starts the
-localnetwork and runs the test.
+local network and runs the test. By default, [Surfpool](https://github.com/txtx/surfpool)
+is used as the local network backend. To use `solana-test-validator` instead,
+pass `--validator legacy`.
 
 <Callout title="Note">
 Be sure to shutdown any other local validators, otherwise `anchor test` will fail to run.

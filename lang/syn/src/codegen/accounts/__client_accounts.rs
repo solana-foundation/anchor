@@ -1,7 +1,9 @@
-use crate::{AccountField, AccountsStruct, Ty};
-use heck::SnakeCase;
-use quote::quote;
-use std::str::FromStr;
+use {
+    crate::{AccountField, AccountsStruct, Ty},
+    heck::SnakeCase,
+    quote::quote,
+    std::str::FromStr,
+};
 
 // Generates the private `__client_accounts` mod implementation, containing
 // a generated struct mapping 1-1 to the `Accounts` struct, except with
@@ -11,6 +13,10 @@ pub fn generate(
     program_id: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     let name = &accs.ident;
+    #[allow(
+        clippy::unwrap_used,
+        reason = "computed from valid Rust identifier via snake_case"
+    )]
     let account_mod_name: proc_macro2::TokenStream = format!(
         "__client_accounts_{}",
         accs.ident.to_string().to_snake_case()
@@ -27,15 +33,24 @@ pub fn generate(
                 let docs = if let Some(ref docs) = s.docs {
                     docs.iter()
                         .map(|docs_line| {
-                            proc_macro2::TokenStream::from_str(&format!(
+                            #[allow(
+                                clippy::unwrap_used,
+                                reason = "hardcoded valid doc comment syntax"
+                            )]
+                            let ts = proc_macro2::TokenStream::from_str(&format!(
                                 "#[doc = r#\"{docs_line}\"#]"
                             ))
-                            .unwrap()
+                            .unwrap();
+                            ts
                         })
                         .collect()
                 } else {
                     quote!()
                 };
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "computed from valid Rust identifiers via snake_case"
+                )]
                 let symbol: proc_macro2::TokenStream = format!(
                     "__client_accounts_{0}::{1}",
                     s.symbol.to_snake_case(),
@@ -53,10 +68,15 @@ pub fn generate(
                 let docs = if let Some(ref docs) = f.docs {
                     docs.iter()
                         .map(|docs_line| {
-                            proc_macro2::TokenStream::from_str(&format!(
+                            #[allow(
+                                clippy::unwrap_used,
+                                reason = "hardcoded valid doc comment syntax"
+                            )]
+                            let ts = proc_macro2::TokenStream::from_str(&format!(
                                 "#[doc = r#\"{docs_line}\"#]"
                             ))
-                            .unwrap()
+                            .unwrap();
+                            ts
                         })
                         .collect()
                 } else {
@@ -84,7 +104,7 @@ pub fn generate(
             AccountField::CompositeField(s) => {
                 let name = &s.ident;
                 quote! {
-                    account_metas.extend(self.#name.to_account_metas(None));
+                    account_metas.extend(self.#name.to_account_metas(is_signer));
                 }
             }
             AccountField::Field(f) => {
@@ -94,7 +114,7 @@ pub fn generate(
                 };
                 let is_signer = match is_signer {
                     false => quote! {false},
-                    true => quote! {true},
+                    true => quote! {is_signer.unwrap_or(true)},
                 };
                 let meta = match f.constraints.is_mutable() {
                     false => quote! { anchor_lang::solana_program::instruction::AccountMeta::new_readonly },
@@ -139,6 +159,10 @@ pub fn generate(
         re_exports
             .iter()
             .map(|symbol: &String| {
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "symbol is a known-valid module path string"
+                )]
                 let symbol: proc_macro2::TokenStream = symbol.parse().unwrap();
                 quote! {
                     pub use #symbol;
@@ -147,6 +171,7 @@ pub fn generate(
             .collect()
     };
 
+    #[allow(clippy::unwrap_used, reason = "hardcoded valid doc comment syntax")]
     let struct_doc = proc_macro2::TokenStream::from_str(&format!(
         "#[doc = \" Generated client accounts for [`{name}`].\"]"
     ))

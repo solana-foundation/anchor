@@ -64,8 +64,10 @@ pub fn test_event_parser() {
 
 #[test]
 pub fn test_instruction_parser() {
-    use anchor_lang::solana_program::instruction::Instruction as SolanaInstruction;
-    use external::parsers::Instruction;
+    use {
+        anchor_lang::solana_program::instruction::Instruction as SolanaInstruction,
+        external::parsers::Instruction,
+    };
 
     // Incorrect program
     assert!(Instruction::parse(&SolanaInstruction::new_with_bytes(
@@ -305,8 +307,8 @@ pub fn test_instruction_parser() {
 #[test]
 #[cfg(not(feature = "idl-build"))]
 pub fn test_errors() {
-    use external::errors::ProgramError;
+    use external::error::ExternalError;
 
-    assert_eq!(ProgramError::MyNormalError as u32, 6000);
-    assert_eq!(ProgramError::MyErrorWithSpecialOffset as u32, 6500);
+    assert_eq!(ExternalError::MyNormalError as u32, 6000);
+    assert_eq!(ExternalError::MyErrorWithSpecialOffset as u32, 6500);
 }

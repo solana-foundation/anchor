@@ -7,11 +7,11 @@ runs:
       name: Cache Surfpool Binary
       id: cache-surfpool
       with:
-        path: /usr/local/bin/surfpool
-        # TODO: currently this value is only used to invalidate the cache and install latest, it is not
-        # actually installing the specified version.
-        # Issue: https://github.com/solana-foundation/anchor/issues/4160
+        path: ~/.local/bin/surfpool
         key: surfpool-${{ runner.os }}-v${{ env.SURFPOOL_CLI_VERSION }}
+
+    - shell: bash
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - uses: nick-fields/retry@v2
       if: steps.cache-surfpool.outputs.cache-hit != 'true'
@@ -24,10 +24,14 @@ runs:
         command: |
           set -euxo pipefail
           echo "Installing Surfpool version ${{ env.SURFPOOL_CLI_VERSION }}"
-          curl -sL https://run.surfpool.run/ | VERSION=v${{ env.SURFPOOL_CLI_VERSION }} bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          echo "$PATH"
-          ls -al $HOME/.local/bin
+          mkdir -p "$HOME/.local/bin"
+          curl -sL -o /tmp/surfpool.tar.gz "https://github.com/solana-foundation/surfpool/releases/download/v${{ env.SURFPOOL_CLI_VERSION }}/surfpool-linux-x64.tar.gz"
+          tar -xzf /tmp/surfpool.tar.gz -C "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/surfpool"
+          rm /tmp/surfpool.tar.gz
+
+    - shell: bash
+      run: surfpool -V
 
     
 

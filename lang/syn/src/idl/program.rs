@@ -1,16 +1,17 @@
-use anyhow::{anyhow, Result};
-use heck::CamelCase;
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-use syn::spanned::Spanned;
-
-use super::{
-    common::{gen_print_section, get_idl_module_path, get_no_docs, get_program_path},
-    defined::gen_idl_type,
-};
-use crate::{
-    parser::{context::CrateContext, docs},
-    Program,
+use {
+    super::{
+        common::{gen_print_section, get_idl_module_path, get_no_docs, get_program_path},
+        defined::gen_idl_type,
+    },
+    crate::{
+        parser::{context::CrateContext, docs},
+        Program,
+    },
+    anyhow::{anyhow, Result},
+    heck::CamelCase,
+    proc_macro2::TokenStream,
+    quote::{format_ident, quote},
+    syn::spanned::Spanned,
 };
 
 /// Generate the IDL build print function for the program module.

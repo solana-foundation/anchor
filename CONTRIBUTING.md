@@ -20,6 +20,13 @@ If you'd like to contribute, please claim an issue by commenting, forking, and
 opening a pull request, even if empty. This allows the maintainers to track who
 is working on what issue as to not overlap work.
 
+## Branch Targeting
+
+Pull requests should usually target `master`.
+
+If your change is breaking, open the pull request against `anchor-next`
+instead of `master`.
+
 ## Issue Guidelines
 
 Please follow these guidelines:
@@ -41,3 +48,25 @@ After coding:
 - If you've moved code around, build the docs with `cargo doc --open` and adjust broken links
 - Adjust the cli templates if necessary
 - If you've added a new folder to the `tests` directory, add it to the [CI](./.github/workflows/tests.yaml).
+
+### Formatting and Linting
+
+If you have edited and Rust or TypeScript/JavaScript code, ensure it is correctly formatted and compatible with our lint suite; this will ensure CI passes and help us quickly review your contribution.
+
+#### Rust
+
+In the root workspace, run
+```sh
+# Ensure you have the latest nightly version with `rustup update nightly`
+cargo +nightly fmt
+cargo clippy --all-targets -- -D warnings
+```
+
+#### TypeScript/JavaScript
+
+Enter the relevant JS package (e.g. `tests/`, or `ts/packages/anchor`) and run
+
+```sh
+yarn
+yarn lint:fix
+```

@@ -12,6 +12,13 @@ edition = "2021"
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[lints.clippy]
+unwrap-used = "deny"
+expect-used = "deny"
+panic = "deny"
+unimplemented = "deny"
+indexing-slicing = "deny"
+
 [features]
 allow-missing-optionals = []
 anchor-debug = []
@@ -31,6 +38,6 @@ heck = "0.3"
 proc-macro2 = { version = "1.0.100", features = ["span-locations"] }
 quote = "1"
 serde = { version = "1", features = ["derive"] }
-sha2 = "0.10"
+sha2 = "0.11"
 syn = { version = "1", features = ["full", "extra-traits", "parsing"] }
 thiserror = "1"

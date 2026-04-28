@@ -1,6 +1,10 @@
-use crate::codegen::accounts::{generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct};
-use quote::quote;
+use {
+    crate::{
+        codegen::accounts::{generics, ParsedGenerics},
+        AccountField, AccountsStruct,
+    },
+    quote::quote,
+};
 
 /// Generates the `DuplicateMutableAccountKeys` trait implementation for an Accounts struct.
 ///

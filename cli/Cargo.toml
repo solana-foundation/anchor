@@ -18,8 +18,9 @@ dev = []
 idl-localnet-testing = []
 
 [dependencies]
-anchor-client = { path = "../client", version = "1.0.0-rc.3" }
-anchor-lang = { path = "../lang", version = "1.0.0-rc.3" }
+anchor-cli-macros = { path = "cli-macros", version = "1.0.1"}
+anchor-client = { path = "../client", version = "1.0.1" }
+anchor-lang = { path = "../lang", version = "1.0.1" }
 anchor-lang-idl = { path = "../idl", version = "0.1.2", features = ["build", "convert"] }
 anyhow = "1.0.32"
 base64 = "0.21"
@@ -31,7 +32,6 @@ clap_complete = "4.5.26"
 console = "0.15"
 dirs = "4.0"
 ed25519-dalek = "2"
-flate2 = "1.0.19"
 heck = "0.4.0"
 pathdiff = "0.2.0"
 portpicker = "0.1.1"
@@ -42,7 +42,7 @@ serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.1.0"
 solana-cli-config.workspace = true
-solana-client = "3.0.0"
+solana-client.workspace = true
 solana-clock.workspace = true
 solana-commitment-config.workspace = true
 solana-compute-budget-interface.workspace = true
@@ -64,5 +64,7 @@ solana-pubsub-client.workspace = true
 syn = { version = "1.0.60", features = ["full", "extra-traits"] }
 tempfile = "3"
 tiny-bip39 = "2.0"
+pbkdf2 = "0.12"
+sha2 = "0.10"
 toml = "0.7.6"
 walkdir = "2.3.2"

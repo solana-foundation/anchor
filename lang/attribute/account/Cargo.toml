@@ -11,6 +11,13 @@ edition = "2021"
 [lib]
 proc-macro = true
 
+[lints.clippy]
+unwrap-used = "deny"
+expect-used = "deny"
+panic = "deny"
+unimplemented = "deny"
+indexing-slicing = "deny"
+
 [features]
 anchor-debug = ["anchor-syn/anchor-debug"]
 idl-build = ["anchor-syn/idl-build"]
@@ -18,7 +25,7 @@ lazy-account = []
 event-cpi = []
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "1.0.0-rc.3", features = ["hash"] }
+anchor-syn = { path = "../../syn", version = "1.0.1", features = ["hash"] }
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }

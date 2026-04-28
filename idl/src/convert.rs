@@ -1,6 +1,7 @@
-use anyhow::{anyhow, Result};
-
-use crate::types::Idl;
+use {
+    crate::types::Idl,
+    anyhow::{anyhow, Result},
+};
 
 /// Create an [`Idl`] value with additional support for older specs based on the
 /// `idl.metadata.spec` field.
@@ -29,10 +30,12 @@ pub fn convert_idl(idl: &[u8]) -> Result<Idl> {
 
 /// Legacy IDL spec (pre Anchor v0.30)
 mod legacy {
-    use crate::types as t;
-    use anyhow::{anyhow, Result};
-    use heck::SnakeCase;
-    use serde::{Deserialize, Serialize};
+    use {
+        crate::types as t,
+        anyhow::{anyhow, Result},
+        heck::SnakeCase,
+        serde::{Deserialize, Serialize},
+    };
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     pub struct Idl {

@@ -1,15 +1,15 @@
-use std::{
-    collections::BTreeMap,
-    env, mem,
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
+use {
+    crate::types::{Idl, IdlEvent, IdlTypeDef},
+    anyhow::{anyhow, Result},
+    regex::Regex,
+    serde::Deserialize,
+    std::{
+        collections::BTreeMap,
+        env, mem,
+        path::{Path, PathBuf},
+        process::{Command, Stdio},
+    },
 };
-
-use anyhow::{anyhow, Result};
-use regex::Regex;
-use serde::Deserialize;
-
-use crate::types::{Idl, IdlEvent, IdlTypeDef};
 
 /// A trait that types must implement in order to include the type in the IDL definition.
 ///
@@ -47,8 +47,14 @@ pub trait IdlBuild {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```rust,no_run
+/// # use std::path::PathBuf;
+/// # use anchor_lang_idl::build::IdlBuilder;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let path = PathBuf::from("programs/my_program");
 /// let idl = IdlBuilder::new().program_path(path).skip_lint(true).build()?;
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Default)]
 pub struct IdlBuilder {

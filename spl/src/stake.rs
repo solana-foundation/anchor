@@ -1,15 +1,17 @@
-use anchor_lang::{
-    context::CpiContext,
-    solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-    Accounts, Result,
+use {
+    anchor_lang::{
+        context::CpiContext,
+        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        Accounts, Result,
+    },
+    borsh::BorshDeserialize,
+    solana_stake_interface::{
+        self as stake,
+        program::ID,
+        state::{StakeAuthorize, StakeStateV2},
+    },
+    std::ops::Deref,
 };
-use borsh::BorshDeserialize;
-use solana_stake_interface::{
-    self as stake,
-    program::ID,
-    state::{StakeAuthorize, StakeStateV2},
-};
-use std::ops::Deref;
 
 // CPI functions
 

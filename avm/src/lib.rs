@@ -1,15 +1,31 @@
-use anyhow::{anyhow, bail, Context, Error, Result};
-use cargo_toml::Manifest;
-use chrono::{TimeZone, Utc};
-use reqwest::header::USER_AGENT;
-use reqwest::StatusCode;
-use semver::{Prerelease, Version};
-use serde::{de, Deserialize};
-use std::fs;
-use std::io::{BufRead, Write};
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::sync::LazyLock;
+use {
+    anyhow::{anyhow, bail, Context, Error, Result},
+    cargo_toml::Manifest,
+    chrono::{TimeZone, Utc},
+    reqwest::{header::USER_AGENT, StatusCode},
+    semver::{Prerelease, Version},
+    serde::{de, Deserialize},
+    std::{
+        fs,
+        io::{BufRead, Write},
+        path::PathBuf,
+        process::{Command, Stdio},
+        sync::LazyLock,
+    },
+};
+
+/// Checked at most once per hour.
+const UPDATE_CHECK_INTERVAL_SECS: i64 = 60 * 60;
+/// Shorter HTTP timeout so a slow or unreachable GitHub does not stall the CLI for long.
+const HTTP_CLIENT_TIMEOUT_SECS: u64 = 5;
+
+/// Shared HTTP client with a short timeout, used for all outbound requests.
+static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
+    reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(HTTP_CLIENT_TIMEOUT_SECS))
+        .build()
+        .expect("Failed to build HTTP client")
+});
 
 /// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
 pub static AVM_HOME: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -37,6 +53,16 @@ fn current_version_file_path() -> PathBuf {
 /// Path to the current version file $AVM_HOME/bin
 pub fn get_bin_dir_path() -> PathBuf {
     AVM_HOME.join("bin")
+}
+
+/// Path to the temporary folder for cargo install
+pub fn get_tmp_install_dir_path() -> PathBuf {
+    AVM_HOME.join("tmp")
+}
+
+/// Path to the temporary bin folder of cargo install
+pub fn get_tmp_bin_dir_path() -> PathBuf {
+    AVM_HOME.join("tmp").join("bin")
 }
 
 /// Path to the binary for the given version
@@ -142,7 +168,8 @@ pub fn ensure_paths() {
                     if !linked {
                         if let Err(e) = fs::copy(&target, &anchor_in_cargo) {
                             eprintln!(
-                                "Failed to place `anchor` in {}: {}.\nAdd {} to your PATH or create a symlink manually.",
+                                "Failed to place `anchor` in {}: {}.\nAdd {} to your PATH or \
+                                 create a symlink manually.",
                                 cargo_bin.display(),
                                 e,
                                 bin_dir.display()
@@ -231,8 +258,7 @@ pub fn update(include_pre_release: bool) -> Result<()> {
 ///
 /// returns the full commit sha3 for unique versioning downstream
 pub fn check_and_get_full_commit(commit: &str) -> Result<String> {
-    let client = reqwest::blocking::Client::new();
-    let response = client
+    let response = HTTP_CLIENT
         .get(format!(
             "https://api.github.com/repos/solana-foundation/anchor/commits/{commit}"
         ))
@@ -289,11 +315,10 @@ fn append_commit(version: &mut Version, commit: &str) -> Result<()> {
 }
 
 fn get_anchor_version_from_commit(commit: &str) -> Result<Version> {
-    let client = reqwest::blocking::Client::new();
     let base = format!("https://raw.githubusercontent.com/solana-foundation/anchor/{commit}");
 
     // Newer versions (workspace layout): version lives in [workspace.package] of the root Cargo.toml.
-    if let Some(text) = fetch_raw(&client, &format!("{base}/Cargo.toml"))? {
+    if let Some(text) = fetch_raw(&HTTP_CLIENT, &format!("{base}/Cargo.toml"))? {
         if let Ok(manifest) = Manifest::from_str(&text) {
             if let Some(version_str) = manifest
                 .workspace
@@ -309,7 +334,7 @@ fn get_anchor_version_from_commit(commit: &str) -> Result<Version> {
     }
 
     // Older versions: version lives in [package] of cli/Cargo.toml.
-    let text = fetch_raw(&client, &format!("{base}/cli/Cargo.toml"))?
+    let text = fetch_raw(&HTTP_CLIENT, &format!("{base}/cli/Cargo.toml"))?
         .ok_or_else(|| anyhow!("Could not find anchor-cli version for commit {commit}"))?;
     let manifest = Manifest::from_str(&text)?;
     let mut version = manifest.package().version().parse::<Version>()?;
@@ -356,7 +381,11 @@ pub fn install_version(
             "anchor-cli".into(),
             "--locked".into(),
             "--root".into(),
-            AVM_HOME.to_str().unwrap().into(),
+            // can't install directly to `.avm/` because additional symlinks were
+            // added to the .avm/bin folder that can cause cargo to error out during installs
+            // simply removing the creation of those links would not remove them from user machines
+            // and we don't want to remove them because they may have been created by the user
+            get_tmp_install_dir_path().to_str().unwrap().into(),
         ];
         match install_target {
             InstallTarget::Version(version) => {
@@ -429,7 +458,7 @@ pub fn install_version(
             ));
         }
 
-        let bin_dir = get_bin_dir_path();
+        let bin_dir = get_tmp_bin_dir_path();
         let bin_name = if cfg!(target_os = "windows") {
             "anchor.exe"
         } else {
@@ -599,6 +628,13 @@ pub fn read_anchorversion_file() -> Result<Version> {
 /// Retrieve a list of installable versions of anchor-cli using the GitHub API and tags on the Anchor
 /// repository.
 pub fn fetch_versions(include_pre_release: bool) -> Result<Vec<Version>, Error> {
+    fetch_versions_with_client(&HTTP_CLIENT, include_pre_release)
+}
+
+fn fetch_versions_with_client(
+    client: &reqwest::blocking::Client,
+    include_pre_release: bool,
+) -> Result<Vec<Version>, Error> {
     #[derive(Deserialize)]
     struct Release {
         #[serde(rename = "name", deserialize_with = "version_deserializer")]
@@ -615,7 +651,7 @@ pub fn fetch_versions(include_pre_release: bool) -> Result<Vec<Version>, Error> 
         Version::parse(s.trim_start_matches('v')).map_err(de::Error::custom)
     }
 
-    let response = reqwest::blocking::Client::new()
+    let response = client
         .get("https://api.github.com/repos/solana-foundation/anchor/releases")
         .header(
             USER_AGENT,
@@ -685,7 +721,14 @@ pub fn list_versions(include_pre_release: bool) -> Result<()> {
 }
 
 pub fn get_latest_version(include_pre_release: bool) -> Result<Version> {
-    let mut versions = fetch_versions(include_pre_release)?;
+    get_latest_version_with_client(&HTTP_CLIENT, include_pre_release)
+}
+
+fn get_latest_version_with_client(
+    client: &reqwest::blocking::Client,
+    include_pre_release: bool,
+) -> Result<Version> {
+    let mut versions = fetch_versions_with_client(client, include_pre_release)?;
     versions.sort();
     versions
         .into_iter()
@@ -706,13 +749,145 @@ pub fn read_installed_versions() -> Result<Vec<Version>> {
     Ok(versions)
 }
 
+// ── AVM self-update ───────────────────────────────────────────────────────────
+
+fn update_check_file_path() -> PathBuf {
+    AVM_HOME.join(".update-check")
+}
+
+/// The cache file stores one of two states:
+///   Success: `{unix_ts}\n{semver}`   — a successful check at `unix_ts` that found `semver`.
+///   Error:   `{unix_ts}\n0`          — a failed check at `unix_ts` (`"0"` is not valid semver).
+enum UpdateCacheState {
+    Success(i64, Version),
+    Error(i64),
+    Missing,
+}
+
+fn read_update_cache() -> UpdateCacheState {
+    let Ok(content) = fs::read_to_string(update_check_file_path()) else {
+        return UpdateCacheState::Missing;
+    };
+    let mut lines = content.lines();
+    let Some(ts) = lines.next().and_then(|l| l.parse::<i64>().ok()) else {
+        return UpdateCacheState::Missing;
+    };
+    match lines.next().and_then(|l| Version::parse(l).ok()) {
+        Some(v) => UpdateCacheState::Success(ts, v),
+        None => UpdateCacheState::Error(ts),
+    }
+}
+
+fn write_update_cache_success(version: &Version) {
+    let content = format!("{}\n{version}", Utc::now().timestamp());
+    let _ = fs::write(update_check_file_path(), content);
+}
+
+/// Writes timestamp 0 as an error sentinel so the next invocation knows the last check failed.
+fn write_update_cache_error() {
+    let content = format!("{}\n0", Utc::now().timestamp());
+    let _ = fs::write(update_check_file_path(), content);
+}
+
+/// Check whether a newer AVM release is available and print a warning to stderr if so.
+/// Results (including failures) are cached in `$AVM_HOME/.update-check` so the network
+/// is hit at most once per hour.
+pub fn check_avm_version_and_warn() {
+    let Ok(current) = Version::parse(env!("CARGO_PKG_VERSION")) else {
+        return;
+    };
+
+    let now = Utc::now().timestamp();
+
+    match read_update_cache() {
+        // Fresh successful cache: just compare and maybe warn.
+        UpdateCacheState::Success(ts, latest) if now - ts < UPDATE_CHECK_INTERVAL_SECS => {
+            if latest > current {
+                eprintln!(
+                    "A new version of avm is available: {latest} (you have {current}). Run `avm \
+                     self-update` to upgrade."
+                );
+            }
+        }
+        // Previous check failed recently: tell the user and skip.
+        UpdateCacheState::Error(ts) if now - ts < UPDATE_CHECK_INTERVAL_SECS => {
+            let next_attempt_secs = (ts + UPDATE_CHECK_INTERVAL_SECS) - now;
+            eprintln!("avm update check failed. Next attempt in {next_attempt_secs}s.");
+        }
+        // Cache is stale or missing: run a fresh check.
+        _ => match get_latest_version_with_client(&HTTP_CLIENT, false) {
+            Ok(latest) => {
+                write_update_cache_success(&latest);
+                if latest > current {
+                    eprintln!(
+                        "A new version of avm is available: {latest} (you have {current}). Run \
+                         `avm self-update` to upgrade."
+                    );
+                }
+            }
+            Err(_) => {
+                write_update_cache_error();
+                eprintln!(
+                    "avm update check failed. Next attempt in {UPDATE_CHECK_INTERVAL_SECS}s."
+                );
+            }
+        },
+    }
+}
+
+/// Update AVM itself by re-running `cargo install`.
+///
+/// - Default: installs the latest stable release via `--tag`.
+/// - `include_pre_release`: installs the latest release including rc/beta/alpha.
+/// - `bleeding_edge`: builds from the HEAD of the `master` branch.
+pub fn self_update(include_pre_release: bool, bleeding_edge: bool) -> Result<()> {
+    let current = Version::parse(env!("CARGO_PKG_VERSION"))
+        .map_err(|e| anyhow!("Failed to parse current avm version: {e}"))?;
+
+    let mut args = vec![
+        "install".to_string(),
+        "--git".to_string(),
+        "https://github.com/solana-foundation/anchor".to_string(),
+        "--locked".to_string(),
+    ];
+
+    if bleeding_edge {
+        println!("Updating avm to the latest commit on master...");
+        args.extend_from_slice(&["--branch".to_string(), "master".to_string()]);
+    } else {
+        let latest = get_latest_version(include_pre_release)?;
+        if latest <= current {
+            println!("avm is already up to date ({current})");
+            return Ok(());
+        }
+        println!("Updating avm from {current} to {latest}...");
+        args.extend_from_slice(&["--tag".to_string(), format!("v{latest}")]);
+    }
+
+    args.extend_from_slice(&["avm".to_string(), "--force".to_string()]);
+
+    let status = Command::new("cargo")
+        .args(&args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .map_err(|e| anyhow!("`cargo install` failed: {e}"))?;
+
+    if !status.success() {
+        bail!("Failed to update avm");
+    }
+
+    println!("avm successfully updated");
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::*;
-    use semver::Version;
-    use std::fs;
-    use std::io::Write;
-    use std::path::Path;
+    use {
+        crate::*,
+        semver::Version,
+        std::{fs, io::Write, path::Path},
+    };
 
     #[test]
     fn test_ensure_paths() {

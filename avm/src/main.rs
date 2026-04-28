@@ -1,8 +1,10 @@
-use anyhow::{anyhow, Error, Result};
-use avm::InstallTarget;
-use clap::{CommandFactory, Parser, Subcommand};
-use semver::Version;
-use std::ffi::OsStr;
+use {
+    anyhow::{anyhow, Error, Result},
+    avm::InstallTarget,
+    clap::{CommandFactory, Parser, Subcommand},
+    semver::Version,
+    std::ffi::OsStr,
+};
 
 #[derive(Parser)]
 #[clap(name = "avm", about = "Anchor version manager", version)]
@@ -53,6 +55,15 @@ pub enum Commands {
         #[clap(long)]
         /// Include pre-release versions when selecting the latest
         pre_release: bool,
+    },
+    #[clap(about = "Update avm itself to the latest version via cargo install")]
+    SelfUpdate {
+        #[clap(long)]
+        /// Update to the latest pre-release version instead of the latest stable
+        pre_release: bool,
+        #[clap(long, conflicts_with = "pre_release")]
+        /// Build and install from the latest commit on the master branch
+        bleeding_edge: bool,
     },
     #[clap(about = "Generate shell completions for AVM")]
     Completions {
@@ -106,6 +117,13 @@ fn resolve_use_version(version: Option<String>) -> Result<Option<Version>> {
 }
 
 pub fn entry(opts: Cli) -> Result<()> {
+    if !matches!(
+        opts.command,
+        Commands::SelfUpdate { .. } | Commands::Completions { .. }
+    ) {
+        avm::check_avm_version_and_warn();
+    }
+
     match opts.command {
         Commands::Use { version } => {
             let resolved = resolve_use_version(version)?;
@@ -132,6 +150,10 @@ pub fn entry(opts: Cli) -> Result<()> {
         }
         Commands::List { pre_release } => avm::list_versions(pre_release),
         Commands::Update { pre_release } => avm::update(pre_release),
+        Commands::SelfUpdate {
+            pre_release,
+            bleeding_edge,
+        } => avm::self_update(pre_release, bleeding_edge),
         Commands::Completions { shell } => {
             clap_complete::generate(shell, &mut Cli::command(), "avm", &mut std::io::stdout());
             Ok(())
@@ -196,8 +218,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use avm::InstallTarget;
+    use {super::*, avm::InstallTarget};
 
     // --- is_pre_release ---
 

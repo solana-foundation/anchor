@@ -1,20 +1,20 @@
-use std::{
-    fs,
-    io::{self, Write},
-    path::Path,
+use {
+    crate::{config::ConfigOverride, get_keypair, KeygenCommand},
+    anyhow::{anyhow, bail, Result},
+    bip39::{Language, Mnemonic, MnemonicType, Seed},
+    console::{Key, Term},
+    dirs::home_dir,
+    solana_instruction::{AccountMeta, Instruction},
+    solana_keypair::Keypair,
+    solana_pubkey::Pubkey,
+    solana_signer::{EncodableKey, Signer},
+    solana_transaction::Message,
+    std::{
+        fs,
+        io::{self, Write},
+        path::{Path, PathBuf},
+    },
 };
-
-use anyhow::{anyhow, bail, Result};
-use bip39::{Language, Mnemonic, MnemonicType, Seed};
-use console::{Key, Term};
-use dirs::home_dir;
-use solana_instruction::{AccountMeta, Instruction};
-use solana_keypair::Keypair;
-use solana_pubkey::Pubkey;
-use solana_signer::{EncodableKey, Signer};
-use solana_transaction::Message;
-
-use crate::{config::ConfigOverride, get_keypair, KeygenCommand};
 
 /// Secure password input with asterisk visual feedback
 /// - show_spaces: if true, spaces are visible (for seed phrases); if false, all characters are asterisks (for passphrases)
@@ -32,13 +32,11 @@ fn secure_input(prompt: &str, show_spaces: bool) -> Result<String> {
                 println!();
                 break;
             }
-            Key::Backspace => {
-                if !input.is_empty() {
-                    input.pop();
-                    // Move cursor back, print space, move cursor back again
-                    print!("\x08 \x08");
-                    io::stdout().flush()?;
-                }
+            Key::Backspace if !input.is_empty() => {
+                input.pop();
+                // Move cursor back, print space, move cursor back again
+                print!("\x08 \x08");
+                io::stdout().flush()?;
             }
             Key::Char(c) => {
                 input.push(c);
@@ -87,7 +85,7 @@ pub fn keygen(_cfg_override: &ConfigOverride, cmd: KeygenCommand) -> Result<()> 
 }
 
 fn keygen_new(
-    outfile: Option<String>,
+    outfile: Option<PathBuf>,
     force: bool,
     no_passphrase: bool,
     silent: bool,
@@ -99,7 +97,7 @@ fn keygen_new(
         path.push(".config");
         path.push("solana");
         path.push("id.json");
-        path.to_str().unwrap().to_string()
+        path
     });
 
     // Check for overwrite
@@ -107,12 +105,12 @@ fn keygen_new(
         if !force {
             bail!(
                 "Refusing to overwrite {} without --force flag",
-                outfile_path
+                outfile_path.display()
             );
         }
         println!(
             "⚠️  Warning: Overwriting existing keypair at {}",
-            outfile_path
+            outfile_path.display()
         );
     }
 
@@ -162,9 +160,13 @@ fn keygen_new(
     if let Some(outdir) = Path::new(&outfile_path).parent() {
         fs::create_dir_all(outdir)?;
     }
-    keypair
-        .write_to_file(&outfile_path)
-        .map_err(|e| anyhow!("Failed to write keypair to {}: {}", outfile_path, e))?;
+    keypair.write_to_file(&outfile_path).map_err(|e| {
+        anyhow!(
+            "Failed to write keypair to {}: {}",
+            outfile_path.display(),
+            e
+        )
+    })?;
 
     // Set restrictive permissions (owner read/write only)
     #[cfg(unix)]
@@ -175,7 +177,7 @@ fn keygen_new(
         fs::set_permissions(&outfile_path, perms)?;
     }
 
-    print_step(&format!("Keypair saved to {}", outfile_path));
+    print_step(&format!("Keypair saved to {}", outfile_path.display()));
 
     let phrase: &str = mnemonic.phrase();
     let divider = "━".repeat(phrase.len().max(60));
@@ -201,13 +203,13 @@ fn keygen_new(
     Ok(())
 }
 
-fn keygen_pubkey(keypair_path: Option<String>) -> Result<()> {
+fn keygen_pubkey(keypair_path: Option<PathBuf>) -> Result<()> {
     let path = keypair_path.unwrap_or_else(|| {
         let mut p = home_dir().expect("home directory");
         p.push(".config");
         p.push("solana");
         p.push("id.json");
-        p.to_str().unwrap().to_string()
+        p
     });
 
     let keypair = get_keypair(&path)?;
@@ -216,9 +218,9 @@ fn keygen_pubkey(keypair_path: Option<String>) -> Result<()> {
 }
 
 fn keygen_recover(
-    outfile: Option<String>,
+    outfile: Option<PathBuf>,
     force: bool,
-    _skip_seed_phrase_validation: bool,
+    skip_seed_phrase_validation: bool,
     no_passphrase: bool,
 ) -> Result<()> {
     println!("\n🔓 Recover keypair from seed phrase");
@@ -230,7 +232,7 @@ fn keygen_recover(
         path.push(".config");
         path.push("solana");
         path.push("id.json");
-        path.to_str().unwrap().to_string()
+        path
     });
 
     // Check for overwrite
@@ -238,23 +240,18 @@ fn keygen_recover(
         if !force {
             bail!(
                 "Refusing to overwrite {} without --force flag",
-                outfile_path
+                outfile_path.display()
             );
         }
         println!(
             "⚠️  Warning: Overwriting existing keypair at {}",
-            outfile_path
+            outfile_path.display()
         );
     }
 
     // Prompt for seed phrase (secure input with spaces visible)
     println!("\n🌱 Enter Recovery Seed Phrase");
     let seed_phrase = secure_input("Seed phrase: ", true)?;
-
-    // Parse mnemonic from seed phrase
-    let mnemonic = Mnemonic::from_phrase(&seed_phrase, Language::English)
-        .map_err(|e| anyhow!("Invalid seed phrase: {:?}", e))?;
-    print_step("Seed phrase validated");
 
     // Get passphrase
     let passphrase = if no_passphrase {
@@ -269,21 +266,46 @@ fn keygen_recover(
         pass
     };
 
-    // Generate seed from mnemonic and passphrase
+    // Derive 64-byte PBKDF2 seed. Two paths:
+    //  1. default — run the phrase through BIP-39 (`Mnemonic::from_phrase`)
+    //     first to verify the checksum, then derive via `Seed::new` which
+    //     internally does PBKDF2-HMAC-SHA512 with `mnemonic{passphrase}` salt.
+    //  2. `--skip-seed-phrase-validation` — mirror `solana-keygen`: skip the
+    //     checksum entirely and run PBKDF2 directly on the raw phrase bytes.
+    //     Needed for phrases produced outside the BIP-39 spec (e.g. some
+    //     Ledger recovery words) and for test fixtures.
     print_step("Deriving keypair from seed");
-    let seed = Seed::new(&mnemonic, &passphrase);
+    let mut seed_bytes = [0u8; 64];
+    if skip_seed_phrase_validation {
+        let salt = format!("mnemonic{passphrase}");
+        pbkdf2::pbkdf2_hmac::<sha2::Sha512>(
+            seed_phrase.as_bytes(),
+            salt.as_bytes(),
+            2048,
+            &mut seed_bytes,
+        );
+    } else {
+        let mnemonic = Mnemonic::from_phrase(&seed_phrase, Language::English)
+            .map_err(|e| anyhow!("Invalid seed phrase: {:?}", e))?;
+        print_step("Seed phrase validated");
+        seed_bytes.copy_from_slice(Seed::new(&mnemonic, &passphrase).as_bytes());
+    }
 
-    // Create keypair from seed (use first 32 bytes as secret key)
-    let secret_key_bytes: [u8; 32] = seed.as_bytes()[0..32].try_into().unwrap();
+    // First 32 bytes of the PBKDF2 output become the ed25519 secret key.
+    let secret_key_bytes: [u8; 32] = seed_bytes[..32].try_into().unwrap();
     let keypair = Keypair::new_from_array(secret_key_bytes);
 
     // Write keypair to file
     if let Some(outdir) = Path::new(&outfile_path).parent() {
         fs::create_dir_all(outdir)?;
     }
-    keypair
-        .write_to_file(&outfile_path)
-        .map_err(|e| anyhow!("Failed to write keypair to {}: {}", outfile_path, e))?;
+    keypair.write_to_file(&outfile_path).map_err(|e| {
+        anyhow!(
+            "Failed to write keypair to {}: {}",
+            outfile_path.display(),
+            e
+        )
+    })?;
 
     // Set restrictive permissions (owner read/write only)
     #[cfg(unix)]
@@ -294,7 +316,7 @@ fn keygen_recover(
         fs::set_permissions(&outfile_path, perms)?;
     }
 
-    print_step(&format!("Keypair recovered to {}", outfile_path));
+    print_step(&format!("Keypair recovered to {}", outfile_path.display()));
 
     println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("📋 Public Key: {}", keypair.pubkey());
@@ -303,7 +325,7 @@ fn keygen_recover(
     Ok(())
 }
 
-fn keygen_verify(pubkey: Pubkey, keypair_path: Option<String>) -> Result<()> {
+fn keygen_verify(pubkey: Pubkey, keypair_path: Option<PathBuf>) -> Result<()> {
     println!("\n🔍 Verifying keypair");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
@@ -312,10 +334,10 @@ fn keygen_verify(pubkey: Pubkey, keypair_path: Option<String>) -> Result<()> {
         p.push(".config");
         p.push("solana");
         p.push("id.json");
-        p.to_str().unwrap().to_string()
+        p
     });
 
-    print_step(&format!("Loading keypair from {}", path));
+    print_step(&format!("Loading keypair from {}", path.display()));
     let keypair = get_keypair(&path)?;
 
     // Create a simple message to sign
@@ -351,15 +373,16 @@ fn keygen_verify(pubkey: Pubkey, keypair_path: Option<String>) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use tempfile::{tempdir, TempDir};
+    use {
+        super::*,
+        tempfile::{tempdir, TempDir},
+    };
 
-    fn tmp_outfile_path(out_dir: &TempDir, name: &str) -> String {
-        let path = out_dir.path().join(name);
-        path.into_os_string().into_string().unwrap()
+    fn tmp_outfile_path(out_dir: &TempDir, name: &str) -> PathBuf {
+        out_dir.path().join(name)
     }
 
-    fn read_keypair_file(path: &str) -> Result<Keypair> {
+    fn read_keypair_file(path: &Path) -> Result<Keypair> {
         get_keypair(path)
     }
 
@@ -433,7 +456,8 @@ mod tests {
     #[test]
     fn test_keypair_from_seed_consistency() {
         // Test that the same seed phrase produces the same keypair
-        let test_phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        let test_phrase = "abandon abandon abandon abandon abandon abandon abandon abandon \
+                           abandon abandon abandon about";
 
         let mnemonic = Mnemonic::from_phrase(test_phrase, Language::English).unwrap();
         let seed1 = Seed::new(&mnemonic, "");
