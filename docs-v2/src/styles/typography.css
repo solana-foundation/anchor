@@ -237,16 +237,6 @@
   }
 }
 
-/* Stepper-inside-tabs merge: the tab wrapper's left border becomes the
-   stepper's connector line. The panel keeps its full p-4 padding so non-step
-   content (callouts, paragraphs, code blocks) sits within normal padding —
-   ONLY the .step rows reach leftward past the padding and the wrapper border
-   via negative margin, so the numbered circles sit centered on the border.
-
-   These rules sit OUTSIDE @layer on purpose: Tailwind's .p-4 / .gap-x-3
-   utilities live in @layer utilities, which beats @layer components
-   regardless of selector specificity. Default-layer rules beat all @layer
-   rules, so this override actually applies. */
 [data-tabs-panels]:has(.steps) {
   @apply overflow-visible;
 }
@@ -261,9 +251,62 @@
 
 [data-tabs-panels] .step {
   /* Negate (panel padding + half circle + half border):
-     base = -(1rem + 0.875rem + 1px) ≈ -31px; sm: = -(1rem + 1rem + 1px) ≈ -33px.
-     Tight column-gap pulls the title flush against the circle. */
+     base = -(1rem + 0.875rem + 1px) ≈ -31px; sm: = -(1rem + 1rem + 1px) ≈ -33px
+     Tight column-gap pulls the title flush against the circle */
   @apply -ml-[calc(1rem+0.875rem+1px)] gap-x-1 sm:-ml-[calc(1rem+1rem+1px)] sm:gap-x-1.5;
+}
+
+/* TOC links carry over the rendered heading HTML (including inline shiki
+   `<code>` / `.shiki` markup). Strip the boxed inline-code look and the
+   shiki token colors so the text inherits the link's color, keeping only
+   the monospace font for code spans. */
+[data-toc-text] code,
+[data-toc-text] .shiki {
+  @apply bg-muted/50! text-foreground relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] font-mono font-medium wrap-break-word align-baseline leading-[1.2];
+}
+
+/* Inline shiki output is `.shiki > code`, which would double the pill —
+   strip the inner code's padding, bg, and border so only the outer
+   `.shiki` wrapper renders the pill. */
+[data-toc-text] .shiki code {
+  @apply bg-transparent! p-0 rounded-none;
+}
+
+/* Mirror the prose `.shiki span` rules so syntax highlighting carries over.
+   Light-mode color is set inline by shiki on each token; dark-mode color
+   comes from the `--shiki-dark` CSS variable on the same span. */
+[data-toc-text] .shiki span {
+  @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)];
+}
+
+[data-theme='dark'] [data-toc-text] .shiki span {
+  @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)] text-(--shiki-dark)!;
+}
+
+/* Token spans use shiki's own colors and don't inherit the link's
+   text-foreground/60 ↔ text-foreground fade. Dim the token line on
+   inactive entries to match the rest of the link, restore full opacity
+   on the active entry. The pill bg stays constant either way. */
+[data-toc-text] .shiki .line {
+  @apply opacity-60 transition-opacity duration-200;
+}
+
+[data-heading-link].font-medium [data-toc-text] .shiki .line,
+.mobile-toc-item.text-foreground [data-toc-text] .shiki .line,
+#mobile-toc-current-section .shiki .line {
+  @apply opacity-100;
+}
+
+/* Tab labels rendered through shiki via the `{:lang}` annotation. The
+   wrapper sets the mono font; token spans inside carry shiki's
+   light-theme color via inline `style` attributes, with `--shiki-dark`
+   swapping in for dark mode. */
+.tab-label-code {
+  @apply font-mono;
+}
+
+[data-theme='dark'] .tab-label-code span {
+  @apply text-(--shiki-dark)!;
 }
 
 @utility small {

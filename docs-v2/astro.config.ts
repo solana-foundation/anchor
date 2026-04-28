@@ -14,14 +14,9 @@ import rehypeShiki from '@shikijs/rehype'
 import remarkEmoji from 'remark-emoji'
 import remarkMath from 'remark-math'
 
-import { pluginCollapsibleSections } from '@expressive-code/plugin-collapsible-sections'
-import { pluginLineNumbers } from '@expressive-code/plugin-line-numbers'
-import type { ExpressiveCodeTheme } from 'rehype-expressive-code'
-
-import { pluginShellPrompt } from './src/lib/ec-shell-prompt'
-import { pluginOutputSeparator } from './src/lib/ec-output-separator'
 import { rehypeInlineShellCmd } from './src/lib/rehype-inline-shell-cmd'
 import { rehypeInlinePathIcon } from './src/lib/rehype-inline-path-icon'
+import { ecOptions, EC_THEME_NAMES } from './src/lib/ec-config'
 
 import tailwindcss from '@tailwindcss/vite'
 import { extname, resolve } from 'node:path'
@@ -112,75 +107,7 @@ export default defineConfig({
       ],
       rehypeWrapTables,
       rehypeKatex,
-      [
-        rehypeExpressiveCode,
-        {
-          themes: ['catppuccin-latte', 'catppuccin-mocha'],
-          plugins: [
-            pluginCollapsibleSections(),
-            pluginLineNumbers(),
-            pluginShellPrompt(),
-            pluginOutputSeparator(),
-          ],
-          useDarkModeMediaQuery: false,
-          themeCssSelector: (theme: ExpressiveCodeTheme) =>
-            `[data-theme="${theme.name === 'catppuccin-latte' ? 'light' : 'dark'}"]`,
-          defaultProps: {
-            wrap: true,
-            showLineNumbers: true,
-            collapseStyle: 'collapsible-auto',
-            overridesByLang: {
-              'ansi,bat,bash,batch,cmd,console,powershell,ps,ps1,psd1,psm1,sh,shell,shellscript,shellsession,text,zsh':
-                { showLineNumbers: false },
-              'yaml,yml,toml,json,json5,jsonc,sql,graphql,markdown,mdx': { showLineNumbers: false },
-            },
-          },
-          styleOverrides: {
-            codeFontSize: '0.75rem',
-            borderColor: 'var(--border)',
-            borderWidth: '2px',
-            codeFontFamily: 'var(--font-mono)',
-            codeBackground: ({ theme }: { theme: ExpressiveCodeTheme }) =>
-              theme.name === 'catppuccin-latte' ? 'oklch(96% 0.008 286)' : 'oklch(24% 0.03 284)',
-            frames: {
-              editorActiveTabForeground: 'var(--muted-foreground)',
-              editorActiveTabBackground: ({ theme }: { theme: ExpressiveCodeTheme }) =>
-                theme.name === 'catppuccin-latte' ? 'oklch(96% 0.008 286)' : 'oklch(24% 0.03 284)',
-              editorActiveTabIndicatorBottomColor: 'transparent',
-              editorActiveTabIndicatorTopColor: 'transparent',
-              editorTabBarBackground: 'transparent',
-              editorTabBarBorderBottomColor: 'transparent',
-              frameBoxShadowCssValue: 'none',
-              terminalBackground: ({ theme }: { theme: ExpressiveCodeTheme }) =>
-                theme.name === 'catppuccin-latte' ? 'oklch(96% 0.008 286)' : 'oklch(24% 0.03 284)',
-              terminalTitlebarBackground: 'transparent',
-              terminalTitlebarBorderBottomColor: 'transparent',
-              terminalTitlebarForeground: 'var(--muted-foreground)',
-            },
-            lineNumbers: {
-              foreground: 'var(--muted-foreground)',
-            },
-            collapsibleSections: {
-              closedBackgroundColor: 'color-mix(in oklab, var(--accent) 14%, transparent)',
-              closedBorderColor: 'color-mix(in oklab, var(--accent) 45%, transparent)',
-              closedTextColor: 'var(--muted-foreground)',
-              openBackgroundColorCollapsible: 'color-mix(in oklab, var(--accent) 7%, transparent)',
-              openBorderColor: 'transparent',
-            },
-            textMarkers: {
-              delBackground: 'color-mix(in oklab, var(--ctp-red) 22%, transparent)',
-              delBorderColor: 'color-mix(in oklab, var(--ctp-red) 65%, transparent)',
-              delDiffIndicatorColor: 'var(--ctp-red)',
-              insBackground: 'color-mix(in oklab, var(--ctp-green) 22%, transparent)',
-              insBorderColor: 'color-mix(in oklab, var(--ctp-green) 65%, transparent)',
-              insDiffIndicatorColor: 'var(--ctp-green)',
-              markBackground: 'color-mix(in oklab, var(--accent) 28%, transparent)',
-              markBorderColor: 'var(--accent)',
-            },
-            uiFontFamily: 'var(--font-sans)',
-          },
-        },
-      ],
+      [rehypeExpressiveCode, { themes: [...EC_THEME_NAMES], ...ecOptions }],
       [
         rehypeShiki,
         {

@@ -22,7 +22,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
     >
       <details class="group">
         <summary class="flex w-full cursor-pointer items-center justify-between">
-          <div class="mx-auto flex w-full max-w-3xl items-center px-4 py-3">
+          <div class="mx-auto flex h-11 w-full max-w-3xl items-center px-4 py-3">
             <div class="relative mr-2 size-4">
               <svg class="h-4 w-4" viewBox="0 0 24 24">
                 <circle
@@ -51,7 +51,8 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
             </div>
             <span
               id="mobile-toc-current-section"
-              class="text-muted-foreground flex-grow truncate text-sm"
+              data-toc-text
+              class="text-muted-foreground grow truncate text-sm"
             >
               Overview
             </span>
@@ -76,7 +77,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
                     class="mobile-toc-item underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
                     data-heading-id={heading.slug}
                   >
-                    {heading.text}
+                    <span data-toc-text>{heading.text}</span>
                   </a>
                 </li>
               ))}
@@ -223,24 +224,29 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
     static updateCurrentSectionText(headingIds: string[]) {
       if (!state.currentSectionText) return
 
-      let textToShow = INITIAL_OVERVIEW_TEXT
-
-      if (headingIds.length > 0) {
-        const activeTexts = state.headings
-          .filter((heading) => headingIds.includes(heading.id))
-          .map((heading) => {
-            const clone = heading.cloneNode(true) as HTMLElement
-            clone.querySelectorAll('.heading-anchor').forEach((el) => el.remove())
-            return clone.textContent?.trim() ?? ''
-          })
-          .filter(Boolean)
-
-        if (activeTexts.length > 0) {
-          textToShow = activeTexts.join(', ')
-        }
+      if (headingIds.length === 0) {
+        state.currentSectionText.textContent = INITIAL_OVERVIEW_TEXT
+        return
       }
 
-      state.currentSectionText.textContent = textToShow
+      const activeHtml = state.headings
+        .filter((heading) => headingIds.includes(heading.id))
+        .map((heading) => {
+          const clone = heading.cloneNode(true) as HTMLElement
+          clone.querySelectorAll('.heading-anchor').forEach((el) => el.remove())
+          clone.querySelectorAll<HTMLElement>('.shiki').forEach((el) => {
+            el.removeAttribute('style')
+          })
+          return clone.innerHTML.trim()
+        })
+        .filter(Boolean)
+        .join(', ')
+
+      if (activeHtml) {
+        state.currentSectionText.innerHTML = activeHtml
+      } else {
+        state.currentSectionText.textContent = INITIAL_OVERVIEW_TEXT
+      }
     }
 
     static scrollToActive(activeHeadingId: string) {
@@ -309,6 +315,26 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
     }
   }
 
+  class MobileTOCHeadingSync {
+    static run() {
+      if (!state.listElement) return
+      state.listElement.querySelectorAll<HTMLElement>('.mobile-toc-item').forEach((link) => {
+        const slug = link.dataset.headingId
+        if (!slug) return
+        const heading = document.getElementById(slug)
+        if (!heading) return
+        const target = link.querySelector<HTMLElement>('[data-toc-text]')
+        if (!target) return
+        const clone = heading.cloneNode(true) as HTMLElement
+        clone.querySelectorAll('.heading-anchor').forEach((el) => el.remove())
+        clone.querySelectorAll<HTMLElement>('.shiki').forEach((el) => {
+          el.removeAttribute('style')
+        })
+        target.innerHTML = clone.innerHTML
+      })
+    }
+  }
+
   class MobileTOCController {
     static handleScroll() {
       const newActiveIds = HeadingRegions.getVisibleIds()
@@ -335,6 +361,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
 
     static init() {
       state.reset()
+      MobileTOCHeadingSync.run()
       HeadingRegions.build()
 
       if (!state.currentSectionText) return

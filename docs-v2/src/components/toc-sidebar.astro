@@ -57,7 +57,7 @@ const visible = headings.filter(
                 data-heading-link={heading.slug}
                 class="hover:text-foreground block underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
               >
-                {heading.text}
+                <span data-toc-text>{heading.text}</span>
               </a>
             </li>
           ))}
@@ -223,6 +223,25 @@ const visible = headings.filter(
     }
   }
 
+  class TOCHeadingSync {
+    static run() {
+      state.links.forEach((link) => {
+        const slug = (link as HTMLElement).dataset.headingLink
+        if (!slug) return
+        const heading = document.getElementById(slug)
+        if (!heading) return
+        const target = link.querySelector<HTMLElement>('[data-toc-text]')
+        if (!target) return
+        const clone = heading.cloneNode(true) as HTMLElement
+        clone.querySelectorAll('.heading-anchor').forEach((el) => el.remove())
+        clone.querySelectorAll<HTMLElement>('.shiki').forEach((el) => {
+          el.removeAttribute('style')
+        })
+        target.innerHTML = clone.innerHTML
+      })
+    }
+  }
+
   class TOCController {
     static handleScroll() {
       const newActiveIds = HeadingRegions.getVisibleIds()
@@ -249,6 +268,7 @@ const visible = headings.filter(
 
     static init() {
       state.reset()
+      TOCHeadingSync.run()
       HeadingRegions.build()
       TOCTitleVisibility.init()
 

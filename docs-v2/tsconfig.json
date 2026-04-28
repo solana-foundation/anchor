@@ -1,6 +1,6 @@
 {
   "extends": "astro/tsconfigs/strict",
-  "exclude": ["codemod.ts", "sentence-case.ts"],
+  "exclude": ["codemod.ts", "sentence-case.ts", "dist", "src/content/docs/**/_*/**"],
   "compilerOptions": {
     "strictNullChecks": true,
     "baseUrl": ".",
