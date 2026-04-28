@@ -163,6 +163,13 @@
       @apply inline-block w-[0.95em] h-[0.95em] mr-[0.4ch] align-[-0.15em] text-muted-foreground shrink-0;
     }
 
+    /* Dim `<placeholder>` segments inside inline paths so they read as
+       "fill this in" rather than literal text — matches the visual weight
+       of dimmed flags in shell command snippets. */
+    :where(.path-placeholder):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground/50;
+    }
+
     :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
       @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)] dark:text-(--shiki-dark)!;
     }

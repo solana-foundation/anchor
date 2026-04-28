@@ -89,6 +89,46 @@ function decorate(codeNode: Element, kind: 'file' | 'folder'): void {
   codeNode.children.unshift(icon)
 }
 
+// Match <kebab-case>, <snake_case>, <lowercase> placeholders. Lowercase-start
+// keeps Rust generics (`<T>`, `<NewAccount>`, `<Vec<u8>>`) from matching,
+// while still catching the common `<program-name>` / `<your_account>` /
+// `<filename>` shapes that appear in path strings.
+const PLACEHOLDER_RE = /<[a-z][a-z0-9_-]*>/g
+
+function dimPlaceholders(node: Element): void {
+  for (let i = 0; i < node.children.length; i++) {
+    const child = node.children[i]
+    if (!child) continue
+    if (child.type === 'text') {
+      const text = child.value
+      const matches = [...text.matchAll(PLACEHOLDER_RE)]
+      if (matches.length === 0) continue
+      const replacements: ElementContent[] = []
+      let lastIdx = 0
+      for (const match of matches) {
+        const start = match.index ?? 0
+        if (start > lastIdx) {
+          replacements.push({ type: 'text', value: text.slice(lastIdx, start) })
+        }
+        replacements.push({
+          type: 'element',
+          tagName: 'span',
+          properties: { className: ['path-placeholder'] },
+          children: [{ type: 'text', value: match[0] }],
+        })
+        lastIdx = start + match[0].length
+      }
+      if (lastIdx < text.length) {
+        replacements.push({ type: 'text', value: text.slice(lastIdx) })
+      }
+      node.children.splice(i, 1, ...replacements)
+      i += replacements.length - 1
+    } else if (child.type === 'element') {
+      dimPlaceholders(child)
+    }
+  }
+}
+
 function findCodeChild(node: Element): Element | null {
   for (const child of node.children) {
     if (child.type === 'element' && child.tagName === 'code') return child
@@ -113,7 +153,10 @@ export function rehypeInlinePathIcon() {
         const codeChild = findCodeChild(node)
         if (codeChild) {
           const kind = classify(getText(codeChild))
-          if (kind) decorate(codeChild, kind)
+          if (kind) {
+            dimPlaceholders(codeChild)
+            decorate(codeChild, kind)
+          }
         }
         return
       }
@@ -121,7 +164,10 @@ export function rehypeInlinePathIcon() {
       // Plain inline <code>.
       if (node.tagName === 'code') {
         const kind = classify(getText(node))
-        if (kind) decorate(node, kind)
+        if (kind) {
+          dimPlaceholders(node)
+          decorate(node, kind)
+        }
         return
       }
 
