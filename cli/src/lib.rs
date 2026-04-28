@@ -1853,6 +1853,9 @@ pub fn build(
     };
     fs::create_dir_all(idl_ts_out.as_ref().unwrap())?;
 
+    if !cfg.workspace.idl.is_empty() {
+        fs::create_dir_all(cfg_parent.join(&cfg.workspace.idl))?;
+    };
     if !cfg.workspace.types.is_empty() {
         fs::create_dir_all(cfg_parent.join(&cfg.workspace.types))?;
     };
@@ -2020,6 +2023,9 @@ fn build_cwd_verifiable(
     fs::create_dir_all(target_dir.join("verifiable"))?;
     fs::create_dir_all(target_dir.join("idl"))?;
     fs::create_dir_all(target_dir.join("types"))?;
+    if !&cfg.workspace.idl.is_empty() {
+        fs::create_dir_all(workspace_dir.join(&cfg.workspace.idl))?;
+    }
     if !&cfg.workspace.types.is_empty() {
         fs::create_dir_all(workspace_dir.join(&cfg.workspace.types))?;
     }
@@ -2053,6 +2059,18 @@ fn build_cwd_verifiable(
                 .join(&idl.metadata.name)
                 .with_extension("json");
             write_idl(&idl, OutFile::File(out_file))?;
+
+            if !&cfg.workspace.idl.is_empty() {
+                write_idl(
+                    &idl,
+                    OutFile::File(
+                        workspace_dir
+                            .join(&cfg.workspace.idl)
+                            .join(&idl.metadata.name)
+                            .with_extension("json"),
+                    ),
+                )?;
+            }
 
             // Write out the TypeScript type.
             println!("Writing the .ts file");
@@ -2342,6 +2360,7 @@ fn _build_rust_cwd(
     // Generate IDL
     if !no_idl {
         let idl = generate_idl(cfg, skip_lint, no_docs, &cargo_args)?;
+        let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
 
         // JSON out path.
         let out = match idl_out {
@@ -2360,11 +2379,21 @@ fn _build_rust_cwd(
 
         // Write out the JSON file.
         write_idl(&idl, OutFile::File(out))?;
+        if !&cfg.workspace.idl.is_empty() {
+            write_idl(
+                &idl,
+                OutFile::File(
+                    cfg_parent
+                        .join(&cfg.workspace.idl)
+                        .join(&idl.metadata.name)
+                        .with_extension("json"),
+                ),
+            )?;
+        }
         // Write out the TypeScript type.
         fs::write(&ts_out, idl_ts(&idl)?)?;
 
         // Copy out the TypeScript type.
-        let cfg_parent = cfg.path().parent().expect("Invalid Anchor.toml");
         if !&cfg.workspace.types.is_empty() {
             fs::copy(
                 &ts_out,
