@@ -1,7 +1,7 @@
 use {
     crate::{
         config::{Config, Manifest, Program, WithPath},
-        ConfigOverride, ProgramCommand,
+        target_dir, ConfigOverride, ProgramCommand,
     },
     anchor_lang_idl::types::Idl,
     anyhow::{anyhow, bail, Result},
@@ -102,8 +102,7 @@ pub fn discover_solana_programs(program_name: Option<String>) -> Result<Vec<Prog
         }
 
         // Try to read IDL if it exists (will be None for non-Anchor programs)
-        let idl_filepath = current_dir
-            .join("target")
+        let idl_filepath = target_dir()?
             .join("idl")
             .join(&lib_name)
             .with_extension("json");
@@ -296,7 +295,7 @@ fn deploy_workspace(
     }
 
     for program in programs {
-        let binary_path = program.binary_path(verifiable);
+        let binary_path = program.binary_path(verifiable)?;
 
         println!("\nDeploying program: {}", program.lib_name);
 
@@ -495,7 +494,7 @@ pub fn program_deploy(
         let programs = get_programs_from_workspace(cfg_override, program_name.clone())?;
 
         let program = &programs[0];
-        let binary_path = program.binary_path(false); // false = not verifiable build
+        let binary_path = program.binary_path(false)?; // false = not verifiable build
 
         println!("Deploying program: {}", program.lib_name);
 
@@ -538,12 +537,14 @@ pub fn program_deploy(
             .and_then(|s| s.to_str())
             .ok_or_else(|| anyhow!("Invalid program filepath"))?;
 
-        let keypair_path = format!("target/deploy/{}-keypair.json", program_name);
+        let keypair_path = target_dir()?
+            .join("deploy")
+            .join(format!("{program_name}-keypair.json"));
         Keypair::read_from_file(&keypair_path).map_err(|e| {
             anyhow!(
                 "Failed to read program keypair from {}: {}. Use --program-keypair to specify a \
                  custom location.",
-                keypair_path,
+                keypair_path.display(),
                 e
             )
         })?
@@ -657,7 +658,10 @@ pub fn program_deploy(
             .ok_or_else(|| anyhow!("Invalid program filepath"))?;
 
         // Look for IDL file in target/idl/{program_name}.json
-        let idl_filepath: PathBuf = format!("target/idl/{}.json", program_name).into();
+        let idl_filepath = target_dir()?
+            .join("idl")
+            .join(program_name)
+            .with_extension("json");
 
         if Path::new(&idl_filepath).exists() {
             // Read and update the IDL with the program address
@@ -994,7 +998,7 @@ fn program_write_buffer(
         }
 
         let program = &programs[0];
-        let binary_path = program.binary_path(false);
+        let binary_path = program.binary_path(false)?;
 
         println!("Writing buffer for program: {}", program.lib_name);
 
@@ -1374,7 +1378,7 @@ pub fn program_upgrade(
         let programs = get_programs_from_workspace(cfg_override, program_name.clone())?;
 
         let program = &programs[0];
-        let binary_path = program.binary_path(false); // false = not verifiable build
+        let binary_path = program.binary_path(false)?; // false = not verifiable build
 
         println!("Upgrading program: {}", program.lib_name);
 

@@ -17,9 +17,14 @@ The minor version will be incremented upon a breaking change and the patch versi
 - client: Add versioned tx support ([#4207](https://github.com/solana-foundation/anchor/pull/4207)).
 - cli: Add `edition` and `rust-version` to template ([#4048](https://github.com/solana-foundation/anchor/pull/4048))
 - lang: Add `program_id` verification to CPI return values ([#4411](https://github.com/solana-foundation/anchor/pull/4411)).
+- spl: Add pausable mint extension support ([#4092](https://github.com/solana-foundation/anchor/pull/4092)).
+- cli: Resolve the target directory via `cargo metadata` to support target directory overrides ([#3817](https://github.com/solana-foundation/anchor/pull/3817)).
+- spl: Added `token_metadata_remove_key` to support removing keys from token metadata extension ([#3717](https://github.com/solana-foundation/anchor/pull/3717)).
 
 ### Fixes
 
+- client: Replace `solana-program` with `solana-hash` ([#4468](https://github.com/solana-foundation/anchor/pull/4468)).
+- cli: Correctly honor `--skip-seed-phrase-validation` in `keygen recover` ([#4417](https://github.com/solana-foundation/anchor/pull/4417)).
 - spl: Fix wrong owner pubkey in CPI Guard enable/disable ([#4322](https://github.com/solana-foundation/anchor/pull/4322)).
 - ts: Fix `sha256.hash()` returning corrupted output by using hex encoding ([#4404](https://github.com/solana-foundation/anchor/pull/4404)).
 - spl: Add missing auth account to `group_pointer_update` ([#4324](https://github.com/solana-foundation/anchor/pull/4324)).
@@ -28,6 +33,18 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Handle user-provided `borsh` attributes in derives ([#4380](https://github.com/solana-foundation/anchor/pull/4380)).
 - lang: Always panic on write to an immutable `Account` in `deref_mut` instead of only under the `anchor-debug` feature ([#4429](https://github.com/solana-foundation/anchor/pull/4429)).
 - cli: Fallback to a priority fee of 0 on localnet ([#4259](https://github.com/solana-foundation/anchor/pull/4259/)).
+- lang: Support module constants in `max_len` attribute ([#3879](https://github.com/solana-foundation/anchor/pull/3879)).
+- spl: Deprecate broken `cpi_guard_enable/disable` functions ([#4465](https://github.com/solana-foundation/anchor/pull/4465)).
+
+### Breaking
+
+## [1.0.1] - 2026-04-16
+
+### Features
+
+### Fixes
+
+- lang: Handle user-provided `borsh` attributes in derives ([#4380](https://github.com/solana-foundation/anchor/pull/4380)).
 
 ### Breaking
 

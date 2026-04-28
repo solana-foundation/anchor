@@ -41,7 +41,7 @@ To jump straight to examples, go [here](https://github.com/solana-foundation/anc
 | `anchor-spl`            | CPI clients for SPL programs on Solana                   | [![crates](https://img.shields.io/crates/v/anchor-spl?color=blue)](https://crates.io/crates/anchor-spl)                          | [![Docs.rs](https://docs.rs/anchor-spl/badge.svg)](https://docs.rs/anchor-spl)                                  |
 | `anchor-client`         | Rust client for Anchor programs                          | [![crates](https://img.shields.io/crates/v/anchor-client?color=blue)](https://crates.io/crates/anchor-client)                    | [![Docs.rs](https://docs.rs/anchor-client/badge.svg)](https://docs.rs/anchor-client)                            |
 | `@anchor-lang/core`     | TypeScript client for Anchor programs                    | [![npm](https://img.shields.io/npm/v/@anchor-lang/core.svg?color=blue)](https://www.npmjs.com/package/@anchor-lang/core)         | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://solana-foundation.github.io/anchor/ts/index.html)     |
-| `@anchor-lang/cli` | CLI to support building and managing an Anchor workspace | [![npm](https://img.shields.io/npm/v/@anchor-lang/cli.svg?color=blue)](https://www.npmjs.com/package/@anchor-lang/core-cli) | [![Docs](https://img.shields.io/badge/docs-typedoc-blue)](https://www.anchor-lang.com/docs/references/cli) |
+| `@anchor-lang/cli` | CLI to support building and managing an Anchor workspace | [![npm](https://img.shields.io/npm/v/@anchor-lang/cli.svg?color=blue)](https://www.npmjs.com/package/@anchor-lang/cli) | [![Docs](https://img.shields.io/badge/docs-cli-blue)](https://www.anchor-lang.com/docs/references/cli) |
 
 ## Note
 

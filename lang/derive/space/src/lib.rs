@@ -1,11 +1,15 @@
 use {
     proc_macro::TokenStream,
-    proc_macro2::{Ident, TokenStream as TokenStream2, TokenTree},
+    proc_macro2::{Ident, TokenStream as TokenStream2},
     quote::{quote, quote_spanned, ToTokens},
     std::collections::VecDeque,
     syn::{
-        parse::ParseStream, parse2, parse_macro_input, punctuated::Punctuated, token::Comma,
-        Attribute, DeriveInput, Field, Fields, GenericArgument, LitInt, PathArguments, Type,
+        parse::{Parse, ParseStream},
+        parse_macro_input,
+        punctuated::Punctuated,
+        spanned::Spanned,
+        token::Comma,
+        Attribute, DeriveInput, Expr, Field, Fields, GenericArgument, PathArguments, Type,
         TypeArray,
     },
 };
@@ -196,17 +200,19 @@ fn get_first_ty_arg(args: &PathArguments) -> Option<Type> {
 }
 
 fn parse_len_arg(item: ParseStream) -> Result<VecDeque<TokenStream2>, syn::Error> {
+    // Parse comma-separated expressions
+    let exprs = item.parse_terminated::<Expr, syn::token::Comma>(Expr::parse)?;
     let mut result = VecDeque::new();
-    while let Some(token_tree) = item.parse()? {
-        match token_tree {
-            TokenTree::Ident(ident) => result.push_front(quote!((#ident as usize))),
-            TokenTree::Literal(lit) => {
-                if let Ok(lit_int) = parse2::<LitInt>(lit.into_token_stream()) {
-                    result.push_front(quote!(#lit_int))
-                }
-            }
-            _ => (),
+
+    // Push them in reverse because get_next_arg() pops from the back
+    for expr in exprs.into_iter().rev() {
+        if !matches!(expr, Expr::Path(_) | Expr::Lit(_)) {
+            return Err(syn::Error::new(
+                expr.span(),
+                "max_len only accepts identifiers, literals, or paths",
+            ));
         }
+        result.push_back(quote!((#expr as usize)));
     }
 
     Ok(result)

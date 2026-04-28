@@ -1,43 +1,6 @@
 import BN from "bn.js";
-import fetch from "cross-fetch";
 import * as borsh from "@anchor-lang/borsh";
 import { Connection, PublicKey } from "@solana/web3.js";
-
-/**
- * Returns a verified build from the anchor registry. null if no such
- * verified build exists, e.g., if the program has been upgraded since the
- * last verified build.
- */
-export async function verifiedBuild(
-  connection: Connection,
-  programId: PublicKey,
-  limit: number = 5
-): Promise<Build | null> {
-  const url = `https://api.apr.dev/api/v0/program/${programId.toString()}/latest?limit=${limit}`;
-  const [programData, latestBuildsResp] = await Promise.all([
-    fetchData(connection, programId),
-    fetch(url),
-  ]);
-
-  // Filter out all non successful builds.
-  const latestBuilds = (await latestBuildsResp.json()).filter(
-    (b: Build) => !b.aborted && b.state === "Built" && b.verified === "Verified"
-  );
-  if (latestBuilds.length === 0) {
-    return null;
-  }
-
-  // Get the latest build.
-  const build = latestBuilds[0];
-
-  // Has the program been upgraded since the last build?
-  if (programData.slot.toNumber() !== build.verified_slot) {
-    return null;
-  }
-
-  // Success.
-  return build;
-}
 
 /**
  * Returns the program data account for this program, containing the
@@ -91,20 +54,4 @@ export function decodeUpgradeableLoaderState(data: Buffer): any {
 export type ProgramData = {
   slot: BN;
   upgradeAuthorityAddress: PublicKey | null;
-};
-
-export type Build = {
-  aborted: boolean;
-  address: string;
-  created_at: string;
-  updated_at: string;
-  descriptor: string[];
-  docker: string;
-  id: number;
-  name: string;
-  sha256: string;
-  upgrade_authority: string;
-  verified: string;
-  verified_slot: number;
-  state: string;
 };

@@ -45,7 +45,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/solana-foundation/anchor/tree/v1.0.0/client/example/src
+//! [here]: https://github.com/solana-foundation/anchor/tree/v1.0.1/client/example/src
 //!
 //! # Features
 //!
@@ -54,7 +54,7 @@
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
-//! anchor-client = { version = "1.0.0 ", features = ["async"] }
+//! anchor-client = { version = "1.0.1", features = ["async"] }
 //! ````
 //!
 //! ## `mock`
@@ -70,9 +70,9 @@ pub use {
     anchor_lang,
     cluster::Cluster,
     solana_commitment_config::CommitmentConfig,
+    solana_hash::Hash,
     solana_instruction::Instruction,
     solana_message::AddressLookupTableAccount,
-    solana_program::hash::Hash,
     solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError,
     solana_rpc_client_api::{
         client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,
