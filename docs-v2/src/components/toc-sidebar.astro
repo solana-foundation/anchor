@@ -47,6 +47,7 @@ const visible = headings.filter(
         <ul class="flex list-none flex-col gap-y-1.5 px-4">
           {visible.map((heading) => (
             <li
+              data-toc-item={heading.slug}
               class={cn(
                 'text-sm text-foreground/60',
                 getHeadingMargin(heading.depth),
@@ -104,7 +105,7 @@ const visible = headings.filter(
         document.querySelectorAll<HTMLElement>(
           '.prose h2, .prose h3, .prose h4, .prose h5, .prose h6',
         ),
-      ).filter((h) => h.id)
+      ).filter((h) => h.id && h.offsetParent !== null)
 
       if (state.headings.length === 0) {
         state.regions = []
@@ -179,7 +180,7 @@ const visible = headings.filter(
   class TOCLinks {
     static update(headingIds: string[]) {
       state.links.forEach((link) => {
-        link.classList.remove('text-foreground', 'font-medium')
+        link.classList.remove('text-foreground')
       })
 
       headingIds.forEach((id) => {
@@ -188,7 +189,7 @@ const visible = headings.filter(
           `#toc-sidebar-container [data-heading-link="${id}"]`,
         )
         if (activeLink) {
-          activeLink.classList.add('text-foreground', 'font-medium')
+          activeLink.classList.add('text-foreground')
         }
       })
 
@@ -223,6 +224,20 @@ const visible = headings.filter(
     }
   }
 
+  class TOCItemVisibility {
+    static sync(visibleHeadings: HTMLElement[]) {
+      const visibleIds = new Set(visibleHeadings.map((h) => h.id))
+      document
+        .querySelectorAll<HTMLElement>(
+          '#toc-sidebar-container [data-toc-item]',
+        )
+        .forEach((item) => {
+          const slug = item.dataset.tocItem
+          item.hidden = !slug || !visibleIds.has(slug)
+        })
+    }
+  }
+
   class TOCHeadingSync {
     static run() {
       state.links.forEach((link) => {
@@ -243,6 +258,8 @@ const visible = headings.filter(
   }
 
   class TOCController {
+    static visibilityObserver: MutationObserver | null = null
+
     static handleScroll() {
       const newActiveIds = HeadingRegions.getVisibleIds()
 
@@ -263,7 +280,35 @@ const visible = headings.filter(
         TOCLinks.update(state.activeIds)
       }
 
+      // Sync visibility AFTER the active class is on the <a>, so a newly
+      // un-hidden <li> already shows in its final highlighted state instead
+      // of animating from gray → white via transition-colors.
+      TOCItemVisibility.sync(state.headings)
+
       TOCScrollMask.update()
+    }
+
+    static observeVisibilityChanges() {
+      // Tabs toggle `hidden` on panels and <details> toggles `open`. Either can
+      // un-hide a heading, which changes its offsetTop and invalidates the
+      // cached region map — rebuild on those mutations.
+      const root = document.querySelector('.prose')
+      if (!root) return
+
+      this.visibilityObserver = new MutationObserver((mutations) => {
+        const relevant = mutations.some(
+          (m) =>
+            m.type === 'attributes' &&
+            (m.attributeName === 'hidden' || m.attributeName === 'open'),
+        )
+        if (relevant) this.handleResize()
+      })
+
+      this.visibilityObserver.observe(root, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['hidden', 'open'],
+      })
     }
 
     static init() {
@@ -274,10 +319,12 @@ const visible = headings.filter(
 
       if (state.headings.length === 0) {
         TOCLinks.update([])
+        TOCItemVisibility.sync([])
         return
       }
 
       this.handleScroll()
+      TOCItemVisibility.sync(state.headings)
       setTimeout(TOCScrollMask.update, 100)
 
       const options = { passive: true }
@@ -288,6 +335,7 @@ const visible = headings.filter(
         this.handleTOCScroll,
         options,
       )
+      this.observeVisibilityChanges()
     }
 
     static cleanup() {
@@ -295,6 +343,8 @@ const visible = headings.filter(
       window.removeEventListener('resize', this.handleResize)
       state.scrollArea?.removeEventListener('scroll', this.handleTOCScroll)
       TOCTitleVisibility.cleanup()
+      this.visibilityObserver?.disconnect()
+      this.visibilityObserver = null
 
       Object.assign(state, {
         activeIds: [],

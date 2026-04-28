@@ -264,12 +264,12 @@
 }
 
 /* TOC links carry over the rendered heading HTML (including inline shiki
-   `<code>` / `.shiki` markup). Strip the boxed inline-code look and the
-   shiki token colors so the text inherits the link's color, keeping only
-   the monospace font for code spans. */
+   `<code>` / `.shiki` markup). Keep the pill chrome but drop the color
+   override so plain `<code>` inherits the link's muted/active color
+   instead of staying at full `text-foreground` opacity. */
 [data-toc-text] code,
 [data-toc-text] .shiki {
-  @apply bg-muted/50! text-foreground relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] font-mono font-medium wrap-break-word align-baseline leading-[1.2];
+  @apply bg-muted/50! relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] font-mono wrap-break-word align-baseline leading-[1.2];
 }
 
 /* Inline shiki output is `.shiki > code`, which would double the pill —
@@ -290,17 +290,17 @@
   @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)] text-(--shiki-dark)!;
 }
 
-/* Token spans use shiki's own colors and don't inherit the link's
-   text-foreground/60 ↔ text-foreground fade. Dim the token line on
-   inactive entries to match the rest of the link, restore full opacity
-   on the active entry. The pill bg stays constant either way. */
-[data-toc-text] .shiki .line {
+/* Token spans carry their own inline `color:` from shiki and don't
+   inherit the link's text-foreground/60 ↔ text-foreground fade. Dim
+   the entire shiki wrapper on inactive entries to match the rest of
+   the link, restore full opacity on the active entry. */
+[data-toc-text] .shiki {
   @apply opacity-60 transition-opacity duration-200;
 }
 
-[data-heading-link].font-medium [data-toc-text] .shiki .line,
-.mobile-toc-item.text-foreground [data-toc-text] .shiki .line,
-#mobile-toc-current-section .shiki .line {
+[data-heading-link].text-foreground [data-toc-text] .shiki,
+.mobile-toc-item.text-foreground [data-toc-text] .shiki,
+#mobile-toc-current-section .shiki {
   @apply opacity-100;
 }
 
