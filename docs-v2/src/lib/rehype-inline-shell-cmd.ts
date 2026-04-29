@@ -1,4 +1,4 @@
-import type { Element, ElementContent, Root, Text } from 'hast'
+import type { Element, ElementContent, Properties, Root, Text } from 'hast'
 
 const PREFIX = '$ '
 
@@ -35,17 +35,30 @@ function findCodeChild(node: Element): Element | null {
   return null
 }
 
+// Pills longer than this can overflow narrow contexts (table cells, TOC),
+// since shell command text often has no break opportunities (commit hashes,
+// flag values). Mark them so CSS can opt them into `overflow-wrap: anywhere`.
+const LONG_PILL = 24
+
 function makeButton(codeNode: Element, cmd: string): Element {
+  // `<span role="button">`, not `<button>`. `<button>` is a form control,
+  // and even with `display: inline` it preserves its bounding box across
+  // line wraps — `box-decoration-break: clone` therefore can't clone the
+  // pill chrome onto each line fragment, leaving long pills as one giant
+  // rectangle. A `<span>` is naturally inline and clones cleanly.
+  const properties: Properties = {
+    role: 'button',
+    tabIndex: 0,
+    className: ['inline-shell-cmd'],
+    'data-copy': cmd,
+    'aria-label': `Copy command: ${cmd}`,
+    title: `Copy: ${cmd}`,
+  }
+  if (cmd.length > LONG_PILL) properties['data-long-pill'] = 'true'
   return {
     type: 'element',
-    tagName: 'button',
-    properties: {
-      type: 'button',
-      className: ['inline-shell-cmd'],
-      'data-copy': cmd,
-      'aria-label': `Copy command: ${cmd}`,
-      title: `Copy: ${cmd}`,
-    },
+    tagName: 'span',
+    properties,
     children: [
       {
         type: 'element',

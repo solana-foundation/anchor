@@ -10,22 +10,22 @@ description: Write tests for Solana programs in Rust, TS/JS or Python using Lite
 <Tabs items={['Rust', 'TS/JS', 'Python']}>
 <Tab>
 
-```bash showLineNumbers=false
-cargo add litesvm --dev
+```ansi showLineNumbers=false
+[34mcargo[0m add litesvm [2m--dev[0m
 ```
 
 </Tab>
 <Tab>
 
-```bash showLineNumbers=false
-npm i litesvm -D
+```ansi showLineNumbers=false
+[34mnpm[0m i litesvm [2m-D[0m
 ```
 
 </Tab>
 <Tab>
 
-```bash showLineNumbers=false
-uv add solders # from solders import litesvm
+```ansi showLineNumbers=false
+[34muv[0m add solders # from solders import litesvm
 ```
 
 </Tab>
@@ -143,7 +143,7 @@ def test_transfer() -> None:
 
 ## Deploying programs
 
-Testing real programs goes beyond simple token transfers. Add a compiled program to a test with [`.add_program_from_file`](https://docs.rs/litesvm/latest/litesvm/struct.LiteSVM.html#method.add_program_from_file).
+Testing real programs goes beyond simple token transfers. Add a compiled program to a test with [`.add_program_from_file(){:rs}`](https://docs.rs/litesvm/latest/litesvm/struct.LiteSVM.html#method.add_program_from_file).
 
 <Callout variant="tip" title="Pulling a program from a cluster">
   To pull a Solana program from mainnet or devnet, use the `$ [34msolana[0m program dump{:ansi}` command from the Solana CLI.
@@ -460,7 +460,7 @@ def test_set_clock() -> None:
 </Tab>
 </Tabs>
 
-See also: [`warp_to_slot`](https://docs.rs/litesvm/latest/litesvm/struct.LiteSVM.html#method.warp_to_slot), which jumps to a future slot.
+See also: [`warp_to_slot(){:rs}`](https://docs.rs/litesvm/latest/litesvm/struct.LiteSVM.html#method.warp_to_slot), which jumps to a future slot.
 
 ## Writing arbitrary accounts
 

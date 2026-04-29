@@ -1,9 +1,9 @@
 ---
 title: 0.29.0
-description: Anchor - Release Notes 0.29.0
+description: Anchor release notes for 0.29.0.
 ---
 
-Anchor keeps a [CHANGELOG](https://github.com/solana-foundation/anchor/blob/master/CHANGELOG.md) but it's not easy to make sense what has changed, what effect does the change have and how to migrate. This is where release notes come in, an easy to digest and actionable view for each release.
+Anchor keeps a [`CHANGELOG.md`](https://github.com/solana-foundation/anchor/blob/master/CHANGELOG.md), but parsing what changed, why it matters, and how to migrate isn't always obvious from the entries. The release notes provide an actionable, digestible view of each release.
 
 ---
 
@@ -11,31 +11,26 @@ Anchor keeps a [CHANGELOG](https://github.com/solana-foundation/anchor/blob/mast
 
 1. Update `avm`:
 
-   ```sh
-   cargo install --git https://github.com/solana-foundation/anchor --tag v0.29.0 avm --locked
+   ```ansi
+   $ [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor [2m--tag[0m v0.29.0 avm [2m--locked[0m
    ```
 
 2. Update `anchor-cli`:
 
-   ```sh
-   avm install latest
+   ```ansi
+   $ [34mavm[0m install latest
    ```
 
-3. Update Anchor crate(s) to `0.29.0`. Optionally, run `cargo update` to update other dependencies to the latest compatible versions.
+3. Update Anchor crate(s) to `0.29.0`. Optionally run `$ [34mcargo[0m update{:ansi}` to refresh other dependencies to the latest compatible versions.
 
 4. Update TS package(s) to `0.29.0`.
 
 ## Solana `1.14` is no longer supported
 
-Minimum supported Solana version is now `1.16.0` because
+The minimum supported Solana version is now `1.16.0`. All clusters, including mainnet-beta, are running `^1.16`, and a [compatibility issue](https://github.com/solana-labs/solana/issues/31960) between `1.14` and `1.16` makes staying on the older version impractical. If you are still on `1.14`, upgrade with:
 
-- All clusters including mainnet-beta are now running `^1.16`
-- There is a [compatibility issue](https://github.com/solana-labs/solana/issues/31960) between `1.14` and `1.16`
-
-If you are still on Solana `1.14`, update by running:
-
-```sh
-solana-install init 1.17.0
+```ansi
+$ [34msolana-install[0m init 1.17.0
 ```
 
 ## Override toolchain for the workspace
@@ -48,44 +43,33 @@ anchor_version = "0.29.0" # `anchor-cli` version to use
 solana_version = "1.17.0" # Solana version to use
 ```
 
-### Notes
-
-- Fields are optional.
-- `anchor_version` requires [`avm`](https://github.com/solana-foundation/anchor/tree/master/avm) to be installed.
-- Before this release, `anchor_version` and `solana_version` keys in `Anchor.toml` were being used for Docker verifiable builds only. Now, all commands work via the `[toolchain]` section.
+Both fields are optional. `anchor_version` requires [`avm`](https://github.com/solana-foundation/anchor/tree/master/avm) to be installed. Before this release, the `anchor_version` and `solana_version` keys in `Anchor.toml` only affected Docker verifiable builds; now every command honors the `[toolchain]` section.
 
 ## Install CLI from commit with `avm`
 
-It is possible to install CLI from commit by running:
+Installing the CLI from a specific commit is possible with cargo:
 
-```sh
-cargo install --git https://github.com/solana-foundation/anchor --rev 6cf200493a307c01487c7b492b4893e0d6f6cb23 anchor-cli --locked
+```ansi
+$ [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor [2m--rev[0m 6cf200493a307c01487c7b492b4893e0d6f6cb23 anchor-cli [2m--locked[0m
 ```
 
-but this overrides the `anchor` binary and does not work well with `avm`.
+but this overrides the `anchor` binary outside of `avm`'s control. As of this release, `avm` natively supports installing and switching between commits.
 
-In this release, `avm` supports installing and switching between commits.
+Pass a `[2m<version>[0m{:ansi}`-`[2m<commit>[0m{:ansi}` pair, a full commit hash, or a short prefix to `$ [34mavm[0m install{:ansi}`:
 
-**Install** from a commit with `avm install <VERSION>-<COMMIT>`:
-
-```sh
-# <Version>-<commit>
-avm install 0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23
-
-# Full commit hash
-avm install 6cf200493a307c01487c7b492b4893e0d6f6cb23
-
-# Short commit hash
-avm install 6cf200
+```ansi
+$ [34mavm[0m install 0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23
+$ [34mavm[0m install 6cf200493a307c01487c7b492b4893e0d6f6cb23
+$ [34mavm[0m install 6cf200
 ```
 
-**Use** a different version `avm use <VERSION>-<COMMIT>`:
+Activate it with `$ [34mavm[0m use{:ansi}`:
 
-```sh
-avm use 0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23
+```ansi
+$ [34mavm[0m use 0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23
 ```
 
-Specify `toolchain.anchor_version` as `<VERSION>-<COMMIT>`:
+The same identifier also works as the `toolchain.anchor_version` value in `Anchor.toml`:
 
 ```toml
 [toolchain]
@@ -94,38 +78,36 @@ anchor_version = "0.28.0-6cf200493a307c01487c7b492b4893e0d6f6cb23"
 
 ## Multiple files template
 
-Programs created with `anchor init` or `anchor new` have a single `lib.rs` file but not everyone prefers a single file approach for programs.
+Programs scaffolded by `$ [34manchor[0m init{:ansi}` and `$ [34manchor[0m new{:ansi}` previously shipped as a single `lib.rs`. A new template emits the common multi-file layout:
 
-The most popular way of splitting the program into multiple files looks something like the following:
+<FileTree>
+  <File name="constants.rs" />
+  <File name="error.rs" />
+  <Dir name="instructions">
+    <File name="initialize.rs" />
+    <File name="mod.rs" />
+  </Dir>
+  <File name="lib.rs" />
+  <Dir name="state">
+    <File name="mod.rs" />
+  </Dir>
+</FileTree>
 
+Initialize a workspace with this layout:
+
+```ansi
+$ [34manchor[0m init [2m<NAME>[0m [2m--template[0m multiple
 ```
-├── constants.rs
-├── error.rs
-├── instructions
-│   ├── initialize.rs
-│   └── mod.rs
-├── lib.rs
-└── state
-    └── mod.rs
-```
 
-To initialize a workspace with this program structure, run:
+Or add a new program with the same layout to an existing workspace:
 
-```
-anchor init <NAME> --template multiple
-```
-
-or if you have an existing workspace:
-
-```
-anchor new <NAME> --template multiple
+```ansi
+$ [34manchor[0m new [2m<NAME>[0m [2m--template[0m multiple
 ```
 
 ## Upgradeable programs in tests
 
-You can now configure upgradability of the programs in `anchor test`.
-
-In `Anchor.toml`:
+Upgradeability for programs run under `$ [34manchor[0m test{:ansi}` is now configurable in `Anchor.toml`:
 
 ```toml
 [test]
@@ -143,72 +125,62 @@ upgradeable = true
 
 ## Lamport utilities
 
-Transferring lamports from a PDA is quite complicated due to the types that are being used.
+Transferring lamports from a PDA used to require awkward type juggling. Instead of:
 
-Instead of
-
-```rust
+```rust showLineNumbers=false
 **ctx.accounts.from.to_account_info().try_borrow_mut_lamports()? -= amount;
 **ctx.accounts.to.to_account_info().try_borrow_mut_lamports()? += amount;
 ```
 
-you can
+you can now write:
 
-```rust
+```rust showLineNumbers=false
 ctx.accounts.from.sub_lamports(amount)?;
 ctx.accounts.to.add_lamports(amount)?;
 ```
 
-Similarly for **getting** the lamports, instead of
+For reading lamports, instead of:
 
-```rust
+```rust showLineNumbers=false
 let lamports = ctx.accounts.my_account.to_account_info().lamports();
 ```
 
-you can
+you can now write:
 
-```rust
+```rust showLineNumbers=false
 let lamports = ctx.accounts.my_account.get_lamports();
 ```
 
-**Note:** The new methods are not only more ergonomic but they are also more performant than the previous examples. This is because `to_account_info` method clones the data internally but the new methods use a reference to the underlying data.
+These helpers are also more efficient than the manual form. `to_account_info(){:rs}` clones the underlying data internally, while the new methods take a reference to it.
 
-## Type safe context bumps
+## Type-safe context bumps
 
-Before this release, `ctx.bumps` used to be a `BTreeMap<String, u8>` which doesn't provide type safety for the keys(account names).
+Before this release, `ctx.bumps{:rs}` was a `BTreeMap<String, u8>{:rs}`, which gave no type safety for the account-name keys.
 
-```rust
+```rust showLineNumbers=false
 let bump = *ctx.bumps.get("my_account").unwrap();
 ```
 
-With this release, there is an auto-generated struct that holds the bump values.
+It is now an auto-generated struct that holds each bump as a named field, enabling completion and rejecting typos at compile time:
 
-```rust
+```rust showLineNumbers=false
 let bump = ctx.bumps.my_account;
 ```
 
-**Note**: The new way is not only more intuitive but also is more performant. This is mainly because `BTreeMap` is heap-allocated and it has to resize and grow occasionally.
+The struct form is also faster than `BTreeMap{:rs}`, which is heap-allocated and occasionally has to resize.
 
 ## `idl-build` feature
 
-There is a new way to generate IDLs via compilation.
-
-Add `idl-build` feature to your program's `Cargo.toml` to try it out.
+IDLs can now be generated via compilation rather than parsing. Enable it by adding the `idl-build` feature to the program's `Cargo.toml`:
 
 ```toml
 [features]
 idl-build = ["anchor-lang/idl-build"]
 ```
 
-The IDL will be built automatically when you run `anchor build` but if you'd like to _only_ generate the IDL, run:
+The IDL will be built automatically when you run `$ [34manchor[0m build{:ansi}` but if you'd like to only generate the IDL, run `$ [34manchor[0m idl build{:ansi}`.
 
-```sh
-anchor idl build
-```
-
-### Notes
-
-- All crates that are being used for the IDL generation needs to be added to the `idl-build` feature list.
+Every crate involved in IDL generation must be added to the `idl-build` feature list:
 
 ```toml
 [features]
@@ -219,17 +191,13 @@ idl-build = [
 ]
 ```
 
-- Compile time checks are supported.
-- External types from other Anchor programs are supported as long as the external crate has the `idl-build` feature(see `another-program/idl-build`).
-- Conflicting type names e.g. `some_module::MyType` and `another_module::MyType` can be used together.
-- Generation time is a lot slower compared to the default method(parsing) due to Rust compile times.
-- Even though most of it works great, some parts are still rough around the edges and you may encounter parts that are not fully ironed out. Please [create an issue](https://github.com/solana-foundation/anchor/issues) if you run into a problem.
+Compile-time checks are supported, as are external types from other Anchor programs (provided the external crate also exposes an `idl-build` feature, like `another-program/idl-build` above). Two crates can use the same type name (for example `some_module::MyType{:rs}` and `another_module::MyType{:rs}`) without collision. Generation is noticeably slower than the default parsing-based method due to Rust compile times. Most of the pipeline works well, but rough edges remain; if you run into one, please [open an issue](https://github.com/solana-foundation/anchor/issues).
 
 ## Type aliases
 
 Anchor IDL now supports type aliases.
 
-```rust
+```rust showLineNumbers=false
 pub type U8Array = [u8; 8];
 
 #[program]
@@ -280,60 +248,46 @@ Generates the following IDL:
 }
 ```
 
-**Note:** This example only works with the default IDL generation method(parsing) for now because type aliases for default Rust types don't work properly with `idl-build`([#2640](https://github.com/solana-foundation/anchor/issues/2640)).
+This example currently works only with the default parsing-based IDL generator. Type aliases over built-in Rust types are not yet handled correctly by `idl-build` ([#2640](https://github.com/solana-foundation/anchor/issues/2640)).
 
 ## Export `mpl-token-metadata`
 
-`anchor-spl` with `metadata` feature enabled now exports the `mpl-token-metadata` crate.
+`anchor-spl` with the `metadata` feature now re-exports the `mpl-token-metadata` crate. Drop the direct dependency to avoid version conflicts:
 
-**Note:** Consider removing the `mpl-token-metadata` dependency to reduce the possibility of having conflicting versions:
-
-```diff
+```toml title="Cargo.toml" del={3}
 [dependencies]
 anchor-spl = { version = "0.29.0", features = ["metadata"] }
-- mpl-token-metadata = "1.13.1"
+mpl-token-metadata = "1.13.1"
 ```
 
-and use the exported crate from `anchor-spl`:
+and reference the re-export instead:
 
-```rust
+```rust showLineNumbers=false
 use anchor_spl::metadata::mpl_token_metadata;
 ```
 
 ## TypeScript SDK improvements
 
-1. `Program.addEventListener` method is now strongly typed -- correct types for the event names and the event returned from the callback instead of `any`.
+`Program.addEventListener{:ts}` is now strongly typed. Event names and the event passed to the callback both carry their proper types instead of `any{:ts}`.
 
-2. `anchor.workspace` now lazy loads programs on-demand. Programs that are not being used in the tests won't get loaded and therefore won't cause errors.
+`anchor.workspace{:ts}` lazy-loads programs on demand, so programs that aren't used in the test suite no longer get loaded or trigger errors.
 
-3. JavaScript convention is to use camelCase for property names but programs are accessed via PascalCase e.g. `anchor.workspace.MyProgram` which is unintuitive. Both variations work in this release.
+JavaScript convention uses camelCase for property names, but programs were previously accessed via PascalCase (e.g. `anchor.workspace.MyProgram{:ts}`), which is unintuitive. Both variations now work:
 
-   ```ts
-   const camel = anchor.workspace.myProgram
-   const pascal = anchor.workspace.MyProgram
-   ```
+```ts showLineNumbers=false
+const camel = anchor.workspace.myProgram
+const pascal = anchor.workspace.MyProgram
+```
 
-4. Removed `assert` and `base64-js` dependency.
+The `assert` and `base64-js` dependencies have been removed.
 
 ## New Docker image
 
-The previous image([projectserum/build](https://hub.docker.com/r/projectserum/build)) is now deprecated, new image is [backpackapp/build](https://hub.docker.com/r/backpackapp/build).
-
-To pull the latest image, run:
-
-```sh
-docker pull backpackapp/build:v0.29.0
-```
-
-**Note:** `anchor build --verifiable` now works with the latest image.
+The previous image, [`projectserum/build`](https://hub.docker.com/r/projectserum/build), has been deprecated. The new image is [`backpackapp/build`](https://hub.docker.com/r/backpackapp/build), which you can pull with `$ [34mdocker[0m pull backpackapp/build:v0.29.0{:ansi}`. `$ [34manchor[0m build [2m--verifiable[0m{:ansi}` works against the new image.
 
 ## Enhanced performance
 
-`0.29.0` performance is noticeably improved in all areas, the biggest one being [binary size](https://github.com/solana-foundation/anchor/blob/master/bench/BINARY_SIZE.md#0290) which is reduced ~36% compared to `0.28.0`!
-
-Similar benchmarks can be found for [compute units](https://github.com/solana-foundation/anchor/blob/master/bench/COMPUTE_UNITS.md#0290) and [stack memory](https://github.com/solana-foundation/anchor/blob/master/bench/STACK_MEMORY.md#0290).
-
-**Note:** The benchmark results will vary between programs but the overall direction should be the same.
+`0.29.0` improves performance across the board, most notably reducing [binary size](https://github.com/solana-foundation/anchor/blob/master/bench/BINARY_SIZE.md#0290) by roughly 36% relative to `0.28.0`. Similar wins are tracked for [compute units](https://github.com/solana-foundation/anchor/blob/master/bench/COMPUTE_UNITS.md#0290) and [stack memory](https://github.com/solana-foundation/anchor/blob/master/bench/STACK_MEMORY.md#0290). Exact numbers vary between programs, but the overall direction is consistent.
 
 ---
 

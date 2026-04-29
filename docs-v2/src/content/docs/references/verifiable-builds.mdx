@@ -1,50 +1,44 @@
 ---
 title: Verifiable builds
-description: Anchor - Verifiable Builds
+description: Use Anchor's Docker-backed CLI to produce reproducible Solana program binaries that can be verified against a deployed program.
 ---
 
-Building programs with the Solana CLI may embed machine specific code into the resulting binary. As a result, building the same program on different machines may produce different executables. To get around this problem, one can build inside a docker image with pinned dependencies to produce a verifiable build.
+Building Solana programs with the Solana CLI can embed machine-specific code into the resulting binary, so the same source on different machines may produce different executables. Anchor solves this by building inside a Docker image with pinned dependencies, producing a verifiable build.
 
----
-
-Anchor makes this easy by providing CLI commands to build and take care of docker for you. To get started, first make sure you [install](https://docs.docker.com/get-docker/) docker on your local machine.
+[Install Docker](https://docs.docker.com/get-docker/) first, then use the Anchor CLI commands below.
 
 ## Building
 
-To produce a verifiable build, run
+Produce a verifiable build:
 
-```shell
-anchor build --verifiable
+```ansi
+[34manchor[0m build [2m--verifiable[0m
 ```
 
 ## Verifying
 
-To verify a build against a program deployed on mainnet, run
+Verify a build against a program deployed on mainnet:
 
-```shell
-anchor verify -p <lib-name> <program-id>
+```ansi
+[34manchor[0m verify [2m-p[0m [2m<lib-name>[0m [2m<program-id>[0m
 ```
 
-where the `<lib-name>` is defined by your program's Cargo.toml.
-
-If the program has an IDL, it will also check the IDL deployed on chain matches.
+The `<lib-name>` is the library name defined in the program's `Cargo.toml`. If the program has an IDL, the IDL deployed on chain is also checked against the local IDL.
 
 ## Images
 
-A docker image for each version of Anchor is published on [Docker Hub](https://hub.docker.com/r/solanafoundation/anchor). They are tagged in the form `solanafoundation/anchor:<version>`. For example, to get the image for Anchor `v1.0.0` one can run
+A Docker image for each version of Anchor is published on [Docker Hub](https://hub.docker.com/r/solanafoundation/anchor) under tags of the form `solanafoundation/anchor:<version>`. To pull the image for Anchor `v1.0.0`:
 
-```shell
-docker pull solanafoundation/anchor:v1.0.0
+```ansi
+[34mdocker[0m pull solanafoundation/anchor:v1.0.0
 ```
 
 ## Removing an image
 
-In the event you run a verifiable build from the CLI and exit prematurely, it's possible the docker image may still be building in the background.
+If a CLI verifiable build exits prematurely, the underlying Docker container may still be running in the background. Remove it with:
 
-To remove, run
-
-```shell
-docker rm -f anchor-program
+```ansi
+[34mdocker[0m rm [2m-f[0m anchor-program
 ```
 
-where `anchor-program` is the name of the image created by default from within the Anchor CLI.
+`anchor-program` is the default image name the Anchor CLI uses.

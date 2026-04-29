@@ -96,8 +96,15 @@
       @apply marker:text-foreground/30 my-2 ml-6;
     }
 
+    /* Pills use `display: inline` (not `inline-block`) so that when the
+       content wraps across lines, `box-decoration-break: clone` can clone
+       the pill chrome onto each line fragment instead of leaving one tall
+       rectangle around the bounding box. The `-webkit-` prefix is required
+       for Safari and older Blink. */
     :where(code):not(:where(.not-prose, .not-prose *)) {
-      @apply bg-muted/50 text-foreground relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
+      @apply bg-muted/50 text-foreground relative rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) code {
@@ -105,7 +112,9 @@
     }
 
     :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
-      @apply bg-muted/50! text-foreground relative inline-block rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
+      @apply bg-muted/50! text-foreground relative rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
     }
 
     /* When inline `<code>` or a `.shiki` pill sits inside an `<a>`, the
@@ -136,6 +145,24 @@
 
     :where(.inline-shell-cmd):not(:where(.not-prose, .not-prose *)) {
       @apply bg-muted/50 text-foreground font-mono relative cursor-pointer rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium align-baseline transition-colors leading-[1.2] border-0 [box-decoration-break:clone];
+    }
+
+    /* Tagged by rehype-inline-shell-cmd when the command text exceeds the
+       long-pill threshold. Without this rule, long unbreakable command
+       text (commit hashes, `<version>-<commit>` pairs) overflows narrow
+       contexts like table cells. The shell-cmd outer element is now a
+       `<span role="button">` — naturally inline — so `box-decoration-break:
+       clone` from the base rule clones the pill chrome onto each line.
+       The inner `<code>` still inherits `inline-block` from the prose
+       rule, which would otherwise act as an unbreakable block at the
+       longest token; force it inline here too. */
+    .inline-shell-cmd[data-long-pill='true']:not(.not-prose):not(.not-prose *) {
+      overflow-wrap: anywhere;
+    }
+
+    .inline-shell-cmd[data-long-pill='true'] code {
+      display: inline;
+      overflow-wrap: anywhere;
     }
 
     :where(.inline-shell-cmd):hover:not(:where(.not-prose, .not-prose *)) {
