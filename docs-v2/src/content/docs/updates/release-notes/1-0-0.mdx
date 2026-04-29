@@ -1,6 +1,6 @@
 ---
 title: 1.0.0
-description: Anchor - Release Notes 1.0.0
+description: Anchor release notes for 1.0.0.
 ---
 
 `1.0.0` is the first stable major release of Anchor. It ships a large number of breaking changes designed to clean up long-standing technical debt, modernize the toolchain, and establish a stable foundation going forward. We cover the most important changes below, but be sure to check out the full list of changes in the [CHANGELOG](https://github.com/solana-foundation/anchor/blob/v1.0.0/CHANGELOG.md#100---2026-04-02).
@@ -13,28 +13,28 @@ description: Anchor - Release Notes 1.0.0
 
 1. Update `avm` itself before installing the new CLI. If your current `avm` supports `self-update`, use:
 
-   ```sh
-   avm self-update
+   ```ansi
+   [34mavm[0m self-update
    ```
 
    Otherwise, bootstrap using `cargo install`:
 
-   ```sh
-   cargo install avm --git https://github.com/solana-foundation/anchor --locked
+   ```ansi
+   [34mcargo[0m install avm [2m--git[0m https://github.com/solana-foundation/anchor [2m--locked[0m
    ```
 
 2. Update `anchor-cli`:
 
-   ```sh
-   avm install 1.0.0
+   ```ansi
+   [34mavm[0m install 1.0.0
    ```
 
 ### Without AVM
 
 Install `anchor-cli` directly:
 
-```sh
-cargo install --git https://github.com/solana-foundation/anchor --tag v1.0.0 anchor-cli --locked
+```ansi
+[34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor [2m--tag[0m v1.0.0 anchor-cli [2m--locked[0m
 ```
 
 ### Common steps
@@ -49,8 +49,8 @@ The recommended Solana version is `3.1.10`.
 
 You can install the newer tooling by running:
 
-```
-sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.10/install)"
+```ansi
+[34msh[0m [2m-c[0m "$(curl [2m-sSfL[0m https://release.anza.xyz/v3.1.10/install)"
 ```
 
 ---
@@ -61,8 +61,8 @@ sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.10/install)"
 
 The TypeScript package has been moved from `@coral-xyz/anchor` to `@anchor-lang/core`:
 
-```sh
-npm install @anchor-lang/core
+```ansi
+[34mnpm[0m install @anchor-lang/core
 ```
 
 Update every import in your project:
@@ -107,7 +107,7 @@ pub struct MyIx<'info> {
 }
 ```
 
-### Legacy IDL instructions replaced by program metadata
+### Legacy IDL instructions replaced by Program Metadata
 
 The on-chain IDL management instructions that Anchor has used since the beginning have been removed and replaced with the new [Program Metadata Program (PMP)](https://github.com/solana-foundation/anchor/pull/3798). IDL uploads through `anchor deploy` and `anchor idl` commands work as before; only the underlying mechanism has changed.
 
@@ -149,14 +149,14 @@ Having multiple `#[error_code]` blocks in a single program is now a compile-time
 
 Once your installed `avm` is v1-capable, you can update it without going through `cargo install`:
 
-```sh
-avm self-update
+```ansi
+[34mavm[0m self-update
 ```
 
 To bootstrap to a version that supports this command, install via `cargo`:
 
-```sh
-cargo install avm --git https://github.com/solana-foundation/anchor --tag v1.0.0 --locked
+```ansi
+[34mcargo[0m install avm [2m--git[0m https://github.com/solana-foundation/anchor [2m--tag[0m v1.0.0 [2m--locked[0m
 ```
 
 Additionally, `avm` will passively warn you when it detects that a newer version of itself is available.
@@ -165,10 +165,10 @@ Additionally, `avm` will passively warn you when it detects that a newer version
 
 All `avm` commands (`install`, `list`, `update`) now understand pre-release version labels:
 
-```sh
-avm install latest-pre-release
-avm list --pre-release
-avm update --pre-release
+```ansi
+[34mavm[0m install latest-pre-release
+[34mavm[0m list [2m--pre-release[0m
+[34mavm[0m update [2m--pre-release[0m
 ```
 
 ---
@@ -193,12 +193,12 @@ Supported hooks: `pre_build`, `post_build`, `pre_test`, `post_test`, `pre_deploy
 
 `anchor init` now generates a [LiteSVM](https://github.com/LiteSVM/litesvm) test template by default, replacing the previous TypeScript based default. You can still pick a different template explicitly:
 
-```sh
-anchor init my-program --test-template mollusk
-anchor init my-program --test-template mocha
+```ansi
+[34manchor[0m init my-program [2m--test-template[0m mollusk
+[34manchor[0m init my-program [2m--test-template[0m mocha
 ```
 
-### Program id mismatch check
+### Program ID mismatch check
 
 `anchor build` now checks that the program ID declared in your source code matches the public key in the program's keypair file and emits an error if they differ. This check is skipped during `anchor test` where ephemeral keypairs are common. You can skip this check during builds with `anchor build --ignore-keys`.
 

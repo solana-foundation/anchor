@@ -233,7 +233,7 @@ $ [34manchor[0m init [2m--test-template[0m rust
 
 ### Account resolution
 
-Account resolution lets clients fill in accounts automatically rather than passing every one explicitly. The TS library's resolution logic has been overhauled; most changes are internal, but the user-facing surface around `.accounts(){:ts}` has changed.
+Account resolution lets clients fill in accounts automatically rather than passing every one explicitly. The TS library's resolution logic has been overhauled. Most of those changes are internal, but the user-facing surface around `.accounts(){:ts}` has changed.
 
 Previously, all accounts on the builder were typed as partial, with no way to know which ones the IDL could resolve. The transaction builder now exposes three methods:
 
@@ -265,7 +265,7 @@ The TS library's internals were riddled with case-conversion logic before string
 
 ### No more program id
 
-The `programId{:ts}` parameter of `Program{:ts}` has been removed; the new IDL stores the program id in its `address` field:
+The `programId{:ts}` parameter of `Program{:ts}` has been removed. The new IDL stores the program id in its `address` field:
 
 ```ts showLineNumbers=false del={1} add={2}
 new Program(idl, programId)

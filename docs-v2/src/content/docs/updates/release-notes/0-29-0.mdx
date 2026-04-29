@@ -43,17 +43,17 @@ anchor_version = "0.29.0" # `anchor-cli` version to use
 solana_version = "1.17.0" # Solana version to use
 ```
 
-Both fields are optional. `anchor_version` requires [`avm`](https://github.com/solana-foundation/anchor/tree/master/avm) to be installed. Before this release, the `anchor_version` and `solana_version` keys in `Anchor.toml` only affected Docker verifiable builds; now every command honors the `[toolchain]` section.
+Both fields are optional. `anchor_version` requires [`avm`](https://github.com/solana-foundation/anchor/tree/master/avm) to be installed. Before this release, the `anchor_version` and `solana_version` keys in `Anchor.toml` only affected Docker verifiable builds. Every command now honors the `[toolchain]` section.
 
 ## Install CLI from commit with `avm`
 
-Installing the CLI from a specific commit is possible with cargo:
+Installing the CLI from a specific commit was historically possible directly through cargo:
 
 ```ansi
 $ [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor [2m--rev[0m 6cf200493a307c01487c7b492b4893e0d6f6cb23 anchor-cli [2m--locked[0m
 ```
 
-but this overrides the `anchor` binary outside of `avm`'s control. As of this release, `avm` natively supports installing and switching between commits.
+That approach overrides the `anchor` binary outside of `avm`'s control. As of this release, `avm` natively supports installing and switching between commits.
 
 Pass a `[2m<version>[0m{:ansi}`-`[2m<commit>[0m{:ansi}` pair, a full commit hash, or a short prefix to `$ [34mavm[0m install{:ansi}`:
 
@@ -107,14 +107,14 @@ $ [34manchor[0m new [2m<NAME>[0m [2m--template[0m multiple
 
 ## Upgradeable programs in tests
 
-Upgradeability for programs run under `$ [34manchor[0m test{:ansi}` is now configurable in `Anchor.toml`:
+Upgradeability for programs run under `$ [34manchor[0m test{:ansi}` is now configurable in `Anchor.toml`. The workspace-wide flag covers every test program:
 
 ```toml
 [test]
 upgradeable = true
 ```
 
-or for an individual program:
+A `[[test.genesis]]` entry overrides the flag for an individual program:
 
 ```toml
 [[test.genesis]]
@@ -125,29 +125,19 @@ upgradeable = true
 
 ## Lamport utilities
 
-Transferring lamports from a PDA used to require awkward type juggling. Instead of:
+Transferring lamports from a PDA used to require awkward type juggling. The new `sub_lamports(){:rs}` and `add_lamports(){:rs}` helpers replace the borrow dance:
 
-```rust showLineNumbers=false
+```rust showLineNumbers=false del={1-2} add={3-4}
 **ctx.accounts.from.to_account_info().try_borrow_mut_lamports()? -= amount;
 **ctx.accounts.to.to_account_info().try_borrow_mut_lamports()? += amount;
-```
-
-you can now write:
-
-```rust showLineNumbers=false
 ctx.accounts.from.sub_lamports(amount)?;
 ctx.accounts.to.add_lamports(amount)?;
 ```
 
-For reading lamports, instead of:
+`get_lamports(){:rs}` similarly replaces the read-side dance:
 
-```rust showLineNumbers=false
+```rust showLineNumbers=false del={1} add={2}
 let lamports = ctx.accounts.my_account.to_account_info().lamports();
-```
-
-you can now write:
-
-```rust showLineNumbers=false
 let lamports = ctx.accounts.my_account.get_lamports();
 ```
 
@@ -191,7 +181,7 @@ idl-build = [
 ]
 ```
 
-Compile-time checks are supported, as are external types from other Anchor programs (provided the external crate also exposes an `idl-build` feature, like `another-program/idl-build` above). Two crates can use the same type name (for example `some_module::MyType{:rs}` and `another_module::MyType{:rs}`) without collision. Generation is noticeably slower than the default parsing-based method due to Rust compile times. Most of the pipeline works well, but rough edges remain; if you run into one, please [open an issue](https://github.com/solana-foundation/anchor/issues).
+Compile-time checks are supported, as are external types from other Anchor programs (provided the external crate also exposes an `idl-build` feature, like `another-program/idl-build` above). Two crates can use the same type name (for example `some_module::MyType{:rs}` and `another_module::MyType{:rs}`) without collision. Generation is noticeably slower than the default parsing-based method due to Rust compile times. Most of the pipeline works well, but rough edges remain. If you run into one, please [open an issue](https://github.com/solana-foundation/anchor/issues).
 
 ## Type aliases
 
@@ -260,7 +250,7 @@ anchor-spl = { version = "0.29.0", features = ["metadata"] }
 mpl-token-metadata = "1.13.1"
 ```
 
-and reference the re-export instead:
+The crate is reachable through `anchor_spl::metadata{:rs}`:
 
 ```rust showLineNumbers=false
 use anchor_spl::metadata::mpl_token_metadata;

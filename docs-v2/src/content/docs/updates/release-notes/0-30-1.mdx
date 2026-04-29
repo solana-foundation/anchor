@@ -41,7 +41,7 @@ Then call [`convert_idl`](https://docs.rs/anchor-lang-idl/0.1.1/anchor_lang_idl/
 
 ### Unsupported seed expressions
 
-Some seed expressions such as `&(my_account.data + 1).to_le_bytes(){:rs}`:
+Some seed expressions cannot currently be stored in the IDL. A representative case is the math expression `&(my_account.data + 1).to_le_bytes(){:rs}`:
 
 ```rust showLineNumbers=false
 #[derive(Accounts)]
@@ -57,11 +57,11 @@ pub struct MyAccount {
 }
 ```
 
-cannot currently be stored in the IDL. A regression in IDL generation surfaced this as a compile error for any unsupported seed expression. The compile errors are gone, with the side effect that clients cannot automatically resolve these accounts either.
+A regression in IDL generation had been surfacing such expressions as compile errors. The compile errors are gone, with the side effect that clients cannot automatically resolve these accounts either.
 
 ### Fields with `address{:rs}` constraint
 
-Field expressions used as an address constraint:
+Field expressions used as an address constraint no longer fail IDL generation:
 
 ```rust showLineNumbers=false
 #[derive(Accounts)]
@@ -77,7 +77,7 @@ pub struct MyAccount {
 }
 ```
 
-no longer fail IDL generation. Such accounts still don't resolve automatically when the constraint expression isn't constant, so prefer the `has_one{:rs}` constraint when possible:
+Such accounts still don't resolve automatically when the constraint expression isn't constant. The `has_one{:rs}` constraint is preferable in those cases:
 
 ```rust showLineNumbers=false
 #[derive(Accounts)]
@@ -132,7 +132,7 @@ When building a program for the first time, the program id declarations are upda
 
 ### Upgradeable program clones
 
-Cloning upgradeable programs with
+A breaking change in Solana `1.17.12` left programs cloned through `[[test.validator.clone]]` unusable in the test validator. The minimal repro:
 
 ```toml
 [test.validator]
@@ -142,7 +142,7 @@ url = "https://api.mainnet-beta.solana.com"
 address = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
 ```
 
-produced unusable programs after a breaking change in Solana `1.17.12`. The fix landed on both the Anchor and Solana sides, and requires `solana-cli >= 1.18.10`.
+The fix landed on both the Anchor and Solana sides and requires `solana-cli >= 1.18.10`.
 
 ### File system error improvements
 
@@ -154,7 +154,7 @@ Rust's default file-not-found error omits the offending path, which makes debugg
 
 [`declare_program!(){:rs}`](https://www.anchor-lang.com/release-notes/0.30.0#dependency-free-program-declaration) now accepts legacy (pre-v0.30) IDLs. The macro works as long as the legacy spec can describe the program faithfully. Programs that use non-default features (zero-copy, custom `repr{:rs}`, etc.) may produce a declaration that fails to compile or is silently incorrect.
 
-Two paths around this: run `$ [34manchor[0m idl convert{:ansi}` and patch the result by hand, or upgrade the program to v0.30 and regenerate its IDL. The second is preferred, since the new IDL spec was added precisely because the legacy spec couldn't describe modern programs reliably. If dependency upgrades are blocking, strip them. IDL generation only inspects signatures, so program logic and non-Anchor dependencies can be deleted from the temporary build. The [`spl-token` IDL stub](https://github.com/solana-foundation/anchor/blob/cc43e67399ad50cf7d33466f7bcd7e6dcee88ae2/ts/packages/spl-token/program/lib.rs) demonstrates the minimal shape required.
+There are two paths around this. The first is to run `$ [34manchor[0m idl convert{:ansi}` and patch the result by hand. The second, preferred path is to upgrade the program to v0.30 and regenerate its IDL, since the new IDL spec was added precisely because the legacy spec couldn't describe modern programs reliably. If dependency upgrades are blocking, strip them. IDL generation only inspects signatures, so program logic and non-Anchor dependencies can be deleted from the temporary build. The [`spl-token` IDL stub](https://github.com/solana-foundation/anchor/blob/cc43e67399ad50cf7d33466f7bcd7e6dcee88ae2/ts/packages/spl-token/program/lib.rs) demonstrates the minimal shape required.
 
 ### `declare_program!{:rs}` fixes
 
