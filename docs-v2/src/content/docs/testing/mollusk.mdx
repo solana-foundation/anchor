@@ -17,7 +17,7 @@ It does not create any semblance of a validator runtime, but instead provisions 
 
 The main processor, `process_instruction{:rs}`, creates minified instances of Agave's program cache, transaction context, and invoke context. It uses these components to directly execute the provided program's ELF using the BPF Loader.
 
-Because it does not use AccountsDB, Bank, or any other large Agave components, the harness is exceptionally fast. However, it does require the user to provide an explicit list of accounts to use, since it has nowhere to load them from.
+Because it does not use AccountsDB, Bank, or any other large Agave components, the harness is exceptionally fast, but it requires the user to provide an explicit list of accounts to use, since it has nowhere to load them from.
 
 The test environment can be further configured by adjusting the compute budget, feature set, or sysvars. These configurations are stored directly on the test harness (the `Mollusk{:rs}` struct), but can be manipulated through a handful of helpers.
 

@@ -60,7 +60,7 @@ members = [
 
 ### `exclude`
 
-Inverse of `members`. Lists workspace paths to skip:
+Lists workspace paths to skip, mirroring the include list in `members`:
 
 ```toml
 [workspace]
@@ -78,7 +78,7 @@ Maps program names to addresses, scoped by cluster:
 my_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 ```
 
-`programs.localnet` is used during testing on localnet, where `solana-test-validator` can load a program at genesis via `--bpf-program`.
+During tests on localnet, Anchor reads `programs.localnet` to tell `solana-test-validator` which programs to load at genesis via `--bpf-program`.
 
 ## `[test]`
 
