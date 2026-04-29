@@ -1,5 +1,7 @@
 use {
-    crate::{accounts::view_wrapper_traits, programs::System, AnchorAccount, Id},
+    crate::{
+        accounts::view_wrapper_traits, programs::System, AccountResizeHooks, AnchorAccount, Id,
+    },
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
 };
@@ -30,6 +32,8 @@ impl AnchorAccount for SystemAccount {
         &self.view
     }
 }
+
+impl AccountResizeHooks for SystemAccount {}
 
 view_wrapper_traits!(SystemAccount);
 

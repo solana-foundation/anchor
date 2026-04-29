@@ -1,5 +1,5 @@
 use {
-    crate::AnchorAccount,
+    crate::{AccountResizeHooks, AnchorAccount},
     core::{marker::PhantomData, ops::Deref},
     pinocchio::{account::AccountView, address::Address, sysvars::Sysvar as PinocchioSysvar},
     solana_program_error::ProgramError,
@@ -76,6 +76,8 @@ impl<T: PinocchioSysvar + SysvarId + Copy> AnchorAccount for Sysvar<T> {
         &self.view
     }
 }
+
+impl<T: PinocchioSysvar + SysvarId + Copy> AccountResizeHooks for Sysvar<T> {}
 
 impl<T: PinocchioSysvar + SysvarId + Copy> Deref for Sysvar<T> {
     type Target = T;

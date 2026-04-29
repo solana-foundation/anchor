@@ -1,5 +1,5 @@
 use {
-    crate::{AnchorAccount, Id},
+    crate::{AccountResizeHooks, AnchorAccount, Id},
     core::{marker::PhantomData, ops::Deref},
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
@@ -50,6 +50,8 @@ impl<T: Id> AnchorAccount for Program<T> {
         &self.view
     }
 }
+
+impl<T: Id> AccountResizeHooks for Program<T> {}
 
 impl<T: Id> Deref for Program<T> {
     type Target = AccountView;

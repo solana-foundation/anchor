@@ -1,5 +1,5 @@
 use {
-    crate::{accounts::view_wrapper_traits, AnchorAccount},
+    crate::{accounts::view_wrapper_traits, AccountResizeHooks, AnchorAccount},
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
 };
@@ -60,6 +60,8 @@ impl AnchorAccount for Signer {
         &self.view
     }
 }
+
+impl AccountResizeHooks for Signer {}
 
 view_wrapper_traits!(Signer);
 

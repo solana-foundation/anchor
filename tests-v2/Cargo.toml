@@ -15,6 +15,7 @@ caller = { path = "programs/caller", features = ["cpi"] }
 constraints = { path = "programs/constraints" }
 custom-constraints = { path = "programs/custom-constraints", features = ["cpi"] }
 dup-mut = { path = "programs/dup-mut" }
+dup-realloc = { path = "programs/dup-realloc" }
 seeds = { path = "programs/seeds" }
 spl-test = { path = "programs/spl", features = ["cpi"] }
 accounts-test = { path = "programs/accounts" }

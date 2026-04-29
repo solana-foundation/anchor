@@ -1,5 +1,5 @@
 use {
-    crate::{AccountInitialize, AnchorAccount, Discriminator, Owner},
+    crate::{AccountInitialize, AccountResizeHooks, AnchorAccount, Discriminator, Owner},
     borsh::{BorshDeserialize, BorshSerialize},
     core::ops::{Deref, DerefMut},
     pinocchio::{
@@ -45,6 +45,7 @@ where
 enum BorshBorrow {
     Immutable { _guard: Ref<'static, [u8]> },
     Mutable { guard: RefMut<'static, [u8]> },
+    AliasedMutable,
     Released,
 }
 
@@ -64,8 +65,11 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
     /// that call `check_borrow_mut()`. The CPI sees the user's
     /// in-memory mutations because they were just serialized. After
     /// this, `exit()` becomes a no-op until `reacquire_borrow_mut()` is
-    /// called. Immutable / already-released borrows skip the commit.
+    /// called. Immutable / aliased / already-released borrows skip the commit.
     pub fn release_borrow(&mut self) -> Result<(), ProgramError> {
+        if matches!(self.borrow, BorshBorrow::AliasedMutable) {
+            return Ok(());
+        }
         if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
             self.data
                 .serialize(&mut &mut guard[DISC_LEN..])
@@ -122,6 +126,9 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> BorshAccount<
     /// For post-CPI use (where CPI may have mutated owner, disc, or
     /// payload), use [`reacquire_borrow_mut`] instead.
     pub fn reacquire_guard_only(&mut self) -> Result<(), ProgramError> {
+        if matches!(self.borrow, BorshBorrow::AliasedMutable) {
+            return Ok(());
+        }
         let mut view_mut = self.view;
         let data_ref = view_mut.try_borrow_mut()?;
         let guard: RefMut<'static, [u8]> = unsafe { core::mem::transmute(data_ref) };
@@ -196,6 +203,28 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         })
     }
 
+    /// # Safety
+    ///
+    /// See [`AnchorAccount::load_mut_aliased`]. This path is intended for
+    /// derive-emitted `#[account(mut, unsafe(dup))]` loads: it validates and
+    /// deserializes the account without holding a long-lived pinocchio
+    /// mutable borrow so multiple aliased wrappers can coexist.
+    unsafe fn load_mut_aliased(
+        view: AccountView,
+        program_id: &Address,
+    ) -> Result<Self, ProgramError> {
+        #[cfg(feature = "guardrails")]
+        if !view.is_writable() {
+            return Err(super::slab::cold_not_writable());
+        }
+        let data = Self::validate_and_load(view, unsafe { view.borrow_unchecked() }, program_id)?;
+        Ok(Self {
+            view,
+            data,
+            borrow: BorshBorrow::AliasedMutable,
+        })
+    }
+
     fn account(&self) -> &AccountView {
         &self.view
     }
@@ -222,6 +251,13 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
             if guard.len() >= 8 {
                 guard[..8].copy_from_slice(&[u8::MAX; 8]);
             }
+        } else if matches!(self.borrow, BorshBorrow::AliasedMutable) {
+            unsafe {
+                let data = self_view.borrow_unchecked_mut();
+                if data.len() >= 8 {
+                    data[..8].copy_from_slice(&[u8::MAX; 8]);
+                }
+            }
         }
         self.borrow = BorshBorrow::Released;
 
@@ -234,10 +270,10 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
         if self.view.lamports() == 0 {
             return Ok(());
         }
-        // Belt-and-braces: the derive's `realloc` constraint does
-        // release_borrow + reacquire after resize, but if someone resizes
-        // through a non-derive path the guard's length would be stale.
-        // Detect and fix before serializing.
+        // Belt-and-braces: the derive's account-resize hooks refresh the held
+        // mutable borrow after resize, but if someone resizes through a
+        // non-derive path the guard's length would be stale. Detect and fix
+        // before serializing.
         let stale = matches!(&self.borrow, BorshBorrow::Mutable { guard } if guard.len() != self.view.data_len());
         if stale {
             // Drop the stale guard directly rather than via release_borrow:
@@ -246,10 +282,19 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AnchorAccount
             self.borrow = BorshBorrow::Released;
             self.reacquire_guard_only()?;
         }
-        if let BorshBorrow::Mutable { ref mut guard } = self.borrow {
-            self.data
-                .serialize(&mut &mut guard[DISC_LEN..])
-                .map_err(|_| ProgramError::InvalidAccountData)?;
+        match &mut self.borrow {
+            BorshBorrow::Mutable { guard } => {
+                self.data
+                    .serialize(&mut &mut guard[DISC_LEN..])
+                    .map_err(|_| ProgramError::InvalidAccountData)?;
+            }
+            BorshBorrow::AliasedMutable => unsafe {
+                let data = self.view.borrow_unchecked_mut();
+                self.data
+                    .serialize(&mut &mut &mut data[DISC_LEN..])
+                    .map_err(|_| ProgramError::InvalidAccountData)?;
+            },
+            _ => {}
         }
         Ok(())
     }
@@ -265,10 +310,32 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> Deref for Bor
 impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> DerefMut for BorshAccount<T> {
     fn deref_mut(&mut self) -> &mut T {
         match &self.borrow {
-            BorshBorrow::Mutable { .. } => &mut self.data,
+            BorshBorrow::Mutable { .. } | BorshBorrow::AliasedMutable => &mut self.data,
             BorshBorrow::Immutable { .. } => panic!("use #[account(mut)] for mutable access"),
             BorshBorrow::Released => panic!("account borrow released (closed)"),
         }
+    }
+}
+
+impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> AccountResizeHooks
+    for BorshAccount<T>
+{
+    /// Borsh accounts may hold a pinned mutable data borrow across the
+    /// handler. Release it before resizing so the runtime resize path can
+    /// touch the account buffer. Aliased `unsafe(dup)` loads hold no pinned
+    /// borrow, so this hook becomes a no-op for that variant.
+    fn before_account_resize(&mut self) -> Result<(), ProgramError> {
+        self.release_borrow()
+    }
+
+    /// Refresh the held mutable borrow after resizing without
+    /// re-deserializing `self.data`. The resize path preserves the
+    /// discriminator/owner, and re-deserializing here would read the
+    /// pre-resize payload still on-chain, which breaks shrink cases.
+    /// Aliased `unsafe(dup)` loads hold no pinned borrow, so this is a no-op
+    /// for that variant.
+    fn after_account_resize(&mut self) -> Result<(), ProgramError> {
+        self.reacquire_guard_only()
     }
 }
 

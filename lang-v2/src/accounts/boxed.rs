@@ -1,7 +1,10 @@
 extern crate alloc;
 
 use {
-    crate::{AccountConstraint, AccountInitialize, AnchorAccount, Discriminator, Space},
+    crate::{
+        AccountConstraint, AccountInitialize, AccountResizeHooks, AnchorAccount, Discriminator,
+        Space,
+    },
     alloc::boxed::Box,
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
@@ -25,6 +28,17 @@ impl<T: AnchorAccount> AnchorAccount for Box<T> {
 
     /// # Safety
     ///
+    /// See [`AnchorAccount::load_mut_aliased`] — caller is responsible for
+    /// any aliasing invariants on duplicated mutable accounts.
+    unsafe fn load_mut_aliased(
+        view: AccountView,
+        program_id: &Address,
+    ) -> Result<Self, ProgramError> {
+        T::load_mut_aliased(view, program_id).map(Box::new)
+    }
+
+    /// # Safety
+    ///
     /// See [`AnchorAccount::load_mut_after_init`] — caller must ensure no
     /// other live `&mut` to the same account data exists.
     unsafe fn load_mut_after_init(
@@ -44,6 +58,18 @@ impl<T: AnchorAccount> AnchorAccount for Box<T> {
 
     fn close(&mut self, destination: AccountView) -> pinocchio::ProgramResult {
         (**self).close(destination)
+    }
+}
+
+impl<T: AccountResizeHooks> AccountResizeHooks for Box<T> {
+    #[inline(always)]
+    fn before_account_resize(&mut self) -> Result<(), ProgramError> {
+        (**self).before_account_resize()
+    }
+
+    #[inline(always)]
+    fn after_account_resize(&mut self) -> Result<(), ProgramError> {
+        (**self).after_account_resize()
     }
 }
 

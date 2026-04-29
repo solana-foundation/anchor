@@ -115,13 +115,19 @@ pub const BORSH_CONFIG: wincode::config::Configuration<
 // derive macros to split type-def JSON in `__anchor_private_print_idl_program`.
 // Not part of the stable API — hence the `__` prefix.
 #[cfg(feature = "idl-build")]
+pub use idl_build::IdlAccountType;
+/// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
+/// array. Always exported; the emitted impl body is itself
+/// `#[cfg(feature = "idl-build")]`, so non-IDL builds pay nothing.
+pub use anchor_derive_accounts_v2::IdlType;
+#[cfg(feature = "idl-build")]
 #[doc(hidden)]
 pub use serde_json as __serde_json;
 pub use {
     accounts::{AccountInitialize, SlabInit},
     anchor_derive_accounts_v2::{
-        access_control, account, constant, emit, error_code, event, pod_wrapper, program,
-        Accounts, InitSpace,
+        access_control, account, constant, emit, error_code, event, pod_wrapper, program, Accounts,
+        InitSpace,
     },
     borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
@@ -138,15 +144,8 @@ pub use {
     hash::sha256,
     loader::AccountLoader,
     pinocchio::{self, account::AccountView, address::Address},
-    traits::*,
+    traits::{AccountResizeHooks, *},
 };
-
-#[cfg(feature = "idl-build")]
-pub use idl_build::IdlAccountType;
-/// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
-/// array. Always exported; the emitted impl body is itself
-/// `#[cfg(feature = "idl-build")]`, so non-IDL builds pay nothing.
-pub use anchor_derive_accounts_v2::IdlType;
 
 // ---------------------------------------------------------------------------
 // Client-side types — for building instructions off-chain (tests, CPI, SDK)

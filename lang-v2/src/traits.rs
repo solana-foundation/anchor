@@ -65,7 +65,35 @@ pub trait ToCpiAccounts<'a> {
     fn to_cpi_handles(&self) -> alloc::vec::Vec<CpiHandle<'a>>;
 }
 
-pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
+/// Hooks emitted around in-program account resizing.
+///
+/// The derive calls these around [`crate::realloc_account`] whenever a field
+/// uses the `realloc = ...` account constraint. Most account wrappers do not
+/// need any special handling, so the default implementations are no-ops.
+///
+/// Wrappers that hold resize-sensitive state can override these hooks. For
+/// example, [`crate::accounts::BorshAccount`] releases its pinned mutable
+/// borrow before resizing and refreshes it afterwards so serialization at
+/// `exit()` sees the resized buffer.
+pub trait AccountResizeHooks {
+    /// Run immediately before a derive-emitted account resize.
+    ///
+    /// Default implementation does nothing.
+    #[inline(always)]
+    fn before_account_resize(&mut self) -> Result<(), ProgramError> {
+        Ok(())
+    }
+
+    /// Run immediately after a derive-emitted account resize.
+    ///
+    /// Default implementation does nothing.
+    #[inline(always)]
+    fn after_account_resize(&mut self) -> Result<(), ProgramError> {
+        Ok(())
+    }
+}
+
+pub trait AnchorAccount: AccountResizeHooks + Deref<Target = Self::Data> + Sized {
     type Data;
 
     /// Minimum account data length for this type. When > 0, PDA
@@ -101,6 +129,26 @@ pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
             return Err(crate::ErrorCode::ConstraintMut.into());
         }
         Self::load(view, program_id)
+    }
+
+    /// Load an account for mutable access when the caller explicitly allows
+    /// duplicated account aliases, such as `#[account(mut, unsafe(dup))]`.
+    ///
+    /// The default implementation forwards to [`load_mut`]. Wrappers that
+    /// normally hold a long-lived mutable borrow can override this to load
+    /// without reserving exclusive access across the entire handler, letting
+    /// multiple aliased wrappers coexist intentionally.
+    ///
+    /// # Safety
+    ///
+    /// The caller is explicitly opting out of duplicate-account exclusivity.
+    /// Any aliasing invariants are the caller's responsibility.
+    #[inline(always)]
+    unsafe fn load_mut_aliased(
+        view: AccountView,
+        program_id: &Address,
+    ) -> core::result::Result<Self, ProgramError> {
+        Self::load_mut(view, program_id)
     }
 
     /// Like [`load_mut`], but called right after

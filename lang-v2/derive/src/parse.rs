@@ -977,22 +977,47 @@ pub fn parse_field(
             quote! { Some({ #init_body }) }
         } else if attrs.is_init_if_needed {
             let init_body = emit_init_body(field_name, inner_ty, &attrs, field_names, true);
+            let load_mut = if attrs.is_dup {
+                quote! {
+                    <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut_aliased(
+                        __target, __program_id,
+                    )?
+                }
+            } else {
+                quote! {
+                    <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut(
+                        __target, __program_id,
+                    )?
+                }
+            };
             quote! {
                 if __target.data_len() > 0
                     && !__target.owned_by(&anchor_lang_v2::programs::System::id())
                 {
-                    // SAFETY: the bitvec duplicate-account check below ensures
-                    // no other mutable reference to this account's data exists.
+                    // SAFETY: for ordinary `mut` fields the bitvec
+                    // duplicate-account check below ensures exclusivity;
+                    // `unsafe(dup)` fields opt into the aliased load path.
                     Some(unsafe {
-                        <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut(
-                            __target, __program_id,
-                        )?
+                        #load_mut
                     })
                 } else {
                     Some({ #init_body })
                 }
             }
         } else if attrs.is_zeroed {
+            let load_mut = if attrs.is_dup {
+                quote! {
+                    <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut_aliased(
+                        __target, __program_id,
+                    )?
+                }
+            } else {
+                quote! {
+                    <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut(
+                        __target, __program_id,
+                    )?
+                }
+            };
             quote! {
                 {
                     let __disc = <#inner_ty as anchor_lang_v2::Discriminator>::DISCRIMINATOR;
@@ -1009,23 +1034,34 @@ pub fn parse_field(
                         let __data = __view.borrow_unchecked_mut();
                         __data[..__disc.len()].copy_from_slice(__disc);
                     }
-                    // SAFETY: the bitvec duplicate-account check below ensures
-                    // no other mutable reference to this account's data exists.
+                    // SAFETY: for ordinary `mut` fields the bitvec
+                    // duplicate-account check below ensures exclusivity;
+                    // `unsafe(dup)` fields opt into the aliased load path.
                     Some(unsafe {
-                        <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut(
-                            __target, __program_id,
-                        )?
+                        #load_mut
                     })
                 }
             }
         } else if attrs.is_mut {
-            quote! {
-                // SAFETY: the bitvec duplicate-account check below ensures
-                // no other mutable reference to this account's data exists.
-                Some(unsafe {
+            let load_mut = if attrs.is_dup {
+                quote! {
+                    <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut_aliased(
+                        __target, __program_id,
+                    )?
+                }
+            } else {
+                quote! {
                     <#inner_ty as anchor_lang_v2::AnchorAccount>::load_mut(
                         __target, __program_id,
                     )?
+                }
+            };
+            quote! {
+                // SAFETY: for ordinary `mut` fields the bitvec duplicate-account
+                // check below ensures exclusivity; `unsafe(dup)` fields opt into
+                // the aliased load path explicitly.
+                Some(unsafe {
+                    #load_mut
                 })
             }
         } else {
@@ -1061,13 +1097,27 @@ pub fn parse_field(
         let init_body_with_constraints = wrap_init_body_with_constraints(
             field_ty, &attrs, &init_body,
         );
+        let load_mut = if attrs.is_dup {
+            quote! {
+                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut_aliased(
+                    __target, __program_id,
+                )?
+            }
+        } else {
+            quote! {
+                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(
+                    __target, __program_id,
+                )?
+            }
+        };
         quote! {
             let mut #field_name: #field_ty = {
                 let __target = __views[#offset_expr];
                 if __target.data_len() > 0 && !__target.owned_by(&anchor_lang_v2::programs::System::id()) {
-                    // SAFETY: the bitvec duplicate-account check below ensures
-                    // no other mutable reference to this account's data exists.
-                    unsafe { <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)? }
+                    // SAFETY: for ordinary `mut` fields the bitvec
+                    // duplicate-account check below ensures exclusivity;
+                    // `unsafe(dup)` fields opt into the aliased load path.
+                    unsafe { #load_mut }
                 } else {
                     // Create branch: run `AccountConstraint::init` for every
                     // runtime-only constraint AFTER the account's typed
@@ -1080,6 +1130,19 @@ pub fn parse_field(
     } else if attrs.is_zeroed {
         // zeroed: account exists but discriminator must be all zeros. Verify,
         // stamp the real discriminator, then load mutably.
+        let load_mut = if attrs.is_dup {
+            quote! {
+                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut_aliased(
+                    __target, __program_id,
+                )?
+            }
+        } else {
+            quote! {
+                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(
+                    __target, __program_id,
+                )?
+            }
+        };
         quote! {
             let mut #field_name: #field_ty = {
                 let __target = __views[#offset_expr];
@@ -1095,16 +1158,31 @@ pub fn parse_field(
                     let __data = __view.borrow_unchecked_mut();
                     __data[..__disc.len()].copy_from_slice(__disc);
                 }
-                // SAFETY: the bitvec duplicate-account check below ensures
-                // no other mutable reference to this account's data exists.
-                unsafe { <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__target, __program_id)? }
+                // SAFETY: for ordinary `mut` fields the bitvec
+                // duplicate-account check below ensures exclusivity;
+                // `unsafe(dup)` fields opt into the aliased load path.
+                unsafe { #load_mut }
             };
         }
     } else if attrs.is_mut {
+        let load_mut = if attrs.is_dup {
+            quote! {
+                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut_aliased(
+                    __views[#offset_expr], __program_id,
+                )?
+            }
+        } else {
+            quote! {
+                <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(
+                    __views[#offset_expr], __program_id,
+                )?
+            }
+        };
         quote! {
-            // SAFETY: the bitvec duplicate-account check below ensures no
-            // other mutable reference to this account's data exists.
-            let mut #field_name = unsafe { <#field_ty as anchor_lang_v2::AnchorAccount>::load_mut(__views[#offset_expr], __program_id)? };
+            // SAFETY: for ordinary `mut` fields the bitvec duplicate-account
+            // check below ensures exclusivity; `unsafe(dup)` fields opt into
+            // the aliased load path explicitly.
+            let mut #field_name = unsafe { #load_mut };
         }
     } else {
         quote! {
@@ -1387,39 +1465,20 @@ pub fn parse_field(
             .as_ref()
             .expect("realloc requires realloc_payer");
         let zero_fill = attrs.realloc_zero;
-        // BorshAccount holds a pinocchio RefMut that (a) blocks the system
-        // program Transfer CPI inside realloc_account and (b) captures a
-        // stale slice length after resize. Release before, reacquire after.
-        // Slab holds no pinocchio borrow so needs neither step.
-        let base_ty = option_inner.unwrap_or(field_ty);
-        let is_borsh_account = field_ty_str(base_ty) == "BorshAccount";
-        let pre_realloc = if is_borsh_account {
-            quote! { #field_name.release_borrow()?; }
-        } else {
-            quote! {}
-        };
-        let post_realloc = if is_borsh_account {
-            // Guard-only: realloc preserves owner/disc, and a full
-            // reacquire would re-deserialize the pre-resize buffer —
-            // fails on shrink.
-            quote! { #field_name.reacquire_guard_only()?; }
-        } else {
-            quote! {}
-        };
         constraints.push(quote! {
             {
                 let __new_space = #new_space;
                 let mut __view = *#field_name.account();
                 let __payer_view = *#realloc_payer.account();
                 if __new_space != __view.data_len() {
-                    #pre_realloc
+                    anchor_lang_v2::AccountResizeHooks::before_account_resize(&mut #field_name)?;
                     anchor_lang_v2::realloc_account(
                         &mut __view,
                         __new_space,
                         &__payer_view,
                         #zero_fill,
                     )?;
-                    #post_realloc
+                    anchor_lang_v2::AccountResizeHooks::after_account_resize(&mut #field_name)?;
                 }
             }
         });

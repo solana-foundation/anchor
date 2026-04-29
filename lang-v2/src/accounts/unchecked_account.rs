@@ -1,5 +1,5 @@
 use {
-    crate::{accounts::view_wrapper_traits, AnchorAccount},
+    crate::{accounts::view_wrapper_traits, AccountResizeHooks, AnchorAccount},
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
 };
@@ -27,6 +27,8 @@ impl AnchorAccount for UncheckedAccount {
         &self.view
     }
 }
+
+impl AccountResizeHooks for UncheckedAccount {}
 
 view_wrapper_traits!(UncheckedAccount);
 

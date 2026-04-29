@@ -1,6 +1,6 @@
 use {
     super::slab_hooks::{SlabInit, SlabSchema},
-    crate::{AccountInitialize, AnchorAccount, Discriminator, Id},
+    crate::{AccountInitialize, AccountResizeHooks, AnchorAccount, Discriminator, Id},
     bytemuck::{Pod, Zeroable},
     core::{
         marker::PhantomData,
@@ -669,6 +669,12 @@ where
     }
 }
 
+impl<H, T> AccountResizeHooks for Slab<H, T>
+where
+    H: Pod + Zeroable + SlabSchema,
+{
+}
+
 impl<H, T> Deref for Slab<H, T>
 where
     H: Pod + Zeroable + SlabSchema,
@@ -683,7 +689,6 @@ where
         unsafe { &*self.header_ptr }
     }
 }
-
 impl<H, T> DerefMut for Slab<H, T>
 where
     H: Pod + Zeroable + SlabSchema,
@@ -760,4 +765,3 @@ where
         H::__register_idl_deps(types);
     }
 }
-
