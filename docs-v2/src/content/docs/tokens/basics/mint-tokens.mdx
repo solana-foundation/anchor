@@ -5,7 +5,7 @@ description: Learn how to mint tokens in Solana programs using Anchor. Covers cr
 
 ## How to mint tokens
 
-Minting tokens creates new units of a token by invoking the [`mint_to(){:rs}`](https://github.com/solana-program/token/blob/main/program/src/instruction.rs#L1087-L1114) instruction on a token program. Only the address specified as the mint authority on the [mint account](/docs/tokens/basics/create-mint) can mint new tokens, and the instruction also requires a [token account](/docs/tokens/basics/create-token-account) for that mint as the destination.
+Minting tokens creates new units of a token by invoking the [`mint_to(){:rs}`](https://github.com/solana-program/token/blob/main/program/src/instruction.rs#L1087-L1114) instruction on a token program. Only the address specified as the mint authority on the [mint account](/docs/tokens/basics/create-mint/) can mint new tokens, and the instruction also requires a [token account](/docs/tokens/basics/create-token-account/) for that mint as the destination.
 
 <Callout variant="note">
   The [Token
@@ -17,7 +17,7 @@ Minting tokens creates new units of a token by invoking the [`mint_to(){:rs}`](h
 
 ## Examples
 
-To mint tokens through an Anchor program, make a [cross program invocation](/docs/basics/cpi) (CPI) to the `mint_to{:rs}` instruction on either the Token Program or Token Extension Program. The program acts as an intermediary, passing along the required accounts, instruction data, and signatures to the token program.
+To mint tokens through an Anchor program, make a [cross program invocation](/docs/basics/cpi/) (CPI) to the `mint_to{:rs}` instruction on either the Token Program or Token Extension Program. The program acts as an intermediary, passing along the required accounts, instruction data, and signatures to the token program.
 
 ### Mint tokens via CPI
 

@@ -78,8 +78,8 @@ Each field maps to one account the instruction requires. Field names are arbitra
 
 Account validation is the first line of defense against malicious input. Anchor enforces two complementary mechanisms, typically used together.
 
-- **[Account constraints](/docs/references/account-constraints)** declared in the `#[account(...)]{:rs}` attribute enforce runtime conditions on each account. Common constraints include `init{:rs}`, `mut{:rs}`, `has_one{:rs}`, `seeds{:rs}`, and `constraint{:rs}`.
-- **[Account types](/docs/references/account-types)** specified in the field's type enforce static expectations about what kind of account the client must pass. Examples include `Account<T>{:rs}`, `Signer{:rs}`, `Program<T>{:rs}`, and `UncheckedAccount{:rs}`.
+- **[Account constraints](/docs/references/account-constraints/)** declared in the `#[account(...)]{:rs}` attribute enforce runtime conditions on each account. Common constraints include `init{:rs}`, `mut{:rs}`, `has_one{:rs}`, `seeds{:rs}`, and `constraint{:rs}`.
+- **[Account types](/docs/references/account-types/)** specified in the field's type enforce static expectations about what kind of account the client must pass. Examples include `Account<T>{:rs}`, `Signer{:rs}`, `Program<T>{:rs}`, and `UncheckedAccount{:rs}`.
 
 Once validation succeeds, the handler accesses accounts through `ctx[36m.[0maccounts[36m.[0m[2m<field_name>[0m{:ansi}`.
 

@@ -3,7 +3,7 @@ title: Account space
 description: Reference for calculating account data size requirements by Rust type.
 ---
 
-The `space{:rs}` constraint on an [`init{:rs}`](/docs/references/account-types) account must reserve enough bytes for the account's serialized data plus an 8-byte Anchor discriminator. The table below lists the byte size of each Rust type Anchor supports.
+The `space{:rs}` constraint on an [`init{:rs}`](/docs/references/account-types/) account must reserve enough bytes for the account's serialized data plus an 8-byte Anchor discriminator. The table below lists the byte size of each Rust type Anchor supports.
 
 This applies to accounts that use Borsh serialization. Accounts annotated with `#[account(zero_copy)]{:rs}` use `repr(C){:rs}` with a pointer cast, so the C layout rules apply instead.
 

@@ -80,7 +80,7 @@ Builds programs in the workspace targeting Solana's BPF runtime and emits IDLs i
 $ [34manchor[0m build [2m--verifiable[0m
 ```
 
-Runs the build inside a Docker image so that the output binary is deterministic (assuming a `Cargo.lock` file is used). This command must be run from within a single crate subdirectory in the workspace, for example `programs/<my-program>/`. See [verifiable builds](/docs/references/verifiable-builds) for details.
+Runs the build inside a Docker image so that the output binary is deterministic (assuming a `Cargo.lock` file is used). This command must be run from within a single crate subdirectory in the workspace, for example `programs/<my-program>/`. See [verifiable builds](/docs/references/verifiable-builds/) for details.
 
 <Callout variant="tip" title="Passing arguments to cargo build-sbf">
 Forward arguments to the underlying `cargo build-sbf` command with `-- <ARGS>`:
@@ -217,7 +217,7 @@ $ [34manchor[0m init [2m--template[0m multiple  [2m# Default: modular struc
 $ [34manchor[0m init [2m--template[0m single    [2m# Single lib.rs file (for prototyping)[0m
 ```
 
-The modular template organizes code into separate files for instructions, state, constants, and errors, making it easier to navigate and maintain as the program grows. See [Anchor.toml](/docs/references/anchor-toml) for the full configuration reference.
+The modular template organizes code into separate files for instructions, state, constants, and errors, making it easier to navigate and maintain as the program grows. See [Anchor.toml](/docs/references/anchor-toml/) for the full configuration reference.
 
 ## Keys
 
@@ -312,4 +312,4 @@ Uses Solana's upgradeable BPF loader to upgrade the on-chain program code. The c
 $ [34manchor[0m verify [2m<program-id>[0m
 ```
 
-Verifies that the on-chain bytecode matches the locally compiled artifact. See [verifiable builds](/docs/references/verifiable-builds) for the build setup that produces a deterministic binary.
+Verifies that the on-chain bytecode matches the locally compiled artifact. See [verifiable builds](/docs/references/verifiable-builds/) for the build setup that produces a deterministic binary.

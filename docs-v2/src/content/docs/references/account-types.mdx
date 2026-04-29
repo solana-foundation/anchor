@@ -3,9 +3,9 @@ title: Account types
 description: "Reference for the Anchor account types used in the `#[derive(Accounts)]{:rs}` struct."
 ---
 
-Anchor's [account types](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/index.html) are the type wrappers used in fields of a `#[derive(Accounts)]{:rs}` struct. Each type performs a specific runtime check on the account before the instruction handler runs, complementing the [account constraints](/docs/references/account-constraints) declared in the `#[account(...)]{:rs}` attribute.
+Anchor's [account types](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/index.html) are the type wrappers used in fields of a `#[derive(Accounts)]{:rs}` struct. Each type performs a specific runtime check on the account before the instruction handler runs, complementing the [account constraints](/docs/references/account-constraints/) declared in the `#[account(...)]{:rs}` attribute.
 
-For background on how account types fit into instruction validation, see [account validation](/docs/basics/program-structure#deriveaccounts).
+For background on how account types fit into instruction validation, see [account validation](/docs/basics/program-structure/#deriveaccounts).
 
 ## `Account<'info, T>{:rs}`
 

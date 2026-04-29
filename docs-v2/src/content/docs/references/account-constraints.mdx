@@ -86,7 +86,7 @@ Same as `init{:rs}` but only runs if the account does not exist yet. Requires th
 
 ### `#[account(seeds, bump)]{:rs}`
 
-Checks that the given account is a PDA derived from the currently executing program, the seeds, and (if provided) the bump. See [Program derived address](/docs/basics/pda) for usage patterns:
+Checks that the given account is a PDA derived from the currently executing program, the seeds, and (if provided) the bump. See [Program derived address](/docs/basics/pda/) for usage patterns:
 
 ```rust showLineNumbers=false
 #[account(
@@ -193,7 +193,7 @@ Reallocates program account space at the start of an instruction. `realloc::zero
 
 ### `#[account(discriminator = <expr>)]{:rs}`
 
-Overrides the auto-generated discriminator for an account. Any constant expression is accepted. All-zero discriminators are rejected because zeroed discriminators are indistinguishable from newly allocated accounts; see [zeroed discriminators](/docs/references/footguns#zeroed-discriminators) for the security background:
+Overrides the auto-generated discriminator for an account. Any constant expression is accepted. All-zero discriminators are rejected because zeroed discriminators are indistinguishable from newly allocated accounts; see [zeroed discriminators](/docs/references/footguns/#zeroed-discriminators) for the security background:
 
 ```rust showLineNumbers=false
 #[account(discriminator = 12)]
