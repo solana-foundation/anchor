@@ -34,5 +34,9 @@ export const DOCS: DocsConfig = {
     enabled: true,
     hotkey: { mac: '⌘ K', windows: 'Ctrl K' },
   },
-  announcement: null,
+  announcement: {
+    id: 'v2-alpha',
+    message: 'Anchor v2 alpha is here! Up to 94% smaller binaries, 3 to 6× faster',
+    href: '/docs/v2',
+  },
 }

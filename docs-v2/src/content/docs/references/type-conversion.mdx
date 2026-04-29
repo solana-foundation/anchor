@@ -1,72 +1,74 @@
 ---
 title: Rust to JS type conversion
-description: Reference for how Anchor converts between Rust and TypeScript types
+description: Reference for how Anchor converts between Rust and TypeScript types in generated clients.
 ---
 
-This reference shows to converts between Rust and TypeScript types.
+Anchor's generated TypeScript clients map Rust types in the [program IDL](/docs/basics/idl) to JavaScript values using the rules below. Instruction arguments and account fields follow the same mapping.
 
 ## Primitive types
 
-### Boolean
+### Booleans
 
-| Rust   | TypeScript | Example |
-| ------ | ---------- | ------- |
-| `bool` | `boolean`  | `true`  |
+| Rust | TypeScript | Example |
+| --- | --- | --- |
+| `bool{:rs}` | `boolean{:ts}` | `true{:ts}` |
 
 ### Numbers
 
-| Rust                    | TypeScript  | Example             |
-| ----------------------- | ----------- | ------------------- |
-| `u8/u16/u32/i8/i16/i32` | `number`    | `99`                |
-| `u64/u128/i64/i128`     | `anchor.BN` | `new anchor.BN(99)` |
-| `f32/f64`               | `number`    | `1.0`               |
+| Rust | TypeScript | Example |
+| --- | --- | --- |
+| `u8{:rs}` / `u16{:rs}` / `u32{:rs}` / `i8{:rs}` / `i16{:rs}` / `i32{:rs}` | `number{:ts}` | `99{:ts}` |
+| `u64{:rs}` / `u128{:rs}` / `i64{:rs}` / `i128{:rs}` | `anchor.BN{:ts}` | `new anchor.BN(99){:ts}` |
+| `f32{:rs}` / `f64{:rs}` | `number{:ts}` | `1.0{:ts}` |
+
+Integers up to 32 bits fit in a JavaScript `number{:ts}`. Wider integers exceed `Number.MAX_SAFE_INTEGER{:ts}`, so Anchor represents them with [`BN{:ts}`](https://github.com/indutny/bn.js) to preserve precision.
 
 ### Strings
 
-| Rust     | TypeScript | Example   |
-| -------- | ---------- | --------- |
-| `String` | `string`   | `"hello"` |
+| Rust | TypeScript | Example |
+| --- | --- | --- |
+| `String{:rs}` | `string{:ts}` | `"hello"{:ts}` |
 
 ## Collections
 
 ### Arrays and vectors
 
-| Rust                   | TypeScript | Example     |
-| ---------------------- | ---------- | ----------- |
-| `[T; N]` (fixed array) | `Array<T>` | `[1, 2, 3]` |
-| `Vec<T>` (vector)      | `Array<T>` | `[1, 2, 3]` |
+| Rust | TypeScript | Example |
+| --- | --- | --- |
+| `[T; N]{:rs}` (fixed array) | `Array<T>{:ts}` | `[1, 2, 3]{:ts}` |
+| `Vec<T>{:rs}` (vector) | `Array<T>{:ts}` | `[1, 2, 3]{:ts}` |
 
 ### Optional values
 
-| Rust        | TypeScript               | Example                       |
-| ----------- | ------------------------ | ----------------------------- |
-| `Option<T>` | `T \| null \| undefined` | `null` (None)<br/>`42` (Some) |
+| Rust | TypeScript | Example |
+| --- | --- | --- |
+| `Option<T>{:rs}` | `T \| null \| undefined{:ts}` | `null{:ts}` for `None{:rs}`, `42{:ts}` for `Some(42){:rs}` |
 
 ## Complex types
 
 ### Structs
 
-```rust title="Rust"
-// Rust
+A Rust struct becomes a TypeScript object type with the same field names:
+
+```rust title="Rust" showLineNumbers=false
 struct MyStruct {
     val: u16,
 }
 ```
 
-```typescript title="TypeScript"
-// TypeScript
+```ts title="TypeScript" showLineNumbers=false
 type MyStruct = {
   val: number
 }
 
-// Example
 const instance = { val: 99 }
 ```
 
 ### Enums
 
-```rust title="Rust"
-// Rust
+A Rust enum becomes an object with a single key matching the active variant. Unit variants carry an empty object, named variants carry an object of fields, and tuple variants carry an array of positional values:
+
+```rust title="Rust" showLineNumbers=false
 enum MyEnum {
     One,
     Two { val: u32 },
@@ -74,8 +76,7 @@ enum MyEnum {
 }
 ```
 
-```typescript title="TypeScript"
-// TypeScript Representations
+```ts title="TypeScript" showLineNumbers=false
 // Unit variant
 const one = { one: {} }
 
@@ -89,10 +90,3 @@ const three = {
   three: [12, -34],
 }
 ```
-
-## Notes
-
-- Rust integers (`u8` through `i32`) map to JavaScript `number`
-- Larger integers (`u64` and above) use Anchor's `BN` type for precision
-- Rust's `Option<T>` maps to TypeScript's union type with `null`/`undefined`
-- Structs and enums become JavaScript objects

@@ -11,6 +11,7 @@ export default {
     features: { order: 6 },
     tokens: { order: 7 },
     references: { order: 8 },
-    updates: { order: 9 },
+    v2: { order: 9 },
+    updates: { order: 10 },
   },
 } satisfies MetaFile
