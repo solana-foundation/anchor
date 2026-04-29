@@ -7,7 +7,7 @@ import type {
   SidebarLink,
   SidebarNode,
 } from '@/types'
-import { docHref, docLabel, getAllDocs, type Doc } from '@/lib/docs'
+import { BASE_URL, docHref, docLabel, getAllDocs, type Doc } from '@/lib/docs'
 import { isCurrentPath, titleCase, trimTrailingSlash } from '@/lib/utils'
 
 const metaModules = {
@@ -228,7 +228,7 @@ export async function getIndexChildren(href: string): Promise<IndexChild[]> {
   const docMap = new Map(docs.map((d) => [docHref(d.id), d]))
 
   const tree = await getSidebarTree(href)
-  const nodes = href === '/' ? tree : (findGroupChildren(tree, href) ?? [])
+  const nodes = href === BASE_URL ? tree : (findGroupChildren(tree, href) ?? [])
 
   return nodes.flatMap((node): IndexChild[] => {
     if (node.type === 'link') {

@@ -66,11 +66,11 @@ function pagefindDevServer() {
     name: 'pagefind-dev-server',
     apply: 'serve' as const,
     configureServer(server: any) {
-      server.middlewares.use('/pagefind', async (req: any, res: any, next: any) => {
+      server.middlewares.use('/docs/pagefind', async (req: any, res: any, next: any) => {
         const url = (req.url ?? '/').split('?')[0]
         if (url === '' || url === '/') return next()
         try {
-          const filePath = resolve(process.cwd(), 'dist', 'pagefind' + url)
+          const filePath = resolve(process.cwd(), 'dist', 'docs', 'pagefind' + url)
           const data = await readFile(filePath)
           const ext = extname(url).slice(1)
           if (mime[ext]) res.setHeader('Content-Type', mime[ext])
@@ -85,6 +85,9 @@ function pagefindDevServer() {
 
 export default defineConfig({
   site: 'https://www.anchor-lang.com',
+  base: '/docs',
+  trailingSlash: 'always',
+  outDir: './dist/docs',
   integrations: [mdx(), react(), sitemap(), icon()],
   vite: {
     plugins: [tailwindcss(), pagefindDevServer()],

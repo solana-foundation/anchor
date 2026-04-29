@@ -6,6 +6,7 @@ import Link from '@/components/link.astro'
 import PageHead from '@/components/page-head.astro'
 import { buttonVariants } from '@/components/ui/button'
 import Base from '@/layouts/base.astro'
+import { BASE_URL } from '@/lib/docs'
 import { getSidebarTree } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
 
@@ -36,7 +37,7 @@ const offsetClass = 'xl:ml-[max(0px,calc((100vw-16rem-96rem)/2))]'
         </div>
 
         <Link
-          href="/"
+          href={BASE_URL}
           class={cn(buttonVariants({ variant: 'outline' }), 'group flex items-center gap-x-1.5')}
         >
           <span class="transition-transform group-hover:-translate-x-1">&larr;</span>

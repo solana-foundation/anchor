@@ -8,10 +8,25 @@ export async function getAllDocs(): Promise<Doc[]> {
   return docs.filter((doc) => !doc.data.draft)
 }
 
+// Astro injects `BASE_URL` from the `base:` field in astro.config.ts
+// (always trailing-slashed, e.g. `/docs/`). Default to `/` for tools that
+// import this file outside an Astro build (tests, codemods).
+export const BASE_URL: string = (import.meta.env?.BASE_URL ?? '/').replace(/\/?$/, '/')
+
+/**
+ * Prefix a root-relative path with the configured `base`.
+ * Use for hardcoded internal links, asset hrefs, and image srcs in Astro
+ * files. Idempotent if the input already starts with `BASE_URL`.
+ */
+export function withBase(path: string): string {
+  if (path.startsWith(BASE_URL)) return path
+  return BASE_URL + path.replace(/^\//, '')
+}
+
 export function docHref(id: string): string {
-  if (id === 'index') return '/'
-  if (id.endsWith('/index')) return '/' + id.slice(0, -'/index'.length) + '/'
-  return '/' + id + '/'
+  if (id === 'index') return BASE_URL
+  if (id.endsWith('/index')) return BASE_URL + id.slice(0, -'/index'.length) + '/'
+  return BASE_URL + id + '/'
 }
 
 export function docSlugFromId(id: string): string | undefined {
