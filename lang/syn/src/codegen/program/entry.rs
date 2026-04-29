@@ -40,32 +40,22 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         ///   context, invoking the user's code, and finally running the exit
         ///   routine, which typically persists account changes.
         pub fn entry<'info>(
-            program_id: &Pubkey,
+            program_id: &'info Pubkey,
             accounts: &'info [AccountInfo<'info>],
-            data: &[u8],
+            data: &'info [u8],
         ) -> anchor_lang::solana_program::entrypoint::ProgramResult {
             #[cfg(feature = "anchor-debug")]
             anchor_lang::prelude::msg!("anchor-debug is active");
-            if *program_id != <program::#name as anchor_lang::AnchorProgram>::ID {
-                return Err(anchor_lang::error::ErrorCode::DeclaredProgramIdMismatch.into())
-                    .map_err(|e: anchor_lang::error::Error| {
-                        e.log();
-                        e.into()
-                    });
-            }
-            dispatch(program_id, accounts, data).map_err(|e: anchor_lang::error::Error| {
-                e.log();
-                e.into()
-            })
+            <program::#name as anchor_lang::AnchorProgram>::entrypoint(program_id, accounts, data)
         }
 
         impl anchor_lang::AnchorProgram for program::#name {
             const ID: Pubkey = #program_id;
 
             fn dispatch<'info>(
-                program_id: &Pubkey,
+                program_id: &'info Pubkey,
                 accounts: &'info [AccountInfo<'info>],
-                data: &[u8],
+                data: &'info [u8],
             ) -> anchor_lang::Result<()> {
                 dispatch(program_id, accounts, data)
             }

@@ -1,20 +1,19 @@
 {
-    "name": "no-declare-id",
-    "version": "0.32.1",
-    "license": "(MIT OR Apache-2.0)",
-    "homepage": "https://github.com/coral-xyz/anchor#readme",
-    "bugs": {
-      "url": "https://github.com/coral-xyz/anchor/issues"
-    },
-    "repository": {
-      "type": "git",
-      "url": "https://github.com/coral-xyz/anchor.git"
-    },
-    "engines": {
-      "node": ">=17"
-    },
-    "scripts": {
-      "test": "anchor test"
-    }
+  "name": "no-declare-id",
+  "version": "0.1.0",
+  "license": "(MIT OR Apache-2.0)",
+  "homepage": "https://github.com/solana-foundation/anchor#readme",
+  "bugs": {
+    "url": "https://github.com/solana-foundation/anchor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/solana-foundation/anchor.git"
+  },
+  "engines": {
+    "node": ">=17"
+  },
+  "scripts": {
+    "test": "anchor test"
+  }
 }
-
