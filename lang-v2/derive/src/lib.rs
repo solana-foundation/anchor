@@ -828,6 +828,84 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
     let resolved_name = syn::Ident::new(&format!("{name}Resolved"), name.span());
 
+    // --- CPI accounts struct (cross-program invocation, on-chain side) ---
+    //
+    // Emits a sibling `__cpi_accounts_<name>` module containing a struct of
+    // `CpiHandle<'a>` fields and a `ToCpiAccounts<'a>` impl driven by each
+    // field's compile-time writable / signer flags. Skipped when the
+    // Accounts struct contains `Option<_>` or `Nested<_>` fields — those
+    // shapes need bespoke flattening / fallback logic that this initial
+    // codegen pass does not yet handle. The `#[program]` macro re-exports
+    // the resulting type under `cpi::accounts::<name>` and synthesizes the
+    // per-instruction wrapper functions.
+    let cpi_mod_name = syn::Ident::new(
+        &format!("__cpi_accounts_{}", name.to_string().to_lowercase()),
+        name.span(),
+    );
+    let cpi_unsupported = fields
+        .iter()
+        .any(|f| f.is_optional || parse::is_nested_type(&f.ty));
+    let cpi_accounts_mod = if cpi_unsupported {
+        quote! {}
+    } else {
+        let cpi_field_decls: Vec<_> = fields
+            .iter()
+            .map(|f| {
+                let n = &f.name;
+                quote! { pub #n: anchor_lang_v2::CpiHandle<'a> }
+            })
+            .collect();
+        let cpi_meta_entries: Vec<_> = fields
+            .iter()
+            .map(|f| {
+                let n = &f.name;
+                let writable = f.idl_writable;
+                let is_signer_ty = parse::field_ty_str(&f.ty) == "Signer" || f.idl_init_signer;
+                let ctor = match (writable, is_signer_ty) {
+                    (true, true) => quote! { writable_signer },
+                    (true, false) => quote! { writable },
+                    (false, true) => quote! { readonly_signer },
+                    (false, false) => quote! { readonly },
+                };
+                quote! {
+                    anchor_lang_v2::pinocchio::instruction::InstructionAccount::#ctor(
+                        self.#n.address(),
+                    )
+                }
+            })
+            .collect();
+        let cpi_handle_entries: Vec<_> = fields
+            .iter()
+            .map(|f| {
+                let n = &f.name;
+                quote! { self.#n }
+            })
+            .collect();
+        quote! {
+            pub mod #cpi_mod_name {
+                extern crate alloc;
+                use super::*;
+                pub struct #name<'a> {
+                    #(#cpi_field_decls,)*
+                }
+                impl<'a> anchor_lang_v2::ToCpiAccounts<'a> for #name<'a> {
+                    fn to_instruction_accounts(
+                        &self,
+                    ) -> alloc::vec::Vec<
+                        anchor_lang_v2::pinocchio::instruction::InstructionAccount<'a>,
+                    > {
+                        alloc::vec![#(#cpi_meta_entries),*]
+                    }
+                    fn to_cpi_handles(
+                        &self,
+                    ) -> alloc::vec::Vec<anchor_lang_v2::CpiHandle<'a>> {
+                        alloc::vec![#(#cpi_handle_entries),*]
+                    }
+                }
+            }
+        }
+    };
+
     let resolved_struct = quote! {
         pub struct #resolved_name {
             #(#client_fields,)*
@@ -858,6 +936,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 #(#pda_fns)*
             }
         }
+
+        #cpi_accounts_mod
 
         #bumps_def
 
@@ -1279,6 +1359,13 @@ struct HandlerCodegen {
     wrapper: TokenStream2,
     instruction_struct: TokenStream2,
     accounts_reexport: TokenStream2,
+    /// Per-handler CPI wrapper function — `pub fn name(ctx, args...)` in the
+    /// emitted `cpi` module. References `cpi::accounts::<Accounts>` and
+    /// `instruction::<Camel>` from the same crate.
+    cpi_wrapper: TokenStream2,
+    /// Re-export of the auto-generated CPI accounts struct under
+    /// `cpi::accounts::<Accounts>`. Deduped against `accounts_type_name`.
+    cpi_accounts_reexport: TokenStream2,
     /// Name of the Accounts struct (e.g. `MutateItemList`). Used to dedupe
     /// `accounts::*` re-exports when multiple handlers share the same Accounts.
     accounts_type_name: String,
@@ -1312,6 +1399,8 @@ impl HandlerCodegen {
             },
             instruction_struct: quote! {},
             accounts_reexport: quote! {},
+            cpi_wrapper: quote! {},
+            cpi_accounts_reexport: quote! {},
             accounts_type_name: String::new(),
             idl_name: fn_name.to_string(),
             idl_disc: "[]".to_string(),
@@ -1523,6 +1612,47 @@ fn process_handler(
         pub use super::#client_mod::#resolved_type;
     };
 
+    // CPI accounts re-export — `__cpi_accounts_<lowercase>` is emitted by
+    // `#[derive(Accounts)]` at the same scope as the program's outputs.
+    let cpi_mod = syn::Ident::new(
+        &format!(
+            "__cpi_accounts_{}",
+            accounts_type.to_string().to_lowercase()
+        ),
+        fn_name.span(),
+    );
+    let cpi_accounts_reexport = quote! {
+        pub use super::super::#cpi_mod::#accounts_type;
+    };
+
+    // CPI wrapper function — mirrors the handler's argument list (sans
+    // `ctx: &mut Context<_>`), packs them into the client-side
+    // `instruction::<Camel>` struct, and forwards to `CpiContext::invoke`.
+    // Lifetime story: `'a` is the CPI handle lifetime; `'ix` matches the
+    // instruction struct's optional ref-args lifetime.
+    let cpi_wrapper = {
+        let (lt_decl, ix_lt_use_local) = if has_ref_args {
+            (quote! { <'a, 'ix> }, quote! { <'ix> })
+        } else {
+            (quote! { <'a> }, quote! {})
+        };
+        quote! {
+            pub fn #fn_name #lt_decl(
+                __ctx: anchor_lang_v2::CpiContext<'a, accounts::#accounts_type<'a>>,
+                #(#extra_arg_names: #extra_arg_types,)*
+            ) -> anchor_lang_v2::Result<()> {
+                let __ix = super::instruction::#ix_struct_name #ix_lt_use_local {
+                    #(#extra_arg_names,)*
+                };
+                let __data = <
+                    super::instruction::#ix_struct_name #ix_lt_use_local
+                    as anchor_lang_v2::InstructionData
+                >::data(&__ix);
+                __ctx.invoke(&__data)
+            }
+        }
+    };
+
     // Instruction-level docs come from `///` comments on the handler fn.
     // Leading-comma format so the IDL instruction JSON splice site can
     // hold a fixed `"{name}"{docs_or_empty},"discriminator":...` shape.
@@ -1538,6 +1668,8 @@ fn process_handler(
         wrapper,
         instruction_struct,
         accounts_reexport,
+        cpi_wrapper,
+        cpi_accounts_reexport,
         accounts_type_name: accounts_type.to_string(),
         idl_name: fn_name_str,
         idl_disc: idl::disc_json(&disc_bytes_for_idl),
@@ -1643,6 +1775,15 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             .map(|c| &c.accounts_reexport)
             .collect()
     };
+    let cpi_accounts_reexports: Vec<_> = {
+        let mut seen = std::collections::HashSet::new();
+        codegen
+            .iter()
+            .filter(|c| seen.insert(c.accounts_type_name.clone()))
+            .map(|c| &c.cpi_accounts_reexport)
+            .collect()
+    };
+    let cpi_wrappers: Vec<_> = codegen.iter().map(|c| &c.cpi_wrapper).collect();
     let idl_ix_names: Vec<_> = codegen.iter().map(|c| &c.idl_name).collect();
     let idl_ix_discs: Vec<_> = codegen.iter().map(|c| &c.idl_disc).collect();
     let idl_ix_args: Vec<_> = codegen.iter().map(|c| &c.idl_args).collect();
@@ -1854,6 +1995,27 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         /// Client-side accounts structs (re-exports) for off-chain use.
         pub mod accounts {
             #(#accounts_reexports)*
+        }
+
+        /// CPI module — gated on the `cpi` feature, on by convention when a
+        /// caller crate depends on this program for cross-program invocation.
+        /// `accounts::*` re-exports the auto-generated CPI accounts structs
+        /// (one per `#[derive(Accounts)]` Accounts struct, emitted as
+        /// `__cpi_accounts_<lowercase>` at this same scope). The free
+        /// functions wrap each instruction handler: pack args into the
+        /// matching `instruction::<Camel>` struct, serialize, and dispatch
+        /// through `CpiContext::invoke`.
+        #[cfg(feature = "cpi")]
+        pub mod cpi {
+            extern crate alloc;
+            use super::*;
+            use anchor_lang_v2::InstructionData as _;
+
+            pub mod accounts {
+                #(#cpi_accounts_reexports)*
+            }
+
+            #(#cpi_wrappers)*
         }
 
         // IDL generation: prints structured output consumed by `anchor idl build`.
