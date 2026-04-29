@@ -1,186 +1,88 @@
 ---
 title: Create a token mint
-description: Learn how to create and initialize token mint accounts in Solana programs using Anchor. Covers creating mint accounts with generated keypairs or PDAs with code examples.
+description: Create and initialize token mint accounts in Anchor programs using account constraints, with examples for both generated keypairs and program derived addresses.
 ---
 
-## What is a mint account?
+import Code from '@/components/code.astro'
+import libKeypair from './_create-mint/lib_keypair.rs?raw'
+import libPda from './_create-mint/lib_pda.rs?raw'
 
-A mint account is an account type in Solana's Token Programs that uniquely represents a token on the network and stores global metadata about the token.
+A mint account is the account type in Solana's [Token Program](https://github.com/solana-program/token) and [Token Extensions Program](https://github.com/solana-program/token-2022) that represents a token on the network and stores its global metadata. The address of the mint account acts as the token's unique identifier. For example, the USDC stablecoin's mint address is `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`, viewable on [Solana Explorer](https://explorer.solana.com/address/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v).
 
-```rust
+## Mint account data
+
+Both the [Token Program](https://github.com/solana-program/token/blob/main/program/src/state.rs#L18-L32) and the [Token Extensions Program](https://github.com/solana-program/token-2022/blob/main/program/src/state.rs#L30-L43) share the same base layout for mint data:
+
+```rust showLineNumbers=false
 /// Mint data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Mint {
-  /// Optional authority used to mint new tokens. The mint authority may only
-  /// be provided during mint creation. If no mint authority is present
-  /// then the mint has a fixed supply and no further tokens may be
-  /// minted.
-  pub mint_authority: COption<Pubkey>,
-  /// Total supply of tokens.
-  pub supply: u64,
-  /// Number of base 10 digits to the right of the decimal place.
-  pub decimals: u8,
-  /// Is `true` if this structure has been initialized
-  pub is_initialized: bool,
-  /// Optional authority to freeze token accounts.
-  pub freeze_authority: COption<Pubkey>,
+    /// Optional authority used to mint new tokens. The mint authority may only
+    /// be provided during mint creation. If no mint authority is present
+    /// then the mint has a fixed supply and no further tokens may be
+    /// minted.
+    pub mint_authority: COption<Pubkey>,
+    /// Total supply of tokens.
+    pub supply: u64,
+    /// Number of base 10 digits to the right of the decimal place.
+    pub decimals: u8,
+    /// Is `true` if this structure has been initialized
+    pub is_initialized: bool,
+    /// Optional authority to freeze token accounts.
+    pub freeze_authority: COption<Pubkey>,
 }
 ```
-
-<Callout variant="note">
-  Note that both the [Token
-  Program](https://github.com/solana-program/token/blob/main/program/src/state.rs#L18-L32) and
-  [Token Extension
-  Program](https://github.com/solana-program/token-2022/blob/main/program/src/state.rs#L30-L43) have
-  the same base implementation for the Mint account.
-</Callout>
-
-Every token on Solana is represented by a mint account where the address of the mint account acts as its unique identifier on the network.
-
-For example, the USDC stablecoin on Solana is identified by the mint address `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`. This mint address serves as USDC's unique identifier across the entire Solana ecosystem. You can view details about this mint account on [Solana Explorer](https://explorer.solana.com/address/3emsAVdmGKERbHjmGfQ6oZ1e35dkf5iYcS6U4CPKFVaa).
 
 ## Usage
 
-Use the `token_interface` module from the `anchor-spl` crate to interact with both the Token Program and Token Extension Program. This module provides types for working with both token programs, allowing you to write code that's compatible with either program.
+The `token_interface{:rs}` module from the [`anchor-spl`](https://docs.rs/anchor-spl/latest/anchor_spl/) crate provides types that work with both the Token Program and the Token Extensions Program. Declaring a mint with `InterfaceAccount<'info, Mint>{:rs}` and `Interface<'info, TokenInterface>{:rs}` lets the same program accept either token program at runtime:
 
-```rust title="snippet"
-// [!code highlight]
-use anchor_spl::token_interface::{Mint, TokenInterface};
-
-// --snip--
-
-#[derive(Accounts)]
-pub struct CreateMint<'info> {
-    #[account(mut)]
-    pub signer: Signer<'info>,
-    #[account(
-        init,
-        payer = signer,
-        mint::decimals = 6,
-        mint::authority = signer.key(),
-        mint::freeze_authority = signer.key(),
-    )]
-    // [!code word:Mint]
-    // [!code highlight]
-    pub mint: InterfaceAccount<'info, Mint>,
-    // [!code word:TokenInterface]
-    // [!code highlight]
-    pub token_program: Interface<'info, TokenInterface>,
-    pub system_program: Program<'info, System>,
-}
-```
+<Code code={libKeypair} lang="rust" title="lib.rs" meta="collapse={1-15}" />
 
 ### Account types
 
-The [`InterfaceAccount`](https://github.com/solana-foundation/anchor/blob/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/lang/src/accounts/interface_account.rs#L163-L169) type is a wrapper that accepts accounts from either the Token Program and Token Extension Program.
-
-The `Mint` type represents the base Mint data structure shared by both token programs. When an account of this type is passed in, Anchor will automatically deserialize the account data into the mint struct, regardless of which token program created it.
-
-```rust title="Account Type"
-pub mint: InterfaceAccount<'info, Mint>,
-```
+The [`InterfaceAccount{:rs}`](https://github.com/solana-foundation/anchor/blob/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/lang/src/accounts/interface_account.rs#L163-L169) wrapper accepts accounts owned by either token program. Anchor deserializes the account data into the `Mint{:rs}` struct regardless of which program created it.
 
 ### Account constraints
 
-The following account constraints are used in combination to create and initialize a new mint account:
+The following constraints, used in combination, create and initialize a new mint account:
 
 | Constraint | Description |
 | --- | --- |
-| `init` | Creates a new account by making a cross program invocation (CPI) to the System Program. This allocates the required space for the mint account and transfers ownership to the appropriate token program. |
-| `payer` | Specifies which account will pay the rent (SOL deposit) required to create the new account. |
-| `mint::decimals` | Sets the number of decimal places for the token. For example, setting this to 6 means 1 token = 1,000,000 base units. |
-| `mint::authority` | Sets the mint authority - the account that has permission to mint new tokens. (Required) |
-| `mint::freeze_authority` | Sets the freeze authority - the account that has permission to freeze token accounts. (Optional) Freezing a token account prevents the token program from processing instructions that include the frozen token account (ex. transfer, burn, etc.) |
+| `init{:rs}` | Creates the account via a CPI to the System Program, allocating space and transferring ownership to the appropriate token program. |
+| `payer{:rs}` | The account that pays the rent for the new account. |
+| `mint::decimals{:rs}` | The number of decimal places for the token. Setting `6{:rs}` means one token equals 1,000,000 base units. |
+| `mint::authority{:rs}` | The account permitted to mint new tokens. Required. |
+| `mint::freeze_authority{:rs}` | The account permitted to freeze token accounts. Optional. A frozen token account cannot be the source or destination of `transfer{:rs}`, `burn{:rs}`, or other token program instructions. |
 
-```rust title="Account Constraints"
-#[account(
-    init,
-    payer = <payer>,
-    mint::decimals = <decimals>,
-    mint::authority = <authority>,
-    mint::freeze_authority = <freeze_authority>,
-)]
-pub mint: InterfaceAccount<'info, Mint>,
-```
+<Code code={libKeypair} lang="rust" title="lib.rs" meta="collapse={1-19, 27-30}" />
 
-Alternatively, you can add the `seeds` and `bump` constraints to create a mint account where the address of the account is a Program Derived Address (PDA). The benefit of using a PDA is that the mint address can be derived from the same seeds at any time.
+Adding the `seeds{:rs}` and `bump{:rs}` constraints creates the mint at a Program Derived Address (PDA) instead. The mint address can then be derived from the same seeds at any time:
 
-```rust title="Account Constraints"
-#[account(
-    init,
-    payer = <payer>,
-    mint::decimals = <decimals>,
-    mint::authority = <authority>,
-    mint::freeze_authority = <freeze_authority>,
-    seeds = [<seeds>],
-    bump
-)]
-pub mint: InterfaceAccount<'info, Mint>,
-```
+<Code code={libPda} lang="rust" title="lib.rs" meta="collapse={1-19, 29-32}" />
 
-<Callout variant="note">
-  Note that you can use the same PDA as both the `mint::authority` and the mint account address.
-  Using a PDA as the `mint::authority` enables your program to "sign" CPI instructions to mint new
-  units of the token. This pattern allows for a single deterministic address for both purposes.
+<Callout variant="note" title="Reusing the PDA as authority">
+  The same PDA can serve as both the mint address and the `mint::authority{:rs}`. When the program is the authority, it can sign CPIs to mint new tokens, all from a single deterministic address.
 </Callout>
 
 ## Examples
 
-The following examples demonstrate how to create a mint account in an Anchor program using two different approaches:
-
-1. Using a generated Keypair - This is an approach where you generate a new keypair to use as the mint address. This is useful when you don't need deterministic mint addresses.
-
-2. Using a Program Derived Address (PDA) - This approach creates the mint where the account address is a PDA derived from seeds. This allows for deterministic mint addresses and is useful when you need to find the mint address at a later time.
-
-Both approaches are can be done entirely using account constraints.
+Two approaches create a mint account, both running entirely through account constraints. The first generates a keypair client-side and uses its public key as the mint address. The second derives the mint address from a Program Derived Address.
 
 ### Create mint using keypair
 
-Create a new mint account in using a generated Keypair.
+A new keypair is generated client-side and passed in as the mint address. Use this when a deterministic address is not required.
 
-<Tabs items={["Program", "Client"]}>
+<Tabs groupId="view" items={["Program", "Client"]}>
 <Tab>
 
-```rust title="lib.rs"
-use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenInterface};
-
-declare_id!("3pX5NKLru1UBDVckynWQxsgnJeUN3N1viy36Gk9TSn8d");
-
-#[program]
-pub mod token_example {
-    use super::*;
-
-    pub fn create_mint(ctx: Context<CreateMint>) -> Result<()> {
-        msg!("Created Mint Account: {:?}", ctx.accounts.mint.key());
-        Ok(())
-    }
-}
-
-#[derive(Accounts)]
-pub struct CreateMint<'info> {
-    #[account(mut)]
-    pub signer: Signer<'info>,
-    #[account(
-        // [!code highlight:5]
-        init,
-        payer = signer,
-        mint::decimals = 6,
-        mint::authority = signer.key(),
-        mint::freeze_authority = signer.key(),
-    )]
-    pub mint: InterfaceAccount<'info, Mint>,
-    pub token_program: Interface<'info, TokenInterface>,
-    pub system_program: Program<'info, System>,
-}
-```
+<Code code={libKeypair} lang="rust" title="lib.rs" meta="{20-26}" />
 
 </Tab>
-
 <Tab>
 
-```ts title="test.ts"
+```ts title="test.ts" showLineNumbers=false
 import * as anchor from '@anchor-lang/core'
 import { Program } from '@anchor-lang/core'
 import { TokenExample } from '../target/types/token_example'
@@ -220,53 +122,17 @@ describe('token-example', () => {
 
 ### Create mint using PDA
 
-Create a new mint account using a Program Derived Address (PDA) as the address of the mint account.
+A PDA derived from program-defined seeds serves as the mint address. The same seeds reproduce the address from any client without storing it externally.
 
-<Tabs items={["Program", "Client"]}>
+<Tabs groupId="view" items={["Program", "Client"]}>
 <Tab>
 
-```rust title="lib.rs"
-use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenInterface};
-
-declare_id!("3pX5NKLru1UBDVckynWQxsgnJeUN3N1viy36Gk9TSn8d");
-
-#[program]
-pub mod token_example {
-    use super::*;
-
-    pub fn create_mint(ctx: Context<CreateMint>) -> Result<()> {
-        msg!("Created Mint Account: {:?}", ctx.accounts.mint.key());
-        Ok(())
-    }
-}
-
-#[derive(Accounts)]
-pub struct CreateMint<'info> {
-    #[account(mut)]
-    pub signer: Signer<'info>,
-    #[account(
-        // [!code word:seeds]
-        // [!code word:bump]
-        // [!code highlight:7]
-        init,
-        payer = signer,
-        mint::decimals = 6,
-        mint::authority = mint.key(),
-        mint::freeze_authority = mint.key(),
-        seeds = [b"mint"],
-        bump
-    )]
-    pub mint: InterfaceAccount<'info, Mint>,
-    pub token_program: Interface<'info, TokenInterface>,
-    pub system_program: Program<'info, System>,
-}
-```
+<Code code={libPda} lang="rust" title="lib.rs" meta="{20-28}" />
 
 </Tab>
 <Tab>
 
-```ts title="test.ts"
+```ts title="test.ts" showLineNumbers=false
 import * as anchor from '@anchor-lang/core'
 import { Program } from '@anchor-lang/core'
 import { TokenExample } from '../target/types/token_example'

@@ -35,7 +35,7 @@ $ [34msolana-install[0m init 1.17.0
 
 ## Override toolchain for the workspace
 
-`Anchor.toml` has a new section called `[toolchain]` that allows overriding the current toolchain versions inside the workspace.
+`Anchor.toml` has a new section called `[toolchain]` that allows overriding the current toolchain versions inside the workspace:
 
 ```toml
 [toolchain]
@@ -145,7 +145,7 @@ These helpers are also more efficient than the manual form. `to_account_info(){:
 
 ## Type-safe context bumps
 
-Before this release, `ctx.bumps{:rs}` was a `BTreeMap<String, u8>{:rs}`, which gave no type safety for the account-name keys.
+Before this release, `ctx.bumps{:rs}` was a `BTreeMap<String, u8>{:rs}`, which gave no type safety for the account-name keys:
 
 ```rust showLineNumbers=false
 let bump = *ctx.bumps.get("my_account").unwrap();
@@ -185,7 +185,7 @@ Compile-time checks are supported, as are external types from other Anchor progr
 
 ## Type aliases
 
-Anchor IDL now supports type aliases.
+Anchor IDL now supports type aliases:
 
 ```rust showLineNumbers=false
 pub type U8Array = [u8; 8];

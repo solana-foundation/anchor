@@ -90,7 +90,7 @@ Each constraint works with or without the `init` constraint. The [token-extensio
 
 ### `#[interface]` attribute
 
-Transfer hooks can now be wired up with the new `#[interface]{:rs}` attribute, which replaces Anchor's default instruction discriminator with the interface instruction's discriminator. Two values are currently supported: `spl_transfer_hook_interface::initialize_extra_account_meta_list{:rs}` and `spl_transfer_hook_interface::execute{:rs}`.
+Transfer hooks can now be wired up with the new `#[interface]{:rs}` attribute, which replaces Anchor's default instruction discriminator with the interface instruction's discriminator. Two values are currently supported: `spl_transfer_hook_interface::initialize_extra_account_meta_list{:rs}` and `spl_transfer_hook_interface::execute{:rs}`:
 
 ```rust showLineNumbers=false
 mod my_hook_program {

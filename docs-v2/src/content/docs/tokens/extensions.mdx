@@ -114,9 +114,9 @@ pub enum ExtensionType {
 }
 ```
 
-Each extension adds specialized functionality by including additional state that must be initialized when creating a mint or token account. All extension specific state is stored in the in the [`tlv_data`](https://github.com/solana-program/token-2022/blob/main/program/src/extension/mod.rs#L541-L549) field, which follows the base account data type. The `tlv_data` (containing extension state) must be further deserialized according to the specific extension types enabled for that account.
+Each extension adds specialized functionality by including additional state that must be initialized when creating a mint or token account. All extension specific state is stored in the in the [`tlv_data`](https://github.com/solana-program/token-2022/blob/main/program/src/extension/mod.rs#L541-L549) field, which follows the base account data type. The `tlv_data` (containing extension state) must be further deserialized according to the specific extension types enabled for that account:
 
-```rust title="Token Extensions"
+```rust showLineNumbers=false
 /// Encapsulates immutable base state data (mint or account) with possible
 /// extensions, where the base state is Pod for zero-copy serde.
 #[derive(Debug, PartialEq)]
@@ -124,8 +124,6 @@ pub struct PodStateWithExtensions<'data, S: BaseState + Pod> {
     /// Unpacked base data
     pub base: &'data S,
     /// Slice of data containing all TLV data, deserialized on demand
-    // [!code word:tlv_data]
-    // [!code highlight]
     tlv_data: &'data [u8],
 }
 ```

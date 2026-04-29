@@ -37,8 +37,6 @@ pub mod event {
     use super::*;
 
     pub fn emit_event(_ctx: Context<EmitEvent>, input: String) -> Result<()> {
-        // [!code word:emit!]
-        // [!code highlight]
         emit!(CustomEvent { message: input });
         Ok(())
     }
@@ -47,7 +45,6 @@ pub mod event {
 #[derive(Accounts)]
 pub struct EmitEvent {}
 
-// [!code highlight:4]
 #[event]
 pub struct CustomEvent {
     pub message: String,
@@ -70,8 +67,6 @@ describe("event", () => {
 
   it("Emits custom event", async () => {
     // Set up listener before sending transaction
-    // [!code word:addEventListener]
-    // [!code highlight:4]
     const listenerId = program.addEventListener("customEvent", event => {
       // Do something with the event data
       console.log("Event Data:", event);
@@ -95,7 +90,7 @@ describe("event", () => {
 
 The program logs below show the emitted event data, base64-encoded as `Zb1eU3aiYdwOAAAASGVsbG8sIFNvbGFuYSE=`:
 
-```shell title="Program Logs"
+```text
 Log Messages:
   Program 8T7MsCZyzxboviPJg5Rc7d8iqEcDReYR2pkQKrmbg7dy invoke [1]
   Program log: Instruction: EmitEvent
@@ -136,19 +131,15 @@ pub mod event_cpi {
     use super::*;
 
     pub fn emit_event(ctx: Context<EmitEvent>, input: String) -> Result<()> {
-        // [!code word:emit_cpi!]
-        // [!code highlight]
         emit_cpi!(CustomEvent { message: input });
         Ok(())
     }
 }
 
-// [!code highlight]
 #[event_cpi]
 #[derive(Accounts)]
 pub struct EmitEvent {}
 
-// [!code highlight:4]
 #[event]
 pub struct CustomEvent {
     pub message: String,
@@ -179,14 +170,12 @@ describe("event-cpi", () => {
     );
 
     // Fetch the transaction data
-    // [!code highlight:4]
     const transactionData = await program.provider.connection.getTransaction(
       transactionSignature,
       { commitment: "confirmed" },
     );
 
     // Decode the event data from the CPI instruction data
-    // [!code highlight:4]
     const eventIx = transactionData.meta.innerInstructions[0].instructions[0];
     const rawData = anchor.utils.bytes.bs58.decode(eventIx.data);
     const base64Data = anchor.utils.bytes.base64.encode(rawData.subarray(8));
@@ -202,7 +191,6 @@ describe("event-cpi", () => {
 The `#[event_cpi]{:rs}` attribute must be added to the `#[derive(Accounts)]{:rs}` struct for any instruction that emits events with `emit_cpi!(){:rs}`. The attribute injects the additional accounts required for the self-CPI:
 
 ```rust title="lib.rs" showLineNumbers=false
-// [!code highlight]
 #[event_cpi]
 #[derive(Accounts)]
 pub struct RequiredAccounts {
@@ -233,7 +221,7 @@ The transaction below shows how event data appears in the transaction details. W
 
 {/* cspell:disable */}
 
-```shell title="Transaction Data"
+```json
 {
   "blockTime": 1735854530,
   "meta": {

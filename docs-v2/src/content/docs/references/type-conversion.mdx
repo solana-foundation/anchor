@@ -50,13 +50,19 @@ Integers up to 32 bits fit in a JavaScript `number{:ts}`. Wider integers exceed 
 
 A Rust struct becomes a TypeScript object type with the same field names:
 
-```rust title="Rust" showLineNumbers=false
+<Tabs groupId="language" items={['Rust', 'TypeScript']}>
+<Tab>
+
+```rust showLineNumbers=false
 struct MyStruct {
     val: u16,
 }
 ```
 
-```ts title="TypeScript" showLineNumbers=false
+</Tab>
+<Tab>
+
+```ts showLineNumbers=false
 type MyStruct = {
   val: number
 }
@@ -64,11 +70,17 @@ type MyStruct = {
 const instance = { val: 99 }
 ```
 
+</Tab>
+</Tabs>
+
 ### Enums
 
 A Rust enum becomes an object with a single key matching the active variant. Unit variants carry an empty object, named variants carry an object of fields, and tuple variants carry an array of positional values:
 
-```rust title="Rust" showLineNumbers=false
+<Tabs groupId="language" items={['Rust', 'TypeScript']}>
+<Tab>
+
+```rust showLineNumbers=false
 enum MyEnum {
     One,
     Two { val: u32 },
@@ -76,7 +88,10 @@ enum MyEnum {
 }
 ```
 
-```ts title="TypeScript" showLineNumbers=false
+</Tab>
+<Tab>
+
+```ts showLineNumbers=false
 // Unit variant
 const one = { one: {} }
 
@@ -90,3 +105,6 @@ const three = {
   three: [12, -34],
 }
 ```
+
+</Tab>
+</Tabs>

@@ -7,7 +7,7 @@ description: "Reference for the fields available in an Anchor workspace's `Ancho
 
 ## `[provider]` (required)
 
-Sets the wallet and cluster used for all `anchor` commands.
+Sets the wallet and cluster used for all `anchor` commands:
 
 ```toml
 [provider]
@@ -17,7 +17,7 @@ wallet = "~/.config/solana/id.json"     # The keypair used for all commands.
 
 ## `[scripts]` (required for testing)
 
-Defines named scripts runnable with `$ [34manchor[0m run <script>{:ansi}`. The `test` script is executed by `$ [34manchor[0m test{:ansi}`.
+Defines named scripts runnable with `$ [34manchor[0m run <script>{:ansi}`. The `test` script is executed by `$ [34manchor[0m test{:ansi}`:
 
 ```toml
 [scripts]
@@ -28,7 +28,7 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 ### `resolution`
 
-Enables IDL account resolution. Defaults to `true`.
+Enables IDL account resolution. Defaults to `true`:
 
 ```toml
 [features]
@@ -39,7 +39,7 @@ resolution = true
 
 ### `types`
 
-Copies the generated `<idl>.ts` file to the given directory on `$ [34manchor[0m build{:ansi}`. Useful for committing the IDL types into a frontend that does not have access to the `target` directory.
+Copies the generated `<idl>.ts` file to the given directory on `$ [34manchor[0m build{:ansi}`. Useful for committing the IDL types into a frontend that does not have access to the `target` directory:
 
 ```toml
 [workspace]
@@ -48,7 +48,7 @@ types = "app/src/idl/"
 
 ### `members`
 
-Paths (relative to `Anchor.toml`) to every `Cargo.toml` manifest the `anchor` CLI should compile. Programs using the standard Anchor workflow can omit this field; non-Anchor programs that still publish through the CLI must list their manifests here.
+Paths (relative to `Anchor.toml`) to every `Cargo.toml` manifest the `anchor` CLI should compile. Programs using the standard Anchor workflow can omit this field; non-Anchor programs that still publish through the CLI must list their manifests here:
 
 ```toml
 [workspace]
@@ -60,7 +60,7 @@ members = [
 
 ### `exclude`
 
-Inverse of `members`. Lists workspace paths to skip.
+Inverse of `members`. Lists workspace paths to skip:
 
 ```toml
 [workspace]
@@ -71,7 +71,7 @@ exclude = [
 
 ## `[programs]`
 
-Maps program names to addresses, scoped by cluster.
+Maps program names to addresses, scoped by cluster:
 
 ```toml
 [programs.localnet]
@@ -84,7 +84,7 @@ my_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 ### `startup_wait`
 
-Increases the time `anchor` waits for `solana-test-validator` to start. Useful when cloning many accounts (see [`test.validator.clone`](#testvalidatorclone)) extends startup time.
+Increases the time `anchor` waits for `solana-test-validator` to start. Useful when cloning many accounts (see [`test.validator.clone`](#testvalidatorclone)) extends startup time:
 
 ```toml
 [test]
@@ -93,7 +93,7 @@ startup_wait = 10000
 
 ### `genesis`
 
-Starts `solana-test-validator` with the listed programs preloaded.
+Starts `solana-test-validator` with the listed programs preloaded:
 
 ```toml
 [[test.genesis]]
@@ -110,7 +110,7 @@ upgradeable = true
 
 Deploys the program-under-test with `--upgradeable-program` so tests can exercise instructions gated on the upgrade authority. The initial upgrade authority is set to `provider.wallet`.
 
-When unset or `false`, the program is deployed with `--bpf-program` and cannot be upgraded.
+When unset or `false`, the program is deployed with `--bpf-program` and cannot be upgraded:
 
 ```toml
 [test]
@@ -119,7 +119,7 @@ upgradeable = true
 
 ## `[test.validator]`
 
-Forwards options to `solana-test-validator` (run `$ [34msolana-test-validator[0m --help{:ansi}` for the full list) during commands like `$ [34manchor[0m test{:ansi}`.
+Forwards options to `solana-test-validator` (run `$ [34msolana-test-validator[0m --help{:ansi}` for the full list) during commands like `$ [34manchor[0m test{:ansi}`:
 
 ```toml
 [test.validator]
@@ -139,7 +139,7 @@ bind_address = "127.0.0.1"                      # IP address to bind the validat
 
 ### `test.validator.clone`
 
-Clones an account from `test.validator.url` into the test cluster. If `address` points to a program owned by the BPF upgradeable loader, Anchor (>= 0.23.0) clones the program data account automatically.
+Clones an account from `test.validator.url` into the test cluster. If `address` points to a program owned by the BPF upgradeable loader, Anchor (>= 0.23.0) clones the program data account automatically:
 
 ```toml
 [test.validator]
@@ -155,7 +155,7 @@ address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" # implicitly also clones
 
 ### `test.validator.account`
 
-Uploads an account from a `.json` file.
+Uploads an account from a `.json` file:
 
 ```toml
 [[test.validator.account]]
@@ -169,7 +169,7 @@ filename = "some_other_account.json"
 
 ## `[toolchain]`
 
-Overrides toolchain versions for the workspace, similar to [`rust-toolchain.toml`](https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file).
+Overrides toolchain versions for the workspace, similar to [`rust-toolchain.toml`](https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file):
 
 ```toml
 [toolchain]
@@ -182,7 +182,7 @@ package_manager = "yarn"    # JS package manager to use
 
 Selects the JS package manager Anchor uses for client and workspace commands. Valid values are `npm`, `yarn`, `pnpm`, and `bun`.
 
-Anchor defaults to `yarn` when the field is omitted. Values must be lowercase, since they are deserialized with `serde(rename_all = "lowercase")`.
+Anchor defaults to `yarn` when the field is omitted. Values must be lowercase, since they are deserialized with `serde(rename_all = "lowercase")`:
 
 ```toml
 [toolchain]
@@ -191,7 +191,7 @@ package_manager = "pnpm"
 
 ### `hooks`
 
-Configures commands that run at specific stages of the build, test, and deploy pipeline.
+Configures commands that run at specific stages of the build, test, and deploy pipeline:
 
 ```toml
 [hooks]
@@ -212,7 +212,7 @@ post-test = "exit 1"
 
 The `[registry]` section is no longer supported and was removed in `1.0.0`. Remove it from any existing `Anchor.toml`:
 
-```diff title="Anchor.toml"
-- [registry]
-- url = "https://anchor.projectserum.com"
+```toml title="Anchor.toml" del={1-2}
+[registry]
+url = "https://anchor.projectserum.com"
 ```

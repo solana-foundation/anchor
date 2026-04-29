@@ -9,7 +9,7 @@ For background on how account types fit into instruction validation, see [accoun
 
 ## `Account<'info, T>{:rs}`
 
-[`Account<'info, T>{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/account/struct.Account.html) wraps an `AccountInfo{:rs}`, deserializes its data into the type `T{:rs}`, and verifies that the account is owned by the program declared in `declare_id!(){:rs}`.
+[`Account<'info, T>{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/account/struct.Account.html) wraps an `AccountInfo{:rs}`, deserializes its data into the type `T{:rs}`, and verifies that the account is owned by the program declared in `declare_id!(){:rs}`:
 
 ```rust showLineNumbers=false {3}
 #[derive(Accounts)]
@@ -25,7 +25,7 @@ pub struct CustomAccountType {
 
 ## `Signer<'info>{:rs}`
 
-[`Signer<'info>{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/signer/struct.Signer.html) verifies that the account signed the transaction. Use it when the handler needs proof of authorization but does not read or write the account's data.
+[`Signer<'info>{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/signer/struct.Signer.html) verifies that the account signed the transaction. Use it when the handler needs proof of authorization but does not read or write the account's data:
 
 ```rust showLineNumbers=false {3}
 #[derive(Accounts)]
@@ -36,7 +36,7 @@ pub struct InstructionAccounts<'info> {
 
 ## `SystemAccount<'info>{:rs}`
 
-[`SystemAccount<'info>{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/system_account/struct.SystemAccount.html) verifies that the account is owned by the System Program.
+[`SystemAccount<'info>{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/system_account/struct.SystemAccount.html) verifies that the account is owned by the System Program:
 
 ```rust showLineNumbers=false {3}
 #[derive(Accounts)]
@@ -167,7 +167,7 @@ pub struct ZeroCopyAccountType {
 
 `Migration<'info, From, To>{:rs}` handles schema migrations between two account types. The account must deserialize as `From{:rs}` on entry and is migrated to `To{:rs}` before serialization on exit. Pair it with the `realloc{:rs}` constraint to resize the account when the new schema is larger.
 
-The type performs three checks: ownership matches `From::owner(){:rs}`, the account is initialized (not a zero-lamport System Program account), and its data deserializes as `From{:rs}`.
+The type performs three checks: ownership matches `From::owner(){:rs}`, the account is initialized (not a zero-lamport System Program account), and its data deserializes as `From{:rs}`:
 
 ```rust showLineNumbers=false {16-22}
 use anchor_lang::prelude::*;

@@ -89,7 +89,7 @@ Anchor generates a test file alongside the program. TypeScript is the default. T
 
 <Tabs items={["TypeScript", "Rust"]}>
 <Tab>
-Located at `/tests/my-project.ts`. Invokes the `initialize(){:ts}` instruction via the generated client.
+Located at `/tests/my-project.ts`. Invokes the `initialize(){:ts}` instruction via the generated client:
 
 ```ts title="tests/my-project.ts"
 import * as anchor from '@anchor-lang/core'
@@ -108,7 +108,7 @@ describe('my-project', () => {
 ```
 </Tab>
 <Tab>
-Located at `/tests/src/test_initialize.rs`. Uses `[33manchor_client[0m{:ansi}` to call the program against localnet.
+Located at `/tests/src/test_initialize.rs`. Uses `[33manchor_client[0m{:ansi}` to call the program against localnet:
 
 ```rust title="tests/src/test_initialize.rs"
 use std::str::FromStr;

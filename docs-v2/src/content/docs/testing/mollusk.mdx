@@ -3,7 +3,7 @@ title: Mollusk
 description: Write tests for Solana programs in Rust using Mollusk.
 ---
 
-[Mollusk](https://github.com/anza-xyz/mollusk) is a lightweight test harness for Solana programs. It provides a simple interface for testing Solana program executions in a minified Solana Virtual Machine (SVM) environment.
+[Mollusk](https://github.com/anza-xyz/mollusk) is a lightweight test harness for Solana programs. It provides a simple interface for testing Solana program executions in a minified Solana Virtual Machine (SVM) environment:
 
 ```rust showLineNumbers=false
 mollusk.process_and_validate_instruction(
@@ -30,7 +30,7 @@ The harness exposes four main API methods:
 
 ## Single instructions
 
-`process_instruction{:rs}` processes a single instruction and returns the result. `process_and_validate_instruction{:rs}` does the same, then runs a series of checks against that result before returning it.
+`process_instruction{:rs}` processes a single instruction and returns the result. `process_and_validate_instruction{:rs}` does the same, then runs a series of checks against that result before returning it:
 
 ```rust showLineNumbers=false
 use {
@@ -118,7 +118,7 @@ Mollusk::default().process_and_validate_instruction(
 
 ## Instruction chains
 
-`process_instruction_chain{:rs}` processes each instruction in a chain and returns the final result. `process_and_validate_instruction_chain{:rs}` does the same, then runs a series of checks on each intermediate result before returning the final one.
+`process_instruction_chain{:rs}` processes each instruction in a chain and returns the final result. `process_and_validate_instruction_chain{:rs}` does the same, then runs a series of checks on each intermediate result before returning the final one:
 
 ```rust showLineNumbers=false
 use {
@@ -254,7 +254,7 @@ mollusk.process_and_validate_instruction_chain(
 
 The Mollusk Compute Unit Bencher benchmarks the compute unit usage of Solana programs. It provides a simple API for writing benchmarks that can be re-run as the program changes.
 
-A markdown file is generated containing every compute unit benchmark. If a benchmark has a previous value, the delta is also recorded, making it easy to track the impact of program changes on compute unit usage.
+A markdown file is generated containing every compute unit benchmark. If a benchmark has a previous value, the delta is also recorded, making it easy to track the impact of program changes on compute unit usage:
 
 ```rust showLineNumbers=false
 use {

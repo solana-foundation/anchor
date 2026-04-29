@@ -11,7 +11,7 @@ See the [constraint codegen](https://github.com/solana-foundation/anchor/blob/62
 
 ### `#[account(signer)]{:rs}`
 
-Checks the given account signed the transaction. Prefer the `Signer{:rs}` type if `signer{:rs}` is the only constraint needed on the account.
+Checks the given account signed the transaction. Prefer the `Signer{:rs}` type if `signer{:rs}` is the only constraint needed on the account:
 
 ```rust showLineNumbers=false
 #[account(signer)]
@@ -20,7 +20,7 @@ Checks the given account signed the transaction. Prefer the `Signer{:rs}` type i
 
 ### `#[account(mut)]{:rs}`
 
-Checks the given account is mutable and persists any state changes after the instruction completes.
+Checks the given account is mutable and persists any state changes after the instruction completes:
 
 ```rust showLineNumbers=false
 #[account(mut)]
@@ -57,7 +57,7 @@ pub fn allows_duplicate_mutable(ctx: Context<AllowsDuplicateMutable>) -> Result<
 
 ### `#[account(init)]{:rs}`
 
-Creates the account via a CPI to the System Program and writes the 8-byte account discriminator. Requires `payer{:rs}` and `space{:rs}`.
+Creates the account via a CPI to the System Program and writes the 8-byte account discriminator. Requires `payer{:rs}` and `space{:rs}`:
 
 ```rust showLineNumbers=false
 #[account(
@@ -69,7 +69,7 @@ Creates the account via a CPI to the System Program and writes the 8-byte accoun
 
 ### `#[account(init_if_needed)]{:rs}`
 
-Same as `init{:rs}` but only runs if the account does not exist yet. Requires the `init-if-needed` cargo feature.
+Same as `init{:rs}` but only runs if the account does not exist yet. Requires the `init-if-needed` cargo feature:
 
 ```rust showLineNumbers=false
 #[account(
@@ -86,7 +86,7 @@ Same as `init{:rs}` but only runs if the account does not exist yet. Requires th
 
 ### `#[account(seeds, bump)]{:rs}`
 
-Checks that the given account is a PDA derived from the currently executing program, the seeds, and (if provided) the bump. See [Program derived address](/docs/basics/pda) for usage patterns.
+Checks that the given account is a PDA derived from the currently executing program, the seeds, and (if provided) the bump. See [Program derived address](/docs/basics/pda) for usage patterns:
 
 ```rust showLineNumbers=false
 #[account(
@@ -114,7 +114,7 @@ Checks that the given account is a PDA derived from the currently executing prog
 
 ### `#[account(has_one = target)]{:rs}`
 
-Checks that the `target{:rs}` field stored on the account matches the key of the `target{:rs}` field in the `Accounts{:rs}` struct.
+Checks that the `target{:rs}` field stored on the account matches the key of the `target{:rs}` field in the `Accounts{:rs}` struct:
 
 ```rust showLineNumbers=false
 #[account(
@@ -128,7 +128,7 @@ Checks that the `target{:rs}` field stored on the account matches the key of the
 
 ### `#[account(address = expr)]{:rs}`
 
-Checks the account key matches the given pubkey.
+Checks the account key matches the given pubkey:
 
 ```rust showLineNumbers=false
 #[account(address = <expr>)]
@@ -137,7 +137,7 @@ Checks the account key matches the given pubkey.
 
 ### `#[account(owner = expr)]{:rs}`
 
-Checks the account owner matches `expr{:rs}`.
+Checks the account owner matches `expr{:rs}`:
 
 ```rust showLineNumbers=false
 #[account(owner = <expr>)]
@@ -146,7 +146,7 @@ Checks the account owner matches `expr{:rs}`.
 
 ### `#[account(executable)]{:rs}`
 
-Checks the account is executable (the account is a program).
+Checks the account is executable (the account is a program):
 
 ```rust showLineNumbers=false
 #[account(executable)]
@@ -154,7 +154,7 @@ Checks the account is executable (the account is a program).
 
 ### `#[account(zero)]{:rs}`
 
-Checks the account discriminator is zero. Use for accounts larger than 10 KiB, where `init{:rs}` exceeds the System Program's allocation limit.
+Checks the account discriminator is zero. Use for accounts larger than 10 KiB, where `init{:rs}` exceeds the System Program's allocation limit:
 
 ```rust showLineNumbers=false
 #[account(zero)]
@@ -162,7 +162,7 @@ Checks the account discriminator is zero. Use for accounts larger than 10 KiB, w
 
 ### `#[account(close = target)]{:rs}`
 
-Closes the account by sending its lamports to `target{:rs}` and zeroing its data.
+Closes the account by sending its lamports to `target{:rs}` and zeroing its data:
 
 ```rust showLineNumbers=false
 #[account(close = <target_account>)]
@@ -170,7 +170,7 @@ Closes the account by sending its lamports to `target{:rs}` and zeroing its data
 
 ### `#[account(constraint = expr)]{:rs}`
 
-Custom constraint that checks whether the given expression evaluates to `true{:rs}`.
+Custom constraint that checks whether the given expression evaluates to `true{:rs}`:
 
 ```rust showLineNumbers=false
 #[account(constraint = <expr>)]
@@ -181,7 +181,7 @@ Custom constraint that checks whether the given expression evaluates to `true{:r
 
 ### `#[account(realloc)]{:rs}`
 
-Reallocates program account space at the start of an instruction. `realloc::zero{:rs}` controls whether new bytes are zeroed.
+Reallocates program account space at the start of an instruction. `realloc::zero{:rs}` controls whether new bytes are zeroed:
 
 ```rust showLineNumbers=false
 #[account(
@@ -193,7 +193,7 @@ Reallocates program account space at the start of an instruction. `realloc::zero
 
 ### `#[account(discriminator = <expr>)]{:rs}`
 
-Overrides the auto-generated discriminator for an account. Any constant expression is accepted. All-zero discriminators are rejected because zeroed discriminators are indistinguishable from newly allocated accounts; see [zeroed discriminators](/docs/references/footguns#zeroed-discriminators) for the security background.
+Overrides the auto-generated discriminator for an account. Any constant expression is accepted. All-zero discriminators are rejected because zeroed discriminators are indistinguishable from newly allocated accounts; see [zeroed discriminators](/docs/references/footguns#zeroed-discriminators) for the security background:
 
 ```rust showLineNumbers=false
 #[account(discriminator = 12)]
@@ -205,7 +205,7 @@ Overrides the auto-generated discriminator for an account. Any constant expressi
 
 ### `#[account(token::*)]{:rs}`
 
-Creates or validates token accounts with the specified mint and authority.
+Creates or validates token accounts with the specified mint and authority:
 
 ```rust showLineNumbers=false
 #[account(
@@ -222,7 +222,7 @@ Creates or validates token accounts with the specified mint and authority.
 
 ### `#[account(mint::*)]{:rs}`
 
-Creates or validates mint accounts with the specified parameters.
+Creates or validates mint accounts with the specified parameters:
 
 ```rust showLineNumbers=false
 #[account(
@@ -239,7 +239,7 @@ Creates or validates mint accounts with the specified parameters.
 
 ### `#[account(associated_token::*)]{:rs}`
 
-Creates or validates associated token accounts.
+Creates or validates associated token accounts:
 
 ```rust showLineNumbers=false
 #[account(
@@ -256,7 +256,7 @@ Creates or validates associated token accounts.
 
 ### `#[account(*::token_program = expr)]{:rs}`
 
-Overrides the token program used by `token{:rs}`, `mint{:rs}`, or `associated_token{:rs}` constraints.
+Overrides the token program used by `token{:rs}`, `mint{:rs}`, or `associated_token{:rs}` constraints:
 
 ```rust showLineNumbers=false
 #[account(*::token_program = <target_account>)]
@@ -266,7 +266,7 @@ Overrides the token program used by `token{:rs}`, `mint{:rs}`, or `associated_to
 
 ### `#[account(extensions::close_authority::*)]{:rs}`
 
-Creates or validates the close authority extension on the mint account.
+Creates or validates the close authority extension on the mint account:
 
 ```rust showLineNumbers=false
 #[account(
@@ -276,7 +276,7 @@ Creates or validates the close authority extension on the mint account.
 
 ### `#[account(extensions::permanent_delegate::*)]{:rs}`
 
-Creates or validates the permanent delegate extension on the mint account.
+Creates or validates the permanent delegate extension on the mint account:
 
 ```rust showLineNumbers=false
 #[account(
@@ -286,7 +286,7 @@ Creates or validates the permanent delegate extension on the mint account.
 
 ### `#[account(extensions::transfer_hook::*)]{:rs}`
 
-Creates or validates the transfer hook extension on the mint account.
+Creates or validates the transfer hook extension on the mint account:
 
 ```rust showLineNumbers=false
 #[account(
@@ -297,7 +297,7 @@ Creates or validates the transfer hook extension on the mint account.
 
 ### `#[account(extensions::group_pointer::*)]{:rs}`
 
-Creates or validates the group pointer extension on the mint account.
+Creates or validates the group pointer extension on the mint account:
 
 ```rust showLineNumbers=false
 #[account(
@@ -308,7 +308,7 @@ Creates or validates the group pointer extension on the mint account.
 
 ### `#[account(extensions::group_member_pointer::*)]{:rs}`
 
-Creates or validates the group member pointer extension on the mint account.
+Creates or validates the group member pointer extension on the mint account:
 
 ```rust showLineNumbers=false
 #[account(
@@ -319,7 +319,7 @@ Creates or validates the group member pointer extension on the mint account.
 
 ### `#[account(extensions::metadata_pointer::*)]{:rs}`
 
-Creates or validates the metadata pointer extension on the mint account.
+Creates or validates the metadata pointer extension on the mint account:
 
 ```rust showLineNumbers=false
 #[account(
@@ -332,7 +332,7 @@ Creates or validates the metadata pointer extension on the mint account.
 
 ### `#[instruction(...)]{:rs}`
 
-Exposes the instruction's arguments to the `Accounts{:rs}` struct so constraints can reference them. Arguments must appear in the same order as in the instruction handler. Trailing arguments may be omitted, but skipping any argument before one you need produces a compile error.
+Exposes the instruction's arguments to the `Accounts{:rs}` struct so constraints can reference them. The example below uses `input{:rs}` in the `space{:rs}` calculation when initializing an account:
 
 ```rust showLineNumbers=false {8}
 #[program]
@@ -357,7 +357,7 @@ pub struct Initialize<'info> {
 }
 ```
 
-Listing every argument is valid:
+Arguments must appear in the same order as the handler signature. Listing every argument is valid:
 
 ```rust showLineNumbers=false {10}
 #[program]
@@ -395,10 +395,9 @@ pub struct Initialize<'info> {
 }
 ```
 
-Invalid Usage, will result in an error:
+Skipping a leading argument is invalid and produces a compile error:
 
-```rust title="snippet"
-// [!code word:input_two]
+```rust showLineNumbers=false
 #[program]
 pub mod example {
     use super::*;
@@ -409,7 +408,6 @@ pub mod example {
 }
 
 #[derive(Accounts)]
-// [!code highlight]
 #[instruction(input_two: String)]
 pub struct Initialize<'info> {
     // --snip--

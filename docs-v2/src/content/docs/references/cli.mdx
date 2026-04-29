@@ -60,7 +60,7 @@ Fetches an account with the given public key and deserializes the data to JSON u
 | `[2m<AccountTypeName>[0m{:ansi}` | The name of the account struct, usually in PascalCase. |
 | `[2m<account-pubkey>[0m{:ansi}` | The Pubkey of the account to deserialize, in Base58. |
 
-For example, `$ [34manchor[0m account anchor-escrow.EscrowAccount 3PNkzWKXCsbjijbasnx55NEpJe8DFXvEEbJKdRKpDcfK{:ansi}` deserializes the account at the given pubkey using the `EscrowAccount` struct defined in the `anchor-escrow` program.
+For example, `$ [34manchor[0m account anchor-escrow.EscrowAccount 3PNkzWKXCsbjijbasnx55NEpJe8DFXvEEbJKdRKpDcfK{:ansi}` deserializes the account at the given pubkey using the `EscrowAccount` struct defined in the `anchor-escrow` program:
 
 ```ansi
 $ [34manchor[0m account [2m<program-name>[0m.[2m<AccountTypeName>[0m [2m<account-pubkey>[0m [2m--idl[0m [2m<path/to/idl.json>[0m
@@ -74,7 +74,7 @@ Pass `[2m--idl[0m{:ansi}` to deserialize using a specific IDL file even when i
 $ [34manchor[0m build
 ```
 
-Builds programs in the workspace targeting Solana's BPF runtime and emits IDLs into the `target/idl` directory.
+Builds programs in the workspace targeting Solana's BPF runtime and emits IDLs into the `target/idl` directory:
 
 ```ansi
 $ [34manchor[0m build [2m--verifiable[0m
@@ -182,7 +182,7 @@ Erases the IDL account's authority so that upgrades can no longer occur. The con
 $ [34manchor[0m idl upgrade [2m-f[0m [2m<target/idl/program.json>[0m
 ```
 
-Upgrades the on-chain IDL to the new `target/idl/program.json`. The configured wallet must be the current authority. The `program-id` argument is optional. When omitted, `idl.address` is used.
+Upgrades the on-chain IDL to the new `target/idl/program.json`. The configured wallet must be the current authority. The `program-id` argument is optional. When omitted, `idl.address` is used:
 
 ```ansi
 $ [34manchor[0m idl set-authority [2m-n[0m [2m<new-authority>[0m [2m-p[0m [2m<program-id>[0m
