@@ -1,5 +1,16 @@
 @reference './global.css';
 
+/* Prose lives in @layer utilities (not components) because Vite's CSS
+   minifier strips the `@layer theme, base, components, utilities;` order
+   declaration that Tailwind v4 emits in dev. Without that declaration,
+   the production bundle's implicit layer order lets Tailwind's base
+   preflight (`* { margin: 0 }`, `h1-h6 { font-size: inherit }`) override
+   our component-layer prose rules — paragraphs render flush, headings
+   collapse to body size. Pinning prose to `utilities` (the highest of
+   Tailwind's built-in layers) keeps it above preflight regardless of
+   how the order shakes out post-minify. Safe because no MDX content
+   uses font-size/margin utilities on prose-managed elements. */
+
 @layer base {
   p,
   h1,
@@ -25,7 +36,7 @@
   }
 }
 
-@layer components {
+@layer utilities {
   .prose {
     @apply text-foreground text-base leading-6.5;
 
