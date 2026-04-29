@@ -1,9 +1,9 @@
 ---
 title: 0.32.0
-description: Anchor - Release Notes 0.32.0.
+description: Anchor release notes for 0.32.0.
 ---
 
-`0.32.0` is the current last planned upgrade before a number of breaking changes to stabilize Anchor `1.0`. We cover the most important changes below, but be sure to check out the full list of changes in the [CHANGELOG](https://github.com/solana-foundation/anchor/blob/v0.32.0/CHANGELOG.md#0320---2025-10-08).
+`0.32.0` is the last planned release before the breaking changes that stabilize Anchor `1.0`. These notes cover the most significant changes; the full list lives in the [`CHANGELOG.md`](https://github.com/solana-foundation/anchor/blob/v0.32.0/CHANGELOG.md#0320---2025-10-08).
 
 ---
 
@@ -21,106 +21,100 @@ description: Anchor - Release Notes 0.32.0.
 
 ## Recommended Solana version
 
-The recommended Solana version is `2.3.0`.
-
-You can install the newer tooling by running:
+The recommended Solana version is `2.3.0`. Install the new tooling with:
 
 ```ansi
-[34msh[0m [2m-c[0m "$(curl [2m-sSfL[0m https://release.anza.xyz/v2.3.0/install)"
+$ [34msh[0m [2m-c[0m "$(curl [2m-sSfL[0m https://release.anza.xyz/v2.3.0/install)"
 ```
 
 ## CLI
 
-### `anchor verify` now uses `solana-verify` to verify builds
+### `[34manchor[0m verify{:ansi}` switches to `solana-verify`
 
-Anchor versions before `0.32.0` used a docker image `solanafoundation/anchor` to create verifiable builds. This version replaces the verifiable builds with [`solana-verify`](https://github.com/Ellipsis-Labs/solana-verifiable-build) under the hood.
+Anchor versions before `0.32.0` produced verifiable builds using the `solanafoundation/anchor` Docker image. `0.32.0` replaces that pipeline with [`solana-verify`](https://github.com/Ellipsis-Labs/solana-verifiable-build) under the hood. The user-facing entry point is unchanged: `$ [34manchor[0m verify{:ansi}` still produces and verifies builds. Verifying a build produced by Anchor `< 0.32.0` with the new CLI is expected to fail because the verification mechanism has changed.
 
-In order to create verifiable builds with this you still use `anchor verify`. If someone tries to verify a build older than `0.32.0` with the newest CLI, the expectation is that the verification will fail given the change in how builds are verified.
+### IDL upload by default on deploy
 
-### IDL is automatically uploaded by default on deployment
+`$ [34manchor[0m deploy{:ansi}` now uploads the IDL on every deployment by default. Pass `[2m--no-idl[0m{:ansi}` to deploy the program without touching the on-chain IDL.
 
-In `0.32.0`, the IDL is now uploaded whenever you use `anchor deploy` by default. If you still wish to deploy an anchor program without uploading the new IDL, use `anchor deploy --no-idl`.
+### Minimum Rust version raised to `1.89.0`
 
-### Add MSRV to the Rust template
-
-Rust `1.89.0` or higher is now required to build Anchor IDLs as previous versions of Rust do not have the stabilized [`Span::local_file`](https://doc.rust-lang.org/beta/proc_macro/struct.Span.html#method.local_file).
-
-You can update your local Rust compiler by running:
+IDL builds now require Rust `1.89.0` or higher because earlier Rust versions don't expose the stabilized [`Span::local_file(){:rs}`](https://doc.rust-lang.org/beta/proc_macro/struct.Span.html#method.local_file). Update the toolchain with:
 
 ```ansi
-[34mrustup[0m update
+$ [34mrustup[0m update
 ```
 
-and confirm your local version of Rust with:
+Confirm the installed version with:
 
 ```ansi
-[34mrustc[0m [2m--version[0m
+$ [34mrustc[0m [2m--version[0m
 ```
 
-**Note:** This is different that the forked rustc version that the solana toolsuite uses for compiling Solana programs.
+This is the host Rust toolchain, distinct from the forked `rustc` that the Solana platform tools use to compile programs.
 
 ## IDL
 
 ### IDL building is now stabilized
 
-WIth the stabilization of [`Span::local_file`](https://doc.rust-lang.org/beta/proc_macro/struct.Span.html#method.local_file), we can now build IDLs using the current Rust compiler instead of nightly. This should avoid issues in the future such as the nightly build failing on `0.31.0` and lower with the following issue:
+With [`Span::local_file(){:rs}`](https://doc.rust-lang.org/beta/proc_macro/struct.Span.html#method.local_file) stabilized, IDLs build against the current stable Rust compiler instead of nightly. That removes a class of upstream-nightly breakages that previously surfaced as build errors on `0.31.0` and earlier:
 
-```
+```text
 no method named source_file found for struct proc_macro2::Span in the current
 scope
 ```
 
 ## Lang
 
-### Improved error messaging when trying to create `SystemAccount`
+### Better error message for `init` on `SystemAccount{:rs}`
 
-When you tried to `init` a `SystemAccount`, you previously got a rather unhelpful error:
+`init`-ing a `SystemAccount{:rs}` previously surfaced as a confusing missing-crate error:
 
-```
+```text
 error[E0425]: cannot find crate `try_from_unchecked` in the list of imported crates
 error[E0425]: cannot find crate `try_from` in the list of imported crates
 ```
 
-Now the new error is a bit more helpful on pointing you in the right direction at compile time:
+The compile-time error now explains the actual constraint and suggests an alternative:
 
-```
-"Cannot use `init` on a `SystemAccount`.
+```text
+Cannot use `init` on a `SystemAccount`.
 The `SystemAccount` type represents an already-existing account
 owned by the system program and cannot be initialized.
 If you need to create a new account, use a more specific account type
-or `UncheckedAccount` and perform manual initialization instead."
+or `UncheckedAccount` and perform manual initialization instead.
 ```
 
-### Use `solana-invoke` instead of `solana_cpi::invoke` for CPI
+### Use `solana-invoke` instead of `solana_cpi::invoke{:rs}` for CPI
 
-`solana_cpi::invoke` from `solana-program` is generally inefficient on consuming CUs. With the replacement of `solana_cpi::invoke`, we've found an average of 5% CUs saved across the board when using CPI in your Anchor program.
+`solana_cpi::invoke{:rs}` from `solana-program` is heavier on compute units than necessary. Replacing it with `solana-invoke` saves an average of 5% CUs across CPI call sites in Anchor programs.
 
 ### Solang is no longer supported
 
-Developers wishing to use Solang templates with Anchor now have to build using [Solang's older tooling](https://github.com/hyperledger-solang/solang?tab=readme-ov-file).
+Solang templates are no longer bundled with Anchor. Projects that want to keep using Solang must build with [Solang's standalone tooling](https://github.com/hyperledger-solang/solang?tab=readme-ov-file).
 
 ## TypeScript
 
 ### Remove event parsing panic issues
 
-Events previously could be sent maliciously causing anyone using the event parser to panic. The regex has since been updated to avoid these panics and improve the stability of the parser.
+A maliciously crafted event could previously panic the TS event parser. The parser's regex has been hardened to fail closed instead of panicking.
 
 ### Added support for `bun` as a package manager
 
-`bun` is rising in popularity and has been added as an optional package in your `Anchor.toml`:
+`bun` joins `npm`, `yarn`, and `pnpm` as a recognized value for `toolchain.package_manager` in `Anchor.toml`:
 
 ```toml
 [toolchain]
 package_manager = "bun"
 ```
 
-or when creating a new workspace:
+The same value is accepted when scaffolding a new workspace:
 
-```
-anchor init <NAME> --package-manager bun
+```ansi
+$ [34manchor[0m init [2m<NAME>[0m [2m--package-manager[0m bun
 ```
 
-Supported values: `npm`, `yarn`, `pnpm`, `bun` (default: `yarn`)
+The default remains `yarn`.
 
 ---
 

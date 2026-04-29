@@ -3,7 +3,7 @@ title: 0.30.0
 description: Anchor release notes for 0.30.0.
 ---
 
-These notes cover the main changes in `0.30.0`. The complete list of notable changes lives in the [CHANGELOG](https://github.com/solana-foundation/anchor/blob/v0.30.0/CHANGELOG.md#0300---2024-04-15).
+These notes cover the main changes in `0.30.0`. The complete list of notable changes lives in the [`CHANGELOG.md`](https://github.com/solana-foundation/anchor/blob/v0.30.0/CHANGELOG.md#0300---2024-04-15).
 
 ---
 
@@ -90,7 +90,7 @@ Each constraint works with or without the `init` constraint. The [token-extensio
 
 ### `#[interface]` attribute
 
-Transfer hooks can now be wired up with the new `#[interface]{:rs}` attribute, which replaces Anchor's default instruction discriminator with the interface instruction's discriminator. Two values are currently supported: `spl_transfer_hook_interface::initialize_extra_account_meta_list` and `spl_transfer_hook_interface::execute`.
+Transfer hooks can now be wired up with the new `#[interface]{:rs}` attribute, which replaces Anchor's default instruction discriminator with the interface instruction's discriminator. Two values are currently supported: `spl_transfer_hook_interface::initialize_extra_account_meta_list{:rs}` and `spl_transfer_hook_interface::execute{:rs}`.
 
 ```rust showLineNumbers=false
 mod my_hook_program {

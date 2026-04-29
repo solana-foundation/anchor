@@ -3,7 +3,7 @@ title: 0.32.1
 description: Anchor release notes for 0.32.1.
 ---
 
-`0.32.1` is a patch to fix a couple issues that showed up in `0.32.0`, most notably a race condition when deploying programs. We cover the most important changes below, but be sure to check out the full list of changes in the [CHANGELOG](https://github.com/solana-foundation/anchor/blob/v0.32.1/CHANGELOG.md#0320---2025-10-09).
+`0.32.1` patches a handful of `0.32.0` regressions, most notably a race condition during program deployment. The full list of changes lives in the [`CHANGELOG.md`](https://github.com/solana-foundation/anchor/blob/v0.32.1/CHANGELOG.md#0320---2025-10-09).
 
 ---
 
@@ -21,25 +21,23 @@ description: Anchor release notes for 0.32.1.
 
 ## Recommended Solana version
 
-The recommended Solana version is `2.3.0`.
+The recommended Solana version is `2.3.0`. Install it with:
 
-You can install the newer tooling by running:
-
-```
-sh -c "$(curl -sSfL https://release.anza.xyz/v2.3.0/install)"
+```ansi
+$ [34msh[0m [2m-c[0m "$(curl [2m-sSfL[0m https://release.anza.xyz/v2.3.0/install)"
 ```
 
 ## CLI
 
-### Fix `anchor deploy` race condition
+### `[34manchor[0m deploy{:ansi}` race condition
 
-With the addition of deploying the IDL on every program deploy by default, a race condition was introduced that was not found in initial testing. We have added a wait until the program is completely available before continuing the deployment of the IDL.
+`0.32.0` shipped automatic IDL upload on every deploy, but the IDL upload could race the program upload and run before the program account was fully available. `$ [34manchor[0m deploy{:ansi}` now waits for the program to be fully available before uploading the IDL.
 
 ## Lang
 
-### Fix warnings and prelude Solana-program inclusion
+### `realloc{:rs}` deprecation warning removed
 
-There was still a warning leftover for deprecation of realloc in 0.32.0. This has been remediated in this release.
+A leftover deprecation warning for `realloc{:rs}` was emitted on builds in `0.32.0`. The warning is removed in this release.
 
 ---
 

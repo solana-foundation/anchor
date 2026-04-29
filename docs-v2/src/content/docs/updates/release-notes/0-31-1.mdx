@@ -3,9 +3,7 @@ title: 0.31.1
 description: Anchor release notes for 0.31.1.
 ---
 
-This patch release aims to fix `proc-macro2` related IDL build errors (see [`proc-macro2` build fix](#proc-macro2-build-fix)).
-
-New Releases for Anchor will be published under the `solanafoundation` GitHub organization from now on.
+`0.31.1` is a patch release that fixes `proc-macro2`-related IDL build errors (see [`proc-macro2` build fix](#proc-macro2-build-fix)). Future Anchor releases will be published under the `solanafoundation` GitHub organization.
 
 ---
 
@@ -27,35 +25,35 @@ The recommended Solana version is `2.1.0`, the same as [v0.31.0's Recommended So
 
 ## Docker
 
-This release uses a new docker image found at [solanafoundation/anchor](https://hub.docker.com/r/solanafoundation/anchor). New images will be pushed to this organization in the future.
+Docker images have moved to [`solanafoundation/anchor`](https://hub.docker.com/r/solanafoundation/anchor) on Docker Hub. All future images will be published under that namespace.
 
 ## IDL
 
 ### `proc-macro2` build fix
 
-`proc-macro2 1.0.95` removed the `source_file` method of `Span` due to an underlying `nightly` compiler change [rust-lang/rust#139671](https://github.com/rust-lang/rust/pull/139671), which resulted in the following error for Anchor users:
+`proc-macro2 1.0.95` removed the `source_file(){:rs}` method on `Span{:rs}` to track an upstream nightly change ([rust-lang/rust#139671](https://github.com/rust-lang/rust/pull/139671)). The removal surfaced as a build error in earlier Anchor versions:
 
-```
+```text
 error[E0599]: no method named `source_file` found for struct `proc_macro2::Span` in the current scope
 ```
 
-This should now be fixed in this release.
+The IDL build now compiles against `proc-macro2 >= 1.0.95`.
 
 ## TypeScript
 
 ### Account resolver no longer requires wallet
 
-Resolving signers had a wallet requirement, and failing to meet this requirement resulted in the following error:
+Signer resolution previously required a `wallet{:ts}` field on the `Provider{:ts}` implementor, failing with:
 
-```
+```text
 This function requires the `Provider` interface implementor to have a `wallet` field.
 ```
 
-Now, it's only required for the `publicKey` field of `Provider` to be set.
+The resolver now only requires `Provider.publicKey{:ts}`.
 
 ### Multiple constant generics
 
-An issue where having multiple constant generics would result in parsing errors has been fixed.
+Multiple constant generics on a type no longer trigger parsing errors.
 
 ---
 
