@@ -37,9 +37,9 @@ Version 0 of Semantic Versioning is handled differently from version 1 and above
 #### Optimizations
 
 - Skip on-curve check for program-owned PDAs (~1,000 CU saved per verify).
-- `const-rent{:rs}` feature folds `Rent::get(){:rs}` to a compile-time constant (~85 CU per `create_account{:rs}`).
+- `const-rent` feature folds `Rent::get(){:rs}` to a compile-time constant (~85 CU per `create_account{:rs}`).
 - `guardrails{:rs}` feature gates runtime safety nets behind a default-on flag. Disabling drops ~300 bytes binary, ~1-2 CU per account.
-- `account-resize{:rs}` feature gates `realloc_account{:rs}` and the pinocchio resize hook.
+- `account-resize` feature gates `realloc_account{:rs}` and the pinocchio resize hook.
 - Lazy-cached `remaining_accounts(){:rs}`. Instructions that don't touch it pay zero cost.
 - Typed `CpiHandle{:rs}` enables `invoke_signed_unchecked{:rs}` safely. One fewer runtime check per CPI.
 - Drop `#[inline(never)]{:rs}` on cold error helpers.
@@ -47,7 +47,7 @@ Version 0 of Semantic Versioning is handled differently from version 1 and above
 #### Spl
 
 - spl: New `anchor-spl-v2` crate with `Mint{:rs}`, `TokenAccount{:rs}`, `InterfaceAccount{:rs}` for both the Token Program and Token Extension Program.
-- spl: Token-2022 extension CPI re-exported via `pinocchio_token_2022{:rs}`.
+- spl: Token-2022 extension CPI re-exported via `pinocchio_token_2022`.
 
 #### Bug fixes
 
@@ -90,7 +90,7 @@ Version 0 of Semantic Versioning is handled differently from version 1 and above
 - cli: Update `$ [34manchor[0m init{:ansi}` to use the `multiple{:rs}` program template by default ([#3958](https://github.com/solana-foundation/anchor/pull/3958)).
 - cli: Add `hooks{:rs}` section to `Anchor.toml` for `{pre,post}-{build,test,deploy}` lifecycle hooks ([#3862](https://github.com/solana-foundation/anchor/pull/3862)).
 - lang: Add generic program validation support to `Program{:rs}` type allowing `Program<'info>{:rs}` for executable-only validation ([#3878](https://github.com/solana-foundation/anchor/pull/3878)).
-- cli: Added `litesvm{:rs}` test template and made it the default option on `$ [34manchor[0m init{:ansi}` ([#4316](https://github.com/solana-foundation/anchor/pull/4316))
+- cli: Added `litesvm` test template and made it the default option on `$ [34manchor[0m init{:ansi}` ([#4316](https://github.com/solana-foundation/anchor/pull/4316))
 - cli: Added `[2m--install-agent-skills[0m{:ansi}` to automatically install Solana agent skills during `$ [34manchor[0m init{:ansi}` ([#4307](https://github.com/solana-foundation/anchor/pull/4307))
 - avm: Added flags and version labels to explicitly handle pre-releases (`$ [34mavm[0m list [2m--pre-release[0m{:ansi}`, `$ [34mavm[0m update [2m--pre-release[0m{:ansi}` and `$ [34mavm[0m install latest-pre-release{:ansi}`) ([#4335](https://github.com/solana-foundation/anchor/pull/4335))
 - avm: Added `$ [34mavm[0m self-update{:ansi}` command and passive version check warning for out of date avm ([#4338](https://github.com/solana-foundation/anchor/pull/4338))

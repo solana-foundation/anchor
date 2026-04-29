@@ -1,0 +1,105 @@
+---
+title: CPI mechanics
+description: Cross-program invocations in v2 with `CpiContext{:rs}`, the generated `Resolved{:rs}` struct, and `CpiHandle{:rs}`'s role in safe unchecked CPI.
+---
+
+The caller-side shape of a CPI is the same as in v1: `CpiContext::new(program, accounts).invoke(data){:rs}`. The big win in v2 is the `Resolved{:rs}` companion struct that the derive emits alongside the full accounts struct, which collapses most of the boilerplate the caller used to write by hand.
+
+## `CpiContext{:rs}`
+
+`CpiContext{:rs}` bundles the typed accounts struct, the target program address, optional signer seeds, and any remaining accounts the call should forward:
+
+```rust title="lib.rs" showLineNumbers=false
+use anchor_lang_v2::prelude::*;
+
+let cpi_accounts = TransferChecked {
+    mint: ctx.accounts.mint.cpi_handle(),
+    from: ctx.accounts.from.cpi_handle_mut(),
+    to: ctx.accounts.to.cpi_handle_mut(),
+    authority: ctx.accounts.authority.cpi_handle(),
+};
+let cpi = CpiContext::new(ctx.accounts.token_program.address(), cpi_accounts);
+token_interface::transfer_checked(cpi, amount, decimals)?;
+```
+
+For CPIs that need a PDA signature, attach the signer seeds when constructing the context:
+
+```rust title="lib.rs" showLineNumbers=false
+let signer_seeds: &[&[&[u8]]] = &[&[b"vault", &[ctx.bumps.vault]]];
+let cpi = CpiContext::new(token_program, accounts).with_signer(signer_seeds);
+```
+
+## The `Resolved{:rs}` struct
+
+Alongside the main accounts struct, `#[derive(Accounts)]{:rs}` emits a companion `Resolved{:rs}` struct that exposes only the fields a caller has to provide directly. PDAs derive themselves automatically in topological order, and the well-known programs (system and the various token programs) auto-fill from their canonical addresses.
+
+For example, the multisig bench's `Create{:rs}` instruction takes a `creator{:rs}` signer, a `config{:rs}` PDA derived from `[b"multisig", creator]{:rs}`, and the `system_program{:rs}`. The caller only needs to supply `creator{:rs}`:
+
+```rust title="client.rs" showLineNumbers=false
+let metas = multisig_v2::accounts::CreateResolved {
+    creator: creator.pubkey(),
+}
+.to_account_metas(None);
+// `metas` now has 3 entries: creator, derived config PDA, auto-filled system program.
+```
+
+In v1, callers built that vector by hand on every call site. Deriving the PDA with `find_program_address{:rs}`, wiring up `system_program{:rs}`, and keeping the order in sync with the handler's `#[derive(Accounts)]{:rs}` was caller boilerplate that drifted easily as instructions evolved. In v2 the macro does all of that, so the call site only specifies what's actually unique to the caller.
+
+## `CpiHandle<'a>{:rs}`
+
+`CpiHandle<'a>{:rs}` is a zero-cost, borrow-tracked reference to an account that v2 uses to pass typed accounts into a CPI without aliasing them on the Rust side. The handle's lifetime ties it to the account wrapper it came from, so the borrow checker prevents the typed wrapper from being mutably accessed while the handle is in flight.
+
+The wrapper deliberately does **not** implement `Deref<Target = AccountView>{:rs}`. Without `Deref`, the handle can't be silently passed into pinocchio's checked invoke (which would re-borrow the underlying account and panic), and that omission is precisely what makes v2's unchecked CPI safe.
+
+Each account wrapper provides handles through a small set of methods:
+
+- `account.cpi_handle(){:rs}` returns a read-only handle
+- `account.cpi_handle_mut(){:rs}` returns a writable handle and panics if the account is not marked `mut{:rs}`
+- `handle.address(){:rs}` returns the account's pubkey
+- `handle.is_writable(){:rs}` and `handle.is_signer(){:rs}` inspect the runtime flags
+
+## Unchecked invocation
+
+Under the hood, `CpiContext::invoke(data){:rs}` calls pinocchio's `invoke_signed_unchecked{:rs}` rather than the checked variant. The unchecked path skips a runtime `RefCell{:rs}` check that would otherwise be needed to detect stale borrows, and v2 can use it safely for two reasons:
+
+1. `CpiHandle<'a>{:rs}` borrows the account at the Rust level for as long as the handle exists. While a handle is alive, the typed account wrapper cannot be borrowed mutably by any other code in the same instruction, so concurrent typed access is ruled out at compile time.
+2. pinocchio's `borrow_state{:rs}` flag is left set across the CPI. Any subsequent typed access on a stale borrow still trips, so the runtime safety net stays in place even though `invoke_signed_unchecked{:rs}` itself does not consult it.
+
+The end result is one fewer runtime check per CPI, and the formerly-runtime aliasing UB becomes a compile error rather than a panic.
+
+## Remaining accounts
+
+`ctx.remaining_accounts(){:rs}` returns a `Vec<AccountView>{:rs}` that is populated lazily on the first call and cached for the rest of the instruction. Subsequent calls return an owned clone of the cached vec, which keeps the API free of borrow-lifetime hassles at the cost of a cheap allocation per access.
+
+The remaining-accounts slot is the right place for variable-length account lists, such as the signers attached to a multisig instruction:
+
+```rust title="lib.rs" showLineNumbers=false
+#[discrim = 0]
+pub fn create(ctx: &mut Context<Create>, threshold: u8) -> Result<()> {
+    let remaining = ctx.remaining_accounts();
+    if remaining.len() > MAX_SIGNERS {
+        return Err(MultisigError::TooManySigners.into());
+    }
+    for account in &remaining {
+        if !account.is_signer() {
+            return Err(MultisigError::MissingRequiredSignature.into());
+        }
+    }
+    ctx.accounts.config.signers.set_from_slice(
+        &remaining.iter().map(|a| *a.address()).collect::<Vec<_>>(),
+    );
+    Ok(())
+}
+```
+
+## Re-entrant CPI into a `BorshAccount{:rs}` field
+
+If a CPI is going to mutate an account that the current instruction also holds in a `BorshAccount{:rs}` wrapper, the borrow has to be released before the call so the foreign program can write to it cleanly:
+
+```rust title="lib.rs" showLineNumbers=false
+ctx.accounts.profile.release_borrow();
+some_program::ix::update_profile(cpi)?;
+ctx.accounts.profile.reacquire_borrow_mut()?;
+```
+
+After the call, `reacquire_borrow_mut(){:rs}` re-runs the owner, discriminator, and size checks before re-deserializing the account, which catches anything the foreign program changed about the account's shape. The zero-copy `Account<T>{:rs}` does not need this dance because its data is read on demand from the underlying buffer, so the CPI's writes are visible immediately on the next field access.

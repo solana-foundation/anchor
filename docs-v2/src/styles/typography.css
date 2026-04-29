@@ -132,7 +132,7 @@
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) .shiki {
-      font-size: 1em;
+      font-size: 0.875em;
       line-height: inherit;
     }
 

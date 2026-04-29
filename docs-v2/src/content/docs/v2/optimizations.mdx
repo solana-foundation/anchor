@@ -1,0 +1,88 @@
+---
+title: Optimizations
+description: A tour through where v2's binary and CU savings come from, including bump precomputation, the on-curve check skip, wincode events, and more.
+---
+
+The bench numbers in [the v2 overview](/docs/v2/#bench-numbers) come from a stack of small wins rather than a single dramatic change. This page walks through each one in turn, with a note on what it costs and when it applies.
+
+## Macro-time PDA bump precomputation
+
+When every seed in a `seeds = [...]{:rs}` clause is a byte literal, the derive runs `find_program_address{:rs}` at compile time and bakes the canonical bump in as a `const{:rs}`. The runtime PDA search is then skipped entirely on every invocation:
+
+```rust title="lib.rs" showLineNumbers=false
+#[account(seeds = [b"counter"], bump)]
+pub counter: Account<Counter>,
+```
+
+For the example above, the macro precomputes the bump for `[b"counter"]{:rs}` against the `declare_id!{:rs}` program ID at compile time. When the seeds parameterize on a runtime value, such as `[b"profile", user.address().as_ref()]{:rs}`, v2 falls back to the runtime search path. Precomputed bumps save roughly 1,500 CU per validated PDA.
+
+## Skip the on-curve check for program-owned PDAs
+
+A program-owned account must have been created via signed CPI in the first place, and that creation already performed the on-curve check. If v2 observes that the program owns the account on a subsequent load, it can skip re-running the curve check, leaving verification as a hash-and-compare against the canonical bump. The skip saves roughly 1,000 CU per verify.
+
+## Wincode events by default
+
+The default `#[event]{:rs}` encoder is wincode configured to be borsh-wire-compatible (u8 enum tags, u32 little-endian length prefixes, no alignment checks). Wincode is meaningfully cheaper than borsh on SBF while still handling `Vec{:rs}`, `String{:rs}`, `Option{:rs}`, and enums. The result is roughly 3 to 10 times cheaper emission than v1's borsh-encoded events.
+
+## `#[event(bytemuck)]{:rs}` for fixed-size events
+
+When every field of an event is fixed-size, `#[event(bytemuck)]{:rs}` swaps the encoder for a flat memcpy of the body. Because the struct's `repr(C){:rs}` Pod layout already matches the wire format, emission collapses to one discriminator write plus a single `memcpy{:rs}` call, with no per-field encoding step at all:
+
+```rust title="lib.rs" showLineNumbers=false
+#[event(bytemuck)]
+#[repr(C)]
+pub struct PriceUpdate {
+    pub price: PodU64,
+    pub timestamp: PodU64,
+}
+```
+
+## Alignment-1 Pod wrappers
+
+The `PodU64{:rs}`, `PodI128{:rs}`, `PodBool{:rs}`, and related wrappers all store their integers as `[u8; N]{:rs}` arrays. Because the alignment is 1, the entire `#[account]{:rs}` struct can be cast directly from the account's raw bytes with no explicit alignment dance, which collapses what would otherwise be a deserialization step into a pointer cast. See [Pod types](/docs/v2/pod-types/) for the full set of wrappers.
+
+## `PodVec<T, MAX>{:rs}`
+
+`PodVec<T, MAX>{:rs}` is a fixed-capacity vector with a `u16{:rs}` length prefix, stored inline in the account rather than behind a heap pointer. The capacity bound lives in the type, so the compiler knows the exact size at every call site and the wrapper avoids both heap allocation and the rent costs of dynamic resizing.
+
+## Typed `CpiHandle{:rs}` enables unchecked CPI
+
+`CpiContext::invoke(){:rs}` calls pinocchio's `invoke_signed_unchecked{:rs}` rather than the checked variant. The unchecked path would be undefined behavior under stale-borrow aliasing, but Rust's borrow checker rules out concurrent typed access at compile time, which makes the runtime `RefCell{:rs}` check redundant. The result is one fewer runtime check per CPI and a former runtime panic that is now a compile error.
+
+## `const-rent` feature
+
+The `const-rent` feature bakes the rent formula into the binary using pinocchio's `DEFAULT_LAMPORTS_PER_BYTE{:rs}` and `ACCOUNT_STORAGE_OVERHEAD{:rs}` constants, which lets `create_account{:rs}` skip the `Rent::get(){:rs}` sysvar call entirely. The savings come out to roughly 85 CU per `create_account{:rs}` invocation.
+
+<Callout variant="warning" title="Off by default for forward-compatibility">
+  If Solana changes the rent formula (e.g., SIMD-0194), programs built with `const-rent` would compute stale values until rebuilt. The default path calls `Rent::get(){:rs}` at init time so programs pick up runtime formula changes transparently. Enable `const-rent` only when the ~85 CU per `create_account{:rs}` matters more than rent-formula drift safety.
+</Callout>
+
+## Guardrails compile away
+
+The `guardrails` feature (on by default) emits a small set of runtime safety nets, including `check_program_id{:rs}` on dispatch and `is_writable{:rs}` enforcement inside `load_mut{:rs}`. Disabling the feature drops those emits entirely for a smaller binary at no runtime cost, saving roughly 300 bytes of binary and 1 to 2 CU per account.
+
+## `remaining_accounts(){:rs}` is lazy-cached
+
+The first call to `ctx.remaining_accounts(){:rs}` walks the cursor, materializes a `Vec<AccountView>{:rs}`, and caches the result. Subsequent calls clone the cached vec, and instructions that never call `remaining_accounts(){:rs}` at all pay zero cost for the feature.
+
+## Mask-based duplicate-account check
+
+Duplicate mutable accounts surface as `ConstraintDuplicateMutableAccount{:rs}` errors. The detection works through a 256-bit `MUT_MASK{:rs}` constant generated per `#[derive(Accounts)]{:rs}` plus a runtime bitvec, AND'd together at dispatch time. The bitwise check covers the whole accounts struct in one operation rather than running a per-pair comparison.
+
+## Drop `#[inline(never)]{:rs}` on cold error helpers
+
+v2 lets the compiler inline error-construction helpers freely. The size cost is negligible because errors are infrequent, and removing `#[inline(never)]{:rs}` lets the optimizer fold error returns into a single jump rather than a real function call.
+
+## Smaller core derive
+
+The core `#[derive(Accounts)]{:rs}` macro is roughly 3,700 lines of code, down from about 11,400 lines in v1. Most of the logic moved out of the macro and into trait impls, which the compiler can optimize more aggressively than per-call macro expansion.
+
+## Per-program savings
+
+| Program | v1 binary | v2 binary | v1 CU | v2 CU |
+| --- | --- | --- | --- | --- |
+| `helloworld` | 124 KB | 6.9 KB | 5,800 | 1,383 |
+| `vault` deposit | 106 KB | 5.9 KB | 12,300 | 1,910 |
+| `multisig` create | 164 KB | 31 KB | 7,200 | 2,363 |
+
+Numbers are illustrative. See the full bench table in the [v2 overview](/docs/v2/#bench-numbers).

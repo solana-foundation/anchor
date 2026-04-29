@@ -1,0 +1,111 @@
+---
+title: Extensibility
+description: How to write your own account primitives and constraint markers without forking the Anchor macro.
+---
+
+In v1, anything the macro did not already support meant forking the derive and maintaining a parallel branch of Anchor. v2 moves most of that logic out of the macro and behind traits, so anyone can ship new account primitives, constraint markers, or program-ID identities from a separate crate without touching `anchor-lang-v2`.
+
+The core trait surface that extensions implement is intentionally small:
+
+| Trait | What it adds |
+| --- | --- |
+| `AnchorAccount{:rs}` | A new account wrapper (load/exit lifecycle, owner/disc validation) |
+| `AccountConstraint<A>{:rs}` | A new namespaced constraint (`#[account(my_namespace::key = value)]{:rs}`) |
+| `Id{:rs}` | A new well-known program for `Program<T>{:rs}` |
+| `Discriminator{:rs}` | A custom 8-byte discriminator on an account or instruction |
+
+## `AnchorAccount{:rs}`
+
+Implementing `AnchorAccount{:rs}` on a wrapper type is what makes it usable as a field in `#[derive(Accounts)]{:rs}`. The trait covers the full lifecycle of an account: load, optional mutation, and exit:
+
+```rust title="my_wrapper.rs" showLineNumbers=false
+use anchor_lang_v2::prelude::*;
+use anchor_lang_v2::traits::{AnchorAccount, CpiHandle};
+
+pub struct MyWrapper<T: Pod> {
+    view: AccountView,
+    data: T,
+}
+
+impl<T: Pod + Discriminator + Owner + 'static> AnchorAccount for MyWrapper<T> {
+    type Data = T;
+    const MIN_DATA_LEN: usize = 8 + core::mem::size_of::<T>();
+
+    fn load(view: AccountView, program_id: &Address) -> Result<Self> {
+        // Validate owner, discriminator, size.
+        // Pointer-cast bytes into `T`.
+        // Return Self.
+    }
+
+    unsafe fn load_mut(view: AccountView, program_id: &Address) -> Result<Self> {
+        // Same as load, plus is_writable check + acquire mut borrow flag.
+    }
+
+    fn exit(&mut self) -> ProgramResult {
+        // Persist any changes back to the account buffer.
+        Ok(())
+    }
+
+    fn account(&self) -> &AccountView { &self.view }
+    fn cpi_handle(&self) -> CpiHandle<'_> { CpiHandle::from_view(&self.view, false) }
+    fn cpi_handle_mut(&mut self) -> CpiHandle<'_> { CpiHandle::from_view(&self.view, true) }
+}
+```
+
+Once implemented, `MyWrapper<T>{:rs}` is a first-class field type:
+
+```rust title="lib.rs" showLineNumbers=false
+#[derive(Accounts)]
+pub struct UseMine {
+    pub data: MyWrapper<MyData>,
+}
+```
+
+A real-world example of this pattern is [`anchor-dynamic-account`](https://github.com/chen-robert/anchor-dynamic-account), which adds zero-copy accounts with auto-reallocating `Vec<T>{:rs}` and `String{:rs}` tails. The entire wrapper lives in a third-party crate, with no changes required to v2 itself.
+
+## `AccountConstraint<A>{:rs}`
+
+To add a new namespaced constraint, implement `AccountConstraint<A>{:rs}` on a marker type. The trait's four methods correspond to the phases of a constraint's lifecycle:
+
+```rust title="lib.rs" showLineNumbers=false
+pub trait AccountConstraint<A> {
+    type Value;
+    fn init(account: &mut A, value: &Self::Value) -> Result<()>;
+    fn check(account: &A, value: &Self::Value) -> Result<()>;
+    fn update(account: &mut A, value: &Self::Value) -> Result<()>;
+    fn exit(account: &mut A, value: &Self::Value) -> Result<()>;
+}
+```
+
+- `init{:rs}` runs after account creation (under `init{:rs}` or the create-branch of `init_if_needed{:rs}`)
+- `check{:rs}` runs on existing accounts and on non-init fields
+- `update{:rs}` runs inside an `update(...){:rs}` constraint clause
+- `exit{:rs}` always runs during the account exit phase
+
+Once the impl is in scope, a constraint marker named `my_namespace::key{:rs}` becomes available as `#[account(my_namespace::key = value)]{:rs}` on any account field. The `anchor-spl-v2` crate is built on top of this pattern, using it to implement `token::*{:rs}`, `mint::*{:rs}`, and `associated_token::*{:rs}` as a downstream crate rather than baking them into the core derive.
+
+## `Id{:rs}` for `Program<T>{:rs}`
+
+To add a new well-known program type that works with `Program<T>{:rs}`, implement `Id{:rs}` on a unit marker struct. The trait's single method returns the program's canonical address:
+
+```rust title="lib.rs" showLineNumbers=false
+pub struct MyProgram;
+impl Id for MyProgram {
+    fn id() -> Address {
+        Address::new_from_array([/* 32 bytes */])
+    }
+}
+
+#[derive(Accounts)]
+pub struct UseMine {
+    pub my_program: Program<MyProgram>,
+}
+```
+
+At load time, `Program<MyProgram>{:rs}` validates that the account is `executable{:rs}` and that its address matches `MyProgram::id(){:rs}`.
+
+## Why this works
+
+The core derive shrinks from roughly 11,400 lines to 3,700 because the generated code now goes through trait calls like `<MyType as AnchorAccount>::load(view, program_id){:rs}` rather than inlining all of the validation logic per field. Adding a new account wrapper or constraint becomes a trait implementation in a downstream crate, not a fork of the macro itself.
+
+For the full trait surface, see [`lang-v2/src/traits.rs`](https://github.com/solana-foundation/anchor/blob/anchor-next/lang-v2/src/traits.rs) on the `anchor-next` branch.

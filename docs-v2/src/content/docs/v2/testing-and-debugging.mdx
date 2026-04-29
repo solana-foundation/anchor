@@ -1,0 +1,104 @@
+---
+title: Testing and debugging
+description: Host-side tests with `anchor-v2-testing`, the `--profile` flamegraph pipeline, and the `anchor debugger` TUI.
+---
+
+v2 ships testing and debugging tooling as first-class parts of the workflow rather than as afterthoughts. The host-side test harness, the per-test profile traces, and the debugger TUI all share the same trace pipeline, so they stay in sync as the runtime evolves.
+
+## `anchor-v2-testing`
+
+`anchor-v2-testing` is a drop-in replacement for `LiteSVM::new(){:rs}` that, when built with the `profile` feature, records SBF register traces per test under `target/anchor-v2-profile/<test_name>/{:rs}`. The crate is a thin layer over `litesvm`, so existing test patterns continue to work:
+
+```toml title="Cargo.toml"
+[dev-dependencies]
+anchor-v2-testing = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next", features = ["profile"] }
+```
+
+Use `svm(){:rs}` instead of `LiteSVM::new(){:rs}`:
+
+```rust title="tests/integration.rs" showLineNumbers=false
+use anchor_v2_testing::{svm, Keypair, Signer};
+
+#[test]
+fn deposit_and_withdraw() {
+    let mut svm = svm();
+    let payer = Keypair::new();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    // ... build and send transactions
+}
+```
+
+Without the `profile` feature enabled, `svm(){:rs}` is exactly `LiteSVM::new(){:rs}` with no runtime overhead, so production-style test runs do not pay for the trace-recording machinery.
+
+For convenience, the crate also re-exports `Keypair{:rs}`, `Signer{:rs}`, `Message{:rs}`, `VersionedMessage{:rs}`, and `VersionedTransaction{:rs}`, so test files do not need to declare a direct dependency on each individual `solana-*` crate.
+
+## `$ [34manchor[0m test [2m--profile[0m{:ansi}`
+
+The `--profile` flag builds the test suite with the `profile` feature on and post-processes the resulting register traces into per-test flamegraphs:
+
+```ansi
+$ [34manchor[0m test [2m--profile[0m
+```
+
+Trace files land under `target/anchor-v2-profile/<sanitized_test_name>/`:
+
+```text
+target/anchor-v2-profile/
+└── deposit_and_withdraw/
+    ├── 0001__tx1.regs          # tx 1, top-level invocation
+    ├── 0001__tx1.insns
+    ├── 0001__tx1.program_id
+    ├── 0002__tx1.regs          # tx 1, CPI into another program
+    ├── 0002__tx1.insns
+    ├── 0002__tx1.program_id
+    ├── 0003__tx2.regs          # tx 2
+    └── ...
+```
+
+The `NNNN` counter is monotonic across the test, with each CPI getting its own index, and `txN` identifies the outer transaction that owns the trace. Both counters reset between processes, so traces from different test runs do not collide.
+
+## `$ [34manchor[0m debugger{:ansi}`
+
+The debugger is a foundry-style SBF instruction stepper built on the same per-test traces that `--profile{:ansi}` produces. If traces do not already exist, the command invokes the trace pipeline first and then launches the TUI:
+
+```ansi
+$ [34manchor[0m debugger
+```
+
+The TUI surfaces several views simultaneously:
+
+- The current SBF instruction with the four registers that it reads or writes
+- The Rust source line that the instruction was lowered from
+- A scrubbable timeline where left and right arrows step one instruction at a time, and up and down jump between source lines
+- A call stack that includes CPI invocations alongside the program's own frames
+- Per-instruction CU cost annotated against the timeline
+
+### `gdb` mode
+
+For programs that need a full breakpoint-driven debugger (rather than instruction stepping), `$ [34manchor[0m debugger [2m--gdb[0m{:ansi}` activates the `solana-sbpf` gdb-stub. The runtime blocks on the `VM_DEBUG_PORT{:ansi}` environment variable until a gdb client connects, after which the usual breakpoint, step, and inspect commands work as expected.
+
+## Test scaffolding inside `programs/<name>/tests/`
+
+`$ [34manchor[0m test{:ansi}` runs Rust integration tests under `programs/<name>/tests/`. A typical scaffold looks like:
+
+```rust title="programs/counter/tests/init.rs" showLineNumbers=false
+use anchor_v2_testing::{svm, Keypair, Signer};
+use counter::accounts::InitResolved;
+use counter::instruction::Init;
+
+#[test]
+fn init_creates_counter() {
+    let mut svm = svm();
+    let payer = Keypair::new();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+
+    let metas = InitResolved { payer: payer.pubkey() }.to_account_metas(None);
+    // ... assemble and send transaction
+}
+```
+
+The handler-side `Resolved{:rs}` struct (see [CPI mechanics](/docs/v2/cpi/#the-resolved-struct)) is also what test code uses to build instructions, so the shape stays consistent end-to-end.
+
+## What the debugger isn't
+
+The debugger is intentionally not a full source-level Rust debugger. Variables and breakpoint expressions are expressed at the SBF level, in terms of registers, raw memory, and instruction program counters. The Rust source view is a best-effort line-mapping from `.debug_info{:rs}`, which is enough to navigate but not to inspect Rust-level values. For full source debugging, drop into `--gdb{:ansi}` mode and connect a gdb client instead.

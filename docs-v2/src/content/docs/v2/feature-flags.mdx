@@ -1,0 +1,86 @@
+---
+title: Feature flags
+description: Reference for the `alloc`, `guardrails`, `account-resize`, `const-rent`, and `compat` feature flags on `anchor-lang-v2`.
+---
+
+`anchor-lang-v2` ships seven feature flags, three of which are on by default and the other four opt-in. Most programs never need to touch them, but tuning the set is useful for trimming binary size and CU cost in production builds.
+
+| Feature | Default | Effect |
+| --- | --- | --- |
+| `alloc` | on | Pulls in `extern crate alloc{:rs}` for `Vec{:rs}`, `String{:rs}`, `BTreeMap`. |
+| `guardrails` | on | Runtime safety checks on dispatch and `load_mut{:rs}`. |
+| `account-resize` | on | Enables `realloc_account{:rs}` and pinocchio's resize hook. |
+| `const-rent` | off | Folds the rent formula to a compile-time constant. |
+| `compat` | off | Exposes `debug!{:rs}` (v1-shape `format!{:rs}`-based logging). |
+| `idl-build` | off | IDL assembly machinery. Not shipped in production binaries. |
+| `testing` | off | Enables `anchor_lang_v2::testing{:rs}` with mock account scaffolding. |
+
+## `alloc` (default)
+
+The `alloc` feature enables `extern crate alloc{:rs}` and re-exports the `alloc` crate under `anchor_lang_v2::__alloc{:rs}` so generated macro code can reach `Vec{:rs}`, `String{:rs}`, and other heap-allocated types without forcing each user crate to import them. Disabling the feature is only sensible for embedded targets that have no heap, and the ergonomic cost is significant: most realistic user code that touches `Vec{:rs}` or `String{:rs}` will not compile with `alloc` turned off.
+
+## `guardrails` (default)
+
+The `guardrails` feature enables a small set of runtime checks that catch caller bugs the borrow checker cannot see statically:
+
+- `check_program_id{:rs}` on dispatch rejects misrouted instructions
+- `is_writable{:rs}` enforcement in `load_mut{:rs}` panics if the account is not marked `mut{:rs}`
+
+Disabling the feature drops those emits entirely, which saves roughly 300 bytes of binary and 1 to 2 CU per account. Only turn it off in production after the program has been thoroughly tested, since the runtime safety net is what catches accidental misuse during development:
+
+```toml title="Cargo.toml"
+[dependencies]
+anchor-lang-v2 = { git = "...", branch = "anchor-next", default-features = false, features = ["alloc", "account-resize"] }
+```
+
+## `account-resize` (default)
+
+The `account-resize` feature enables `realloc_account{:rs}` along with the pinocchio entrypoint hook that writes `data_len{:rs}` into `RuntimeAccount.padding{:rs}` for every non-duplicate account, which is what allows `AccountView::resize(){:rs}` to enforce the `MAX_PERMITTED_DATA_INCREASE{:rs}` cap.
+
+Disabling the feature saves roughly 300 bytes of binary and 2 CU per account, but only when the program never calls `realloc_account{:rs}` in the first place. Turning it off without also removing the call sites silently corrupts the stored `original_data_len{:rs}`, which is why the gate is enforced at compile time rather than at runtime.
+
+## `const-rent` (off)
+
+The `const-rent` feature folds `rent_exempt_lamports{:rs}` to a compile-time constant by combining pinocchio's `DEFAULT_LAMPORTS_PER_BYTE{:rs}` and `ACCOUNT_STORAGE_OVERHEAD{:rs}`, which lets `create_account{:rs}` skip the `Rent::get(){:rs}` sysvar call entirely.
+
+The savings come out to roughly 85 CU per `create_account{:rs}` CPI. The trade-off is that if Solana changes the rent formula in the future (for example, through a SIMD like SIMD-0194), programs built with `const-rent` will compute stale values until they are rebuilt. The feature is off by default precisely so programs pick up runtime formula changes transparently.
+
+Reach for `const-rent` when the 85 CU per `create_account{:rs}` matters more than rent-formula drift safety, and when the program is built and re-deployed often enough that refreshing the constant is part of the normal release cycle.
+
+## `compat` (off)
+
+The `compat` feature exposes `debug!(msg){:rs}`, a `msg!{:rs}`-shaped macro that accepts any Rust format string (including `{:?}{:rs}`, `{:x}{:rs}`, and dynamic-width specifiers) by routing through `alloc::format!{:rs}`. It is most useful when porting v1 programs that lean heavily on format-string flexibility.
+
+The trade-off is cost. `debug!{:rs}` is meaningfully more expensive than the native `msg!{:rs}` because of the heap allocation and fmt-trait dispatch, so the feature is off by default to keep production binaries from accidentally shipping the heavier path.
+
+## `idl-build` (off)
+
+The `idl-build` feature enables IDL serialization. It pulls in `serde_json` and emits structural type definitions for accounts, instructions, and events, and is activated automatically by `$ [34manchor[0m build{:ansi}` when generating IDLs. The feature is not shipped in deployed BPF binaries.
+
+## `testing` (off)
+
+The `testing` feature exposes the `anchor_lang_v2::testing{:rs}` module, which provides stack-backed mock pinocchio types (such as `AccountView{:rs}` and the SBF input buffer) that the `lang-v2/tests/` integration tests and Miri witnesses depend on. Enabling `testing` also turns on `const-rent` so host-side tests can exercise rent-dependent helpers without needing SVM sysvar support:
+
+```ansi
+$ [34mcargo[0m test [2m-p[0m anchor-lang-v2 [2m--features[0m testing
+```
+
+The feature is off by default so production BPF binaries never ship the test scaffold.
+
+## Recipe: minimal binary, prod profile
+
+```toml title="Cargo.toml"
+[dependencies]
+anchor-lang-v2 = { git = "...", branch = "anchor-next", default-features = false, features = ["alloc"] }
+```
+
+This profile drops both `guardrails` and `account-resize` for the smallest possible binary. Only use it once the program has been thoroughly tested and you have verified that no instruction calls `realloc_account{:rs}`.
+
+## Recipe: maximum CU savings
+
+```toml title="Cargo.toml"
+[dependencies]
+anchor-lang-v2 = { git = "...", branch = "anchor-next", default-features = false, features = ["alloc", "const-rent"] }
+```
+
+This profile adds rent-formula constant folding on top of the minimal recipe. Rebuild and redeploy whenever Solana changes the rent formula so the constants stay in sync.

@@ -1,0 +1,90 @@
+---
+title: Migrating from v1
+description: The v1 to v2 rename table and the `compat` feature for porting larger v1 programs.
+---
+
+Most v1 programs port to v2 with the renames in the table below. The ones that don't are usually relying on `<'info>{:rs}` lifetimes, the `Account<'info, T>{:rs}` API, or `solana_program{:rs}` types directly.
+
+## Rename table
+
+| v1 | v2 |
+| --- | --- |
+| `solana_program` | `pinocchio` |
+| `std{:rs}` required | `#![no_std]{:rs}` (`alloc` is a default feature) |
+| `<'info>{:rs}` lifetimes everywhere | removed; pinocchio's account model is statically scoped |
+| `Context<T>{:rs}` in handlers | `&mut Context<T>{:rs}` (constraints and exit hooks mutate context state) |
+| `Pubkey{:rs}` | `Address{:rs}` (drop-in 32-byte replacement) |
+| `Account<'info, T>{:rs}` | `Account<T>{:rs}` (zero-copy by default; `T: Pod{:rs}`) |
+| `Account<'info, T>{:rs}` with `Vec` / `String` | `BorshAccount<T>{:rs}` |
+| `AccountLoader<'info, T>{:rs}` | `Account<T>{:rs}` (already zero-copy) |
+| `has_one = field{:rs}` | `address = field{:rs}` (see [deprecation](#has-one-deprecated)) |
+
+## What changes in practice
+
+1. v2 removes the `<'info>{:rs}` lifetime parameter entirely because pinocchio gives accounts static scope at the program-handler boundary. Search-and-replace `<'info>` to nothing and `<'info, ` to `<` handles most ports.
+
+2. Handler signatures take `&mut Context<T>{:rs}` instead of `Context<T>{:rs}` by value, which lets constraint hooks and exit logic write back to the same context. Most user code is unchanged because `ctx.accounts.field{:rs}` already worked through `DerefMut{:rs}`.
+
+3. `Account<T>{:rs}` is now zero-copy by default, where v1 deserialized through borsh on every load. The new wrapper requires `T: Pod{:rs}` (fixed size, `#[repr(C)]{:rs}`) so loading is a pointer cast rather than a serialize round-trip. For accounts whose fields are variable-length, switch over to [`BorshAccount<T>{:rs}`](/docs/v2/account-types/#borshaccount-t) instead.
+
+4. `Pubkey{:rs}` is renamed to `Address{:rs}`. The two are the same 32-byte type at the binary level, just with a different name in source. The `solana_address::declare_id!{:rs}` macro is re-exported under the v2 prelude, so `declare_id!{:rs}` itself continues to work without an import change.
+
+## `has_one` deprecated
+
+In v1, `has_one = field{:rs}` checked that an account stored a pubkey field equal to another account's address. v2 prefers the more general `address = field{:rs}` constraint, which can compare an account's address against any expression rather than only a stored field. Both forms still parse, but `has_one{:rs}` is scheduled for removal in a later alpha and migration amounts to renaming a single token:
+
+```rust title="lib.rs" showLineNumbers=false del={4} add={5}
+#[derive(Accounts)]
+pub struct Withdraw {
+    #[account(
+        has_one = creator,
+        address = config.creator,
+        seeds = [b"vault", creator.address().as_ref()],
+        bump
+    )]
+    pub config: Account<Config>,
+    pub creator: UncheckedAccount,
+}
+```
+
+## The `compat` feature
+
+Larger programs that rely on v1-shape logging can opt into the `compat` feature, which exposes `debug!{:rs}`, a `msg!{:rs}`-shaped macro that accepts any Rust format string (including `{:?}{:rs}`, `{:x}{:rs}`, and dynamic width) by routing through `alloc::format!{:rs}`:
+
+```toml title="Cargo.toml"
+[dependencies]
+anchor-lang-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next", features = ["compat"] }
+```
+
+The `compat` feature is off by default because heap allocation and fmt-trait dispatch are meaningfully more expensive than v2's native `msg!{:rs}`. Reach for `debug!{:rs}` only where format-string flexibility actually matters and the extra cost is acceptable.
+
+## Per-handler differences
+
+| v1 handler | v2 handler |
+| --- | --- |
+| `pub fn ix(ctx: Context<MyAccs>, x: u64) -> Result<()>{:rs}` | `pub fn ix(ctx: &mut Context<MyAccs>, x: u64) -> Result<()>{:rs}` |
+| `ctx.accounts.field.key(){:rs}` | `ctx.accounts.field.address(){:rs}` (or `.account().address(){:rs}` for raw views) |
+| `ctx.bumps.get("name").unwrap(){:rs}` | `ctx.bumps.name{:rs}` (typed field; populated by macro) |
+| `**ctx.accounts.field.to_account_info().lamports.borrow_mut(){:rs}` | `ctx.accounts.field.account().set_lamports(new){:rs}` |
+
+## Crate dependencies
+
+v2 splits the SPL surface into a separate crate, mirroring v1's `anchor-spl` split:
+
+```toml title="Cargo.toml" del={2-3} add={4-5}
+[dependencies]
+anchor-lang = "1.0.1"
+anchor-spl = "1.0.1"
+anchor-lang-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+anchor-spl-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+```
+
+## What's not yet ported
+
+The v2 prelude is intentionally narrow during alpha. The following are stable in v1 but not yet exposed in v2:
+
+- The full `anchor-cli` IDL serialization surface (basic IDL builds work; client-codegen for some less-common shapes is still being ported)
+- Some `anchor-spl` constraints (`token_metadata::*`)
+- The `lazy-account` feature and its compatibility with `#[borsh]{:rs}` attributes (see [v1 `1.0.1` release notes](/docs/updates/release-notes/1-0-1/#fix-user-provided-borsh-attributes-in-derives))
+
+If a migration blocker isn't on this list, file an issue tagged `v2` against [solana-foundation/anchor](https://github.com/solana-foundation/anchor/issues).
