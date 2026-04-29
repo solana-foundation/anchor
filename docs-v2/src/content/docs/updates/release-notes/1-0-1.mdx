@@ -1,0 +1,57 @@
+---
+title: 1.0.1
+description: Anchor release notes for 1.0.1.
+---
+
+`1.0.1` is a patch release that fixes a regression in `AnchorSerialize{:rs}` and `AnchorDeserialize{:rs}` when user-supplied `#[borsh(...)]{:rs}` attributes are present (see [user-provided `borsh` attributes fix](#fix-user-provided-borsh-attributes-in-derives)).
+
+---
+
+## How to upgrade
+
+To bump only the affected crate in an existing `1.0.0` workspace:
+
+```ansi
+$ [34mcargo[0m update anchor-derive-serde
+```
+
+Otherwise, install the new `anchor-cli` via AVM:
+
+```ansi
+$ [34mavm[0m install 1.0.1
+```
+
+Or directly from the repository:
+
+```ansi
+$ [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor [2m--tag[0m v1.0.1 anchor-cli [2m--locked[0m
+```
+
+Then update Anchor crate(s) and TS package(s) to `1.0.1`.
+
+## Recommended Solana version
+
+The recommended Solana version is `3.1.10`, the same as [v1.0.0's recommended Solana version](./1-0-0#recommended-solana-version).
+
+## Lang
+
+### Fix user-provided `borsh` attributes in derives
+
+Structs and enums carrying custom `#[borsh(...)]{:rs}` attributes (for example, `#[borsh(skip)]{:rs}` or `#[borsh(use_discriminant = true)]{:rs}`) now compile correctly under `#[derive(AnchorSerialize, AnchorDeserialize)]{:rs}`:
+
+```rust showLineNumbers=false
+#[derive(AnchorSerialize, AnchorDeserialize)]
+#[borsh(use_discriminant = true)]
+pub enum MyEnum {
+    A = 0,
+    B = 5,
+}
+```
+
+Previously, the derive macros emitted their own item-level `#[borsh]{:rs}` attribute alongside any user-supplied one. Only a single item-level `#[borsh]{:rs}` attribute is permitted, so the duplicate produced a compile error. The macros now extract user-provided attributes and merge them with the generated ones.
+
+The `#[borsh]{:rs}` attribute is not supported when the `lazy-account` feature is enabled. The only accepted form under `lazy-account` is `#[borsh(use_discriminant = false)]{:rs}`.
+
+---
+
+See the full list of notable changes in the [CHANGELOG](https://github.com/solana-foundation/anchor/blob/v1.0.1/CHANGELOG.md#101---2026-04-16).

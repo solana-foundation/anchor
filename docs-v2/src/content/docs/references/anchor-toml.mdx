@@ -134,7 +134,7 @@ gossip_host = "127.0.0.1"                       # Gossip DNS name or IP address 
 faucet_sol = 1337                               # Give the faucet address this much SOL in genesis.
 faucet_port = 1337                              # Enable the faucet on this port.
 dynamic_port_range = "1337 - 13337"             # Range to use for dynamically assigned ports.
-bind_address = "0.0.0.0"                        # IP address to bind the validator ports.
+bind_address = "127.0.0.1"                      # IP address to bind the validator ports.
 ```
 
 ### `test.validator.clone`
@@ -173,7 +173,7 @@ Overrides toolchain versions for the workspace, similar to [`rust-toolchain.toml
 
 ```toml
 [toolchain]
-anchor_version = "1.0.0"    # `anchor-cli` version to use (requires `avm`)
+anchor_version = "1.0.1"    # `anchor-cli` version to use (requires `avm`)
 solana_version = "3.1.10"   # Solana version to use (applies to all Solana tools)
 package_manager = "yarn"    # JS package manager to use
 ```

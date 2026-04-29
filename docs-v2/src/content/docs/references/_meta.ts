@@ -12,6 +12,7 @@ export default {
     'type-conversion': { order: 6 },
     'verifiable-builds': { order: 7 },
     'security-exploits': { order: 8 },
-    examples: { order: 9 },
+    footguns: { order: 9 },
+    examples: { order: 10 },
   },
 } satisfies MetaFile

@@ -89,7 +89,9 @@ The `anchor` CLI no longer depends on the external `solana` CLI binary. Native i
 
 ### `[34manchor[0m test{:ansi}` and `[34manchor[0m localnet{:ansi}` use Surfpool by default
 
-[Surfpool](https://github.com/txtx/surfpool) replaces `solana-test-validator` as the default local backend for `$ [34manchor[0m test{:ansi}` and `$ [34manchor[0m localnet{:ansi}`. Pass `[2m--validator legacy[0m{:ansi}` to keep using `solana-test-validator`.
+[Surfpool](https://github.com/solana-foundation/surfpool) replaces `solana-test-validator` as the default local backend for `$ [34manchor[0m test{:ansi}` and `$ [34manchor[0m localnet{:ansi}`. Pass `[2m--validator legacy[0m{:ansi}` to keep using `solana-test-validator`.
+
+Surfpool must be installed for the default `$ [34manchor[0m test{:ansi}` and `$ [34manchor[0m localnet{:ansi}` flow. Verify the installation with `$ [34msurfpool[0m [2m--version[0m{:ansi}`. The minimum recommended Surfpool version for use with Anchor is [`v1.1.2`](https://github.com/solana-foundation/surfpool/releases/tag/v1.1.2). For installation, follow the [Surfpool installation instructions](https://github.com/solana-foundation/surfpool?tab=readme-ov-file#installation).
 
 ### Duplicate mutable accounts disallowed by default
 

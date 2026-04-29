@@ -191,6 +191,16 @@ Reallocates program account space at the start of an instruction. `realloc::zero
 )]
 ```
 
+### `#[account(discriminator = <expr>)]{:rs}`
+
+Overrides the auto-generated discriminator for an account. Any constant expression is accepted. All-zero discriminators are rejected because zeroed discriminators are indistinguishable from newly allocated accounts; see [zeroed discriminators](/docs/references/footguns#zeroed-discriminators) for the security background.
+
+```rust showLineNumbers=false
+#[account(discriminator = 12)]
+#[account(discriminator = [1, 2, 3, 4])]
+#[account(discriminator = MY_CONST_DISCRIMINATOR)]
+```
+
 ## SPL constraints
 
 ### `#[account(token::*)]{:rs}`

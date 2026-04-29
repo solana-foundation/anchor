@@ -1,13 +1,15 @@
 ---
 title: Extensions
-description: Learn how to enable token extensions to add optional features to token mints and accounts using the Token Extensions Program (Token 2022) in an Anchor program.
+description: Enable token extensions to add optional features to token mints and accounts using the Token Extensions Program (Token 2022) in an Anchor program.
 ---
 
 ## What are token extensions?
 
-The Token Extensions Program (Token 2022) provides additional features through additional instructions referred to as extensions. Extensions are optional functionality that can be added to a token mint or token account. You can find the implementation of these extension instructions in the Token Extensions Program [source code](https://github.com/solana-program/token-2022/tree/main/program/src/extension).
+The [Token Extensions Program (Token 2022)](https://github.com/solana-program/token-2022) provides additional features through instructions referred to as extensions. Extensions are optional functionality added to a token mint or token account. The implementation lives in the program's [`extension{:rs}`](https://github.com/solana-program/token-2022/tree/main/program/src/extension) module.
 
-Each extension adds specific state that is usually initialized during mint or token account creation. When initializing either type of account, you can enable multiple extensions simultaneously to add different functionality. However, most extensions cannot be added after an account is created - you must include all desired extensions during the initial account creation. This is an important consideration when designing your token, as you'll need to plan ahead for which features you want your token to support. The exceptions to this, which require the account to be initialized before they are added, are:
+Each extension adds specific state that is usually initialized during mint or token account creation. Multiple extensions can be enabled simultaneously on the same account, but most extensions cannot be added after an account is initialized, so all desired extensions must be selected during the initial account creation.
+
+The exceptions, which require the account to be initialized before they are added, are:
 
 - `cpi-guard`
 - `memo-transfer`
@@ -17,15 +19,13 @@ Each extension adds specific state that is usually initialized during mint or to
 
 <Callout variant="note">
   Some extensions are incompatible with each other and cannot be enabled simultaneously on the same
-  token mint or token account. For example, you cannot combine the NonTransferable extension with
-  the TransferFeeConfig extension, since they have conflicting behaviors.
+  token mint or token account. For example, `NonTransferable{:rs}` cannot be combined with
+  `TransferFeeConfig{:rs}`, since they have conflicting behaviors.
 </Callout>
 
-The Token Extensions Program defines an [`ExtensionType`](https://github.com/solana-program/token-2022/blob/main/program/src/extension/mod.rs#L1054-L1139) enum that specifies all available extensions that can be added to a token mint or token account. Each variant represents a different extension with unique functionality.
+The Token Extensions Program defines an [`ExtensionType{:rs}`](https://github.com/solana-program/token-2022/blob/main/program/src/extension/mod.rs#L1054-L1139) enum that specifies all available extensions. Each variant represents a different extension with unique functionality:
 
-The `ExtensionType` enum is defined as follows:
-
-```rust title="Token Extensions"
+```rust title="extension/mod.rs" showLineNumbers=false
 /// Extensions that can be applied to mints or accounts.  Mint extensions must
 /// only be applied to mint accounts, and account extensions must only be
 /// applied to token holding accounts.

@@ -1,11 +1,11 @@
 ---
 title: Token integration with Anchor
-description: Learn how to interact with Solana's Token Programs from an Anchor Program.
+description: Learn how to interact with Solana's Token Programs from an Anchor program.
 ---
 
 ## What are token programs?
 
-On Solana, there are two main token programs (developed by [Anza](https://www.anza.xyz/), previously Solana Labs):
+On Solana, two main token programs (developed by [Anza](https://www.anza.xyz/), previously Solana Labs) issue and manage fungible and non-fungible tokens:
 
 1. [Token Program (Original)](https://github.com/solana-program/token)
    - Basic token functionality (mint, transfer, etc.)
@@ -17,9 +17,9 @@ On Solana, there are two main token programs (developed by [Anza](https://www.an
 
 ## Invoking token programs in an Anchor program
 
-The [`anchor-spl`](https://github.com/solana-foundation/anchor/tree/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/spl) crate simplifies the process of interacting with Solana's Token Programs in an Anchor program. This crate includes instructions and account types for both the original Token Program and the newer Token Extension Program (Token 2022).
+The [`anchor-spl`](https://github.com/solana-foundation/anchor/tree/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/spl) crate simplifies interacting with Solana's Token Programs from an Anchor program. It includes instructions and account types for both the original Token Program and the newer Token Extension Program (Token 2022).
 
-Simply add the `anchor-spl` crate as a dependency to your program and add `"anchor-spl/idl-build"` to idl-build feature list in `Cargo.toml`. For a walkthrough of how to create an Anchor program locally, see the [quickstart page](/docs/quickstart/local).
+Add the `anchor-spl` crate as a dependency and add `"anchor-spl/idl-build"` to the `idl-build` feature list in `Cargo.toml`. For a walkthrough of how to create an Anchor program locally, see the [quickstart page](/docs/quickstart/local).
 
 ```ansi title="Terminal"
 cargo add anchor-spl
@@ -33,8 +33,8 @@ idl-build = [
 ]
 
 [dependencies]
-anchor-lang = "1.0.0"
-anchor-spl = "1.0.0"
+anchor-lang = "1.0.1"
+anchor-spl = "1.0.1"
 ```
 
 ### Core modules
