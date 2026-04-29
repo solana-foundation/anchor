@@ -51,11 +51,10 @@ Internally, `Account<T>{:rs}` is a type alias for `Slab<T, HeaderOnly>{:rs}`. Th
 
 ## `BorshAccount<T>{:rs}`
 
-Use `BorshAccount<T>{:rs}` when an account's fields are variable-length, such as `Vec{:rs}`, `String{:rs}`, or enums with payload variants. The wrapper holds a borrow guard for the duration of the instruction, and `exit(){:rs}` serializes through that guard once the handler returns successfully:
+Use `BorshAccount<T>{:rs}` when an account's fields are variable-length, such as `Vec{:rs}`, `String{:rs}`, or enums with payload variants. The wrapper holds a borrow guard for the duration of the instruction, and `exit(){:rs}` serializes through that guard once the handler returns successfully. The `#[account(borsh)]{:rs}` form auto-derives `BorshSerialize{:rs}` and `BorshDeserialize{:rs}`, so the struct itself does not need a separate derive:
 
 ```rust title="lib.rs" showLineNumbers=false
-#[account]
-#[derive(BorshSerialize, BorshDeserialize)]
+#[account(borsh)]
 pub struct Profile {
     pub owner: Address,
     pub name: String,
@@ -66,16 +65,16 @@ pub struct Profile {
 pub struct UpdateProfile {
     #[account(mut)]
     pub owner: Signer,
-    #[account(mut, has_one = owner)]
+    #[account(mut, address = profile.owner)]
     pub profile: BorshAccount<Profile>,
 }
 ```
 
-If a CPI mutates the same account through another path while a `BorshAccount<T>{:rs}` is held, call `release_borrow(){:rs}` before the CPI and `reacquire_borrow_mut(){:rs}` afterwards. Re-acquiring re-runs the owner, discriminator, and size checks against the post-CPI state, so any changes the foreign program made are picked up cleanly.
+If a CPI mutates the same account through another path while a `BorshAccount<T>{:rs}` is held, call `release_borrow()?{:rs}` before the CPI and `reacquire_borrow_mut(program_id)?{:rs}` afterwards. `release_borrow{:rs}` first commits any in-memory changes back to the buffer so the CPI sees them, then drops the borrow guard. `reacquire_borrow_mut{:rs}` re-runs the owner, discriminator, and size checks against the post-CPI state and re-deserializes the data, so any changes the foreign program made are picked up cleanly.
 
 ## `Slab<H, Item>{:rs}`
 
-`Slab<H, Item>{:rs}` is the underlying primitive for a header struct followed by a variable-length tail of items. The on-disk layout is `[disc:8][H][len:u32][pad][Item; capacity]{:rs}`, and capacity is computed from the on-chain account size at load time, so the same code adapts to whatever capacity the account was allocated with:
+`Slab<H, Item>{:rs}` is the underlying primitive for a header struct followed by a variable-length tail of items. The on-disk layout is `[disc:8][H][len:u32][pad to align_of<Item>][Item; capacity]{:rs}`, and capacity is computed from `view.data_len(){:rs}` at load time, so the same code adapts to whatever capacity the account was allocated with:
 
 ```rust title="lib.rs" showLineNumbers=false
 #[derive(Pod, Zeroable, Copy, Clone)]
@@ -101,7 +100,7 @@ pub struct PostOrder {
 }
 ```
 
-The wrapper exposes the usual collection methods: `len(){:rs}`, `push(item){:rs}`, `pop(){:rs}`, `clear(){:rs}`, `as_slice(){:rs}`, `as_mut_slice(){:rs}`, `iter(){:rs}`, `iter_mut(){:rs}`, and `resize_to_capacity(){:rs}`. None of these touch lamports, so allocate and pay rent through `realloc_account{:rs}` or a separate CPI before pushing past the current capacity.
+The wrapper exposes the usual collection methods: `len(){:rs}`, `is_empty(){:rs}`, `is_full(){:rs}`, `capacity(){:rs}`, `try_push(item){:rs}`, `pop(){:rs}`, `clear(){:rs}`, `truncate(n){:rs}`, `swap_remove(idx){:rs}`, `as_slice(){:rs}`, `as_mut_slice(){:rs}`, `iter(){:rs}`, `iter_mut(){:rs}`, `first(){:rs}`, `last(){:rs}`, `get(idx){:rs}`, `get_mut(idx){:rs}`, and `resize_to_capacity(n){:rs}` (gated by the `account-resize` feature). `try_push{:rs}` returns `Err(ProgramError::AccountDataTooSmall){:rs}` when the tail is at capacity, since none of these methods touch lamports — allocate and pay rent through `resize_to_capacity{:rs}` plus a separate `top_up{:rs}` call before pushing past the current capacity.
 
 ## `Option<Account<T>>{:rs}`
 
@@ -152,7 +151,7 @@ pub struct Reset {
 
 ## `Program<T>{:rs}`
 
-`Program<T>{:rs}` is the wrapper used for CPI target accounts, parameterized by a marker type that implements `Id{:rs}`. The prelude already exports markers for the common cases (`System{:rs}`, `Token{:rs}`, `Token2022{:rs}`, `AssociatedToken{:rs}`, and `Memo{:rs}`), and at load time the wrapper validates both that `executable == true{:rs}` and that the account's address matches `T::id(){:rs}`.
+`Program<T>{:rs}` is the wrapper used for CPI target accounts, parameterized by a marker type that implements `Id{:rs}`. The `programs{:rs}` module defines markers for the common cases (`System{:rs}`, `Token{:rs}`, `Token2022{:rs}`, `AssociatedToken{:rs}`, and `Memo{:rs}`); the prelude re-exports `System{:rs}`, `Token{:rs}`, and `Token2022{:rs}`, while `AssociatedToken{:rs}` and `Memo{:rs}` are reachable through `anchor_lang_v2::programs{:rs}`. At load time the wrapper validates that the account's address matches `T::id(){:rs}`, and (when the `guardrails` feature is on, which is the default) that `executable == true{:rs}`.
 
 ## `SystemAccount{:rs}`
 
@@ -164,7 +163,7 @@ pub struct Reset {
 
 ## `Sysvar<T>{:rs}`
 
-`Sysvar<T>{:rs}` provides account-form access to the runtime's sysvars, including `Clock{:rs}` and `Rent{:rs}`. Where the runtime exposes a syscall such as `Clock::get(){:rs}` or `Rent::get(){:rs}`, prefer that syscall over the wrapper. Reading through the sysvar account requires the caller to include its address in the transaction, which costs an extra account slot the syscall does not.
+`Sysvar<T>{:rs}` provides account-form access to the runtime's sysvars, including `Clock{:rs}` and `Rent{:rs}`. Internally the wrapper validates that the passed address matches `T::SYSVAR_ID{:rs}` and then calls pinocchio's `Sysvar::get(){:rs}` syscall to populate the data, so the account's payload is never deserialized. Where the handler does not need the typed account view, prefer the syscall directly (`Clock::get(){:rs}` or `Rent::get(){:rs}`) so the caller can drop the sysvar account from the transaction's account list.
 
 ## Trait surface
 

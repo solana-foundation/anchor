@@ -44,7 +44,7 @@ pub struct Listing {
 
 ## `PodVec<T, MAX>{:rs}`
 
-`PodVec<T, MAX>{:rs}` is a fixed-capacity vector with a `u16{:rs}` length prefix, stored inline in the account rather than behind a heap pointer. The on-disk layout is `[len:u16][pad:u16][T; MAX]{:rs}`, with `MAX{:rs}` baked into the type so the compiler knows the exact size at every site:
+`PodVec<T, MAX>{:rs}` is a fixed-capacity vector with a `u16{:rs}` length prefix, stored inline in the account rather than behind a heap pointer. The on-disk layout is `[len:u16][T; MAX]{:rs}` with no padding, since `T{:rs}` must itself be alignment-1 for the surrounding `#[account]{:rs}` struct to be `Pod{:rs}`. `MAX{:rs}` is baked into the type so the compiler knows the exact size at every site:
 
 ```rust title="lib.rs" showLineNumbers=false
 #[account]
@@ -57,7 +57,9 @@ pub struct MultisigConfig {
 }
 ```
 
-The wrapper exposes the standard collection methods: `.len(){:rs}`, `.capacity(){:rs}`, `.as_slice(){:rs}`, `.as_mut_slice(){:rs}`, `.push(item){:rs}`, `.pop(){:rs}`, `.clear(){:rs}`, `.iter(){:rs}`, `.iter_mut(){:rs}`, and `.set_from_slice(&[T]){:rs}`. Because capacity is fixed at the type level, the wrapper never reallocates, and pushing past `MAX{:rs}` returns `Err(ErrorCode::CapacityError){:rs}` rather than growing the buffer.
+The wrapper exposes both panicking and fallible variants of each mutator. The panicking forms are `.push(item){:rs}`, `.extend_from_slice(src){:rs}`, and `.set_from_slice(src){:rs}`; the fallible forms are `.try_push(item){:rs}` and `.try_extend_from_slice(src){:rs}`, which return `Result<(), CapacityError>{:rs}`. Read-side accessors (`.len(){:rs}`, `.is_empty(){:rs}`, `.is_full(){:rs}`, `.capacity(){:rs}`, `.as_slice(){:rs}`, `.as_mut_slice(){:rs}`, `.iter(){:rs}`, `.iter_mut(){:rs}`, `.pop(){:rs}`, `.clear(){:rs}`, `.truncate(n){:rs}`, indexing) come paired with `.try_*{:rs}` variants for vectors loaded from attacker-controlled bytes; call `.validate(){:rs}` once at load time to skip the per-access check.
+
+Because capacity is fixed at the type level, the wrapper never reallocates, and pushing past `MAX{:rs}` returns `Err(CapacityError){:rs}` (or panics on the non-`try_` variants) rather than growing the buffer.
 
 `PodVec{:rs}` is the right choice when the upper bound on length is small and known ahead of time. When the data really is open-ended, reach for `BorshAccount<T>{:rs}` with regular `Vec<T>{:rs}` fields instead.
 

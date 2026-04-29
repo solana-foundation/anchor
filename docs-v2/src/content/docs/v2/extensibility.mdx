@@ -16,41 +16,46 @@ The core trait surface that extensions implement is intentionally small:
 
 ## `AnchorAccount{:rs}`
 
-Implementing `AnchorAccount{:rs}` on a wrapper type is what makes it usable as a field in `#[derive(Accounts)]{:rs}`. The trait covers the full lifecycle of an account: load, optional mutation, and exit:
+Implementing `AnchorAccount{:rs}` on a wrapper type is what makes it usable as a field in `#[derive(Accounts)]{:rs}`. The trait extends `Deref<Target = Self::Data>{:rs}`, so consumers can reach the inner data directly through `&*account{:rs}`. The required methods are `load{:rs}`, `account{:rs}`, and (optionally) `load_mut{:rs}`, `exit{:rs}`, and `close{:rs}`; `cpi_handle{:rs}` and `cpi_handle_mut{:rs}` come with default impls:
 
 ```rust title="my_wrapper.rs" showLineNumbers=false
 use anchor_lang_v2::prelude::*;
-use anchor_lang_v2::traits::{AnchorAccount, CpiHandle};
+use core::ops::Deref;
 
 pub struct MyWrapper<T: Pod> {
     view: AccountView,
     data: T,
 }
 
-impl<T: Pod + Discriminator + Owner + 'static> AnchorAccount for MyWrapper<T> {
+impl<T: Pod> Deref for MyWrapper<T> {
+    type Target = T;
+    fn deref(&self) -> &T { &self.data }
+}
+
+impl<T: Pod + Discriminator + Owner> AnchorAccount for MyWrapper<T> {
     type Data = T;
     const MIN_DATA_LEN: usize = 8 + core::mem::size_of::<T>();
 
-    fn load(view: AccountView, program_id: &Address) -> Result<Self> {
-        // Validate owner, discriminator, size.
-        // Pointer-cast bytes into `T`.
-        // Return Self.
+    fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+        // Validate owner, discriminator, size, then pointer-cast bytes into `T`.
+        unimplemented!()
     }
 
-    unsafe fn load_mut(view: AccountView, program_id: &Address) -> Result<Self> {
-        // Same as load, plus is_writable check + acquire mut borrow flag.
-    }
-
-    fn exit(&mut self) -> ProgramResult {
-        // Persist any changes back to the account buffer.
-        Ok(())
+    unsafe fn load_mut(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+        // Same as load, plus an `is_writable` check and the mutable borrow flag.
+        unimplemented!()
     }
 
     fn account(&self) -> &AccountView { &self.view }
-    fn cpi_handle(&self) -> CpiHandle<'_> { CpiHandle::from_view(&self.view, false) }
-    fn cpi_handle_mut(&mut self) -> CpiHandle<'_> { CpiHandle::from_view(&self.view, true) }
+
+    fn exit(&mut self) -> ProgramResult {
+        // Persist any in-memory mutations back to the account buffer.
+        Ok(())
+    }
 }
 ```
+
+`MIN_DATA_LEN{:rs}` is consulted by the PDA verifier to decide whether the on-curve check can be skipped: a wrapper that requires a non-empty account must have been created via signed CPI (which already ran the curve check), and the framework folds that observation into a hash-and-compare. The trait defaults `MIN_DATA_LEN{:rs}` to `0{:rs}`, which forces the curve check; data-carrying wrappers should override it to the discriminator-plus-payload minimum.
 
 Once implemented, `MyWrapper<T>{:rs}` is a first-class field type:
 

@@ -94,12 +94,12 @@ pub fn create(ctx: &mut Context<Create>, threshold: u8) -> Result<()> {
 
 ## Re-entrant CPI into a `BorshAccount{:rs}` field
 
-If a CPI is going to mutate an account that the current instruction also holds in a `BorshAccount{:rs}` wrapper, the borrow has to be released before the call so the foreign program can write to it cleanly:
+If a CPI is going to mutate an account that the current instruction also holds in a `BorshAccount{:rs}` wrapper, the borrow has to be released before the call so the foreign program can write to it cleanly. `release_borrow(){:rs}` first commits the wrapper's in-memory `data{:rs}` back to the buffer and then drops the borrow guard, so the CPI sees the user's pre-call mutations:
 
 ```rust title="lib.rs" showLineNumbers=false
-ctx.accounts.profile.release_borrow();
+ctx.accounts.profile.release_borrow()?;
 some_program::ix::update_profile(cpi)?;
-ctx.accounts.profile.reacquire_borrow_mut()?;
+ctx.accounts.profile.reacquire_borrow_mut(ctx.program_id)?;
 ```
 
-After the call, `reacquire_borrow_mut(){:rs}` re-runs the owner, discriminator, and size checks before re-deserializing the account, which catches anything the foreign program changed about the account's shape. The zero-copy `Account<T>{:rs}` does not need this dance because its data is read on demand from the underlying buffer, so the CPI's writes are visible immediately on the next field access.
+After the call, `reacquire_borrow_mut(program_id){:rs}` re-runs the owner, discriminator, and size checks before re-deserializing the account, which catches anything the foreign program changed about the account's shape. The zero-copy `Account<T>{:rs}` does not need this dance because its data is read on demand from the underlying buffer, so the CPI's writes are visible immediately on the next field access.

@@ -19,7 +19,7 @@ pub mod counter {
 }
 ```
 
-Each handler takes `&mut Context<Accs>{:rs}` and a tuple of borsh-deserialized arguments. The instruction discriminator is `sha256("global:" + module_path + "::" + name)[..8]{:rs}` by default. Override per handler with `#[discrim = N]{:rs}` for compact 1-byte discriminators in CU-sensitive programs:
+Each handler takes `&mut Context<Accs>{:rs}` and a tuple of borsh-deserialized arguments. The instruction discriminator is `sha256("global:" + name)[..8]{:rs}` by default, where `name{:rs}` is the handler's identifier. Override per handler with `#[discrim = N]{:rs}` for compact 1-byte discriminators in CU-sensitive programs. The override is all-or-nothing: if any handler in the module uses `#[discrim = N]{:rs}`, every other handler must also declare a unique byte value:
 
 ```rust title="lib.rs" showLineNumbers=false
 #[program]
@@ -92,14 +92,35 @@ pub struct ExecuteTransfer {
 
 ## `#[account]{:rs}`
 
-The `#[account]{:rs}` attribute marks a struct as an account type. The macro generates a few things automatically:
+The `#[account]{:rs}` attribute marks a struct as an account type. It has two modes: the default zero-copy form and an opt-in borsh form.
 
-- Asserts `T: Pod + Zeroable{:rs}` at compile time
-- Adds a `Discriminator{:rs}` impl with `sha256("account:" + name)[..8]{:rs}`
-- Adds an `Owner{:rs}` impl returning `program_id{:rs}` (program-owned)
-- Generates an IDL type entry under `idl-build`
+### Default zero-copy form
 
-The struct must be `#[repr(C)]{:rs}` and every field must itself be `Pod{:rs}`. For variable-length data, switch to `BorshAccount<T>{:rs}` (which does not require `T: Pod{:rs}`) and pair the struct with `#[derive(BorshSerialize, BorshDeserialize)]{:rs}` instead.
+In the default form, the macro generates:
+
+- A compile-time assertion that every field is `bytemuck::Pod{:rs}`
+- A `#[repr(C)]{:rs}` layout with `#[derive(Clone, Copy)]{:rs}`
+- A `Discriminator{:rs}` impl with `sha256("account:" + name)[..8]{:rs}`
+- An `Owner{:rs}` impl returning `program_id{:rs}` (program-owned)
+- A no-padding assertion (struct size must equal the sum of field sizes)
+- An IDL type entry under `idl-build`
+
+The struct must be `#[repr(C)]{:rs}` (added by the macro) and every field must itself be `Pod{:rs}`. Pairing it with `Account<T>{:rs}` then yields a fully zero-copy load.
+
+### Borsh form
+
+For accounts whose fields are variable-length (`Vec{:rs}`, `String{:rs}`, enums with payload variants), use `#[account(borsh)]{:rs}` and pair the struct with `BorshAccount<T>{:rs}`. The macro auto-derives `BorshSerialize{:rs}`, `BorshDeserialize{:rs}`, and `Default{:rs}` so the struct can round-trip through borsh:
+
+```rust title="lib.rs" showLineNumbers=false
+#[account(borsh)]
+pub struct Profile {
+    pub owner: Address,
+    pub name: String,
+    pub friends: Vec<Address>,
+}
+```
+
+Borsh accounts deserialize on load and serialize on exit, so reach for the borsh form only when the variable-length fields are actually needed. Fixed-size structs should stay in the default zero-copy form.
 
 ## `#[event]{:rs}` and `#[event(bytemuck)]{:rs}`
 
@@ -142,7 +163,7 @@ pub struct PriceUpdate {
 `#[derive(InitSpace)]{:rs}` adds a `Space{:rs}` implementation whose `INIT_SPACE{:rs}` constant equals the struct's borsh-serialized size. Variable-length fields are not derivable on their own, so annotate them with `#[max_len(N)]{:rs}` (or `#[max_len(N, M)]{:rs}` for nested vectors) to give the macro an explicit upper bound:
 
 ```rust title="lib.rs" showLineNumbers=false
-#[account]
+#[account(borsh)]
 #[derive(InitSpace)]
 pub struct UserProfile {
     pub owner: Address,
@@ -153,7 +174,7 @@ pub struct UserProfile {
 }
 ```
 
-`Counter::INIT_SPACE{:rs}` then drops into the `space{:rs}` constraint:
+`UserProfile::INIT_SPACE{:rs}` then drops into the `space{:rs}` constraint:
 
 ```rust title="lib.rs" showLineNumbers=false
 #[account(init, payer = signer, space = 8 + UserProfile::INIT_SPACE)]
@@ -171,7 +192,7 @@ pub const MAX_SIGNERS: usize = 10;
 
 ## `#[error_code]{:rs}`
 
-The `#[error_code]{:rs}` attribute declares a custom error enum. Each variant maps to a `ProgramError::Custom(N){:rs}` where `N{:rs}` is the discriminant, and the error metadata also lands in the generated IDL so clients can decode the codes back into named variants:
+The `#[error_code]{:rs}` attribute declares a custom error enum. Each variant maps to an `Error::Custom(discriminant + offset){:rs}` where `offset{:rs}` defaults to `6000{:rs}` (matching v1's `ERROR_CODE_OFFSET{:rs}`), and the variant names plus `#[msg(...)]{:rs}` strings land in the generated IDL so clients can decode the codes back into named variants:
 
 ```rust title="lib.rs" showLineNumbers=false
 #[error_code]
@@ -185,23 +206,27 @@ pub enum MultisigError {
 }
 ```
 
+Override the starting offset with `#[error_code(offset = N)]{:rs}` when porting a v1 program that uses a non-default error-code base. Unlike v1, v2 does not allocate an `AnchorError{:rs}` struct at runtime; the `#[msg(...)]{:rs}` text is IDL-only metadata, so emitting an error costs only the `Custom(u32){:rs}` write.
+
 ## `#[access_control]{:rs}`
 
-The `#[access_control]{:rs}` attribute wraps a handler with a guard expression that runs before the handler body. The guard returns `Result<(), ProgramError>{:rs}`, and a failure short-circuits the instruction without ever entering the handler:
+The `#[access_control]{:rs}` attribute wraps a handler with a guard call that runs before the handler body. The guard returns `Result<()>{:rs}`, and a failure short-circuits the instruction without ever entering the handler. The pattern is most useful for invariants that depend on instruction arguments, since `#[derive(Accounts)]{:rs}` constraints fire before args are unpacked:
 
 ```rust title="lib.rs" showLineNumbers=false
-fn is_admin(ctx: &Context<Reset>) -> Result<(), ProgramError> {
-    require_keys_eq!(ctx.accounts.signer.address(), ADMIN_PUBKEY, ErrorCode::Unauthorized);
-    Ok(())
-}
-
 #[program]
 pub mod admin_only {
     use super::*;
 
-    #[access_control(is_admin(&ctx))]
+    #[access_control(Reset::is_admin(&ctx))]
     pub fn reset(ctx: &mut Context<Reset>) -> Result<()> {
         ctx.accounts.counter.value = 0;
+        Ok(())
+    }
+}
+
+impl Reset {
+    pub fn is_admin(ctx: &Context<Reset>) -> Result<()> {
+        require_keys_eq!(ctx.accounts.signer.address(), &ADMIN_PUBKEY);
         Ok(())
     }
 }

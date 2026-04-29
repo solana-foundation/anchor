@@ -31,21 +31,30 @@ Most v1 programs port to v2 with the renames in the table below. The ones that d
 
 ## `has_one` deprecated
 
-In v1, `has_one = field{:rs}` checked that an account stored a pubkey field equal to another account's address. v2 prefers the more general `address = field{:rs}` constraint, which can compare an account's address against any expression rather than only a stored field. Both forms still parse, but `has_one{:rs}` is scheduled for removal in a later alpha and migration amounts to renaming a single token:
+In v1, `has_one = creator{:rs}` placed on a parent account asserted that the parent's stored `creator{:rs}` field equalled the sibling `creator{:rs}` account's address. v2 still parses the syntax but emits a `#[deprecated]{:rs}` warning that points at the `address{:rs}` replacement. Migration moves the constraint from the parent onto the sibling and references the parent's stored field directly. The v1 form looks like:
 
-```rust title="lib.rs" showLineNumbers=false del={4} add={5}
+```rust title="lib.rs" showLineNumbers=false
 #[derive(Accounts)]
 pub struct Withdraw {
-    #[account(
-        has_one = creator,
-        address = config.creator,
-        seeds = [b"vault", creator.address().as_ref()],
-        bump
-    )]
+    #[account(has_one = creator, seeds = [b"vault", creator.address().as_ref()], bump)]
     pub config: Account<Config>,
     pub creator: UncheckedAccount,
 }
 ```
+
+The migrated v2 form moves the address comparison onto `creator{:rs}` and drops `has_one{:rs}` from `config{:rs}`:
+
+```rust title="lib.rs" showLineNumbers=false
+#[derive(Accounts)]
+pub struct Withdraw {
+    #[account(seeds = [b"vault", creator.address().as_ref()], bump)]
+    pub config: Account<Config>,
+    #[account(address = config.creator)]
+    pub creator: UncheckedAccount,
+}
+```
+
+The `address{:rs}` constraint is more general because the right-hand side can be any expression, not just a sibling account's stored field.
 
 ## The `compat` feature
 
