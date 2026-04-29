@@ -203,6 +203,142 @@ fn test_cpi_set_data_rejects_wrong_authority() {
     assert_eq!(stored, 77, "value should be unchanged after failed CPI");
 }
 
+/// Drives the no-extra-args branch of the cpi-wrapper codegen
+/// (`callee::cpi::noop`). Also confirms that the `cpi::accounts::SetData`
+/// re-export is reachable through more than one wrapper — i.e. the
+/// per-Accounts dedupe doesn't accidentally drop the symbol.
+#[test]
+fn test_cpi_noop_no_args() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("authority");
+    svm.airdrop(&authority.pubkey(), 1_000_000_000).unwrap();
+    let data_pda = init_data_account(&mut svm, &payer, &authority);
+
+    // Seed a known value, then CPI through `noop`, then re-read.
+    let seed = callee::instruction::SetData { value: 7 }.data();
+    send_instruction(
+        &mut svm,
+        callee_id(),
+        seed,
+        vec![
+            AccountMeta::new(data_pda, false),
+            AccountMeta::new_readonly(authority.pubkey(), true),
+        ],
+        &payer,
+        &[&authority],
+    )
+    .expect("seed value");
+
+    let proxy_noop = caller::instruction::ProxyNoop {}.data();
+    let proxy_metas = vec![
+        AccountMeta::new(data_pda, false),
+        AccountMeta::new_readonly(authority.pubkey(), true),
+        AccountMeta::new_readonly(callee_id(), false),
+    ];
+    send_instruction(
+        &mut svm,
+        caller_id(),
+        proxy_noop,
+        proxy_metas,
+        &payer,
+        &[&authority],
+    )
+    .expect("caller::proxy_noop should succeed");
+
+    // noop must not mutate the account.
+    let account = svm.get_account(&data_pda).unwrap();
+    let stored = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
+    assert_eq!(stored, 7, "noop must leave value untouched");
+}
+
+/// Drives every `InstructionAccount` ctor branch (`writable_signer`,
+/// `writable`, `readonly_signer`, `readonly`) in the auto-generated
+/// `ToCpiAccounts` impl by routing a CPI through `callee::cpi::touch`.
+#[test]
+fn test_cpi_touch_all_account_flag_combinations() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("authority");
+    let spectator = keypair_for("spectator");
+    svm.airdrop(&authority.pubkey(), 1_000_000_000).unwrap();
+    let data_pda = init_data_account(&mut svm, &payer, &authority);
+
+    // Seed a known starting value so the saturating_add inside `touch`
+    // produces a verifiable post-state (no surprise on overflow).
+    let seed = callee::instruction::SetData { value: 100 }.data();
+    send_instruction(
+        &mut svm,
+        callee_id(),
+        seed,
+        vec![
+            AccountMeta::new(data_pda, false),
+            AccountMeta::new_readonly(authority.pubkey(), true),
+        ],
+        &payer,
+        &[&authority],
+    )
+    .expect("seed value");
+
+    let proxy_touch = caller::instruction::ProxyTouch { delta: 23 }.data();
+    let proxy_metas = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(data_pda, false),
+        AccountMeta::new_readonly(authority.pubkey(), true),
+        AccountMeta::new_readonly(spectator.pubkey(), false),
+        AccountMeta::new_readonly(callee_id(), false),
+    ];
+    send_instruction(
+        &mut svm,
+        caller_id(),
+        proxy_touch,
+        proxy_metas,
+        &payer,
+        &[&authority],
+    )
+    .expect("caller::proxy_touch should succeed");
+
+    let account = svm.get_account(&data_pda).unwrap();
+    let stored = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
+    assert_eq!(stored, 123, "touch must add delta to the stored value");
+}
+
+/// `touch` propagates its `address = data.authority` constraint failure
+/// back through CPI when the wrong signer is supplied — the auto-generated
+/// `readonly_signer` ctor must mark the account as a signer so the
+/// constraint sees the right is_signer flag.
+#[test]
+fn test_cpi_touch_rejects_wrong_authority() {
+    let (mut svm, payer) = setup();
+    let authority = keypair_for("authority");
+    let impostor = keypair_for("impostor");
+    let spectator = keypair_for("spectator");
+    svm.airdrop(&authority.pubkey(), 1_000_000_000).unwrap();
+    svm.airdrop(&impostor.pubkey(), 1_000_000_000).unwrap();
+    let data_pda = init_data_account(&mut svm, &payer, &authority);
+
+    let proxy_touch = caller::instruction::ProxyTouch { delta: 1 }.data();
+    let proxy_metas = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(data_pda, false),
+        AccountMeta::new_readonly(impostor.pubkey(), true),
+        AccountMeta::new_readonly(spectator.pubkey(), false),
+        AccountMeta::new_readonly(callee_id(), false),
+    ];
+    let result = call_raw(
+        &mut svm,
+        caller_id(),
+        proxy_touch,
+        proxy_metas,
+        &payer,
+        &[&impostor],
+    );
+    assert!(result.is_err(), "touch CPI with wrong authority must fail");
+
+    // Underlying value must remain at the post-init default (0).
+    let account = svm.get_account(&data_pda).unwrap();
+    let stored = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
+    assert_eq!(stored, 0, "value must be unchanged after failed touch CPI");
+}
+
 #[test]
 fn test_cpi_set_data_rejects_wrong_program() {
     let (mut svm, payer) = setup();
