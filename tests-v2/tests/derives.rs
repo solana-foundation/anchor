@@ -1,6 +1,6 @@
 //! End-to-end tests for v2 derive/attribute macros not already covered by
 //! other suites:
-//!   - `#[constant]`, `#[access_control]`, `#[derive(PodWrapper)]`,
+//!   - `#[constant]`, `#[access_control]`, `#[pod_wrapper]`,
 //!     `#[derive(InitSpace)]`
 //!   - `PodU64` / `PodI32` / `PodBool` runtime behavior on SBF
 //!
@@ -71,7 +71,7 @@ fn do_bump(
 //   offset 8   : PodU64  value   (8 bytes)
 //   offset 16  : PodI32  delta   (4 bytes)
 //   offset 20  : PodBool active  (1 byte)
-//   offset 21  : PodMode mode    (1 byte, PodWrapper u8)
+//   offset 21  : PodMode mode    (1 byte, pod_wrapper u8)
 const OFFSET_VALUE: usize = 8;
 const OFFSET_DELTA: usize = 16;
 const OFFSET_ACTIVE: usize = 20;

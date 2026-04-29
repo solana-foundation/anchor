@@ -53,6 +53,23 @@ pub mod custom_constraints {
     pub fn handle_init_if_needed(_ctx: &mut Context<HandleInitIfNeeded>) -> Result<()> {
         Ok(())
     }
+
+    /// Boxed variant of `handle_init`, proving `AccountConstraint::init`
+    /// forwards through `Box<T>` on an `init` field.
+    pub fn handle_boxed_init(_ctx: &mut Context<HandleBoxedInit>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Boxed variant of `handle_exit_bump`, proving `AccountConstraint::exit`
+    /// forwards through `Box<T>`.
+    pub fn handle_boxed_exit_bump(_ctx: &mut Context<HandleBoxedExitBump>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Close a boxed counter to exercise `AnchorAccount::close` forwarding.
+    pub fn handle_boxed_close(_ctx: &mut Context<HandleBoxedClose>) -> Result<()> {
+        Ok(())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -211,4 +228,39 @@ pub struct HandleInitIfNeeded {
     )]
     pub counter: BorshAccount<Counter>,
     pub system_program: Program<System>,
+}
+
+#[derive(Accounts)]
+pub struct HandleBoxedInit {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + 8,
+        seeds = [b"boxed-counter"],
+        bump,
+        counter_ns::init_value = 9u64,
+    )]
+    pub counter: Box<BorshAccount<Counter>>,
+    pub system_program: Program<System>,
+}
+
+#[derive(Accounts)]
+pub struct HandleBoxedExitBump {
+    #[account(
+        mut,
+        seeds = [b"boxed-counter"],
+        bump,
+        counter_ns::bump_on_exit = 2u64,
+    )]
+    pub counter: Box<BorshAccount<Counter>>,
+}
+
+#[derive(Accounts)]
+pub struct HandleBoxedClose {
+    #[account(mut, close = receiver, seeds = [b"boxed-counter"], bump)]
+    pub counter: Box<BorshAccount<Counter>>,
+    #[account(mut)]
+    pub receiver: SystemAccount,
 }

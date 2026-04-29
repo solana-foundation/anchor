@@ -41,13 +41,11 @@ fn type_str_to_idl_value(s: &str) -> Value {
         "u8" | "u16" | "u32" | "u64" | "u128" | "i8" | "i16" | "i32" | "i64" | "i128" | "bool" => {
             Value::String(s.to_owned())
         }
-        // Pod wrappers (`lang-v2/src/pod.rs`) drop alignment to 1 so the type
-        // fits in `repr(C)` zero-copy accounts without padding, but the
-        // on-disk byte representation is bit-identical to the corresponding
-        // primitive (8 bytes LE for `PodU64`, one byte for `PodBool`, etc.).
-        // Report them as primitives so the TS coder's default borsh path
-        // decodes them without a registered `types[]` entry or hand-rolled
-        // readers. `PodVec<T, N>` stays defined — its layout is non-trivial.
+        // Pod wrappers drop alignment to 1 for zero-copy accounts but
+        // the byte representation matches the primitive (LE). Report
+        // as primitives so the TS coder's default borsh path decodes
+        // without a `types[]` entry. `PodVec<T, N>` stays defined —
+        // its layout is non-trivial.
         "PodU16" => Value::String("u16".into()),
         "PodU32" => Value::String("u32".into()),
         "PodU64" => Value::String("u64".into()),

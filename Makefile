@@ -58,44 +58,46 @@ coverage-v2-host:
 		exit 1; \
 	}
 	cargo llvm-cov clean --workspace
-	# First pass: default feature set (covers runtime + derive codegen paths).
+	# First pass: `anchor-lang-v2` with its `testing` feature enabled — the
+	# Miri-witnesses integration tests need the `anchor_lang_v2::testing`
+	# scaffold. Split into its own invocation because `testing` is a
+	# lang-v2-only feature, and passing it to a multi-package run would
+	# fail when `anchor-spl-v2` / `tests-v2` don't define it.
 	CARGO_PROFILE_RELEASE_DEBUG=2 \
-	cargo llvm-cov --no-report -p anchor-lang-v2 -p anchor-spl-v2 -p tests-v2
-	# Second pass: same crates with --features idl-build so the IDL-emission
-	# branches in derive/src/idl.rs and the program-level IDL assembler run.
-	# No `--no-clean` here — passing `--no-report` already preserves the
-	# profile data across passes; the merged report is assembled by the
-	# final `llvm-cov report` below.
+	cargo llvm-cov --no-report -p anchor-lang-v2 --features testing
+	# Second pass: the other v2 crates under default features.
+	CARGO_PROFILE_RELEASE_DEBUG=2 \
+	cargo llvm-cov --no-report -p anchor-spl-v2 -p tests-v2
+	# Third pass: lang-v2 + spl-v2 with --features idl-build so the
+	# IDL-emission branches in derive/src/idl.rs and the program-level IDL
+	# assembler run. `--no-report` accumulates profile data across passes;
+	# the merged report is assembled by the final `llvm-cov report` below.
 	CARGO_PROFILE_RELEASE_DEBUG=2 \
 	cargo llvm-cov --no-report --features idl-build \
 		-p anchor-lang-v2 -p anchor-spl-v2
 	cargo llvm-cov report \
 		--lcov \
 		--output-path $(COVERAGE_DIR)/host.lcov \
-		--ignore-filename-regex='(\.cargo|target/debug/build|/runner/work/)'
+		--ignore-filename-regex='(\.cargo|target/(debug|release)/build)'
 
 # Merge the two LCOV files into one.
 #
 # `cargo-llvm-cov` instruments every line of every file it compiles, including
 # SBF-runtime code pulled in as a path dep of `tests-v2` (lang-v2/src/*.rs,
-# spl-v2/src/*.rs). Those files never execute host-side, so every line comes
-# through host.lcov as `DA:N,0`. When merged naively, those zeros pollute
-# lines that SBF's DWARF traces couldn't pin down (typically the signature
-# and closing-brace of `#[inline(always)]` helpers that got partially erased
-# by LLVM), displaying them as "uncovered" despite the body running.
+# spl-v2/src/*.rs). Some of those lines get erased by LLVM's `#[inline(always)]`
+# handling — SBF's DWARF sees the line executed, but host-side instrumentation
+# records `DA:N,0` because the machine code lives at the callsite, not the
+# source site. Naive merge ends up displaying those lines as uncovered.
 #
-# The filter:
-#   - For each file that appears in sbf.lcov (meaning SBF has some coverage
-#     for it): drop host's `DA:N,0` entries. Those 0s are artifacts of
-#     host-side instrumentation of code that only runs in the VM.
-#   - For files NOT in sbf.lcov (genuinely untested — no test program ever
-#     loaded that code): keep host entries as-is so the "uncovered"
-#     signal survives.
-#
-# Side effect: for SBF-tested files, lines SBF couldn't pin down via DWARF
-# go from "red/uncovered" to "gray/uninstrumented" in the report — a
-# cosmetic accuracy win since those lines often have no machine code at
-# all after `#[inline(always)]` erasure.
+# The filter scrubs host's `DA:N,0` entries **only when SBF recorded a hit at
+# the same (file, line)**. Zero-hit lines on both sides remain in the report
+# as genuinely uncovered — which matters: earlier versions of this filter
+# stripped every zero-hit line for any file that appeared in sbf.lcov, which
+# made files with genuine uncovered regions (e.g. spl-v2/src/token.rs's many
+# untested CPI branches) look artificially at 100%. See analysis in
+# `ci.lcov` vs Codecov comparison (spl-v2/src/token.rs was reported as
+# 82/82 locally vs. 82/347 on CI, all because of this scrub). Line-level
+# matching preserves the SBF-only-executed fix without over-reaching.
 .PHONY: coverage-v2-merge
 coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 	@echo "==> Merging coverage"
@@ -103,13 +105,17 @@ coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 		echo "lcov not installed. Run: brew install lcov  (or apt install lcov)"; \
 		exit 1; \
 	}
-	awk ' \
+	awk -F'[:,]' ' \
 		FNR == NR { \
-			if ($$0 ~ /^SF:/) { f=$$0; sub("^SF:", "", f); sbf[f]=1 } \
+			if ($$1 == "SF") { f = $$0; sub("^SF:", "", f) } \
+			else if ($$1 == "DA" && $$3+0 > 0) sbf_hit[f "," $$2+0] = 1; \
 			next \
 		} \
-		/^SF:/ { f=$$0; sub("^SF:", "", f); in_sbf = (f in sbf); print; next } \
-		in_sbf && /^DA:/ { split($$0, a, ","); if (a[2]+0 == 0) next } \
+		$$1 == "SF" { f = $$0; sub("^SF:", "", f); print; next } \
+		$$1 == "DA" { \
+			if ($$3+0 == 0 && (f "," $$2+0) in sbf_hit) next; \
+			print; next; \
+		} \
 		{ print } \
 		' $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov \
 		> $(COVERAGE_DIR)/host.filtered.lcov
@@ -119,11 +125,32 @@ coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 	sed -i.bak '/^LF:/d;/^LH:/d' $(COVERAGE_DIR)/host.filtered.lcov
 	rm -f $(COVERAGE_DIR)/host.filtered.lcov.bak
 	lcov -a $(COVERAGE_DIR)/sbf.lcov -a $(COVERAGE_DIR)/host.filtered.lcov \
-		-o $(COVERAGE_DIR)/combined.lcov
-	lcov --remove $(COVERAGE_DIR)/combined.lcov \
-		'/Users/runner/*' '/home/runner/*' '*/.cargo/*' '*/target/*' \
 		-o $(COVERAGE_DIR)/combined.lcov \
-		--ignore-errors unused
+		--ignore-errors empty
+	# Drop cargo-registry and target-generated paths. Lcov's glob handling
+	# varies by version: the shell-style patterns below look redundant but
+	# cover both behaviors. Older lcov (Ubuntu 1.14/1.16) treats `*` as
+	# non-slash-crossing, so `*/.cargo/*` doesn't match an absolute path
+	# like `/home/runner/.cargo/registry/.../file.rs`; adding `**/.cargo/**`
+	# is a no-op on strict shell globs but handled by lcov 2.x as a
+	# recursive glob. Having both keeps the filter correct on local macOS
+	# (lcov 2.x), Ubuntu CI runners (lcov 1.x), and anywhere in between.
+	lcov --remove $(COVERAGE_DIR)/combined.lcov \
+		'*/.cargo/*' '**/.cargo/**' '*.cargo*' \
+		'*/target/*' '**/target/**' \
+		-o $(COVERAGE_DIR)/combined.lcov \
+		--ignore-errors unused \
+		--ignore-errors empty
+	# Self-merge to collapse duplicate `SF:` blocks. Host coverage runs
+	# three `cargo llvm-cov --no-report` passes (default features, + spl
+	# + tests-v2, + idl-build), plus the SBF pass. Ubuntu's lcov 1.x
+	# concatenates records from each pass rather than merging them,
+	# yielding 4x duplicate `SF:` entries per file in the combined
+	# output. lcov 2.x merges on read, so this step is a no-op locally
+	# but essential for the report Codecov ingests from CI.
+	lcov -a $(COVERAGE_DIR)/combined.lcov \
+		-o $(COVERAGE_DIR)/combined.lcov \
+		--ignore-errors empty,format,inconsistent
 
 $(COVERAGE_DIR)/sbf.lcov: coverage-v2-sbf
 $(COVERAGE_DIR)/host.lcov: coverage-v2-host

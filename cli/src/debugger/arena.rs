@@ -7,23 +7,27 @@
 //! flat `(stack → cu)` maps, and this module emits one [`DebugStep`] per
 //! traced instruction plus DWARF-resolved source locations.
 
-use anyhow::{Context, Result};
-use solana_compute_budget::compute_budget::ComputeBudget;
-use solana_sbpf::{ebpf, static_analysis::Analysis};
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
-use crate::flamegraph::trace::{
-    discover_invocations, find_unstripped_binary, load_function_map, stream_trace,
-    InvocationFiles, INSN_ENTRY_SIZE, KNOWN_SYSCALLS, REGS_ENTRY_SIZE,
+use {
+    super::{
+        cargo_deps::{discover_dep_src_roots, discover_path_dep_roots},
+        highlight::highlight_asm,
+        model::{DebugNode, DebugSession, DebugStep, DebugTx, ProgramDisasm, StaticInsn},
+        source::{discover_platform_tools_stdlib_roots, SourceResolver, CI_PLATFORM_TOOLS_PREFIX},
+    },
+    crate::flamegraph::trace::{
+        discover_invocations, find_unstripped_binary, load_function_map, stream_trace,
+        InvocationFiles, INSN_ENTRY_SIZE, KNOWN_SYSCALLS, REGS_ENTRY_SIZE,
+    },
+    anyhow::{anyhow, bail, Context, Result},
+    solana_compute_budget::compute_budget::ComputeBudget,
+    solana_sbpf::{ebpf, static_analysis::Analysis},
+    std::{
+        collections::BTreeMap,
+        fs,
+        path::{Path, PathBuf},
+        sync::Arc,
+    },
 };
-
-use super::model::{DebugNode, DebugSession, DebugStep, DebugTx, ProgramDisasm, StaticInsn};
-use super::cargo_deps::{discover_dep_src_roots, discover_path_dep_roots};
-use super::highlight::highlight_asm;
-use super::source::{discover_platform_tools_stdlib_roots, SourceResolver, CI_PLATFORM_TOOLS_PREFIX};
 
 /// Build the session from `<profile_dir>/<test_name>/` trace directories.
 ///
@@ -129,10 +133,19 @@ pub fn build_session(
                     None => continue,
                 };
 
-                let regs = fs::read(&inv.regs_path)
+                let regular_regs = fs::read(&inv.regs_path)
                     .with_context(|| format!("read {}", inv.regs_path.display()))?;
-                let insns = fs::read(&inv.insns_path)
+                let regular_insns = fs::read(&inv.insns_path)
                     .with_context(|| format!("read {}", inv.insns_path.display()))?;
+                let regular_count = (regular_regs.len() / REGS_ENTRY_SIZE)
+                    .min(regular_insns.len() / INSN_ENTRY_SIZE);
+
+                let (regs, insns, exact_cu) =
+                    match load_gdb_sidecars(inv, &regular_regs, &regular_insns, regular_count)? {
+                        Some(sidecar) => (sidecar.regs, sidecar.insns, Some(sidecar.cu_costs)),
+                        None => (regular_regs, regular_insns, None),
+                    };
+
                 let count = (regs.len() / REGS_ENTRY_SIZE).min(insns.len() / INSN_ENTRY_SIZE);
                 if count == 0 {
                     continue;
@@ -143,6 +156,7 @@ pub fn build_session(
                 let mut node_cu: u64 = 0;
 
                 let budget = ComputeBudget::new_with_defaults(false, false);
+                let mut step_idx = 0usize;
 
                 stream_trace(
                     &regs,
@@ -153,7 +167,12 @@ pub fn build_session(
                     &program_label,
                     &budget,
                     |s| {
-                        node_cu += s.cu_cost;
+                        let cu_cost = exact_cu
+                            .as_ref()
+                            .and_then(|costs| costs.get(step_idx).copied())
+                            .unwrap_or(s.cu_cost);
+                        step_idx += 1;
+                        node_cu += cu_cost;
                         let disasm = disassemble(&ctx.analysis, &s.insn, s.pc as usize);
                         // Pre-highlight here so the redraw hot path is a
                         // simple span clone — see `DebugStep.disasm_spans`
@@ -170,7 +189,7 @@ pub fn build_session(
                             // call_stack[0] is the program label (unchanging root);
                             // the actual function frames start at index 1.
                             call_depth: s.call_stack.len().saturating_sub(1).max(1),
-                            cu_cost: s.cu_cost,
+                            cu_cost,
                             cu_cumulative: node_cu,
                             syscall: s.syscall,
                             src_loc,
@@ -225,6 +244,127 @@ pub fn build_session(
         cwd,
         programs: programs_disasm,
     })
+}
+
+struct GdbSidecars {
+    regs: Vec<u8>,
+    insns: Vec<u8>,
+    cu_costs: Vec<u64>,
+}
+
+fn load_gdb_sidecars(
+    inv: &InvocationFiles,
+    regular_regs: &[u8],
+    regular_insns: &[u8],
+    regular_count: usize,
+) -> Result<Option<GdbSidecars>> {
+    let regs_path = inv.regs_path.with_extension("gdb.regs");
+    let insns_path = inv.regs_path.with_extension("gdb.insns");
+    let cu_path = inv.regs_path.with_extension("gdb.cu");
+
+    if !regs_path.exists() && !insns_path.exists() && !cu_path.exists() {
+        return Ok(None);
+    }
+    if !regs_path.exists() || !insns_path.exists() || !cu_path.exists() {
+        bail!(
+            "incomplete gdb sidecar set for {}; expected {}, {}, and {}",
+            inv.regs_path.display(),
+            regs_path.display(),
+            insns_path.display(),
+            cu_path.display(),
+        );
+    }
+
+    let mut regs = fs::read(&regs_path).with_context(|| format!("read {}", regs_path.display()))?;
+    let insns = fs::read(&insns_path).with_context(|| format!("read {}", insns_path.display()))?;
+    let cu = fs::read(&cu_path).with_context(|| format!("read {}", cu_path.display()))?;
+    let count = (regs.len() / REGS_ENTRY_SIZE).min(insns.len() / INSN_ENTRY_SIZE);
+    if count != regular_count {
+        bail!(
+            "gdb sidecar count mismatch for {}: gdb has {count} steps, regular trace has \
+             {regular_count}",
+            inv.regs_path.display(),
+        );
+    }
+    validate_and_normalize_gdb_regs(&mut regs, regular_regs, count)
+        .with_context(|| format!("validate {}", regs_path.display()))?;
+    if insns != regular_insns {
+        bail!(
+            "gdb sidecar instruction bytes differ from regular trace for {}",
+            inv.regs_path.display(),
+        );
+    }
+    if cu.len() / std::mem::size_of::<u64>() != count {
+        bail!(
+            "gdb sidecar CU count mismatch for {}: gdb has {} CU entries, trace has {count} steps",
+            inv.regs_path.display(),
+            cu.len() / std::mem::size_of::<u64>(),
+        );
+    }
+
+    Ok(Some(GdbSidecars {
+        regs,
+        insns,
+        cu_costs: cu_costs_from_remaining(&cu, count),
+    }))
+}
+
+fn validate_and_normalize_gdb_regs(
+    gdb_regs: &mut [u8],
+    regular_regs: &[u8],
+    count: usize,
+) -> Result<()> {
+    if gdb_regs.len() < count * REGS_ENTRY_SIZE || regular_regs.len() < count * REGS_ENTRY_SIZE {
+        bail!("register trace is shorter than declared step count");
+    }
+
+    let mut text_addr = None::<u64>;
+    for i in 0..count {
+        let offset = i * REGS_ENTRY_SIZE;
+        for reg in 0..12 {
+            let start = offset + reg * 8;
+            let gdb = u64::from_le_bytes(gdb_regs[start..start + 8].try_into().unwrap());
+            let regular = u64::from_le_bytes(regular_regs[start..start + 8].try_into().unwrap());
+
+            if reg == 11 {
+                let expected_text_addr = gdb
+                    .checked_sub(
+                        regular
+                            .checked_mul(INSN_ENTRY_SIZE as u64)
+                            .ok_or_else(|| anyhow!("trace PC overflow at step {i}"))?,
+                    )
+                    .ok_or_else(|| anyhow!("gdb PC precedes trace PC at step {i}"))?;
+                match text_addr {
+                    Some(addr) if addr != expected_text_addr => bail!(
+                        "gdb PC/text address mismatch at step {i}: expected text addr {addr:#x}, \
+                         got {expected_text_addr:#x}",
+                    ),
+                    None => text_addr = Some(expected_text_addr),
+                    _ => {}
+                }
+                gdb_regs[start..start + 8].copy_from_slice(&regular.to_le_bytes());
+            } else if gdb != regular {
+                bail!("gdb register r{reg} mismatch at step {i}: gdb={gdb:#x}, trace={regular:#x}",);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn cu_costs_from_remaining(data: &[u8], count: usize) -> Vec<u64> {
+    let mut costs = Vec::with_capacity(count);
+    let mut prev = None::<u64>;
+    for i in 0..count {
+        let offset = i * std::mem::size_of::<u64>();
+        let Some(bytes) = data.get(offset..offset + 8) else {
+            costs.push(0);
+            continue;
+        };
+        let remaining = u64::from_le_bytes(bytes.try_into().unwrap());
+        costs.push(prev.map(|p| p.saturating_sub(remaining)).unwrap_or(0));
+        prev = Some(remaining);
+    }
+    costs
 }
 
 /// Disassemble every PC in the program's text section in memory order,
@@ -348,9 +488,8 @@ fn build_program_ctx(
             // post-link step. Surface this clearly so the user knows
             // what to do instead of silently dropping the trace.
             eprintln!(
-                "warning: can't parse {} ({e}). \
-                 Run `cargo build-sbf -p <crate>` from the workspace \
-                 root to produce a debugger-compatible `target/deploy/<name>.so`.",
+                "warning: can't parse {} ({e}). Run `cargo build-sbf -p <crate>` from the \
+                 workspace root to produce a debugger-compatible `target/deploy/<name>.so`.",
                 elf_path.display()
             );
             return None;
@@ -363,12 +502,11 @@ fn build_program_ctx(
     // actually invoke syscalls (we replay traces, not execute), so the
     // registry is consulted only for the (hash → name) lookup that
     // `disassembler::disassemble_instruction` does for CALL_IMM.
-    let mut loader_inner = solana_sbpf::program::BuiltinProgram::new_loader(
-        solana_sbpf::vm::Config {
+    let mut loader_inner =
+        solana_sbpf::program::BuiltinProgram::new_loader(solana_sbpf::vm::Config {
             enable_symbol_and_section_labels: true,
             ..solana_sbpf::vm::Config::default()
-        },
-    );
+        });
     for name in KNOWN_SYSCALLS {
         // Ignore registration errors — a duplicate hash would mean two
         // syscalls collide in `KNOWN_SYSCALLS`, which is a list bug, not
@@ -387,7 +525,8 @@ fn build_program_ctx(
     // DWARF lives in the unstripped build artifact, not `target/deploy/` —
     // `cargo-build-sbf` strips before copying. Fall back to the deployed
     // path if no unstripped sibling is available (third-party deploys etc.).
-    let dwarf_path = find_unstripped_binary(elf_path, manifest_dir).unwrap_or_else(|| elf_path.to_path_buf());
+    let dwarf_path =
+        find_unstripped_binary(elf_path, manifest_dir).unwrap_or_else(|| elf_path.to_path_buf());
     let source = SourceResolver::from_elf_path(&dwarf_path);
 
     Some(ProgramCtx {
@@ -406,7 +545,8 @@ fn disassemble(analysis: &Analysis<'_>, insn_bytes: &[u8; 8], pc: usize) -> Stri
         dst: insn_bytes[1] & 0x0f,
         src: (insn_bytes[1] & 0xf0) >> 4,
         off: i16::from_le_bytes([insn_bytes[2], insn_bytes[3]]),
-        imm: i32::from_le_bytes([insn_bytes[4], insn_bytes[5], insn_bytes[6], insn_bytes[7]]) as i64,
+        imm: i32::from_le_bytes([insn_bytes[4], insn_bytes[5], insn_bytes[6], insn_bytes[7]])
+            as i64,
     };
     analysis.disassemble_instruction(&insn, pc)
 }

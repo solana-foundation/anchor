@@ -1,4 +1,4 @@
-//! `#[derive(PodWrapper)]` — generates a `Pod`-compatible companion type for
+//! `#[pod_wrapper]` — generates a `Pod`-compatible companion type for
 //! an `#[repr(u8)]` enum.
 //!
 //! `bytemuck::Pod` requires every bit pattern of a type to be valid, which
@@ -7,10 +7,11 @@
 //! zero-copy `#[account]`) is therefore unsound — a corrupt byte produces
 //! an invalid enum value and instant UB on any pattern match.
 //!
-//! This derive works around that. Given:
+//! This attribute macro works around that. Given:
 //!
 //! ```ignore
-//! #[derive(PodWrapper)]
+//! #[pod_wrapper]
+//! #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 //! #[repr(u8)]
 //! pub enum MarketMode {
 //!     Live = 0,
@@ -32,15 +33,21 @@
 //!
 //! // bytemuck traits — safe because the wrapper is `#[repr(transparent)]`
 //! // over `u8`, which is itself Pod. Invalid discriminants are caught at
-//! // conversion time (`From<PodMarketMode> for MarketMode`), not at cast time.
+//! // *both* equality and conversion time: any `==`, `!=`, or `.into()` on a
+//! // `PodMarketMode` holding a byte that doesn't correspond to a declared
+//! // variant panics. The raw-byte read via `pod.0` remains unvalidated —
+//! // it's the intentional escape hatch for callers that want to inspect
+//! // bytes without triggering the variant check.
 //! unsafe impl bytemuck::Pod for PodMarketMode {}
 //! unsafe impl bytemuck::Zeroable for PodMarketMode {}
 //!
 //! // Cross-type comparisons let existing `engine.market_mode == MarketMode::Live`
 //! // keep working untouched after migrating the field from `MarketMode` to
-//! // `PodMarketMode`.
-//! impl PartialEq<MarketMode> for PodMarketMode { /* ... */ }
-//! impl PartialEq<PodMarketMode> for MarketMode { /* ... */ }
+//! // `PodMarketMode`. Both operands are validated against the declared
+//! // variants, so an invalid byte can't silently bypass a negative guard
+//! // like `if market_mode != MarketMode::Closed { … }`.
+//! impl PartialEq<MarketMode> for PodMarketMode { /* panics on invalid */ }
+//! impl PartialEq<PodMarketMode> for MarketMode { /* panics on invalid */ }
 //!
 //! // Round-trip conversions; `From<PodMarketMode> for MarketMode` panics on
 //! // bytes that don't correspond to a declared variant.
@@ -50,7 +57,7 @@
 //!
 //! # Requirements
 //!
-//! * The item must be an `enum`.
+//! * The annotated item must be an `enum`.
 //! * The enum must be declared `#[repr(u8)]` (explicit discriminant size).
 //! * Every variant must be a bare unit variant (no tuple/struct payload).
 //! * The downstream crate must have `anchor_lang_v2::bytemuck` in scope
@@ -74,7 +81,7 @@ pub fn expand(item: TokenStream) -> TokenStream {
             return TokenStream::from(
                 syn::Error::new_spanned(
                     &name,
-                    "#[derive(PodWrapper)] only supports enums — \
+                    "#[pod_wrapper] only supports enums — \
                      structs already have direct `#[derive(bytemuck::Pod)]` support.",
                 )
                 .to_compile_error(),
@@ -82,15 +89,14 @@ pub fn expand(item: TokenStream) -> TokenStream {
         }
     };
 
-    // Reject enums with payload-bearing variants: their Pod representation
-    // would need a tag byte plus per-variant layout, which this derive
-    // deliberately doesn't emit (it would change the enum's on-disk size).
+    // Reject enums with payload-bearing variants: would need a tag byte
+    // plus per-variant layout, which this attribute doesn't emit.
     for v in &enm.variants {
         if !matches!(v.fields, Fields::Unit) {
             return TokenStream::from(
                 syn::Error::new_spanned(
                     v,
-                    "#[derive(PodWrapper)] only supports unit variants. \
+                    "#[pod_wrapper] only supports unit variants. \
                      Payload-bearing variants can't be stored in a single u8.",
                 )
                 .to_compile_error(),
@@ -105,7 +111,7 @@ pub fn expand(item: TokenStream) -> TokenStream {
         return TokenStream::from(
             syn::Error::new_spanned(
                 &name,
-                "#[derive(PodWrapper)] requires `#[repr(u8)]` on the enum so the \
+                "#[pod_wrapper] requires `#[repr(u8)]` on the enum so the \
                  stored discriminant width is explicit.",
             )
             .to_compile_error(),
@@ -142,6 +148,11 @@ pub fn expand(item: TokenStream) -> TokenStream {
     let invalid_panic_msg = format!("invalid {} discriminant: {{}}", name_str);
 
     let expanded: TokenStream2 = quote! {
+        // Re-emit the annotated enum verbatim — attribute macros consume
+        // their input, and every downstream `Enum::Variant` reference
+        // still needs the original type to resolve.
+        #input
+
         #[repr(transparent)]
         #[derive(Clone, Copy)]
         #vis struct #pod_name(pub u8);
@@ -168,19 +179,34 @@ pub fn expand(item: TokenStream) -> TokenStream {
             }
         }
 
+        // Equality validates both sides against the declared variants before
+        // comparing bytes. An invalid discriminant panics — same message as
+        // `From<#pod_name> for #name` — so a negative guard like
+        // `if pod != Enum::Variant { … }` can't silently execute with a
+        // corrupt byte. Use the raw `pod.0` field for an unvalidated read.
         impl ::core::cmp::PartialEq for #pod_name {
             #[inline]
-            fn eq(&self, other: &Self) -> bool { self.0 == other.0 }
+            fn eq(&self, other: &Self) -> bool {
+                let _: #name = (*self).into();
+                let _: #name = (*other).into();
+                self.0 == other.0
+            }
         }
         impl ::core::cmp::Eq for #pod_name {}
 
         impl ::core::cmp::PartialEq<#name> for #pod_name {
             #[inline]
-            fn eq(&self, other: &#name) -> bool { self.0 == *other as u8 }
+            fn eq(&self, other: &#name) -> bool {
+                let _: #name = (*self).into();
+                self.0 == *other as u8
+            }
         }
         impl ::core::cmp::PartialEq<#pod_name> for #name {
             #[inline]
-            fn eq(&self, other: &#pod_name) -> bool { *self as u8 == other.0 }
+            fn eq(&self, other: &#pod_name) -> bool {
+                let _: #name = (*other).into();
+                *self as u8 == other.0
+            }
         }
 
         impl ::core::convert::From<#name> for #pod_name {
@@ -197,6 +223,15 @@ pub fn expand(item: TokenStream) -> TokenStream {
                 }
             }
         }
+
+        // `#[repr(transparent)] struct Pod{Enum}(pub u8)` — at the byte
+        // level the wrapper is a plain `u8`, so it gets the same no-op
+        // `IdlAccountType` treatment as `PodU64` / `PodBool`. Without
+        // this impl, using the wrapper inside a `#[derive(Accounts)]`
+        // field trips the trait bound on the generated `__register_idl_deps`
+        // walk under `--features idl-build`.
+        #[cfg(feature = "idl-build")]
+        impl anchor_lang_v2::IdlAccountType for #pod_name {}
     };
 
     TokenStream::from(expanded)

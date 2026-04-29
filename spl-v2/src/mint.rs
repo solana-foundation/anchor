@@ -61,7 +61,6 @@ impl SlabSchema for Mint {
         data: &[u8],
         _program_id: &Address,
     ) -> Result<(), ProgramError> {
-        // TODO: Token2022 support — add a Mint2022 type or feature gate.
         if !view.owned_by(&Token::id()) {
             return Err(ProgramError::IllegalOwner);
         }

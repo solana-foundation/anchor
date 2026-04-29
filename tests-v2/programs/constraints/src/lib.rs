@@ -10,7 +10,6 @@
 //!   - `owner = expr` + `owner = expr @ MyErr`
 //!   - `constraint = expr` + `constraint = expr @ MyErr`
 //!   - `executable`
-//!   - `rent_exempt = enforce`  (compile-only struct; see note)
 //!   - `close = receiver`       (happy + self-close rejection)
 //!   - `seeds::program = other` (cross-program PDA derivation)
 //!   - `init_if_needed`         (create + reuse)
@@ -264,20 +263,7 @@ pub struct CheckExecutable {
     pub prog: UncheckedAccount,
 }
 
-// 10. rent_exempt = enforce
-//
-// Triggering the violation at runtime requires constructing an account
-// the derive will accept through `load` but that is underfunded. For
-// `UncheckedAccount` `load` is a no-op, so we can seed an arbitrary
-// account via `LiteSVM::set_account` with data_len > 0 and lamports
-// below the rent floor. See `tests/constraints.rs :: rent_exempt_*`.
-#[derive(Accounts)]
-pub struct CheckRentExempt {
-    #[account(rent_exempt = enforce)]
-    pub target: UncheckedAccount,
-}
-
-// 11. close = receiver
+// 10. close = receiver
 #[derive(Accounts)]
 pub struct DoClose {
     #[account(mut, seeds = [b"data"], bump, close = receiver)]
@@ -286,14 +272,14 @@ pub struct DoClose {
     pub receiver: UncheckedAccount,
 }
 
-// 12. seeds::program = OTHER_PROGRAM
+// 11. seeds::program = OTHER_PROGRAM
 #[derive(Accounts)]
 pub struct CheckSeedsProgram {
     #[account(seeds = [b"other"], bump, seeds::program = OTHER_PROGRAM)]
     pub pda: UncheckedAccount,
 }
 
-// 13. init_if_needed
+// 12. init_if_needed
 #[derive(Accounts)]
 pub struct DoInitIfNeeded {
     #[account(mut)]
@@ -308,26 +294,19 @@ pub struct DoInitIfNeeded {
     pub system_program: Program<System>,
 }
 
-// 14. zeroed
+// 13. zeroed
 #[derive(Accounts)]
 pub struct CheckZeroed {
     #[account(zeroed)]
     pub data: Account<Data>,
 }
 
-// 15. signer on UncheckedAccount
+// 14. signer on UncheckedAccount
 #[derive(Accounts)]
 pub struct CheckSigner {
     #[account(signer)]
     pub user: UncheckedAccount,
 }
-
-// Dead-code-eliminated instruction — exists to exercise the codegen for
-// `rent_exempt = enforce` so any future regression in the derive path
-// shows up at compile time even though the runtime-violation test for
-// this constraint is parked (see `CheckRentExempt` doc comment).
-#[allow(dead_code)]
-fn _rent_exempt_codegen_witness(_ctx: &mut Context<CheckRentExempt>) {}
 
 // -- IDL-only fixtures -------------------------------------------------------
 //
@@ -389,8 +368,8 @@ pub struct InitIfNeededNoSeeds {
 //   - `init_if_needed` w/o seeds → `IdlInstructionAccount.signer`
 //
 // Constraints considered and intentionally skipped (runtime-only, no IDL
-// surface): `zeroed`, `owner`, `constraint`, `executable`, `rent_exempt`,
-// `close`. `seeds` / `seeds::program` are already covered structurally
+// surface): `zeroed`, `owner`, `constraint`, `executable`, `close`.
+// `seeds` / `seeds::program` are already covered structurally
 // by the `seeds` program fixture; adding a duplicate here would only
 // retest the shared `classify_seed` path.
 #[cfg(all(test, feature = "idl-build"))]

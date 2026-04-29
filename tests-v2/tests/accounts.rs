@@ -28,6 +28,10 @@ fn counter_pda() -> Pubkey {
     Pubkey::find_program_address(&[b"counter"], &program_id()).0
 }
 
+fn boxed_counter_pda() -> Pubkey {
+    Pubkey::find_program_address(&[b"boxed-counter"], &program_id()).0
+}
+
 fn setup() -> (LiteSVM, Keypair) {
     let test_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let deploy_dir = test_dir.join("target/deploy");
@@ -53,6 +57,18 @@ fn do_initialize(svm: &mut LiteSVM, payer: &Keypair) -> Pubkey {
     ];
     send_instruction(svm, program_id(), vec![0], metas, payer, &[])
         .expect("initialize should succeed");
+    counter
+}
+
+fn do_initialize_boxed(svm: &mut LiteSVM, payer: &Keypair) -> Pubkey {
+    let counter = boxed_counter_pda();
+    let metas = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(counter, false),
+        AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+    ];
+    send_instruction(svm, program_id(), vec![3], metas, payer, &[])
+        .expect("initialize_boxed should succeed");
     counter
 }
 
@@ -85,7 +101,7 @@ fn bump_boxed_mutates_through_box_deref() {
 fn read_clock_succeeds_and_sysvar_is_well_formed() {
     let (mut svm, payer) = setup();
     let metas = vec![AccountMeta::new_readonly(clock_sysvar_id(), false)];
-    send_instruction(&mut svm, program_id(), vec![2], metas, &payer, &[])
+    send_instruction(&mut svm, program_id(), vec![5], metas, &payer, &[])
         .expect("read_clock should succeed");
 
     // Verify the Clock sysvar account exists and has the expected layout.
@@ -113,7 +129,7 @@ fn read_clock_rejects_wrong_sysvar() {
     // Passing rent instead of clock trips `T::SYSVAR_ID` compare in
     // `Sysvar<Clock>::load`.
     let metas = vec![AccountMeta::new_readonly(rent_sysvar_id(), false)];
-    let result = send_instruction(&mut svm, program_id(), vec![2], metas, &payer, &[]);
+    let result = send_instruction(&mut svm, program_id(), vec![5], metas, &payer, &[]);
     let err_msg = format!("{:?}", result.as_ref().err().expect("should fail"));
     // The sysvar ID mismatch surfaces as InvalidArgument, InvalidAccountData,
     // or a Custom error depending on the runtime path.
@@ -129,7 +145,7 @@ fn read_clock_rejects_wrong_sysvar() {
 fn read_rent_succeeds_and_has_positive_minimum_balance() {
     let (mut svm, payer) = setup();
     let metas = vec![AccountMeta::new_readonly(rent_sysvar_id(), false)];
-    send_instruction(&mut svm, program_id(), vec![3], metas, &payer, &[])
+    send_instruction(&mut svm, program_id(), vec![6], metas, &payer, &[])
         .expect("read_rent should succeed");
 
     // Verify that the Rent sysvar returns meaningful values.
@@ -150,7 +166,7 @@ fn check_system_accepts_system_owned_account() {
     svm.airdrop(&wallet.pubkey(), 1_000_000).unwrap();
 
     let metas = vec![AccountMeta::new_readonly(wallet.pubkey(), false)];
-    send_instruction(&mut svm, program_id(), vec![4], metas, &payer, &[])
+    send_instruction(&mut svm, program_id(), vec![7], metas, &payer, &[])
         .expect("check_system should succeed");
 }
 
@@ -161,7 +177,7 @@ fn check_system_rejects_non_system_owned() {
 
     // `counter` is owned by our program, not the System program.
     let metas = vec![AccountMeta::new_readonly(counter, false)];
-    let result = send_instruction(&mut svm, program_id(), vec![4], metas, &payer, &[]);
+    let result = send_instruction(&mut svm, program_id(), vec![7], metas, &payer, &[]);
     let err_msg = format!("{:?}", result.as_ref().err().expect("should fail"));
     assert!(
         err_msg.contains("IllegalOwner") || err_msg.contains("Custom("),
@@ -175,7 +191,7 @@ fn touch_unchecked_accepts_arbitrary_account() {
     // UncheckedAccount does no owner/address validation — any account passes.
     let any = keypair_for("anyone");
     let metas = vec![AccountMeta::new_readonly(any.pubkey(), false)];
-    send_instruction(&mut svm, program_id(), vec![5], metas, &payer, &[])
+    send_instruction(&mut svm, program_id(), vec![8], metas, &payer, &[])
         .expect("touch_unchecked should succeed");
 }
 
@@ -214,7 +230,7 @@ fn read_clock_sysvar_has_valid_fields() {
     // Also verify the on-chain handler succeeds (already tested, but now
     // we know the sysvar is well-formed for the assertions above)
     let metas = vec![AccountMeta::new_readonly(clock_sysvar_id(), false)];
-    send_instruction(&mut svm, program_id(), vec![2], metas, &payer, &[])
+    send_instruction(&mut svm, program_id(), vec![5], metas, &payer, &[])
         .expect("read_clock should succeed with well-formed sysvar");
 }
 
@@ -234,7 +250,7 @@ fn read_rent_sysvar_has_positive_minimum_balance() {
 
     // The on-chain handler should succeed
     let metas = vec![AccountMeta::new_readonly(rent_sysvar_id(), false)];
-    send_instruction(&mut svm, program_id(), vec![3], metas, &payer, &[])
+    send_instruction(&mut svm, program_id(), vec![6], metas, &payer, &[])
         .expect("read_rent should succeed");
 }
 
@@ -242,7 +258,7 @@ fn read_rent_sysvar_has_positive_minimum_balance() {
 fn read_clock_rejects_wrong_sysvar_with_specific_error() {
     let (mut svm, payer) = setup();
     let metas = vec![AccountMeta::new_readonly(rent_sysvar_id(), false)];
-    let result = call_raw(&mut svm, &payer, 2, metas);
+    let result = call_raw(&mut svm, &payer, 5, metas);
     let err = format!("{:?}", result.unwrap_err().err);
     // The Sysvar<Clock> load checks the account address matches the Clock sysvar ID.
     assert!(
@@ -256,7 +272,7 @@ fn read_rent_rejects_wrong_sysvar() {
     let (mut svm, payer) = setup();
     // Pass clock sysvar to rent handler
     let metas = vec![AccountMeta::new_readonly(clock_sysvar_id(), false)];
-    let result = call_raw(&mut svm, &payer, 3, metas);
+    let result = call_raw(&mut svm, &payer, 6, metas);
     assert!(result.is_err(), "wrong sysvar should be rejected for rent");
 }
 
@@ -301,6 +317,64 @@ fn bump_boxed_rejects_wrong_owner() {
     assert!(result.is_err(), "system-owned account should fail Box<Account<Counter>> load");
 }
 
+#[test]
+fn read_boxed_accepts_immutable_box() {
+    let (mut svm, payer) = setup();
+    let counter = do_initialize_boxed(&mut svm, &payer);
+
+    let metas = vec![AccountMeta::new_readonly(counter, false)];
+    send_instruction(&mut svm, program_id(), vec![2], metas, &payer, &[])
+        .expect("read_boxed should succeed");
+
+    let account = svm.get_account(&counter).expect("counter exists");
+    let value = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
+    assert_eq!(value, 7, "immutable boxed read must not mutate state");
+}
+
+#[test]
+fn initialize_boxed_uses_box_init_path() {
+    let (mut svm, payer) = setup();
+    let counter = do_initialize_boxed(&mut svm, &payer);
+    let account = svm.get_account(&counter).expect("boxed counter exists");
+
+    assert_eq!(account.owner, program_id(), "boxed init should assign program owner");
+    assert_eq!(account.data.len(), 16, "boxed counter should be disc + u64");
+
+    let value = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
+    assert_eq!(value, 7, "initialize_boxed should set the boxed counter value");
+}
+
+#[test]
+fn close_boxed_transfers_lamports_and_clears_account() {
+    let (mut svm, payer) = setup();
+    let counter = do_initialize_boxed(&mut svm, &payer);
+    let receiver = keypair_for("boxed-close-receiver");
+    svm.airdrop(&receiver.pubkey(), 10_000_000).unwrap();
+
+    let receiver_before = svm.get_account(&receiver.pubkey()).unwrap().lamports;
+    let counter_before = svm.get_account(&counter).unwrap().lamports;
+    assert!(counter_before > 0, "boxed counter must hold lamports before close");
+
+    let metas = vec![
+        AccountMeta::new(counter, false),
+        AccountMeta::new(receiver.pubkey(), false),
+    ];
+    send_instruction(&mut svm, program_id(), vec![4], metas, &payer, &[])
+        .expect("close_boxed should succeed");
+
+    let receiver_after = svm.get_account(&receiver.pubkey()).unwrap().lamports;
+    assert_eq!(
+        receiver_after,
+        receiver_before + counter_before,
+        "close_boxed should transfer all lamports to the receiver",
+    );
+
+    match svm.get_account(&counter) {
+        None => {}
+        Some(account) => assert_eq!(account.lamports, 0, "closed boxed account should be empty"),
+    }
+}
+
 // ---- SystemAccount ---------------------------------------------------------
 
 #[test]
@@ -309,7 +383,7 @@ fn check_system_rejects_program_owned_with_specific_error() {
     let counter = do_initialize(&mut svm, &payer);
 
     let metas = vec![AccountMeta::new_readonly(counter, false)];
-    let result = call_raw(&mut svm, &payer, 4, metas);
+    let result = call_raw(&mut svm, &payer, 7, metas);
     let err = format!("{:?}", result.unwrap_err().err);
     assert!(
         err.contains("IllegalOwner") || err.contains("Custom("),
@@ -323,7 +397,7 @@ fn check_system_accepts_unfunded_system_account() {
     // A pubkey with no on-chain account is treated as system-owned with 0 lamports
     let unfunded = Pubkey::new_unique();
     let metas = vec![AccountMeta::new_readonly(unfunded, false)];
-    send_instruction(&mut svm, program_id(), vec![4], metas, &payer, &[])
+    send_instruction(&mut svm, program_id(), vec![7], metas, &payer, &[])
         .expect("unfunded system account should be accepted");
 }
 

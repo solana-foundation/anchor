@@ -6,7 +6,7 @@ pub use crate::{
     constant,
     error_code,
     InitSpace,
-    PodWrapper,
+    pod_wrapper,
     // Account types
     accounts::{
         Account, BorshAccount, Program, Signer, SlabSchema, SystemAccount, Sysvar, SysvarId,

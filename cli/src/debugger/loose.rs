@@ -20,15 +20,19 @@
 //! Sanity checks fire as early as possible so the user gets actionable
 //! errors instead of opaque "no traces" messages later.
 
-use anyhow::{anyhow, Context, Result};
-use serde::Deserialize;
-use solana_keypair::read_keypair_file;
-use solana_pubkey::Pubkey;
-use solana_signer::Signer;
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::str::FromStr;
+use {
+    anyhow::{anyhow, Context, Result},
+    serde::Deserialize,
+    solana_keypair::read_keypair_file,
+    solana_pubkey::Pubkey,
+    solana_signer::Signer,
+    std::{
+        collections::BTreeMap,
+        path::{Path, PathBuf},
+        process::Command,
+        str::FromStr,
+    },
+};
 
 /// Discovered cargo workspace context.
 pub struct LooseWorkspace {
@@ -70,9 +74,8 @@ impl LooseWorkspace {
     pub fn discover(cwd: PathBuf) -> Result<Self> {
         let root = find_workspace_root(&cwd).ok_or_else(|| {
             anyhow!(
-                "no cargo workspace found at or above {} \
-                 — `anchor debugger` needs either an Anchor.toml or a \
-                 cargo `[workspace]` Cargo.toml",
+                "no cargo workspace found at or above {} — `anchor debugger` needs either an \
+                 Anchor.toml or a cargo `[workspace]` Cargo.toml",
                 cwd.display()
             )
         })?;
@@ -118,13 +121,9 @@ impl LooseWorkspace {
 
         // Fast path: the conventional name.
         let convention = "profile";
-        if manifest
-            .features
-            .get(convention)
-            .map_or(false, |v| {
-                v.iter().any(|s| s == "anchor-v2-testing/profile")
-            })
-        {
+        if manifest.features.get(convention).map_or(false, |v| {
+            v.iter().any(|s| s == "anchor-v2-testing/profile")
+        }) {
             return Ok(convention.to_owned());
         }
 
@@ -136,13 +135,11 @@ impl LooseWorkspace {
         }
 
         Err(anyhow!(
-            "no cargo feature in {pkg} forwards to `anchor-v2-testing/profile`.\n\n\
-             Add this to {manifest_path}:\n  \
-             [features]\n  \
-             profile = [\"anchor-v2-testing/profile\"]\n\n\
-             Tests don't need any cfg gates — `anchor_v2_testing::svm()` is\n\
-             `LiteSVM::new()` by default and switches to the trace-recording\n\
-             variant automatically when this feature is on.",
+            "no cargo feature in {pkg} forwards to `anchor-v2-testing/profile`.\n\nAdd this to \
+             {manifest_path}:\n  [features]\n  profile = [\"anchor-v2-testing/profile\"]\n\nTests \
+             don't need any cfg gates — `anchor_v2_testing::svm()` is\n`LiteSVM::new()` by \
+             default and switches to the trace-recording\nvariant automatically when this feature \
+             is on.",
             pkg = self
                 .current_package
                 .as_deref()
@@ -160,8 +157,8 @@ impl LooseWorkspace {
             .with_context(|| format!("read {}", pkg_manifest.display()))?;
         if !manifest.dev_dependencies.contains_key("anchor-v2-testing") {
             return Err(anyhow!(
-                "{} doesn't list `anchor-v2-testing` as a dev-dependency.\n\
-                 Add it under [dev-dependencies] before running `anchor debugger`.",
+                "{} doesn't list `anchor-v2-testing` as a dev-dependency.\nAdd it under \
+                 [dev-dependencies] before running `anchor debugger`.",
                 pkg_manifest.display()
             ));
         }
@@ -193,8 +190,8 @@ fn find_workspace_root(start: &Path) -> Option<PathBuf> {
 }
 
 fn read_cargo_toml(path: &Path) -> Result<CargoToml> {
-    let contents = std::fs::read_to_string(path)
-        .with_context(|| format!("read {}", path.display()))?;
+    let contents =
+        std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     toml::from_str(&contents).with_context(|| format!("parse {}", path.display()))
 }
 
@@ -496,12 +493,9 @@ pub fn run_cargo_test(
         cmd.arg("--").arg(filter);
     }
 
-    let status = cmd.status().with_context(|| {
-        format!(
-            "spawn cargo test in {}: is `cargo` on PATH?",
-            cwd.display()
-        )
-    })?;
+    let status = cmd
+        .status()
+        .with_context(|| format!("spawn cargo test in {}: is `cargo` on PATH?", cwd.display()))?;
     if !status.success() {
         return Err(anyhow!(
             "cargo test failed (exit {:?}). Fix test errors before stepping into the debugger.",
@@ -515,11 +509,10 @@ pub fn run_cargo_test(
 /// previous session don't leak into the new picker. Idempotent — missing
 /// dir is fine.
 pub fn clear_profile_dir(profile_dir: &Path) -> Result<()> {
-    if profile_dir.exists() {
-        std::fs::remove_dir_all(profile_dir).with_context(|| {
-            format!("clear stale profile dir {}", profile_dir.display())
-        })?;
+    match std::fs::remove_dir_all(profile_dir) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(anyhow::Error::new(e)
+            .context(format!("clear stale profile dir {}", profile_dir.display()))),
     }
-    Ok(())
 }
-

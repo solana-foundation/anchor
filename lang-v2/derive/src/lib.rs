@@ -105,7 +105,18 @@ fn with_ix_lifetime(ty: &Type, ix: &syn::Lifetime) -> Type {
 struct ArgsDeser {
     deser: TokenStream2,
     arg_types: Vec<Type>,
-    has_refs: bool,
+}
+
+/// Compute lifetime-rewritten argument types plus a flag indicating whether
+/// any argument carries an instruction-data borrow.
+fn args_meta(args: &[(&Ident, &Type)]) -> (Vec<Type>, bool) {
+    let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
+    let arg_types: Vec<Type> = args
+        .iter()
+        .map(|(_, t)| with_ix_lifetime(t, &ix_lifetime))
+        .collect();
+    let has_refs = args.iter().any(|(_, t)| needs_ix_lifetime(t));
+    (arg_types, has_refs)
 }
 
 /// Build the `#[derive(SchemaRead)] struct + deserialize` block for a list of
@@ -164,11 +175,7 @@ fn emit_args_deser(args: &[(&Ident, &Type)], struct_name: &str, inline_error: bo
         }
     };
 
-    ArgsDeser {
-        deser,
-        arg_types,
-        has_refs,
-    }
+    ArgsDeser { deser, arg_types }
 }
 
 /// Parse `#[instruction(name: Type, ...)]` from struct-level attributes.
@@ -439,11 +446,18 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         .filter_map(|f| f.idl_field_ty.as_ref())
         .collect();
 
-    let ix_deser = if ix_args.is_empty() {
-        quote! {}
+    let (ix_deser, ix_args_assoc, ix_args_return) = if ix_args.is_empty() {
+        (quote! {}, quote! { type IxArgs<'ix> = (); }, quote! { () })
     } else {
         let pairs: Vec<(&Ident, &Type)> = ix_args.iter().map(|(n, t)| (n, t)).collect();
-        emit_args_deser(&pairs, "__IxArgs", false).deser
+        let ix_args_deser = emit_args_deser(&pairs, "__IxArgs", false);
+        let ix_arg_types = ix_args_deser.arg_types;
+        let ix_arg_names: Vec<&Ident> = ix_args.iter().map(|(n, _)| n).collect();
+        (
+            ix_args_deser.deser,
+            quote! { type IxArgs<'ix> = (#(#ix_arg_types,)*); },
+            quote! { (#(#ix_arg_names,)*) },
+        )
     };
 
     // Conditional bumps: empty → type alias, non-empty → struct
@@ -855,20 +869,22 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             const HEADER_SIZE: usize = #header_size_expr;
             const MUT_MASK: [u64; 4] = #mut_mask_expr;
 
+            #ix_args_assoc
+
             #[inline]
-            fn try_accounts(
+            fn try_accounts<'ix>(
                 __program_id: &anchor_lang_v2::Address,
                 __views: &[anchor_lang_v2::AccountView],
                 __duplicates: ::core::option::Option<&anchor_lang_v2::AccountBitvec>,
                 __base_offset: usize,
-                __ix_data: &[u8],
-            ) -> anchor_lang_v2::Result<(Self, #bumps_name)> {
+                __ix_data: &'ix [u8],
+            ) -> anchor_lang_v2::Result<(Self, #bumps_name, Self::IxArgs<'ix>)> {
                 #ix_deser
                 #bumps_init
                 #(#loads)*
                 #dup_check_block
                 #(#constraints)*
-                Ok((Self { #(#field_names),* }, __bumps))
+                Ok((Self { #(#field_names),* }, __bumps, #ix_args_return))
             }
 
             //
@@ -1367,9 +1383,8 @@ fn process_handler(
         .collect();
 
     let extra_arg_names: Vec<_> = extra_args.iter().map(|(n, _)| *n).collect();
-    let args_deser = emit_args_deser(&extra_args, "__Args", true);
-    let deser_args = &args_deser.deser;
-    let extra_arg_types = &args_deser.arg_types;
+    let (extra_arg_types, has_ref_args) = args_meta(&extra_args);
+    let extra_arg_types = &extra_arg_types;
 
     // Dispatch arm.
     let dispatch_arm = quote! {
@@ -1377,33 +1392,84 @@ fn process_handler(
     };
 
     // Handler wrapper.
-    let wrapper = quote! {
-        #[inline(always)]
-        pub fn #fn_name<'a>(
-            __program_id: &'a anchor_lang_v2::Address,
-            __cursor: &'a mut anchor_lang_v2::AccountCursor,
-            __ix_data: &[u8],
-            __num_accounts: usize,
-        ) -> u64 {
-            #[cfg(not(feature = "no-log-ix-name"))]
-            anchor_lang_v2::msg!(#fn_name_log);
-            #deser_args
-            match anchor_lang_v2::run_handler::<#accounts_type>(
-                __program_id,
-                __cursor,
-                __ix_data,
-                __num_accounts,
-                |__ctx| #mod_name::#fn_name(__ctx, #(#extra_arg_names),*),
-            ) {
-                Ok(()) => 0,
-                Err(__e) => __e.into(),
+    let wrapper = if extra_arg_names.is_empty() {
+        quote! {
+            #[inline(always)]
+            pub fn #fn_name<'a>(
+                __program_id: &'a anchor_lang_v2::Address,
+                __cursor: &'a mut anchor_lang_v2::AccountCursor,
+                __ix_data: &'a [u8],
+                __num_accounts: usize,
+            ) -> u64 {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang_v2::msg!(#fn_name_log);
+                match anchor_lang_v2::run_handler::<#accounts_type>(
+                    __program_id,
+                    __cursor,
+                    __ix_data,
+                    __num_accounts,
+                    |__ctx, _ix_args| #mod_name::#fn_name(__ctx),
+                ) {
+                    Ok(()) => 0,
+                    Err(__e) => __e.into(),
+                }
+            }
+        }
+    } else {
+        let tuple_ty = quote! { (#(#extra_arg_types,)*) };
+        let args_deser = emit_args_deser(&extra_args, "__Args", false);
+        let deser_args = args_deser.deser;
+        quote! {
+            #[inline(always)]
+            pub fn #fn_name<'a>(
+                __program_id: &'a anchor_lang_v2::Address,
+                __cursor: &'a mut anchor_lang_v2::AccountCursor,
+                __ix_data: &'a [u8],
+                __num_accounts: usize,
+            ) -> u64 {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang_v2::msg!(#fn_name_log);
+
+                trait __AnchorIxArgCoerce<'ix> {
+                    fn __coerce(self, __ix_data: &'ix [u8]) -> anchor_lang_v2::Result<#tuple_ty>;
+                }
+
+                impl<'ix> __AnchorIxArgCoerce<'ix> for () {
+                    #[inline(always)]
+                    fn __coerce(self, __ix_data: &'ix [u8]) -> anchor_lang_v2::Result<#tuple_ty> {
+                        #deser_args
+                        Ok((#(#extra_arg_names,)*))
+                    }
+                }
+
+                impl<'ix> __AnchorIxArgCoerce<'ix> for #tuple_ty {
+                    #[inline(always)]
+                    fn __coerce(self, _ix_data: &'ix [u8]) -> anchor_lang_v2::Result<#tuple_ty> {
+                        Ok(self)
+                    }
+                }
+
+                match anchor_lang_v2::run_handler::<#accounts_type>(
+                    __program_id,
+                    __cursor,
+                    __ix_data,
+                    __num_accounts,
+                    |__ctx, __ix_args| {
+                        let (#(#extra_arg_names,)*) =
+                            <_ as __AnchorIxArgCoerce<'a>>::__coerce(__ix_args, __ix_data)?;
+                        #mod_name::#fn_name(__ctx, #(#extra_arg_names),*)
+                    },
+                ) {
+                    Ok(()) => 0,
+                    Err(__e) => __e.into(),
+                }
             }
         }
     };
 
     // Client-side instruction struct.
     let ix_struct_name = syn::Ident::new(&to_camel_case(&fn_name_str), fn_name.span());
-    let (ix_lt_decl, ix_lt_use) = if args_deser.has_refs {
+    let (ix_lt_decl, ix_lt_use) = if has_ref_args {
         (quote! { <'ix> }, quote! { <'ix> })
     } else {
         (quote! {}, quote! {})
@@ -1752,11 +1818,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
             // Parse the discriminator.
             #disc_parse
-
             let __num = *(__input as *const u64) as usize;
-            if let Err(__e) = anchor_lang_v2::check_max_accounts(__num, __ANCHOR_MAX_ACCOUNTS) {
-                return __e.into();
-            }
 
             let mut __lookup: [::core::mem::MaybeUninit<anchor_lang_v2::AccountView>;
                 __ANCHOR_MAX_ACCOUNTS] =
@@ -2505,7 +2567,7 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
 }
 
 // ---------------------------------------------------------------------------
-// #[derive(PodWrapper)]
+// #[pod_wrapper]
 // ---------------------------------------------------------------------------
 
 /// Generates a `Pod`-compatible companion type for an `#[repr(u8)]` enum.
@@ -2515,30 +2577,33 @@ pub fn derive_init_space(item: TokenStream) -> TokenStream {
 /// enum inside a zero-copy `#[account]` struct is therefore unsound: a corrupt
 /// byte becomes an invalid enum value and instant UB on pattern match.
 ///
-/// `#[derive(PodWrapper)]` emits a `#[repr(transparent)] struct Pod{Enum}(pub u8)`
-/// with `Pod + Zeroable` impls, per-variant `SCREAMING_SNAKE_CASE` constants,
-/// and `From` / `PartialEq` bridges so existing `engine.market_mode == MarketMode::Live`
+/// `#[pod_wrapper]` emits a `#[repr(transparent)] struct Pod{Enum}(pub u8)`
+/// with `Pod + Zeroable` impls, per-variant associated constants, and `From` /
+/// `PartialEq` bridges so existing `engine.market_mode == MarketMode::Live`
 /// comparisons still compile after swapping a field from `Enum` to `PodEnum`.
+/// It is an attribute macro — not a derive — so the companion can also carry
+/// trait impls (e.g. `IdlAccountType`) that derives cannot express.
 ///
 /// # Example
 ///
 /// ```ignore
-/// #[derive(PodWrapper)]
+/// #[pod_wrapper]
+/// #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 /// #[repr(u8)]
 /// pub enum MarketMode { Live = 0, Resolved = 1 }
 ///
-/// // generated: PodMarketMode::LIVE, PodMarketMode::RESOLVED
+/// // generated: PodMarketMode::Live, PodMarketMode::Resolved
 /// // generated: From<MarketMode> / From<PodMarketMode> (panics on invalid byte)
 /// // generated: PartialEq<MarketMode> / PartialEq<PodMarketMode> bridges
 /// ```
 ///
 /// # Requirements
 ///
-/// * The item must be an `enum`.
+/// * The annotated item must be an `enum`.
 /// * The enum must carry `#[repr(u8)]` so the stored width is explicit.
 /// * Every variant must be a bare unit variant (no payload).
-#[proc_macro_derive(PodWrapper)]
-pub fn derive_pod_wrapper(item: TokenStream) -> TokenStream {
+#[proc_macro_attribute]
+pub fn pod_wrapper(_attr: TokenStream, item: TokenStream) -> TokenStream {
     pod_wrapper::expand(item)
 }
 
@@ -2679,6 +2744,31 @@ mod tests {
         assert!(
             err.to_string().contains("expected `:`"),
             "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn process_handler_emits_ixarg_fallback_for_missing_instruction_attr() {
+        let handler: syn::ItemFn = syn::parse_quote! {
+            pub fn do_it(ctx: &mut Context<MyAccounts>, amount: u64, step: u8) -> Result<()> {
+                let _ = ctx;
+                let _ = amount;
+                let _ = step;
+                Ok(())
+            }
+        };
+        let mod_name: syn::Ident = syn::parse_quote!(my_program);
+
+        let generated = process_handler(&handler, &mod_name, false, None);
+        let wrapper = generated.wrapper.to_string();
+
+        assert!(
+            wrapper.contains("__AnchorIxArgCoerce"),
+            "expected fallback coercion trait in wrapper: {wrapper}"
+        );
+        assert!(
+            wrapper.contains("impl < 'ix > __AnchorIxArgCoerce < 'ix > for ()"),
+            "expected missing-#[instruction] fallback impl in wrapper: {wrapper}"
         );
     }
 }

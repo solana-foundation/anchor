@@ -56,8 +56,6 @@ pub struct AccountAttrs {
     pub is_zeroed: bool,
     pub is_executable: bool,
     pub is_dup: bool,
-    /// None = not specified, Some(true) = enforce, Some(false) = skip
-    pub rent_exempt: Option<bool>,
     /// None = no bump attr, Some(None) = `bump` without value, Some(Some(expr)) = `bump = expr`
     pub bump: Option<Option<Expr>>,
     pub payer: Option<Ident>,
@@ -101,7 +99,6 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
         is_zeroed: false,
         is_executable: false,
         is_dup: false,
-        rent_exempt: None,
         bump: None,
         payer: None,
         space: None,
@@ -206,11 +203,6 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                                 content.parse::<Token![,]>()?;
                             }
                         }
-                    }
-                    "rent_exempt" => {
-                        input.parse::<Token![=]>()?;
-                        let val: Ident = input.parse()?;
-                        result.rent_exempt = Some(val == "enforce");
                     }
                     "payer" => {
                         input.parse::<Token![=]>()?;
@@ -934,7 +926,7 @@ pub fn parse_field(
         // nested struct. A future optimization could pre-shift the bitvec
         // or use a wrapper that offsets transparently.
         let load = quote! {
-            let (__nested_inner, _) =
+            let (__nested_inner, _, _) =
                 <#inner_ty as anchor_lang_v2::TryAccounts>::try_accounts(
                     __program_id,
                     &__views[#offset_expr .. #offset_expr + <#inner_ty as anchor_lang_v2::TryAccounts>::HEADER_SIZE],
@@ -1145,15 +1137,6 @@ pub fn parse_field(
         constraints.push(quote! {
             if !#field_name.account().executable() {
                 return Err(anchor_lang_v2::ErrorCode::ConstraintExecutable.into());
-            }
-        });
-    }
-
-    // rent_exempt check
-    if let Some(true) = attrs.rent_exempt {
-        constraints.push(quote! {
-            if !anchor_lang_v2::is_rent_exempt(#field_name.account()) {
-                return Err(anchor_lang_v2::ErrorCode::ConstraintRentExempt.into());
             }
         });
     }
@@ -1411,12 +1394,15 @@ pub fn parse_field(
         let base_ty = option_inner.unwrap_or(field_ty);
         let is_borsh_account = field_ty_str(base_ty) == "BorshAccount";
         let pre_realloc = if is_borsh_account {
-            quote! { #field_name.release_borrow(); }
+            quote! { #field_name.release_borrow()?; }
         } else {
             quote! {}
         };
         let post_realloc = if is_borsh_account {
-            quote! { #field_name.reacquire_borrow_mut()?; }
+            // Guard-only: realloc preserves owner/disc, and a full
+            // reacquire would re-deserialize the pre-resize buffer —
+            // fails on shrink.
+            quote! { #field_name.reacquire_guard_only()?; }
         } else {
             quote! {}
         };
