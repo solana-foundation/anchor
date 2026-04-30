@@ -11,7 +11,7 @@ The core trait surface that extensions implement is intentionally small:
 | --- | --- |
 | `AnchorAccount{:rs}` | A new account wrapper (load/exit lifecycle, owner/disc validation) |
 | `AccountConstraint<A>{:rs}` | A new namespaced constraint (`#[account(my_namespace::key = value)]{:rs}`) |
-| `Id{:rs}` | A new well-known program for `Program<T>{:rs}` |
+| `Id{:rs}` | A new well-known program for `Program<T: Id>{:rs}` |
 | `Discriminator{:rs}` | A custom 8-byte discriminator on an account or instruction |
 
 ## `AnchorAccount{:rs}`
@@ -89,9 +89,9 @@ pub trait AccountConstraint<A> {
 
 Once the impl is in scope, a constraint marker named `my_namespace::key{:rs}` becomes available as `#[account(my_namespace::key = value)]{:rs}` on any account field. The `anchor-spl-v2` crate is built on top of this pattern, using it to implement `token::*{:rs}`, `mint::*{:rs}`, and `associated_token::*{:rs}` as a downstream crate rather than baking them into the core derive.
 
-## `Id{:rs}` for `Program<T>{:rs}`
+## `Id{:rs}` for `Program<T: Id>{:rs}`
 
-To add a new well-known program type that works with `Program<T>{:rs}`, implement `Id{:rs}` on a unit marker struct. The trait's single method returns the program's canonical address:
+To add a new well-known program type that works with `Program<T: Id>{:rs}`, implement `Id{:rs}` on a unit marker struct. The trait's single method returns the program's canonical address:
 
 ```rust title="lib.rs" showLineNumbers=false
 pub struct MyProgram;
@@ -107,7 +107,7 @@ pub struct UseMine {
 }
 ```
 
-At load time, `Program<MyProgram>{:rs}` validates that the account is `executable{:rs}` and that its address matches `MyProgram::id(){:rs}`.
+At load time, `Program<MyProgram>{:rs}` validates that the account's address matches `MyProgram::id(){:rs}`, and (under the default `guardrails` feature) that the account is `executable{:rs}`.
 
 ## Why this works
 

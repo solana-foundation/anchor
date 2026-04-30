@@ -7,14 +7,14 @@ The bench numbers in [the v2 overview](/docs/v2/#bench-numbers) come from a stac
 
 ## Macro-time PDA bump precomputation
 
-When every seed in a `seeds = [...]{:rs}` clause is a byte literal, the derive runs `find_program_address{:rs}` at compile time and bakes the canonical bump in as a `const{:rs}`. The runtime PDA search is then skipped entirely on every invocation:
+When every seed in a `seeds = [...]{:rs}` clause is a byte literal, the derive runs `find_program_address{:rs}` at compile time against the `declare_id!{:rs}` program ID and bakes the canonical bump in as a `const{:rs}`, which skips the runtime PDA search entirely:
 
 ```rust title="lib.rs" showLineNumbers=false
 #[account(seeds = [b"counter"], bump)]
 pub counter: Account<Counter>,
 ```
 
-For the example above, the macro precomputes the bump for `[b"counter"]{:rs}` against the `declare_id!{:rs}` program ID at compile time. When the seeds parameterize on a runtime value, such as `[b"profile", user.address().as_ref()]{:rs}`, v2 falls back to the runtime search path. Precomputed bumps save roughly 1,500 CU per validated PDA.
+Seeds that parameterize on a runtime value (such as `[b"profile", user.address().as_ref()]{:rs}`) fall back to the runtime search path. Precomputed bumps save roughly 1,500 CU per validated PDA.
 
 ## Skip the on-curve check for program-owned PDAs
 

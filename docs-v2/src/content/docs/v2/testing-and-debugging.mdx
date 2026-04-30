@@ -7,7 +7,7 @@ v2 ships testing and debugging tooling as first-class parts of the workflow rath
 
 ## `anchor-v2-testing`
 
-`anchor-v2-testing` is a drop-in replacement for `LiteSVM::new(){:rs}` that, when built with the `profile` feature, records SBF register traces per test under `target/anchor-v2-profile/<test_name>/{:rs}`. The crate is a thin layer over `litesvm`, so existing test patterns continue to work:
+`anchor-v2-testing` is a drop-in replacement for `LiteSVM::new(){:rs}` that, when built with the `profile` feature, records SBF register traces per test under `target/anchor-v2-profile/<test_name>/`. The crate is a thin layer over `litesvm`, so existing test patterns continue to work:
 
 ```toml title="Cargo.toml"
 [dev-dependencies]
@@ -32,9 +32,9 @@ Without the `profile` feature enabled, `svm(){:rs}` is exactly `LiteSVM::new(){:
 
 For convenience, the crate also re-exports `Keypair{:rs}`, `Signer{:rs}`, `Message{:rs}`, `VersionedMessage{:rs}`, and `VersionedTransaction{:rs}`, so test files do not need to declare a direct dependency on each individual `solana-*` crate.
 
-## `$ [34manchor[0m test [2m--profile[0m{:ansi}`
+## `[34manchor[0m test [2m--profile[0m{:ansi}`
 
-The `--profile` flag builds the test suite with the `profile` feature on and post-processes the resulting register traces into per-test flamegraphs:
+The `[2m--profile[0m{:ansi}` flag builds the test suite with the `profile` feature on and post-processes the resulting register traces into per-test flamegraphs:
 
 ```ansi
 $ [34manchor[0m test [2m--profile[0m
@@ -42,22 +42,25 @@ $ [34manchor[0m test [2m--profile[0m
 
 Trace files land under `target/anchor-v2-profile/<sanitized_test_name>/`:
 
-```text
-target/anchor-v2-profile/
-└── deposit_and_withdraw/
-    ├── 0001__tx1.regs          # tx 1, top-level invocation
-    ├── 0001__tx1.insns
-    ├── 0001__tx1.program_id
-    ├── 0002__tx1.regs          # tx 1, CPI into another program
-    ├── 0002__tx1.insns
-    ├── 0002__tx1.program_id
-    ├── 0003__tx2.regs          # tx 2
-    └── ...
-```
+<FileTree>
+  <Dir name="target">
+    <Dir name="anchor-v2-profile">
+      <Dir name="deposit_and_withdraw">
+        <File name="0001__tx1.regs" comment="tx 1, top-level invocation" />
+        <File name="0001__tx1.insns" />
+        <File name="0001__tx1.program_id" />
+        <File name="0002__tx1.regs" comment="tx 1, CPI into another program" />
+        <File name="0002__tx1.insns" />
+        <File name="0002__tx1.program_id" />
+        <File name="0003__tx2.regs" comment="tx 2" />
+      </Dir>
+    </Dir>
+  </Dir>
+</FileTree>
 
 The `NNNN` counter is monotonic across the test, with each CPI getting its own index, and `txN` identifies the outer transaction that owns the trace. Both counters reset between processes, so traces from different test runs do not collide.
 
-## `$ [34manchor[0m debugger{:ansi}`
+## `[34manchor[0m debugger{:ansi}`
 
 The debugger is a foundry-style SBF instruction stepper built on the same per-test traces that `--profile{:ansi}` produces. If traces do not already exist, the command invokes the trace pipeline first and then launches the TUI:
 

@@ -13,7 +13,7 @@ v2 ships a small set of account wrappers, none of which carry an `<'info>{:rs}` 
 | `Option<Account<T>>{:rs}` | Optional account slot. Sentinel when absent. |
 | `Nested<T>{:rs}` | Compose `#[derive(Accounts)]{:rs}` structs. Inline expansion. |
 | `Signer{:rs}` | Transaction signer. Validates `is_signer{:rs}`. |
-| `Program<T>{:rs}` | CPI targets (`Program<System>{:rs}`, `Program<Token>{:rs}`). Validates executable + program ID via `T: Id{:rs}`. |
+| `Program<T: Id>{:rs}` | CPI targets (`Program<System>{:rs}`, `Program<Token>{:rs}`). Validates executable + program ID via `T: Id{:rs}`. |
 | `SystemAccount{:rs}` | System-owned account. Owner check only. |
 | `UncheckedAccount{:rs}` | Escape hatch. No validation. |
 | `Sysvar<T>{:rs}` | `Sysvar<Clock>{:rs}`, `Sysvar<Rent>{:rs}`. Prefer the syscall (`Clock::get(){:rs}`) where possible. |
@@ -100,7 +100,7 @@ pub struct PostOrder {
 }
 ```
 
-The wrapper exposes the usual collection methods: `len(){:rs}`, `is_empty(){:rs}`, `is_full(){:rs}`, `capacity(){:rs}`, `try_push(item){:rs}`, `pop(){:rs}`, `clear(){:rs}`, `truncate(n){:rs}`, `swap_remove(idx){:rs}`, `as_slice(){:rs}`, `as_mut_slice(){:rs}`, `iter(){:rs}`, `iter_mut(){:rs}`, `first(){:rs}`, `last(){:rs}`, `get(idx){:rs}`, `get_mut(idx){:rs}`, and `resize_to_capacity(n){:rs}` (gated by the `account-resize` feature). `try_push{:rs}` returns `Err(ProgramError::AccountDataTooSmall){:rs}` when the tail is at capacity, since none of these methods touch lamports — allocate and pay rent through `resize_to_capacity{:rs}` plus a separate `top_up{:rs}` call before pushing past the current capacity.
+The wrapper exposes the usual `Vec`-style methods (`try_push{:rs}`, `pop{:rs}`, `iter{:rs}`, `swap_remove{:rs}`, indexing, and friends), plus `resize_to_capacity{:rs}` under the `account-resize` feature. `try_push{:rs}` returns `Err(ProgramError::AccountDataTooSmall){:rs}` when the tail is full, since the wrapper never touches lamports on its own. Grow the account through `resize_to_capacity{:rs}` and pair it with a `top_up{:rs}` call to settle rent before pushing past the current capacity.
 
 ## `Option<Account<T>>{:rs}`
 
@@ -149,9 +149,9 @@ pub struct Reset {
 
 `Signer{:rs}` validates that the account signed the transaction by checking its `is_signer{:rs}` flag, and it does not deserialize any account data. The signer's pubkey is available through `account.address(){:rs}`, and combining the wrapper with `mut{:rs}` adds an `is_writable{:rs}` check on top of the signature requirement.
 
-## `Program<T>{:rs}`
+## `Program<T: Id>{:rs}`
 
-`Program<T>{:rs}` is the wrapper used for CPI target accounts, parameterized by a marker type that implements `Id{:rs}`. The `programs{:rs}` module defines markers for the common cases (`System{:rs}`, `Token{:rs}`, `Token2022{:rs}`, `AssociatedToken{:rs}`, and `Memo{:rs}`); the prelude re-exports `System{:rs}`, `Token{:rs}`, and `Token2022{:rs}`, while `AssociatedToken{:rs}` and `Memo{:rs}` are reachable through `anchor_lang_v2::programs{:rs}`. At load time the wrapper validates that the account's address matches `T::id(){:rs}`, and (when the `guardrails` feature is on, which is the default) that `executable == true{:rs}`.
+`Program<T: Id>{:rs}` is the wrapper used for CPI target accounts, parameterized by a marker type that implements `Id{:rs}`. The `programs{:rs}` module defines markers for the common cases (`System{:rs}`, `Token{:rs}`, `Token2022{:rs}`, `AssociatedToken{:rs}`, and `Memo{:rs}`); the prelude re-exports `System{:rs}`, `Token{:rs}`, and `Token2022{:rs}`, while `AssociatedToken{:rs}` and `Memo{:rs}` are reachable through `anchor_lang_v2::programs{:rs}`. At load time the wrapper validates that the account's address matches `T::id(){:rs}`, and (when the `guardrails` feature is on, which is the default) that `executable == true{:rs}`.
 
 ## `SystemAccount{:rs}`
 

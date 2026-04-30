@@ -16,18 +16,16 @@ Most v1 programs port to v2 with the renames in the table below. The ones that d
 | `Pubkey{:rs}` | `Address{:rs}` (drop-in 32-byte replacement) |
 | `Account<'info, T>{:rs}` | `Account<T>{:rs}` (zero-copy by default; `T: Pod{:rs}`) |
 | `Account<'info, T>{:rs}` with `Vec` / `String` | `BorshAccount<T>{:rs}` |
-| `AccountLoader<'info, T>{:rs}` | `Account<T>{:rs}` (already zero-copy) |
+| `AccountLoader<'info, T>{:rs}` | `Account<T>{:rs}` |
 | `has_one = field{:rs}` | `address = field{:rs}` (see [deprecation](#has-one-deprecated)) |
+
+<Callout variant="note" title="`AccountLoader` is reused in v2 for a different purpose">
+  v2 also exposes a type literally named `AccountLoader{:rs}` from `lang-v2/src/loader.rs{:rs}`, but it is the sequential cursor-walker that `#[derive(Accounts)]{:rs}` calls into during account validation, not a user-facing wrapper. v1's zero-copy `AccountLoader<'info, T>{:rs}` is replaced by `Account<T>{:rs}`, which is zero-copy by default in v2.
+</Callout>
 
 ## What changes in practice
 
-1. v2 removes the `<'info>{:rs}` lifetime parameter entirely because pinocchio gives accounts static scope at the program-handler boundary. Search-and-replace `<'info>` to nothing and `<'info, ` to `<` handles most ports.
-
-2. Handler signatures take `&mut Context<T>{:rs}` instead of `Context<T>{:rs}` by value, which lets constraint hooks and exit logic write back to the same context. Most user code is unchanged because `ctx.accounts.field{:rs}` already worked through `DerefMut{:rs}`.
-
-3. `Account<T>{:rs}` is now zero-copy by default, where v1 deserialized through borsh on every load. The new wrapper requires `T: Pod{:rs}` (fixed size, `#[repr(C)]{:rs}`) so loading is a pointer cast rather than a serialize round-trip. For accounts whose fields are variable-length, switch over to [`BorshAccount<T>{:rs}`](/docs/v2/account-types/#borshaccount-t) instead.
-
-4. `Pubkey{:rs}` is renamed to `Address{:rs}`. The two are the same 32-byte type at the binary level, just with a different name in source. The `solana_address::declare_id!{:rs}` macro is re-exported under the v2 prelude, so `declare_id!{:rs}` itself continues to work without an import change.
+The lifetime sweep is mostly mechanical. Search-and-replace `<'info>` to nothing and `<'info, ` to `<` handles most ports. The two non-mechanical shifts are that `Account<T>{:rs}` is now zero-copy by default and so requires `T: Pod{:rs}`, where v1 deserialized through borsh on every load. Accounts whose fields are variable-length should switch to [`BorshAccount<T>{:rs}`](/docs/v2/account-types/#borshaccount-t) instead. `declare_id!{:rs}` continues to work unchanged because the v2 prelude re-exports `solana_address::declare_id!{:rs}`.
 
 ## `has_one` deprecated
 

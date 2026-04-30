@@ -57,13 +57,9 @@ pub struct MultisigConfig {
 }
 ```
 
-The wrapper exposes panicking and fallible mutators side by side. `.push(item){:rs}`, `.extend_from_slice(src){:rs}`, and `.set_from_slice(src){:rs}` panic on overflow; `.try_push(item){:rs}` and `.try_extend_from_slice(src){:rs}` return `Result<(), CapacityError>{:rs}` instead. Read accessors that have to index into `data{:rs}` (`.as_slice(){:rs}`, `.as_mut_slice(){:rs}`, `.iter(){:rs}`, `.iter_mut(){:rs}`, `.get(idx){:rs}`, `.first(){:rs}`, `.last(){:rs}`, `.pop(){:rs}`) panic when the stored length prefix exceeds `MAX{:rs}`, which can happen on a `PodVec{:rs}` cast from attacker-controlled account bytes. The non-panicking counterparts `try_as_slice{:rs}`, `try_as_mut_slice{:rs}`, `try_get{:rs}`, and `try_pop{:rs}` return `Result<_, CapacityError>{:rs}`; call `.validate(){:rs}` once at load time to confirm `len() <= MAX{:rs}` so the panicking accessors can be used freely thereafter.
+Mutators come in panicking and fallible pairs. `.push{:rs}`, `.extend_from_slice{:rs}`, and `.set_from_slice{:rs}` panic on overflow; `.try_push{:rs}` and `.try_extend_from_slice{:rs}` return `Result<(), CapacityError>{:rs}`. Indexing accessors (`.as_slice{:rs}`, `.iter{:rs}`, `.get{:rs}`, `.pop{:rs}`, and friends) panic when the stored length prefix exceeds `MAX{:rs}`, which can happen on a `PodVec{:rs}` cast from attacker-controlled bytes; pair them with `.try_as_slice{:rs}`, `.try_get{:rs}`, `.try_pop{:rs}`, or call `.validate(){:rs}` once at load time. Length-only helpers (`.len{:rs}`, `.is_empty{:rs}`, `.capacity{:rs}`, `.clear{:rs}`, `.truncate{:rs}`) never index into `data{:rs}` and are always safe.
 
-The helpers that ignore the prefix (`.len(){:rs}`, `.is_empty(){:rs}`, `.is_full(){:rs}`, `.capacity(){:rs}`) and the writes that only touch `len{:rs}` (`.clear(){:rs}`, `.truncate(n){:rs}`) are always safe.
-
-Because capacity is fixed at the type level, the wrapper never reallocates, and pushing past `MAX{:rs}` returns `Err(CapacityError){:rs}` (or panics on the non-`try_` variants) rather than growing the buffer.
-
-`PodVec{:rs}` is the right choice when the upper bound on length is small and known ahead of time. When the data really is open-ended, reach for `BorshAccount<T>{:rs}` with regular `Vec<T>{:rs}` fields instead.
+Reach for `PodVec{:rs}` when the upper bound is small and known ahead of time. For genuinely open-ended data, use `BorshAccount<T>{:rs}` with a regular `Vec<T>{:rs}` instead.
 
 ## `#[pod_wrapper]{:rs}` for enums
 
