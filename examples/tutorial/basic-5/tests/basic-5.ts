@@ -12,7 +12,7 @@ describe("basic-5", () => {
 
   let [actionState] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("action-state"), user.toBuffer()],
-    program.programId
+    program.programId,
   );
 
   it("basic-5: Robot actions!", async () => {
@@ -20,9 +20,26 @@ describe("basic-5", () => {
     const createInstruction = await program.methods
       .create()
       .accounts({
-        actionState,
-        user,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        // actionState,
+        /* 
+        A accounts whose seeds are fully declared in the IDL 
+        (e.g. actionState has pda.seeds = [{ kind: "const", value: [...] }])
+        client derives the address at call time, no need to pass it.
+        */
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
+        // systemProgram: anchor.web3.SystemProgram.programId,
+        /*
+         Known system programs whose address is fixed in the IDL
+          (e.g. systemProgram → "11111111111111111111111111111111",
+         tokenProgram  → resolved from the token interface constraint) client fills these in automatically.
+
+        */
       })
       .instruction();
     // Walk instruction: Invoke the Robot to walk
@@ -30,7 +47,13 @@ describe("basic-5", () => {
       .walk()
       .accounts({
         actionState,
-        user,
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
       })
       .instruction();
     // Run instruction: Invoke the Robot to run
@@ -38,7 +61,13 @@ describe("basic-5", () => {
       .run()
       .accounts({
         actionState,
-        user,
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
       })
       .instruction();
     // Jump instruction: Invoke the Robot to jump
@@ -46,7 +75,13 @@ describe("basic-5", () => {
       .jump()
       .accounts({
         actionState,
-        user,
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
       })
       .instruction();
     // Reset instruction: Reset actions of the Robot
@@ -54,7 +89,13 @@ describe("basic-5", () => {
       .reset()
       .accounts({
         actionState,
-        user,
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
       })
       .instruction();
 
@@ -71,15 +112,14 @@ describe("basic-5", () => {
   });
 
   async function createAndSendV0Tx(
-    txInstructions: anchor.web3.TransactionInstruction[]
+    txInstructions: anchor.web3.TransactionInstruction[],
   ) {
     // Step 1 - Fetch the latest blockhash
-    let latestBlockhash = await provider.connection.getLatestBlockhash(
-      "confirmed"
-    );
+    let latestBlockhash =
+      await provider.connection.getLatestBlockhash("confirmed");
     console.log(
       "   ✅ - Fetched latest blockhash. Last Valid Height:",
-      latestBlockhash.lastValidBlockHeight
+      latestBlockhash.lastValidBlockHeight,
     );
 
     // Step 2 - Generate Transaction Message
@@ -109,7 +149,7 @@ describe("basic-5", () => {
     });
     if (confirmation.value.err) {
       throw new Error(
-        `   ❌ - Transaction not confirmed.\nReason: ${confirmation.value.err}`
+        `   ❌ - Transaction not confirmed.\nReason: ${confirmation.value.err}`,
       );
     }
 
