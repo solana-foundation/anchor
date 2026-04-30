@@ -9,7 +9,11 @@ import idl from './_pda/idl.json?raw'
 import client from './_pda/test.ts?raw'
 import logs from './_pda/logs.txt?raw'
 
-Program Derived Addresses (PDA) refer to a feature of Solana development that allows you to create a unique address derived deterministically from pre-defined inputs (seeds) and a program ID.
+<Callout variant="definition" title="Program Derived Address">
+  A Program Derived Address (PDA) is a Solana account address derived deterministically from a list of seeds and a program ID. PDAs are off the Ed25519 curve so they have no associated private key, which is what allows the owning program to sign for them through `invoke_signed{:rs}` rather than a user-provided keypair.
+</Callout>
+
+Program Derived Addresses give programs a way to create accounts whose addresses are predictable from program-defined inputs.
 
 ## Anchor PDA constraints
 

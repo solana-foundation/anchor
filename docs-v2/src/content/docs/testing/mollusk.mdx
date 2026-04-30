@@ -246,7 +246,7 @@ mollusk.process_and_validate_instruction_chain(
 );
 ```
 
-<Callout variant="warning">
+<Callout variant="important" title="Chains aren't transactions">
   Instruction chains are not equivalent to Solana transactions. Mollusk does not impose transaction-level constraints such as loaded account keys or size limits. Use chains for testing program execution, not for modeling transaction semantics.
 </Callout>
 

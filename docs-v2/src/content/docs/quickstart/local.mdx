@@ -189,8 +189,8 @@ wallet = "~/.config/solana/id.json"
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 ```
 
-<Callout variant="note">
-  Note that deploying to devnet requires your wallet to have enough SOL to cover deployment cost. You can get devnet SOL using the [Web Faucet](https://faucet.solana.com/).
+<Callout variant="important" title="Funding the deploy wallet">
+  Deploying to devnet requires your wallet to have enough SOL to cover the deployment cost. You can get devnet SOL using the [Web Faucet](https://faucet.solana.com/).
 </Callout>
 
 Run `$ [34manchor[0m deploy{:ansi}` to push the program to the cluster specified in `Anchor.toml`. The `$ [34manchor[0m test{:ansi}` command also respects this setting.

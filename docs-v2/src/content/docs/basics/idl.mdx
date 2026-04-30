@@ -10,7 +10,7 @@ import client from './_idl/test.ts?raw'
 
 An Interface Description Language (IDL) file for an Anchor program is a standardized JSON file describing the program's instructions and accounts. It gives client code generators a consistent format to consume so they can produce typed bindings for the program without reading its Rust source.
 
-<Callout variant="note">
+<Callout variant="tip" title="Where the IDL lives">
   The `$ [34manchor[0m build{:ansi}` command writes the IDL to `/target/idl/<program-name>.json`.
 </Callout>
 
@@ -78,8 +78,8 @@ Anchor assigns a unique 8-byte discriminator to every instruction and every acco
 
 A discriminator is the first 8 bytes of `SHA256("<prefix>:<name>"){:rs}`. The prefix is `global{:rs}` for instructions and `account{:rs}` for accounts. Since Anchor v0.30, every discriminator is included in the generated IDL.
 
-<Callout variant="note">
-  You won't normally interact with discriminators directly (Anchor inserts them on the wire and verifies them on read). This section is here for reference.
+<Callout variant="remark">
+  You won't normally interact with discriminators directly. Anchor inserts them on the wire and verifies them on read. This section is here for reference.
 </Callout>
 
 <Tabs items={['Instructions', 'Accounts']}>

@@ -47,7 +47,7 @@ To hold tokens for a specific mint, users must first create a token account. Eac
 
 For example, the USDC stablecoin on Solana has the mint address `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`. Circle (the USDC issuer) holds a token account at `3emsAVdmGKERbHjmGfQ6oZ1e35dkf5iYcS6U4CPKFVaa` that can only hold units of the USDC token, with Circle's wallet `7VHUFJHWu2CuExkJcJrzhQPJ2oygupTWkL2A2For4BmE` set as the owner authorized to transfer those tokens. You can view this token account on [Solana Explorer](https://explorer.solana.com/address/3emsAVdmGKERbHjmGfQ6oZ1e35dkf5iYcS6U4CPKFVaa).
 
-<Callout variant="note">
+<Callout variant="notation" title='Two senses of "owner"'>
   The term "owner" is used in two different contexts.
   - The token account "owner" is an address stored
 in the `owner` field of the `Account{:rs}` type defined by the Token Program. This address can
@@ -66,9 +66,9 @@ in the `owner` field of the `Account{:rs}` type defined by the Token Program. Th
 
 An associated token account (ATA) is a token account whose address is a PDA derived from and created by the [Associated Token Program](https://github.com/solana-program/associated-token-account/tree/main/program). An ATA serves as the default token account for a user to hold units of a specific token (mint).
 
-<Callout variant="note">
+<Callout variant="definition" title="Associated Token Account">
   Only token accounts created through the Associated Token Program are referred to as associated
-  token accounts.
+  token accounts. The address of an ATA is a PDA derived deterministically from the wallet, mint, and token program, which is what makes "the user's USDC account" a single canonical address rather than one of many possible token accounts.
 </Callout>
 
 ATAs provide a deterministic way to find a user's token account for any given mint. The [derivation](https://github.com/solana-program/associated-token-account/blob/main/interface/src/address.rs#L56-L70) hashes the wallet, token program, and mint addresses against the Associated Token Program ID:

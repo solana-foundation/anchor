@@ -5,11 +5,11 @@ description: "Learn how to emit events in Anchor programs using `emit!(){:rs}` a
 
 Anchor exposes two macros for emitting events from a program. The `emit!(){:rs}` macro writes events to program logs, which is the simpler path but can be truncated by some data providers. The `emit_cpi!(){:rs}` macro emits events through a Cross Program Invocation (CPI) by including the event data in the inner instruction's data, which is less likely to be truncated.
 
-<Callout variant="note">
-  The `emit_cpi!(){:rs}` approach was introduced as an alternative to program logs, which can sometimes be truncated by data providers. CPI instruction data is less likely to be truncated, but this approach incurs additional compute costs from the Cross Program Invocation.
+<Callout variant="remark" title="Why two macros exist">
+  `emit_cpi!(){:rs}` was introduced as an alternative to program logs, which can sometimes be truncated by data providers. CPI instruction data is less likely to be truncated, but this approach incurs additional compute costs from the Cross Program Invocation.
 </Callout>
 
-<Callout variant="note">
+<Callout variant="tip" title="Geyser gRPC for production">
   For more robust event delivery, consider geyser gRPC services from [Triton](https://docs.triton.one/project-yellowstone/dragons-mouth-grpc-subscriptions) or [Helius](https://docs.helius.dev/data-streaming/geyser-yellowstone).
 </Callout>
 
@@ -101,8 +101,8 @@ Log Messages:
 
 {/* cspell:enable */}
 
-<Callout variant="warning">
-  Ensure the RPC provider you use does not truncate program logs from the transaction data.
+<Callout variant="danger" title="RPC providers may truncate program logs">
+  Ensure the RPC provider you use does not truncate program logs from the transaction data. A silent truncation will drop emitted events on the floor without surfacing an error to the listener.
 </Callout>
 
 ## `emit_cpi!(){:rs}`

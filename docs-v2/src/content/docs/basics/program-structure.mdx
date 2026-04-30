@@ -98,7 +98,7 @@ The discriminator is the first 8 bytes of `SHA256("account:<StructName>"){:rs}`,
 - On **initialization**, Anchor writes the discriminator as the first 8 bytes of the account's data.
 - On **deserialization**, Anchor compares the stored discriminator against the one expected by the target type. A mismatch fails the instruction before the handler runs, preventing the client from substituting an account of the wrong type.
 
-<Callout variant="note" title="Reserving discriminator space">
+<Callout variant="important" title="Reserving discriminator space">
   Every `init{:rs}` constraint must allocate 8 extra bytes of space for the discriminator in addition to the account's own fields. In the example below, `space = 8 + 8{:rs}` covers 8 bytes for the discriminator plus 8 bytes for the `data: u64{:rs}` field.
 
   ```rust showLineNumbers=false

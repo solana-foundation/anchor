@@ -13,6 +13,10 @@ Traditional account deserialization with `Account<T>{:rs}` copies the account da
 
 `AccountLoader<T>{:rs}` casts the raw account bytes directly to the struct type without copying, supports accounts up to 10MB (10,485,760 bytes), reduces compute usage by roughly 90% for large accounts, and modifies account data in place.
 
+<Callout variant="intuition" title="Why the cast is sound">
+  The struct annotated with `#[account(zero_copy)]{:rs}` is `#[repr(C)]{:rs}` and `Pod{:rs}`, so its in-memory layout matches the raw bytes byte-for-byte. The "deserialize" step that `Account<T>{:rs}` performs is therefore unnecessary work; the bytes already are the struct, and `AccountLoader<T>{:rs}` exposes that fact through a checked pointer cast.
+</Callout>
+
 ### Performance comparison
 
 | Account Size | `Account<T>{:rs}` | `AccountLoader<T>{:rs}` | Improvement |
@@ -261,7 +265,9 @@ impl From<EventParams> for Event {
 
 ### Forgetting the account discriminator
 
-Always include 8 bytes for the account discriminator when calculating space:
+<Callout variant="danger" title="Always reserve 8 bytes for the discriminator">
+  Skipping the 8-byte discriminator from a `space{:rs}` calculation produces an account that the Anchor runtime cannot validate, since the discriminator check expects the first 8 bytes to be the account-type marker. The bug usually surfaces only on first read, where the runtime returns a deserialization error that looks unrelated to the allocation site.
+</Callout>
 
 ```rust showLineNumbers=false {5}
 // Wrong - missing discriminator
@@ -273,7 +279,9 @@ space = 8 + std::mem::size_of::<Data>()
 
 ### Using dynamic types
 
-Zero-copy requires every field to be a `Copy{:rs}` type:
+<Callout variant="danger" title="Zero-copy fields must be `Copy{:rs}`">
+  Zero-copy requires every field to be a `Copy{:rs}` type. `Vec<T>{:rs}`, `String{:rs}`, and other heap-backed collections store a pointer rather than the data itself, so reading them through a zero-copy cast points at memory the program does not own. The compiler rejects these fields outright; if a derive error mentions `Pod{:rs}` or `Copy{:rs}`, the fix is to switch to a fixed-size array.
+</Callout>
 
 ```rust showLineNumbers=false
 #[account(zero_copy)]
@@ -331,7 +339,9 @@ pub fn update_item(ctx: Context<Update>, index: u32, value: u64) -> Result<()> {
 
 ### Event queue pattern
 
-Store large sequences of events efficiently:
+<Callout variant="example" title="Event queue">
+  Store large sequences of events efficiently in a single zero-copy account rather than spreading them across many small accounts. Trading protocols, audit logs, and messaging systems all use this pattern.
+</Callout>
 
 ```rust showLineNumbers=false
 #[account(zero_copy)]
@@ -350,11 +360,12 @@ pub struct Event {
 }
 ```
 
-Trading protocols, audit logs, and messaging systems use this pattern.
-
 ### Order book pattern
 
-Efficient storage for trading pairs:
+<Callout variant="example" title="Order book">
+  Efficient storage for trading pairs. DEXs such as Serum and Mango, along with NFT marketplaces, use this layout to keep bid and ask sides resident in a single account.
+</Callout>
+
 
 ```rust showLineNumbers=false
 #[account(zero_copy)]
@@ -374,8 +385,6 @@ pub struct Order {
     pub timestamp: i64,
 }
 ```
-
-DEXs such as Serum and Mango, along with NFT marketplaces, use this pattern.
 
 ## Examples
 

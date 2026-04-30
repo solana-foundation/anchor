@@ -5,7 +5,11 @@ description: "Reference for Anchor account constraints used inside the `#[accoun
 
 Account constraints are declared inside the `#[account(...)]{:rs}` attribute on fields of a struct that derives [`Accounts{:rs}`](https://docs.rs/anchor-lang/latest/anchor_lang/derive.Accounts.html). They run before the instruction handler and reject the transaction if any check fails.
 
-See the [constraint codegen](https://github.com/solana-foundation/anchor/blob/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/lang/syn/src/codegen/accounts/constraints.rs) for implementation details. Each constraint accepts an optional `@ <custom_error>{:rs}` clause to override the default error.
+See the [constraint codegen](https://github.com/solana-foundation/anchor/blob/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/lang/syn/src/codegen/accounts/constraints.rs) for implementation details.
+
+<Callout variant="notation" title="Custom error syntax">
+  Each constraint accepts an optional `@ <custom_error>{:rs}` clause to override the default error. Wherever you see `@ <custom_error>{:rs}` in the snippets below, the constraint will return that variant instead of Anchor's built-in error code on failure.
+</Callout>
 
 ## Normal constraints
 

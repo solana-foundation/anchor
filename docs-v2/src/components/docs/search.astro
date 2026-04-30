@@ -55,14 +55,14 @@ import Icon from '@/components/icon.astro'
 
   let pagefindPromise: Promise<Pagefind | null> | null = null
 
+  const PAGEFIND_URL = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/pagefind/pagefind.js`
+
   async function loadPagefind(): Promise<Pagefind | null> {
     if (pagefindPromise) return pagefindPromise
     pagefindPromise = (async () => {
       try {
         // @ts-ignore — runtime-only module
-        const mod = await import(
-          /* @vite-ignore */ `${window.location.origin}/pagefind/pagefind.js`
-        )
+        const mod = await import(/* @vite-ignore */ `${window.location.origin}${PAGEFIND_URL}`)
         if (mod.init) await mod.init()
         return mod as Pagefind
       } catch {
