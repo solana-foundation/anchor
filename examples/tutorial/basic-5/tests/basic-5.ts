@@ -17,43 +17,15 @@ describe("basic-5", () => {
 
   it("basic-5: Robot actions!", async () => {
     // Create instruction: set up the Solana accounts to be used
-    const createInstruction = await program.methods
-      .create()
-      .accounts({
-        // actionState,
-        /* 
-        A accounts whose seeds are fully declared in the IDL 
-        (e.g. actionState has pda.seeds = [{ kind: "const", value: [...] }])
-        client derives the address at call time, no need to pass it.
-        */
-        // user,
-        /*
-        accounts with `relations: ["actionState"]` (user) tell the client
-       "resolve this account from actionState's data".  Combined with the
-       fact that `user` is also the wallet signer, the client resolves it
-       from the provider automatically.
-       */
-        // systemProgram: anchor.web3.SystemProgram.programId,
-        /*
-         Known system programs whose address is fixed in the IDL
-          (e.g. systemProgram → "11111111111111111111111111111111",
-         tokenProgram  → resolved from the token interface constraint) client fills these in automatically.
 
-        */
-      })
-      .instruction();
+    /* Accounts are auto-resolved: actionState from IDL seeds, user from
+     provider wallet, systemProgram from its fixed IDL address. */
+    const createInstruction = await program.methods.create().instruction();
     // Walk instruction: Invoke the Robot to walk
     const walkInstruction = await program.methods
       .walk()
       .accounts({
         actionState,
-        // user,
-        /*
-        accounts with `relations: ["actionState"]` (user) tell the client
-       "resolve this account from actionState's data".  Combined with the
-       fact that `user` is also the wallet signer, the client resolves it
-       from the provider automatically.
-       */
       })
       .instruction();
     // Run instruction: Invoke the Robot to run
@@ -61,13 +33,6 @@ describe("basic-5", () => {
       .run()
       .accounts({
         actionState,
-        // user,
-        /*
-        accounts with `relations: ["actionState"]` (user) tell the client
-       "resolve this account from actionState's data".  Combined with the
-       fact that `user` is also the wallet signer, the client resolves it
-       from the provider automatically.
-       */
       })
       .instruction();
     // Jump instruction: Invoke the Robot to jump
@@ -75,13 +40,6 @@ describe("basic-5", () => {
       .jump()
       .accounts({
         actionState,
-        // user,
-        /*
-        accounts with `relations: ["actionState"]` (user) tell the client
-       "resolve this account from actionState's data".  Combined with the
-       fact that `user` is also the wallet signer, the client resolves it
-       from the provider automatically.
-       */
       })
       .instruction();
     // Reset instruction: Reset actions of the Robot
@@ -89,13 +47,6 @@ describe("basic-5", () => {
       .reset()
       .accounts({
         actionState,
-        // user,
-        /*
-        accounts with `relations: ["actionState"]` (user) tell the client
-       "resolve this account from actionState's data".  Combined with the
-       fact that `user` is also the wallet signer, the client resolves it
-       from the provider automatically.
-       */
       })
       .instruction();
 
