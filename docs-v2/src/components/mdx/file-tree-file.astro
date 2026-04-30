@@ -1,5 +1,5 @@
 ---
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 
 interface Props {
   name: string
@@ -19,7 +19,7 @@ const { name, highlight = false, comment } = Astro.props
   >
     <span class="size-3 shrink-0" aria-hidden="true"></span>
     <Icon
-      name="lucide:file"
+      name="file"
       class:list={['size-4 shrink-0', highlight ? 'text-primary' : 'text-muted-foreground']}
     />
     <span class="font-mono">{name}</span>

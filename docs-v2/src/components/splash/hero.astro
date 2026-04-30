@@ -3,7 +3,7 @@ import Link from '@/components/link.astro'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { HeroAction } from '@/types'
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 import { Image } from 'astro:assets'
 import type { ImageMetadata } from 'astro'
 
@@ -60,7 +60,7 @@ const variantClass: Record<NonNullable<HeroAction['variant']>, string> = {
               <span>{action.label}</span>
               {(action.variant ?? 'primary') === 'primary' && (
                 <Icon
-                  name="lucide:arrow-right"
+                  name="arrow-right"
                   class="size-4 transition-transform group-hover:translate-x-0.5"
                 />
               )}

@@ -4,7 +4,7 @@ import Link from '@/components/link.astro'
 import { cn } from '@/lib/utils'
 import { renderDescription } from '@/lib/render-description'
 import type { SidebarNode } from '@/types'
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 
 interface Props {
   node: SidebarNode
@@ -58,7 +58,6 @@ const renderedLabel = await renderDescription(node.label)
       open={!node.collapsed}
       data-sidebar-group
       data-group-path={node.label}
-      class="group"
     >
       <summary
         class={cn(
@@ -71,8 +70,8 @@ const renderedLabel = await renderDescription(node.label)
           {node.badge && <SidebarBadge badge={node.badge} />}
         </span>
         <Icon
-          name="lucide:chevron-right"
-          class="text-muted-foreground size-4 shrink-0 transition-transform duration-200 group-open:rotate-90"
+          name="chevron-right"
+          class="text-muted-foreground size-4 shrink-0 transition-transform duration-200 [[open]>summary>&]:rotate-90"
         />
       </summary>
       <ul class={cn('border-border/70 mt-1 ml-3 flex flex-col gap-0.5 border-l pl-2')}>

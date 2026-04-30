@@ -3,7 +3,7 @@ import Link from '@/components/link.astro'
 import { buttonVariants } from '@/components/ui/button'
 import { ICON_MAP } from '@/consts'
 import type { SocialLink } from '@/types'
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 
 interface Props {
   links: SocialLink[]
@@ -24,7 +24,7 @@ const { links } = Astro.props
           external
         >
           <Icon
-            name={ICON_MAP[label as keyof typeof ICON_MAP] || 'lucide:message-circle-question'}
+            name={ICON_MAP[label as keyof typeof ICON_MAP] || 'message-circle-question'}
             class="size-4"
           />
         </Link>

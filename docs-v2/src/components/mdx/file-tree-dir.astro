@@ -1,5 +1,5 @@
 ---
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 
 interface Props {
   name: string
@@ -15,7 +15,7 @@ const hasChildren = Astro.slots.has('default')
 {
   hasChildren ? (
     <li>
-      <details class="group" open={open || undefined}>
+      <details open={open || undefined}>
         <summary
           class:list={[
             'inline-flex cursor-pointer list-none select-none items-center gap-1.5 whitespace-nowrap rounded px-1.5 py-0.5 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -23,10 +23,10 @@ const hasChildren = Astro.slots.has('default')
           ]}
         >
           <Icon
-            name="lucide:chevron-right"
-            class="text-muted-foreground size-3 shrink-0 transition-transform group-open:rotate-90"
+            name="chevron-right"
+            class="text-muted-foreground size-3 shrink-0 transition-transform [[open]>summary>&]:rotate-90"
           />
-          <Icon name="lucide:folder" class="size-4 shrink-0 text-muted-foreground" />
+          <Icon name="folder" class="size-4 shrink-0 text-muted-foreground" />
           <span class="font-mono">{name}/</span>
           {comment && <span class="text-muted-foreground/75 ml-2">{comment}</span>}
         </summary>
@@ -44,7 +44,7 @@ const hasChildren = Astro.slots.has('default')
         ]}
       >
         <span class="size-3 shrink-0" aria-hidden="true" />
-        <Icon name="lucide:folder" class="size-4 shrink-0 text-muted-foreground" />
+        <Icon name="folder" class="size-4 shrink-0 text-muted-foreground" />
         <span class="font-mono">{name}/</span>
         {comment && <span class="text-muted-foreground/75 ml-2">{comment}</span>}
       </span>

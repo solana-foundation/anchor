@@ -14,13 +14,13 @@ export const SOCIAL_LINKS: SocialLink[] = [
 ]
 
 export const ICON_MAP: IconMap = {
-  Website: 'lucide:globe',
-  GitHub: 'lucide:github',
-  LinkedIn: 'lucide:linkedin',
-  Twitter: 'lucide:twitter',
-  Email: 'lucide:mail',
-  RSS: 'lucide:rss',
-  Discord: 'lucide:message-circle',
+  Website: 'world',
+  GitHub: 'brand-github',
+  LinkedIn: 'brand-linkedin',
+  Twitter: 'brand-twitter',
+  Email: 'mail',
+  RSS: 'rss',
+  Discord: 'message-circle',
 }
 
 export const DOCS: DocsConfig = {

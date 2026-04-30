@@ -45,7 +45,7 @@ export function pluginOutputSeparator(): ExpressiveCodePlugin {
     baseStyles: `
       .ec-line.ec-cmd + .ec-line.ec-out,
       .ec-line.ec-out + .ec-line.ec-cmd {
-        border-top: 2px solid var(--border);
+        border-top: 2px solid color-mix(in oklab, var(--border) 75%, transparent);
         margin-top: 0.75rem;
         padding-top: 0.75rem;
       }

@@ -4,7 +4,7 @@ import { buttonVariants } from '@/components/ui/button'
 import type { FlatDoc } from '@/types'
 import { cn } from '@/lib/utils'
 import { renderDescription } from '@/lib/render-description'
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 
 interface Props {
   prev: FlatDoc | null
@@ -28,7 +28,7 @@ const nextLabel = next ? await renderDescription(next.label) : null
           )}
         >
           <Icon
-            name="lucide:arrow-left"
+            name="arrow-left"
             class="mr-2 size-4 transition-transform group-hover:-translate-x-1"
           />
           <div class="flex flex-col items-start overflow-hidden text-wrap">
@@ -63,7 +63,7 @@ const nextLabel = next ? await renderDescription(next.label) : null
 
           </div>
           <Icon
-            name="lucide:arrow-right"
+            name="arrow-right"
             class="ml-2 size-4 transition-transform group-hover:translate-x-1"
           />
         </Link>

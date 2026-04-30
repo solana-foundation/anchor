@@ -1,6 +1,6 @@
 ---
 title: Emit events
-description: Learn how to emit events in Anchor programs using emit! and emit_cpi! macros.
+description: "Learn how to emit events in Anchor programs using `emit!(){:rs}` and `emit_cpi!(){:rs}` macros."
 ---
 
 Anchor exposes two macros for emitting events from a program. The `emit!(){:rs}` macro writes events to program logs, which is the simpler path but can be truncated by some data providers. The `emit_cpi!(){:rs}` macro emits events through a Cross Program Invocation (CPI) by including the event data in the inner instruction's data, which is less likely to be truncated.

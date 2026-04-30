@@ -1,5 +1,5 @@
 ---
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 import Link from '@/components/link.astro'
 
 interface Props {
@@ -14,6 +14,6 @@ const { href } = Astro.props
   class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm underline decoration-transparent underline-offset-[3px] transition-colors hover:decoration-inherit"
   external
 >
-  <Icon name="lucide:pencil" class="size-3.5" />
+  <Icon name="pencil" class="size-3.5" />
   Edit this page
 </Link>

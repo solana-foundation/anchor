@@ -1,0 +1,34 @@
+---
+interface Props {
+  name: string
+  class?: string
+  [key: string]: any
+}
+
+const { name, class: className, ...rest } = Astro.props
+
+const icons = import.meta.glob<string>('@/icons/*.svg', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
+
+const raw = icons[`/src/icons/${name}.svg`]
+if (!raw) {
+  throw new Error(`Icon not found: src/icons/${name}.svg`)
+}
+
+const stripped = raw.replace(/<!--[\s\S]*?-->\s*/g, '').trim()
+
+const escape = (v: unknown) => String(v).replace(/"/g, '&quot;')
+const attrs = Object.entries({
+  ...(className ? { class: className } : {}),
+  ...rest,
+})
+  .map(([k, v]) => `${k}="${escape(v)}"`)
+  .join(' ')
+
+const svg = attrs ? stripped.replace(/^<svg\s+/, `<svg ${attrs} `) : stripped
+---
+
+<Fragment set:html={svg} />

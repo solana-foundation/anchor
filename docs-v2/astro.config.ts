@@ -3,7 +3,6 @@ import { defineConfig } from 'astro/config'
 import mdx from '@astrojs/mdx'
 import react from '@astrojs/react'
 import sitemap from '@astrojs/sitemap'
-import icon from 'astro-icon'
 
 import { rehypeHeadingIds } from '@astrojs/markdown-remark'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
@@ -88,7 +87,7 @@ export default defineConfig({
   base: '/docs',
   trailingSlash: 'always',
   outDir: './dist/docs',
-  integrations: [mdx(), react(), sitemap(), icon()],
+  integrations: [mdx(), react(), sitemap()],
   vite: {
     plugins: [tailwindcss(), pagefindDevServer()],
   },

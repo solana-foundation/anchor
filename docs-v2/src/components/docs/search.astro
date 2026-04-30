@@ -1,5 +1,5 @@
 ---
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 ---
 
 <dialog
@@ -8,7 +8,7 @@ import { Icon } from 'astro-icon/components'
   aria-label="Search documentation"
 >
   <form method="dialog" class="border-border/70 flex items-center gap-2 border-b px-3 py-2">
-    <Icon name="lucide:search" class="text-muted-foreground size-4" />
+    <Icon name="search" class="text-muted-foreground size-4" />
     <input
       type="search"
       id="search-input"

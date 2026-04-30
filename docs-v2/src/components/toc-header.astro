@@ -2,7 +2,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn, getHeadingMargin } from '@/lib/utils'
 import type { MarkdownHeading } from 'astro'
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 
 type Props = {
   headings: MarkdownHeading[]
@@ -58,7 +58,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
             </span>
             <span class="text-muted-foreground ml-2">
               <Icon
-                name="lucide:chevron-down"
+                name="chevron-down"
                 class="h-4 w-4 transition-transform duration-200 group-open:rotate-180"
               />
             </span>

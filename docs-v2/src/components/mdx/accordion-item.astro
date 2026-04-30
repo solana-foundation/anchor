@@ -1,5 +1,5 @@
 ---
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 
 interface Props {
   title: string
@@ -15,7 +15,7 @@ const { title, defaultOpen = false } = Astro.props
   >
     <span>{title}</span>
     <Icon
-      name="lucide:chevron-down"
+      name="chevron-down"
       class="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180"
     />
   </summary>

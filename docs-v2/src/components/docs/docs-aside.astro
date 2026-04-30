@@ -6,7 +6,7 @@ import ThemeToggle from '@/components/theme-toggle.astro'
 import { SITE, SOCIAL_LINKS } from '@/consts'
 import { BASE_URL } from '@/lib/docs'
 import type { SidebarNode } from '@/types'
-import { Icon } from 'astro-icon/components'
+import Icon from '@/components/icon.astro'
 import { Image } from 'astro:assets'
 import wordmarkDark from '@/assets/wordmark-dark.svg'
 import wordmarkLight from '@/assets/wordmark-light.svg'
@@ -43,7 +43,7 @@ const gitHubLink = SOCIAL_LINKS.find((link) => link.label === 'GitHub')
               class="text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md no-underline transition-colors"
               aria-label="GitHub"
             >
-              <Icon name="lucide:github" class="size-4" />
+              <Icon name="brand-github" class="size-4" />
             </Link>
           )
         }
@@ -57,7 +57,7 @@ const gitHubLink = SOCIAL_LINKS.find((link) => link.label === 'GitHub')
           title="Edit this page"
           class="text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md no-underline transition-colors"
         >
-          <Icon name="lucide:pencil" class="size-4" />
+          <Icon name="pencil" class="size-4" />
         </a>
       </div>
     </div>

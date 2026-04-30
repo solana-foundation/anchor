@@ -315,6 +315,76 @@
   @apply -ml-[calc(1rem+0.875rem+1px)] gap-x-1 sm:-ml-[calc(1rem+1rem+1px)] sm:gap-x-1.5;
 }
 
+/* Codeblocks rendered inside a tab panel: pull flush with the tab
+   container edges (negate the panel's 1rem padding), expand width to
+   match, and drop the frame's rounded corners + side borders so we
+   don't double-nest chrome inside the outer tab frame. The frame's
+   header/pre borders stay top/bottom so terminal/editor separators
+   remain visible. */
+[data-tab-panel] > .expressive-code {
+  @apply -mx-4 my-4! max-w-none!;
+}
+[data-tab-panel] > .expressive-code,
+[data-tab-panel] > .expressive-code :is(.frame, .header, pre) {
+  @apply rounded-none! border-x-0!;
+}
+/* Editor (non-terminal) titled frames draw their tab-bar border via
+   .header::before, which the .header `border-x-0` above can't reach. */
+[data-tab-panel] > .expressive-code .frame.has-title:not(.is-terminal) .header::before {
+  border-left: 0 !important;
+  border-right: 0 !important;
+}
+/* The file-tab `.title` keeps its own rounded top corners and a side
+   border by default. Strip the rounding and the side borders, leaving
+   the top border so the tab still reads as a tab. */
+[data-tab-panel] > .expressive-code .frame.has-title:not(.is-terminal) .header .title {
+  @apply rounded-none! border-x-0!;
+}
+
+/* Soften the top/bottom borders that meet adjacent prose content (i.e.
+   the codeblock isn't first/last child). The hard panel-edge borders
+   stay full-strength; these inner ones are visual separators only. */
+[data-tab-panel] > .expressive-code:not(:first-child) :is(.frame, .header, pre) {
+  @apply border-t-border/75!;
+}
+[data-tab-panel] > .expressive-code:not(:first-child) .frame.has-title:not(.is-terminal) .header::before {
+  border-top-color: color-mix(in oklab, var(--border) 75%, transparent) !important;
+}
+[data-tab-panel] > .expressive-code:not(:last-child) :is(.frame, pre) {
+  @apply border-b-border/75!;
+}
+
+/* When the active tab's content begins/ends with a codeblock, drop the
+   matching panel padding so the frame butts flush against the tab list
+   / outer container border, and remove the meeting-side border so it
+   doesn't double up with the tab chrome. `:not([hidden])` scopes to the
+   visible panel — :has() re-evaluates on tab switch. */
+[data-tabs-panels]:has(> [data-tab-panel]:not([hidden]) > .expressive-code:first-child) {
+  @apply pt-0;
+}
+[data-tabs-panels]:has(> [data-tab-panel]:not([hidden]) > .expressive-code:last-child) {
+  @apply pb-0;
+}
+[data-tab-panel] > .expressive-code:first-child :is(.frame, .header, pre) {
+  @apply border-t-0!;
+}
+[data-tab-panel] > .expressive-code:first-child .frame.has-title:not(.is-terminal) .header::before {
+  border-top: 0 !important;
+}
+[data-tab-panel] > .expressive-code:last-child :is(.frame, pre) {
+  @apply border-b-0!;
+}
+
+/* Round the flush corners to match the outer container's inner radius
+   (rounded-lg outer − border-2 = rounded-md). The .header::before
+   inherits border-radius from .header. */
+[data-tab-panel] > .expressive-code:first-child :is(.frame, .header) {
+  @apply rounded-t-md!;
+}
+[data-tab-panel] > .expressive-code:last-child :is(.frame, pre) {
+  @apply rounded-b-md!;
+}
+
 /* TOC links carry over the rendered heading HTML (including inline shiki
    `<code>` / `.shiki` markup). Keep the pill chrome but drop the color
    override so plain `<code>` inherits the link's muted/active color
