@@ -46,7 +46,6 @@
 }
 
 :root {
-  /* Catppuccin Latte palette */
   --ctp-rosewater: oklch(72% 0.074 23);
   --ctp-flamingo: oklch(70% 0.107 20);
   --ctp-pink: oklch(73% 0.17 336);
@@ -74,7 +73,6 @@
   --ctp-mantle: oklch(94% 0.012 285);
   --ctp-crust: oklch(91% 0.017 285);
 
-  /* Semantic tokens */
   --background: var(--ctp-base);
   --foreground: var(--ctp-text);
   --primary: var(--ctp-text);
@@ -89,7 +87,6 @@
 }
 
 [data-theme='dark'] {
-  /* Catppuccin Mocha palette */
   --ctp-rosewater: oklch(92% 0.02 30);
   --ctp-flamingo: oklch(88% 0.04 18);
   --ctp-pink: oklch(87% 0.08 336);
@@ -116,8 +113,6 @@
   --ctp-base: oklch(24% 0.03 284);
   --ctp-mantle: oklch(22% 0.03 284);
   --ctp-crust: oklch(18% 0.02 284);
-
-  /* Semantic tokens (override only where dark differs from light) */
   --background: var(--ctp-mantle);
 }
 
@@ -130,3 +125,4 @@
     @apply border-border outline-ring/50 tracking-tight;
   }
 }
+

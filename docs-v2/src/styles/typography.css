@@ -1,16 +1,5 @@
 @reference './global.css';
 
-/* Prose lives in @layer utilities (not components) because Vite's CSS
-   minifier strips the `@layer theme, base, components, utilities;` order
-   declaration that Tailwind v4 emits in dev. Without that declaration,
-   the production bundle's implicit layer order lets Tailwind's base
-   preflight (`* { margin: 0 }`, `h1-h6 { font-size: inherit }`) override
-   our component-layer prose rules — paragraphs render flush, headings
-   collapse to body size. Pinning prose to `utilities` (the highest of
-   Tailwind's built-in layers) keeps it above preflight regardless of
-   how the order shakes out post-minify. Safe because no MDX content
-   uses font-size/margin utilities on prose-managed elements. */
-
 @layer base {
   p,
   h1,
@@ -40,16 +29,12 @@
   .prose {
     @apply text-foreground text-base leading-6.5;
 
-    :where(p):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground/80 my-5;
+    :first-child:not(:where(.not-prose, .not-prose *)) {
+      @apply mt-0;
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) {
       @apply text-foreground scroll-mt-32 font-medium xl:scroll-mt-20;
-    }
-
-    :first-child:not(:where(.not-prose, .not-prose *)) {
-      @apply mt-0;
     }
 
     /* Don't use an <h1> in your posts, one is already generated in blog/[...id].astro */
@@ -73,10 +58,6 @@
       @apply mt-5 mb-3;
     }
 
-    :where(a):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground decoration-muted-foreground hover:decoration-foreground font-medium wrap-break-word underline underline-offset-[3px] transition-colors;
-    }
-
     :where(a.heading-anchor):not(:where(.not-prose, .not-prose *)) {
       @apply text-muted-foreground/40 hover:text-foreground ml-2 inline-block no-underline opacity-0 transition-opacity;
     }
@@ -86,8 +67,16 @@
       @apply opacity-100;
     }
 
+    :where(p):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground/80 my-5;
+    }
+
     :where(strong):not(:where(.not-prose, .not-prose *)) {
       @apply text-foreground font-medium;
+    }
+
+    :where(a):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground decoration-muted-foreground hover:decoration-foreground font-medium wrap-break-word underline underline-offset-[3px] transition-colors;
     }
 
     :where(ul):not(:where(.not-prose, .not-prose *)) {
@@ -107,31 +96,26 @@
       @apply marker:text-foreground/30 my-2 ml-6;
     }
 
-    /* Pills use `display: inline` (not `inline-block`) so that when the
-       content wraps across lines, `box-decoration-break: clone` can clone
-       the pill chrome onto each line fragment instead of leaving one tall
-       rectangle around the bounding box. The `-webkit-` prefix is required
-       for Safari and older Blink. */
     :where(code):not(:where(.not-prose, .not-prose *)) {
-      @apply bg-muted/50 text-foreground relative rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
-      -webkit-box-decoration-break: clone;
-      box-decoration-break: clone;
-    }
-
-    :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) code {
-      font-size: 1em;
+      @apply code-pill bg-muted/50 text-foreground text-sm font-medium wrap-break-word;
     }
 
     :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
-      @apply bg-muted/50! text-foreground relative rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium wrap-break-word align-baseline leading-[1.2];
-      -webkit-box-decoration-break: clone;
-      box-decoration-break: clone;
+      @apply code-pill bg-muted/50! text-foreground text-sm font-medium wrap-break-word;
     }
 
-    /* When inline `<code>` or a `.shiki` pill sits inside an `<a>`, the
-       parent's underline is visually blocked by the pill's bg/padding.
-       Mirror the link's underline directly onto the pill so code-in-links
-       show the same affordance + hover transition as plain prose links. */
+    :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) code {
+      @apply text-[1em];
+    }
+
+    :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) .shiki {
+      @apply text-[0.875em] leading-[inherit];
+    }
+
+    .shiki code {
+      @apply code-pill-inner;
+    }
+
     :where(a) :where(code):not(:where(.not-prose, .not-prose *)),
     :where(a) :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
       @apply underline decoration-muted-foreground underline-offset-[3px] transition-colors;
@@ -142,38 +126,12 @@
       @apply decoration-foreground;
     }
 
-    :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) .shiki {
-      font-size: 0.875em;
-      line-height: inherit;
-    }
-
-    /* Specificity must beat the .small variant rule (`summary ~ * code`,
-       which is 0,1,1). Using a real class selector (not :where) gets us
-       to 0,2,1 so the inner <code> stays unpadded inside callouts too. */
-    .shiki code {
-      @apply bg-transparent p-0;
+    :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
+      @apply shiki-tokens;
     }
 
     :where(.inline-shell-cmd):not(:where(.not-prose, .not-prose *)) {
-      @apply bg-muted/50 text-foreground font-mono relative cursor-pointer rounded-sm px-[0.3rem] py-[0.15rem] text-sm font-medium align-baseline transition-colors leading-[1.2] border-0 [box-decoration-break:clone];
-    }
-
-    /* Tagged by rehype-inline-shell-cmd when the command text exceeds the
-       long-pill threshold. Without this rule, long unbreakable command
-       text (commit hashes, `<version>-<commit>` pairs) overflows narrow
-       contexts like table cells. The shell-cmd outer element is now a
-       `<span role="button">` — naturally inline — so `box-decoration-break:
-       clone` from the base rule clones the pill chrome onto each line.
-       The inner `<code>` still inherits `inline-block` from the prose
-       rule, which would otherwise act as an unbreakable block at the
-       longest token; force it inline here too. */
-    .inline-shell-cmd[data-long-pill='true']:not(.not-prose):not(.not-prose *) {
-      overflow-wrap: anywhere;
-    }
-
-    .inline-shell-cmd[data-long-pill='true'] code {
-      display: inline;
-      overflow-wrap: anywhere;
+      @apply code-pill bg-muted/50 text-foreground font-mono cursor-pointer text-sm font-medium transition-colors border-0;
     }
 
     :where(.inline-shell-cmd):hover:not(:where(.not-prose, .not-prose *)) {
@@ -184,23 +142,20 @@
       @apply outline-ring outline-2 outline-offset-2;
     }
 
-    /* Specificity must beat the .small variant rule (`summary ~ * code`,
-       which is 0,1,1). Using a real class selector (not :where) gets us
-       to 0,2,1 so the inner <code> stays unpadded inside callouts too. */
+    .inline-shell-cmd[data-long-pill='true']:not(.not-prose):not(.not-prose *) {
+      @apply wrap-anywhere;
+    }
+
+    .inline-shell-cmd[data-long-pill='true'] code {
+      @apply inline wrap-anywhere;
+    }
+
     .inline-shell-cmd code {
-      @apply bg-transparent p-0 text-inherit;
+      @apply code-pill-inner text-inherit;
     }
 
-    /* Mirror the .shiki span color rules for tokens inside the command pill.
-       The outer .shiki wrapper is dropped by the rehype plugin, so these spans
-       would otherwise lose their dark-mode color. */
     :where(.inline-shell-cmd span):not(.shell-prompt):not(:where(.not-prose, .not-prose *)) {
-      @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)] dark:text-(--shiki-dark)!;
-    }
-
-    [data-theme='dark']
-      :where(.inline-shell-cmd span):not(.shell-prompt):not(:where(.not-prose, .not-prose *)) {
-      @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)];
+      @apply shiki-tokens;
     }
 
     :where(.inline-shell-cmd .shell-prompt):not(:where(.not-prose, .not-prose *)) {
@@ -215,19 +170,8 @@
       @apply inline-block w-[0.95em] h-[0.95em] mr-[0.4ch] align-[-0.15em] text-muted-foreground shrink-0;
     }
 
-    /* Dim `<placeholder>` segments inside inline paths so they read as
-       "fill this in" rather than literal text — matches the visual weight
-       of dimmed flags in shell command snippets. */
     :where(.path-placeholder):not(:where(.not-prose, .not-prose *)) {
       @apply text-foreground/50;
-    }
-
-    :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
-      @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)] dark:text-(--shiki-dark)!;
-    }
-
-    [data-theme='dark'] :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
-      @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)];
     }
 
     :where(blockquote):not(:where(.not-prose, .not-prose *)) {
@@ -254,18 +198,16 @@
       @apply border-muted-foreground/30 border-b;
     }
 
-    :where(th):not(:where(.not-prose, .not-prose *)) {
-      @apply px-4 py-2 font-medium max-xl:whitespace-nowrap;
-      @apply text-left [[align=center]]:text-center [[align=right]]:text-right;
-    }
-
     :where(tr):not(:where(.not-prose, .not-prose *)) {
       @apply border-muted-foreground/30 border-y first:border-t-0 last:border-b-0;
     }
 
+    :where(th):not(:where(.not-prose, .not-prose *)) {
+      @apply px-4 py-2 font-medium max-xl:whitespace-nowrap text-left [[align=center]]:text-center [[align=right]]:text-right;
+    }
+
     :where(td):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground/80 small px-4 py-2 align-top wrap-break-word *:first:mt-0! *:last:mb-0! max-xl:whitespace-nowrap;
-      @apply text-left [[align=center]]:text-center [[align=right]]:text-right;
+      @apply text-foreground/80 small px-4 py-2 align-top wrap-break-word *:first:mt-0! *:last:mb-0! max-xl:whitespace-nowrap text-left [[align=center]]:text-center [[align=right]]:text-right;
     }
 
     :where(img, video, figure, .expressive-code):not(
@@ -296,212 +238,19 @@
   }
 }
 
-[data-tabs-panels]:has(.steps) {
-  @apply overflow-visible;
-}
-
-[data-tabs-panels] [data-tab-panel] {
-  @apply overflow-visible;
-}
-
-[data-tabs-panels] .step-connector {
-  @apply hidden;
-}
-
-[data-tabs-panels] .step {
-  /* Negate (panel padding + half circle + half border):
-     base = -(1rem + 0.875rem + 1px) ≈ -31px; sm: = -(1rem + 1rem + 1px) ≈ -33px
-     Tight column-gap pulls the title flush against the circle */
-  @apply -ml-[calc(1rem+0.875rem+1px)] gap-x-1 sm:-ml-[calc(1rem+1rem+1px)] sm:gap-x-1.5;
-}
-
-/* Codeblocks rendered inside a tab panel: pull flush with the tab
-   container edges (negate the panel's 1rem padding), expand width to
-   match, and drop the frame's rounded corners + side borders so we
-   don't double-nest chrome inside the outer tab frame. The frame's
-   header/pre borders stay top/bottom so terminal/editor separators
-   remain visible. */
-[data-tab-panel] > .expressive-code {
-  @apply -mx-4 my-4! max-w-none!;
-}
-[data-tab-panel] > .expressive-code,
-[data-tab-panel] > .expressive-code :is(.frame, .header, pre) {
-  @apply rounded-none! border-x-0!;
-}
-/* Editor (non-terminal) titled frames draw their tab-bar border via
-   .header::before, which the .header `border-x-0` above can't reach. */
-[data-tab-panel] > .expressive-code .frame.has-title:not(.is-terminal) .header::before {
-  border-left: 0 !important;
-  border-right: 0 !important;
-}
-/* The file-tab `.title` keeps its own rounded top corners and a side
-   border by default. Strip the rounding and the side borders, leaving
-   the top border so the tab still reads as a tab. */
-[data-tab-panel] > .expressive-code .frame.has-title:not(.is-terminal) .header .title {
-  @apply rounded-none! border-x-0!;
-}
-
-/* Soften the top/bottom borders that meet adjacent prose content (i.e.
-   the codeblock isn't first/last child). The hard panel-edge borders
-   stay full-strength; these inner ones are visual separators only. */
-[data-tab-panel] > .expressive-code:not(:first-child) :is(.frame, .header, pre) {
-  @apply border-t-border/75!;
-}
-[data-tab-panel] > .expressive-code:not(:first-child) .frame.has-title:not(.is-terminal) .header::before {
-  border-top-color: color-mix(in oklab, var(--border) 75%, transparent) !important;
-}
-[data-tab-panel] > .expressive-code:not(:last-child) :is(.frame, pre) {
-  @apply border-b-border/75!;
-}
-
-/* When the active tab's content begins/ends with a codeblock, drop the
-   matching panel padding so the frame butts flush against the tab list
-   / outer container border, and remove the meeting-side border so it
-   doesn't double up with the tab chrome. `:not([hidden])` scopes to the
-   visible panel — :has() re-evaluates on tab switch. */
-[data-tabs-panels]:has(> [data-tab-panel]:not([hidden]) > .expressive-code:first-child) {
-  @apply pt-0;
-}
-[data-tabs-panels]:has(> [data-tab-panel]:not([hidden]) > .expressive-code:last-child) {
-  @apply pb-0;
-}
-[data-tab-panel] > .expressive-code:first-child :is(.frame, .header, pre) {
-  @apply border-t-0!;
-}
-[data-tab-panel] > .expressive-code:first-child .frame.has-title:not(.is-terminal) .header::before {
-  border-top: 0 !important;
-}
-[data-tab-panel] > .expressive-code:last-child :is(.frame, pre) {
-  @apply border-b-0!;
-}
-
-/* Round the flush corners to match the outer container's inner radius
-   (rounded-lg outer − border-2 = rounded-md). The .header::before
-   inherits border-radius from .header. */
-[data-tab-panel] > .expressive-code:first-child :is(.frame, .header) {
-  @apply rounded-t-md!;
-}
-[data-tab-panel] > .expressive-code:last-child :is(.frame, pre) {
-  @apply rounded-b-md!;
-}
-
-/* TOC links carry over the rendered heading HTML (including inline shiki
-   `<code>` / `.shiki` markup). Keep the pill chrome but drop the color
-   override so plain `<code>` inherits the link's muted/active color
-   instead of staying at full `text-foreground` opacity. */
-[data-toc-text] code,
-[data-toc-text] .shiki {
-  @apply bg-muted/50! relative rounded-sm px-[0.3rem] py-[0.15rem] font-mono wrap-break-word align-baseline leading-[1.2] underline decoration-transparent underline-offset-[3px] transition-colors duration-200 [box-decoration-break:clone];
-}
-
-/* Inline shiki output is `.shiki > code`, which would double the pill —
-   strip the inner code's padding, bg, and border so only the outer
-   `.shiki` wrapper renders the pill. */
-[data-toc-text] .shiki code {
-  @apply bg-transparent! p-0 rounded-none;
-}
-
-/* The path-icon rule is scoped inside `.prose`, which the TOC isn't part
-   of. When a heading containing a filename (e.g. `Anchor.toml`) is cloned
-   into the TOC, the SVG icon falls outside the prose scope and renders at
-   its default size (huge). Hide it in TOC entries — the icon is body
-   decoration, not nav decoration. */
-[data-toc-text] .inline-path-icon {
-  @apply hidden;
-}
-
-/* Mirror the prose `.shiki span` rules so syntax highlighting carries over.
-   Light-mode color is set inline by shiki on each token; dark-mode color
-   comes from the `--shiki-dark` CSS variable on the same span. */
-[data-toc-text] .shiki span {
-  @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)];
-}
-
-[data-theme='dark'] [data-toc-text] .shiki span {
-  @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)] text-(--shiki-dark)!;
-}
-
-/* Token spans carry their own inline `color:` from shiki and don't
-   inherit the link's text-foreground/60 ↔ text-foreground fade. Dim
-   the entire shiki wrapper on inactive entries to match the rest of
-   the link, restore full opacity on the active entry. Use `transition`
-   (covers both opacity and text-decoration-color) so the underline
-   fade-in from the rule above isn't clobbered to opacity-only. */
-[data-toc-text] .shiki {
-  @apply opacity-60 transition duration-200;
-}
-
-[data-heading-link].text-foreground [data-toc-text] .shiki,
-[data-heading-link]:hover [data-toc-text] .shiki,
-.mobile-toc-item.text-foreground [data-toc-text] .shiki,
-.mobile-toc-item:hover [data-toc-text] .shiki,
-#mobile-toc-current-section .shiki {
-  @apply opacity-100;
-}
-
-/* The TOC link's hover underline doesn't propagate across the inline-block
-   shiki/code pill (inline-block creates its own text-decoration context).
-   Apply the underline directly to the pill on hover so code-bearing
-   entries get the same visual hover affordance as plain-text entries. */
-[data-heading-link]:hover [data-toc-text] .shiki,
-[data-heading-link]:hover [data-toc-text] code,
-.mobile-toc-item:hover [data-toc-text] .shiki,
-.mobile-toc-item:hover [data-toc-text] code {
-  @apply decoration-current;
-}
-
-/* Pills tagged by TOCHeadingSync as exceeding the long-pill threshold
-   (e.g. `#[account(extensions::metadata_pointer::*)]`). Default pill
-   styling uses overflow-wrap: break-word, which keeps the container's
-   min-content width at the longest token and lets long pills overflow
-   the narrow TOC column. `anywhere` lets the pill break at any character
-   when (and only when) it would otherwise overflow. */
-[data-toc-text] [data-long-pill='true'] {
-  overflow-wrap: anywhere;
-}
-
-/* Page title (h1), page description, and card title/description all live
-   outside `.prose`, so the prose pill rules don't reach them. Mirror them
-   here so inline `` `code` `` and `` `code{:lang}` `` annotations render as
-   the same pill used in headings, TOC entries, and tabs. */
-[data-doc-description] code,
-[data-doc-description] .shiki,
-[data-doc-title] code,
-[data-doc-title] .shiki {
-  @apply bg-muted/50! text-foreground relative rounded-sm px-[0.3rem] py-[0.15rem] font-mono font-medium wrap-break-word align-baseline leading-[1.2] [box-decoration-break:clone];
-}
-
-[data-doc-description] .shiki code,
-[data-doc-title] .shiki code {
-  @apply bg-transparent! p-0 rounded-none;
-}
-
-[data-doc-description] .shiki span,
-[data-doc-title] .shiki span {
-  @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)];
-}
-
-[data-theme='dark'] [data-doc-description] .shiki span,
-[data-theme='dark'] [data-doc-title] .shiki span {
-  @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)] text-(--shiki-dark)!;
-}
-
-/* Tab labels rendered through shiki via the `{:lang}` annotation. The
-   wrapper sets the mono font; token spans inside carry shiki's
-   light-theme color via inline `style` attributes, with `--shiki-dark`
-   swapping in for dark mode. */
-.tab-label-code {
-  @apply font-mono;
-}
-
-.tab-label-code span {
-  @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)];
-}
-
-[data-theme='dark'] .tab-label-code span {
-  @apply [font-style:var(--shiki-dark-font-style)] font-(--shiki-dark-font-weight) [text-decoration:var(--shiki-dark-text-decoration)] text-(--shiki-dark)!;
-}
-
 @utility small {
   @apply text-sm leading-6 [&_code]:text-xs [&_code]:px-[0.25rem] [&_code]:py-[0.1rem] [&_.shiki]:text-xs [&_.shiki]:px-[0.15rem] [&_.shiki]:py-[0.125rem] [&_.inline-shell-cmd]:text-xs [&_.inline-shell-cmd]:px-[0.25rem] [&_.inline-shell-cmd]:py-[0.1rem] [&_img,video,figure,details,blockquote,.katex-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
+}
+
+@utility code-pill {
+  @apply relative rounded-sm px-[0.3rem] py-[0.15rem] align-baseline leading-[1.2] [-webkit-box-decoration-break:clone] [box-decoration-break:clone];
+}
+
+@utility code-pill-inner {
+  @apply bg-transparent! p-0 rounded-none;
+}
+
+@utility shiki-tokens {
+  @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)];
+  @apply dark:[font-style:var(--shiki-dark-font-style)] dark:font-(--shiki-dark-font-weight) dark:[text-decoration:var(--shiki-dark-text-decoration)] dark:text-(--shiki-dark)!;
 }
