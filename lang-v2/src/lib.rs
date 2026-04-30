@@ -15,6 +15,7 @@ mod dispatch;
 pub mod event;
 pub mod hash;
 #[cfg(feature = "idl-build")]
+#[doc(hidden)]
 pub mod idl_build;
 pub mod loader;
 pub mod pod;

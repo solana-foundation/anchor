@@ -9,6 +9,9 @@
 //! recursive `__register_idl_deps`.
 //!
 //! Only present under `idl-build` cfg; compiles out for on-chain builds.
+//!
+//! This module is exposed only for IDL generation;
+//! it is NOT part of the stable API and is subject to change.
 
 extern crate alloc;
 
@@ -148,7 +151,6 @@ where
 // turning anything that implements `AsRef<[u8]>` into the IDL's
 // `{"kind":"const","value":[...]}` shape. Centralized so the byte-formatting
 // is testable and lives in one place.
-#[doc(hidden)]
 pub fn __idl_const_seed_json(value: impl AsRef<[u8]>) -> alloc::string::String {
     let bytes = value.as_ref();
     let mut s = alloc::string::String::from(r#"{"kind":"const","value":["#);
