@@ -163,3 +163,62 @@ pub fn __idl_const_seed_json(value: impl AsRef<[u8]>) -> alloc::string::String {
     s.push_str("]}");
     s
 }
+
+#[cfg(test)]
+mod const_seed_json_tests {
+    use {super::*, pinocchio::address::Address};
+
+    #[test]
+    fn empty_bytes_render_empty_value_array() {
+        assert_eq!(
+            __idl_const_seed_json([0u8; 0]),
+            r#"{"kind":"const","value":[]}"#
+        );
+    }
+
+    #[test]
+    fn array_of_bytes_renders_decimal_values() {
+        // Boundary values exercise the format path: 0, mid, max u8.
+        assert_eq!(
+            __idl_const_seed_json([0u8, 1, 99, 255]),
+            r#"{"kind":"const","value":[0,1,99,255]}"#
+        );
+    }
+
+    #[test]
+    fn string_literal_renders_as_utf8_bytes() {
+        // Surfaces the `&str` path used by `seeds = [MY_STR]` patterns.
+        assert_eq!(
+            __idl_const_seed_json("ab"),
+            r#"{"kind":"const","value":[97,98]}"#
+        );
+    }
+
+    #[test]
+    fn byte_slice_renders_in_order() {
+        let s: &[u8] = &[10u8, 20, 30];
+        assert_eq!(
+            __idl_const_seed_json(s),
+            r#"{"kind":"const","value":[10,20,30]}"#
+        );
+    }
+
+    #[test]
+    fn pinocchio_address_lands_as_32_decimal_bytes() {
+        // The const-fallback case: `<Marker>::id()` returns Address; the
+        // helper has to accept it via the AsRef<[u8]> blanket. Pick a
+        // base58 with a recognizable byte pattern.
+        let addr = Address::from_str_const("11111111111111111111111111111111");
+        let json = __idl_const_seed_json(addr);
+        assert!(
+            json.starts_with(r#"{"kind":"const","value":["#),
+            "missing prefix: {json}"
+        );
+        assert!(json.ends_with("]}"), "missing suffix: {json}");
+        // System program id is the all-zero pubkey — 32 zeros.
+        assert_eq!(
+            json,
+            r#"{"kind":"const","value":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}"#
+        );
+    }
+}

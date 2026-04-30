@@ -605,11 +605,7 @@ impl SeedJson {
 /// const whose value implements `AsRef<[u8]>` (`Pubkey`, `[u8; N]`,
 /// `&[u8]`, `&str`, …) lands as a real `{"kind":"const","value":[...]}`
 /// entry rather than the empty placeholder we used to emit.
-pub fn classify_seed(
-    expr: &Expr,
-    field_names: &[String],
-    ix_arg_names: &[String],
-) -> SeedJson {
+pub fn classify_seed(expr: &Expr, field_names: &[String], ix_arg_names: &[String]) -> SeedJson {
     classify_seed_inner(expr, field_names, ix_arg_names)
 }
 
@@ -617,11 +613,7 @@ fn static_seed(value: Value) -> SeedJson {
     SeedJson::Static(value.to_string())
 }
 
-fn classify_seed_inner(
-    expr: &Expr,
-    field_names: &[String],
-    ix_arg_names: &[String],
-) -> SeedJson {
+fn classify_seed_inner(expr: &Expr, field_names: &[String], ix_arg_names: &[String]) -> SeedJson {
     // Peel `&<inner>` wrappers — they're common in seed expressions and
     // always transparent to classification.
     let mut cur = expr;
@@ -798,5 +790,199 @@ pub fn pda_object_emission(seeds: &[SeedJson], program: Option<&SeedJson>) -> To
             __pda.push('}');
             __pda
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Pull the inner JSON string out of a `Static` seed for assertion.
+    /// Panics if the seed was classified as `Runtime`.
+    fn expect_static(seed: SeedJson) -> String {
+        match seed {
+            SeedJson::Static(s) => s,
+            SeedJson::Runtime(ts) => {
+                panic!("expected Static seed, got Runtime: {}", ts);
+            }
+        }
+    }
+
+    /// Render a `Runtime` seed's TokenStream to its source-text form for
+    /// substring assertions. Panics if the seed was `Static`.
+    fn expect_runtime(seed: SeedJson) -> String {
+        match seed {
+            SeedJson::Static(s) => panic!("expected Runtime seed, got Static: {s}"),
+            SeedJson::Runtime(ts) => ts.to_string(),
+        }
+    }
+
+    fn classify(expr: syn::Expr, fields: &[&str], args: &[&str]) -> SeedJson {
+        let fields: Vec<String> = fields.iter().map(|s| (*s).to_string()).collect();
+        let args: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
+        classify_seed(&expr, &fields, &args)
+    }
+
+    #[test]
+    fn byte_string_literal_is_static_const() {
+        let s = expect_static(classify(syn::parse_quote!(b"counter"), &[], &[]));
+        assert_eq!(
+            s,
+            r#"{"kind":"const","value":[99,111,117,110,116,101,114]}"#
+        );
+    }
+
+    #[test]
+    fn string_literal_is_static_const_with_utf8_bytes() {
+        let s = expect_static(classify(syn::parse_quote!("ab"), &[], &[]));
+        assert_eq!(s, r#"{"kind":"const","value":[97,98]}"#);
+    }
+
+    #[test]
+    fn byte_literal_is_static_one_byte_const() {
+        let s = expect_static(classify(syn::parse_quote!(b'A'), &[], &[]));
+        assert_eq!(s, r#"{"kind":"const","value":[65]}"#);
+    }
+
+    #[test]
+    fn byte_array_literal_is_static_const() {
+        let s = expect_static(classify(syn::parse_quote!([1u8, 2, 3]), &[], &[]));
+        assert_eq!(s, r#"{"kind":"const","value":[1,2,3]}"#);
+    }
+
+    #[test]
+    fn byte_array_with_non_u8_falls_through_to_runtime() {
+        // 999 doesn't fit in u8 so the fast path bails; the array
+        // expression survives as-is and is forwarded to the runtime
+        // helper.
+        let ts = expect_runtime(classify(syn::parse_quote!([999, 2]), &[], &[]));
+        assert!(ts.contains("__idl_const_seed_json"), "got: {ts}");
+    }
+
+    #[test]
+    fn ampersand_wrapper_is_peeled() {
+        // Common shape — `&b"foo"` — same shape as the bare literal.
+        let s = expect_static(classify(syn::parse_quote!(&b"x"), &[], &[]));
+        assert_eq!(s, r#"{"kind":"const","value":[120]}"#);
+    }
+
+    #[test]
+    fn bare_field_ident_classifies_as_account() {
+        let s = expect_static(classify(syn::parse_quote!(user), &["user"], &[]));
+        assert_eq!(s, r#"{"kind":"account","path":"user"}"#);
+    }
+
+    #[test]
+    fn bare_arg_ident_classifies_as_arg() {
+        let s = expect_static(classify(syn::parse_quote!(nonce), &[], &["nonce"]));
+        assert_eq!(s, r#"{"kind":"arg","path":"nonce"}"#);
+    }
+
+    #[test]
+    fn field_ref_takes_precedence_over_arg_ref() {
+        // Same identifier in both lists: documented behavior is field wins.
+        let s = expect_static(classify(syn::parse_quote!(name), &["name"], &["name"]));
+        assert_eq!(s, r#"{"kind":"account","path":"name"}"#);
+    }
+
+    #[test]
+    fn method_chain_resolves_account_root() {
+        // `user.address().as_ref()` — the canonical Pubkey-seed shape.
+        let s = expect_static(classify(
+            syn::parse_quote!(user.address().as_ref()),
+            &["user"],
+            &[],
+        ));
+        assert_eq!(s, r#"{"kind":"account","path":"user"}"#);
+    }
+
+    #[test]
+    fn method_chain_resolves_arg_root() {
+        let s = expect_static(classify(
+            syn::parse_quote!(nonce.to_le_bytes()),
+            &[],
+            &["nonce"],
+        ));
+        assert_eq!(s, r#"{"kind":"arg","path":"nonce"}"#);
+    }
+
+    #[test]
+    fn string_literal_as_bytes_method_is_static_const() {
+        let s = expect_static(classify(syn::parse_quote!("hi".as_bytes()), &[], &[]));
+        assert_eq!(s, r#"{"kind":"const","value":[104,105]}"#);
+    }
+
+    #[test]
+    fn const_path_falls_through_to_runtime_helper() {
+        // Bare ident not in field/arg lists is the const-fallback case.
+        let ts = expect_runtime(classify(syn::parse_quote!(MY_PREFIX), &[], &[]));
+        assert!(
+            ts.contains("__idl_const_seed_json"),
+            "missing helper call: {ts}"
+        );
+        assert!(ts.contains("MY_PREFIX"), "missing inner expr: {ts}");
+    }
+
+    #[test]
+    fn marker_id_call_falls_through_to_runtime() {
+        // Previously hit a hardcoded base58 allowlist; now flows through
+        // the `AsRef<[u8]>` runtime helper for any marker.
+        let ts = expect_runtime(classify(syn::parse_quote!(System::id()), &[], &[]));
+        assert!(ts.contains("__idl_const_seed_json"), "got: {ts}");
+        assert!(ts.contains("System :: id"), "got: {ts}");
+    }
+
+    #[test]
+    fn unknown_marker_id_call_also_flows_through_runtime() {
+        // Custom user marker — used to fall through to empty-bytes; now works.
+        let ts = expect_runtime(classify(syn::parse_quote!(MyCustomProgram::id()), &[], &[]));
+        assert!(ts.contains("__idl_const_seed_json"), "got: {ts}");
+    }
+
+    #[test]
+    fn pda_object_emission_assembles_seeds_array_in_order() {
+        let seeds = vec![
+            SeedJson::Static(r#"{"kind":"const","value":[1]}"#.to_string()),
+            SeedJson::Static(r#"{"kind":"account","path":"user"}"#.to_string()),
+        ];
+        let ts = pda_object_emission(&seeds, None).to_string();
+        // Both seed bodies are spliced in source order with the comma
+        // separator between them.
+        assert!(
+            ts.contains(r#"{\"kind\":\"const\",\"value\":[1]}"#),
+            "first seed missing: {ts}"
+        );
+        assert!(
+            ts.contains(r#"{\"kind\":\"account\",\"path\":\"user\"}"#),
+            "second seed missing: {ts}"
+        );
+        assert!(
+            !ts.contains(r#""program""#),
+            "no program override expected: {ts}"
+        );
+    }
+
+    #[test]
+    fn pda_object_emission_includes_program_when_set() {
+        let seeds = vec![SeedJson::Static(
+            r#"{"kind":"const","value":[1]}"#.to_string(),
+        )];
+        let prog = SeedJson::Static(r#"{"kind":"const","value":[2]}"#.to_string());
+        let ts = pda_object_emission(&seeds, Some(&prog)).to_string();
+        // The program override gets its own runtime push under the
+        // "program" key.
+        assert!(ts.contains(r#",\"program\":"#), "missing program key: {ts}");
+    }
+
+    #[test]
+    fn pda_object_emission_propagates_runtime_seed() {
+        // Runtime seeds must appear verbatim inside the emission so the
+        // helper call survives macro expansion.
+        let seeds = vec![SeedJson::Runtime(quote! {
+            anchor_lang_v2::idl_build::__idl_const_seed_json(MY_CONST)
+        })];
+        let ts = pda_object_emission(&seeds, None).to_string();
+        assert!(ts.contains("__idl_const_seed_json"), "got: {ts}");
+        assert!(ts.contains("MY_CONST"), "got: {ts}");
     }
 }

@@ -888,7 +888,9 @@ pub fn parse_field(
         } else {
             // Non-array seed expr — surface as the placeholder `{"kind":"expr"}`
             // shape. Static because it doesn't depend on the user's expr value.
-            vec![crate::idl::SeedJson::Static(r#"{"kind":"expr"}"#.to_string())]
+            vec![crate::idl::SeedJson::Static(
+                r#"{"kind":"expr"}"#.to_string(),
+            )]
         };
         IdlPdaMeta {
             seeds: seed_entries,
