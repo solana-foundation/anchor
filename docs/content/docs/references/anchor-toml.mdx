@@ -42,7 +42,7 @@ resolution = true
 
 ## workspace
 
-### idl
+### idls
 
 Adds a directory where you want the `<program_name>.json` file to be copied when running
 `anchor build`. This is helpful when you want the generated IDL JSON outside the
@@ -53,7 +53,7 @@ Example:
 
 ```toml
 [workspace]
-idl = "app/src/idl/"
+idls = "app/src/idls/"
 ```
 
 ### types
@@ -67,7 +67,7 @@ Example:
 
 ```toml
 [workspace]
-types = "app/src/idl/"
+types = "app/src/idls/"
 ```
 
 ### members
