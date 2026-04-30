@@ -87,6 +87,10 @@ Run `yarn test` in the relevant package/workspace (for example
 anchor test
 ```
 
+These are the integration tests under the root `tests/` folder.
+Contributors should run the tests that cover their changes and/or add new
+test cases.
+
 Integration and other non-Rust tests depend on local TS package linking.
 You can set this up in either of these ways:
 
