@@ -19,7 +19,7 @@ pub mod counter {
 }
 ```
 
-Each handler takes `&mut Context<Accs>{:rs}` and a tuple of borsh-deserialized arguments. The instruction discriminator is `sha256("global:" + name)[..8]{:rs}` by default, where `name{:rs}` is the handler's identifier. Override per handler with `#[discrim = N]{:rs}` for compact 1-byte discriminators in CU-sensitive programs. The override is all-or-nothing: if any handler in the module uses `#[discrim = N]{:rs}`, every other handler must also declare a unique byte value:
+Each handler takes `&mut Context<Accs>{:rs}` and any extra arguments declared after `ctx{:rs}`, which the dispatcher decodes through wincode using a borsh-compatible wire format. The instruction discriminator is `sha256("global:" + name)[..8]{:rs}` by default, where `name{:rs}` is the handler's identifier. Override per handler with `#[discrim = N]{:rs}` for compact 1-byte discriminators in CU-sensitive programs. The override is all-or-nothing: if any handler in the module uses `#[discrim = N]{:rs}`, every other handler must also declare a unique byte value:
 
 ```rust title="lib.rs" showLineNumbers=false
 #[program]
@@ -38,9 +38,9 @@ pub mod vault {
 
 `#[derive(Accounts)]{:rs}` declares an instruction's account list and generates the validation code that runs before the handler. For each struct it expands to:
 
-- A `TryAccounts{:rs}` impl that walks the account cursor, applies constraints, and returns the validated struct
+- A `TryAccounts{:rs}` impl that loads each declared account from the pre-walked view slice, applies constraints, and returns the validated struct
 - A `Bumps{:rs}` impl whose associated type carries one `u8{:rs}` per PDA seed group (or `Option<u8>{:rs}` for optional accounts)
-- A `Resolved{:rs}` companion struct: a subset of fields the caller must supply when building a CPI; the rest auto-derive (PDAs) or auto-fill (system / token programs)
+- A `Resolved{:rs}` companion struct: a subset of fields the caller must supply when building an instruction from a client or test; the rest auto-derive (PDAs) or auto-fill (system / token programs)
 - A `to_account_metas(){:rs}` method for client-side instruction building
 
 ```rust title="lib.rs" showLineNumbers=false
@@ -138,9 +138,9 @@ pub struct OrderFilled {
     pub note: String,
 }
 
-emit(OrderFilled {
-    maker: ctx.accounts.maker.address().clone(),
-    taker: ctx.accounts.taker.address().clone(),
+emit!(OrderFilled {
+    maker: *ctx.accounts.maker.address(),
+    taker: *ctx.accounts.taker.address(),
     price: 1_000,
     size: 1,
     note: String::from("partial fill"),

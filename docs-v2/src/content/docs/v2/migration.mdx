@@ -74,7 +74,7 @@ The `compat` feature is off by default because heap allocation and fmt-trait dis
 | `pub fn ix(ctx: Context<MyAccs>, x: u64) -> Result<()>{:rs}` | `pub fn ix(ctx: &mut Context<MyAccs>, x: u64) -> Result<()>{:rs}` |
 | `ctx.accounts.field.key(){:rs}` | `ctx.accounts.field.address(){:rs}` (or `.account().address(){:rs}` for raw views) |
 | `ctx.bumps.get("name").unwrap(){:rs}` | `ctx.bumps.name{:rs}` (typed field; populated by macro) |
-| `**ctx.accounts.field.to_account_info().lamports.borrow_mut(){:rs}` | `ctx.accounts.field.account().set_lamports(new){:rs}` |
+| `**ctx.accounts.field.to_account_info().lamports.borrow_mut(){:rs}` | `let mut view = *ctx.accounts.field.account(); view.set_lamports(new){:rs}` |
 
 ## Crate dependencies
 

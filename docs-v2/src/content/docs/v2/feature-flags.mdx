@@ -43,9 +43,9 @@ Disabling the feature saves roughly 300 bytes of binary and 2 CU per account, bu
 
 The `const-rent` feature folds `rent_exempt_lamports{:rs}` to a compile-time constant by combining pinocchio's `DEFAULT_LAMPORTS_PER_BYTE{:rs}` and `ACCOUNT_STORAGE_OVERHEAD{:rs}`, which lets `create_account{:rs}` skip the `Rent::get(){:rs}` sysvar call entirely.
 
-The savings come out to roughly 85 CU per `create_account{:rs}` CPI. The trade-off is that if Solana changes the rent formula in the future (for example, through a SIMD like SIMD-0194), programs built with `const-rent` will compute stale values until they are rebuilt. The feature is off by default precisely so programs pick up runtime formula changes transparently.
+The savings come out to roughly 90 CU per `create_account{:rs}` CPI. The trade-off is that if Solana changes the rent formula in the future (for example, through a SIMD like SIMD-0194), programs built with `const-rent` will compute stale values until they are rebuilt. The feature is off by default precisely so programs pick up runtime formula changes transparently.
 
-Reach for `const-rent` when the 85 CU per `create_account{:rs}` matters more than rent-formula drift safety, and when the program is built and re-deployed often enough that refreshing the constant is part of the normal release cycle.
+Reach for `const-rent` when the 90 CU per `create_account{:rs}` matters more than rent-formula drift safety, and when the program is built and re-deployed often enough that refreshing the constant is part of the normal release cycle.
 
 ## `compat` (off)
 

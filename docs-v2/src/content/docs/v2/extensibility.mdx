@@ -111,6 +111,6 @@ At load time, `Program<MyProgram>{:rs}` validates that the account is `executabl
 
 ## Why this works
 
-The core derive shrinks from roughly 11,400 lines to 3,700 because the generated code now goes through trait calls like `<MyType as AnchorAccount>::load(view, program_id){:rs}` rather than inlining all of the validation logic per field. Adding a new account wrapper or constraint becomes a trait implementation in a downstream crate, not a fork of the macro itself.
+The core derive shrinks materially because the generated code now goes through trait calls like `<MyType as AnchorAccount>::load(view, program_id){:rs}` rather than inlining all of the validation logic per field. Adding a new account wrapper or constraint becomes a trait implementation in a downstream crate, not a fork of the macro itself.
 
 For the full trait surface, see [`lang-v2/src/traits.rs`](https://github.com/solana-foundation/anchor/blob/anchor-next/lang-v2/src/traits.rs) on the `anchor-next` branch.

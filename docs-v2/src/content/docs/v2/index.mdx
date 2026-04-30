@@ -15,7 +15,7 @@ description: The next-generation Anchor runtime, built on pinocchio. Programs ar
 
 2. Most v1 programs port with the renames in [Migrating from v1](/docs/v2/migration/). Larger programs that lean on v1-shape logging can opt into a `compat` feature that restores helpers like `debug!{:rs}`.
 
-3. Most of v2's logic lives behind traits rather than inside the macro, so the core derive shrinks from ~11,400 LoC to ~3,700 and third-party crates can ship new account primitives and constraint markers without forking. See [Extensibility](/docs/v2/extensibility/).
+3. Most of v2's logic lives behind traits rather than inside the macro, so the core derive is materially smaller and third-party crates can ship new account primitives and constraint markers without forking. See [Extensibility](/docs/v2/extensibility/).
 
 4. Safer APIs steer users away from common v1 footguns. Whole classes of runtime bugs become compile errors, and fuzzing, static analysis, and formal verification are first-class concerns rather than afterthoughts.
 
@@ -27,10 +27,10 @@ Worked programs live under [`bench/programs/`](https://github.com/solana-foundat
 
 | Program | Description | Binary | CU range | Bin ↓ | CU ↓ |
 | --- | --- | --- | --- | --- | --- |
-| `helloworld` | Single-instruction counter | 6.9 KB | 1,383 | 18× | 4.2× |
-| `prop-amm` | Oracle feed with asm fast-path | 9.2 KB | 26-1,383 | 15× | 3.1-50× |
+| `helloworld` | Single-instruction counter | 6.9 KB | 1,382 | 18× | 4.2× |
+| `prop-amm` | Oracle feed with asm fast-path | 9.2 KB | 26-1,382 | 15× | 3.1-50× |
 | `vault` | Single-depositor SOL vault | 5.9 KB | 403-1,910 | 18× | 3.0-6.1× |
-| `nested` | Shared-validation via `Nested<T>{:rs}` | 13 KB | 476-2,748 | 12× | 7.2-10× |
-| `multisig` | Four-instruction SOL multisig | 31 KB | 477-2,363 | 5.3× | 3.0-9.1× |
+| `nested` | Shared-validation via `Nested<T>{:rs}` | 13 KB | 475-2,745 | 12× | 7.2-10× |
+| `multisig` | Four-instruction SOL multisig | 31 KB | 476-2,362 | 5.3× | 3.0-9.1× |
 
 ## What's in this section
