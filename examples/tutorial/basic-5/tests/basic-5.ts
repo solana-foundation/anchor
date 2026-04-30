@@ -20,9 +20,30 @@ describe("basic-5", () => {
     const createInstruction = await program.methods
       .create()
       .accounts({
-        actionState,
-        user,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        // actionState,
+         /* 
+        A accounts whose seeds are fully declared in the IDL 
+        (e.g. actionState has pda.seeds = [{ kind: "const", value: [...] }])
+        client derives the address at call time, no need to pass it.
+        */
+        // user,
+
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
+
+        // systemProgram: anchor.web3.SystemProgram.programId,
+
+        /*
+         Known system programs whose address is fixed in the IDL
+          (e.g. systemProgram → "11111111111111111111111111111111",
+         tokenProgram  → resolved from the token interface constraint) client fills these in automatically.
+
+        */
+
       })
       .instruction();
     // Walk instruction: Invoke the Robot to walk
@@ -30,7 +51,13 @@ describe("basic-5", () => {
       .walk()
       .accounts({
         actionState,
-        user,
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
       })
       .instruction();
     // Run instruction: Invoke the Robot to run
@@ -38,7 +65,13 @@ describe("basic-5", () => {
       .run()
       .accounts({
         actionState,
-        user,
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
       })
       .instruction();
     // Jump instruction: Invoke the Robot to jump
@@ -46,7 +79,13 @@ describe("basic-5", () => {
       .jump()
       .accounts({
         actionState,
-        user,
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
       })
       .instruction();
     // Reset instruction: Reset actions of the Robot
@@ -54,7 +93,13 @@ describe("basic-5", () => {
       .reset()
       .accounts({
         actionState,
-        user,
+        // user,
+        /*
+        accounts with `relations: ["actionState"]` (user) tell the client
+       "resolve this account from actionState's data".  Combined with the
+       fact that `user` is also the wallet signer, the client resolves it
+       from the provider automatically.
+       */
       })
       .instruction();
 
@@ -78,7 +123,7 @@ describe("basic-5", () => {
       "confirmed"
     );
     console.log(
-      "   ✅ - Fetched latest blockhash. Last Valid Height:",
+      "   :white_check_mark: - Fetched latest blockhash. Last Valid Height:",
       latestBlockhash.lastValidBlockHeight
     );
 
@@ -88,18 +133,18 @@ describe("basic-5", () => {
       recentBlockhash: latestBlockhash.blockhash,
       instructions: txInstructions,
     }).compileToV0Message();
-    console.log("   ✅ - Compiled Transaction Message");
+    console.log("   :white_check_mark: - Compiled Transaction Message");
     const transaction = new anchor.web3.VersionedTransaction(messageV0);
 
     // Step 3 - Sign your transaction with the required `Signers`
     provider.wallet.signTransaction(transaction);
-    console.log("   ✅ - Transaction Signed");
+    console.log("   :white_check_mark: - Transaction Signed");
 
     // Step 4 - Send our v0 transaction to the cluster
     const txid = await provider.connection.sendTransaction(transaction, {
       maxRetries: 5,
     });
-    console.log("   ✅ - Transaction sent to network");
+    console.log("   :white_check_mark: - Transaction sent to network");
 
     // Step 5 - Confirm Transaction
     const confirmation = await provider.connection.confirmTransaction({
@@ -109,11 +154,11 @@ describe("basic-5", () => {
     });
     if (confirmation.value.err) {
       throw new Error(
-        `   ❌ - Transaction not confirmed.\nReason: ${confirmation.value.err}`
+        `   :x: - Transaction not confirmed.\nReason: ${confirmation.value.err}`
       );
     }
 
-    console.log("🎉 Transaction Successfully Confirmed!");
+    console.log(":tada: Transaction Successfully Confirmed!");
     let result = await program.account.actionState.fetch(actionState);
     console.log("Robot action state details: ", result);
   }
