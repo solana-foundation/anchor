@@ -206,7 +206,11 @@ pub enum MultisigError {
 }
 ```
 
-Override the starting offset with `#[error_code(offset = N)]{:rs}` when porting a v1 program that uses a non-default error-code base. Unlike v1, v2 does not allocate an `AnchorError{:rs}` struct at runtime; the `#[msg(...)]{:rs}` text is IDL-only metadata, so emitting an error costs only the `Custom(u32){:rs}` write.
+Override the starting offset with `#[error_code(offset = N)]{:rs}` when porting a v1 program that uses a non-default error-code base.
+
+<Callout variant="remark" title="No runtime `AnchorError{:rs}`">
+  Unlike v1, v2 does not allocate an `AnchorError{:rs}` struct at runtime. The `#[msg(...)]{:rs}` text is IDL-only metadata, so emitting an error costs only the `Custom(u32){:rs}` write.
+</Callout>
 
 ## `#[access_control]{:rs}`
 

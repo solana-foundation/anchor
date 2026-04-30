@@ -18,7 +18,11 @@ Seeds that parameterize on a runtime value (such as `[b"profile", user.address()
 
 ## Skip the on-curve check for program-owned PDAs
 
-A program-owned account must have been created via signed CPI in the first place, and that creation already performed the on-curve check. If v2 observes that the program owns the account on a subsequent load, it can skip re-running the curve check, leaving verification as a hash-and-compare against the canonical bump. The skip saves roughly 1,000 CU per verify.
+If v2 observes that the program owns the account on a subsequent load, it skips re-running the on-curve check, leaving verification as a hash-and-compare against the canonical bump. The skip saves roughly 1,000 CU per verify.
+
+<Callout variant="intuition" title="Why the skip is sound">
+  A program-owned account must have been created via signed CPI in the first place, and `invoke_signed{:rs}` already runs the on-curve check at creation time. Any account that arrives at the handler already owned by the program has paid that cost once, so re-running it is redundant.
+</Callout>
 
 ## Wincode events by default
 

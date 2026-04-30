@@ -19,7 +19,7 @@ Most v1 programs port to v2 with the renames in the table below. The ones that d
 | `AccountLoader<'info, T>{:rs}` | `Account<T>{:rs}` |
 | `has_one = field{:rs}` | `address = field{:rs}` (see [deprecation](#has-one-deprecated)) |
 
-<Callout variant="note" title="`AccountLoader` is reused in v2 for a different purpose">
+<Callout variant="note" title="`AccountLoader{:rs}` is reused in v2 for a different purpose">
   v2 also exposes a type literally named `AccountLoader{:rs}` from `lang-v2/src/loader.rs{:rs}`, but it is the sequential cursor-walker that `#[derive(Accounts)]{:rs}` calls into during account validation, not a user-facing wrapper. v1's zero-copy `AccountLoader<'info, T>{:rs}` is replaced by `Account<T>{:rs}`, which is zero-copy by default in v2.
 </Callout>
 

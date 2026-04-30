@@ -61,12 +61,14 @@ Each account wrapper provides handles through a small set of methods:
 
 ## Unchecked invocation
 
-Under the hood, `CpiContext::invoke(data){:rs}` calls pinocchio's `invoke_signed_unchecked{:rs}` rather than the checked variant. The unchecked path skips a runtime `RefCell{:rs}` check that would otherwise be needed to detect stale borrows, and v2 can use it safely for two reasons:
+Under the hood, `CpiContext::invoke(data){:rs}` calls pinocchio's `invoke_signed_unchecked{:rs}` rather than the checked variant. The unchecked path skips a runtime `RefCell{:rs}` check that would otherwise be needed to detect stale borrows. The end result is one fewer runtime check per CPI, and the formerly-runtime aliasing UB becomes a compile error rather than a panic.
 
-1. `CpiHandle<'a>{:rs}` borrows the account at the Rust level for as long as the handle exists. While a handle is alive, the typed account wrapper cannot be borrowed mutably by any other code in the same instruction, so concurrent typed access is ruled out at compile time.
-2. pinocchio's `borrow_state{:rs}` flag is left set across the CPI. Any subsequent typed access on a stale borrow still trips, so the runtime safety net stays in place even though `invoke_signed_unchecked{:rs}` itself does not consult it.
+<Callout variant="intuition" title="Why unchecked is safe here">
+  Two invariants stand in for the missing runtime check:
 
-The end result is one fewer runtime check per CPI, and the formerly-runtime aliasing UB becomes a compile error rather than a panic.
+  1. `CpiHandle<'a>{:rs}` borrows the account at the Rust level for as long as the handle exists. While a handle is alive, the typed account wrapper cannot be borrowed mutably by any other code in the same instruction, so concurrent typed access is ruled out at compile time.
+  2. pinocchio's `borrow_state{:rs}` flag is left set across the CPI. Any subsequent typed access on a stale borrow still trips, so the runtime safety net stays in place even though `invoke_signed_unchecked{:rs}` itself does not consult it.
+</Callout>
 
 ## Remaining accounts
 

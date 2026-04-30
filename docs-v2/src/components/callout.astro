@@ -1,6 +1,7 @@
 ---
 import { cn } from '@/lib/utils'
 import Icon from '@/components/icon.astro'
+import { renderDescription } from '@/lib/render-description'
 
 const calloutConfig = {
   note: { color: 'blue', icon: 'info-circle' },
@@ -38,8 +39,14 @@ interface Props {
   defaultOpen?: boolean
 }
 
-const { title, variant = 'note', defaultOpen = true, ...rest } = Astro.props
+const {
+  title,
+  variant = 'note',
+  defaultOpen = true,
+  ...rest
+} = Astro.props as Props
 const { color, icon } = calloutConfig[variant]
+const renderedTitle = title ? await renderDescription(title) : null
 ---
 
 <details
@@ -57,7 +64,9 @@ const { color, icon } = calloutConfig[variant]
     <Icon name={icon} class="mr-2 size-4 shrink-0 text-(--callout-color)" />
     <span class="mr-2 font-medium text-(--callout-color)">
       {capitalize(variant)}
-      {title && <span class="font-normal opacity-70"> ({title})</span>}
+      {renderedTitle && (
+        <span class="font-normal opacity-70" set:html={` (${renderedTitle.html})`} />
+      )}
     </span>
     <Icon
       name="chevron-down"
@@ -71,6 +80,14 @@ const { color, icon } = calloutConfig[variant]
 
 <style>
   @layer components {
+    summary code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      padding: 0.05em 0.3em;
+      border-radius: 0.25rem;
+      background: color-mix(in srgb, var(--callout-color) 12%, transparent);
+      color: var(--callout-color);
+    }
     [data-callout-body] > :global(*:first-child) {
       margin-top: 0 !important;
     }

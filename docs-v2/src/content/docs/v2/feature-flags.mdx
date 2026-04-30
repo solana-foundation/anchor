@@ -37,7 +37,11 @@ anchor-lang-v2 = { git = "...", branch = "anchor-next", default-features = false
 
 The `account-resize` feature enables `realloc_account{:rs}` along with the pinocchio entrypoint hook that writes `data_len{:rs}` into `RuntimeAccount.padding{:rs}` for every non-duplicate account, which is what allows `AccountView::resize(){:rs}` to enforce the `MAX_PERMITTED_DATA_INCREASE{:rs}` cap.
 
-Disabling the feature saves roughly 300 bytes of binary and 2 CU per account, but only when the program never calls `realloc_account{:rs}` in the first place. Turning it off without also removing the call sites silently corrupts the stored `original_data_len{:rs}`, which is why the gate is enforced at compile time rather than at runtime.
+Disabling the feature saves roughly 300 bytes of binary and 2 CU per account, but only when the program never calls `realloc_account{:rs}` in the first place.
+
+<Callout variant="danger" title="Don't disable while call sites exist">
+  Turning `account-resize{:rs}` off without also removing the `realloc_account{:rs}` call sites silently corrupts the stored `original_data_len{:rs}`. The gate is enforced at compile time rather than at runtime precisely because the runtime symptom is a corrupted account header, not a clean panic.
+</Callout>
 
 ## `const-rent` (off)
 
@@ -74,7 +78,11 @@ The feature is off by default so production BPF binaries never ship the test sca
 anchor-lang-v2 = { git = "...", branch = "anchor-next", default-features = false, features = ["alloc"] }
 ```
 
-This profile drops both `guardrails` and `account-resize` for the smallest possible binary. Only use it once the program has been thoroughly tested and you have verified that no instruction calls `realloc_account{:rs}`.
+This profile drops both `guardrails` and `account-resize` for the smallest possible binary.
+
+<Callout variant="danger" title="Verify before shipping">
+  Only adopt this profile once the program has been thoroughly tested and you have verified that no instruction calls `realloc_account{:rs}`. The `guardrails{:rs}` net catches caller bugs the borrow checker cannot see statically; ship without it only after fuzzing and review have closed those holes.
+</Callout>
 
 ## Recipe: maximum CU savings
 

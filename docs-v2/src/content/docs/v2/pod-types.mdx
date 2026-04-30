@@ -3,7 +3,11 @@ title: Pod types
 description: The alignment-1 integer wrappers, `PodVec<T, MAX>{:rs}`, and the `#[pod_wrapper]{:rs}` macro for safe enum-to-Pod conversion.
 ---
 
-`Account<T>{:rs}` requires `T: Pod{:rs}`, where Pod (plain old data) means the type is fixed-size, has `#[repr(C)]{:rs}` layout, and contains no padding holes. To make this constraint easy to satisfy, v2 ships a small set of alignment-1 wrappers that let most user data lay out cleanly without any manual padding.
+<Callout variant="definition" title="Pod">
+  Pod (plain old data) means the type is fixed-size, has `#[repr(C)]{:rs}` layout, and contains no padding holes. `Account<T>{:rs}` requires `T: Pod{:rs}` so it can pointer-cast directly from the account's raw bytes without a deserialize step.
+</Callout>
+
+To make `T: Pod{:rs}` easy to satisfy, v2 ships a small set of alignment-1 wrappers that let most user data lay out cleanly without any manual padding.
 
 ## Integer wrappers
 

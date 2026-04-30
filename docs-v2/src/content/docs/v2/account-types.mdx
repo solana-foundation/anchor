@@ -47,7 +47,9 @@ pub struct Init {
 - Auto-derived 8-byte discriminator (`sha256("account:" + name)[..8]{:rs}`)
 - `Owner{:rs}` impl returning the program ID
 
-Internally, `Account<T>{:rs}` is a type alias for `Slab<T, HeaderOnly>{:rs}`. The header-only specialization uses a zero-sized item tail that never materializes, so the two share a single implementation without paying for a list of items the wrapper doesn't need.
+<Callout variant="explanation" title="How `Account<T>{:rs}` shares its implementation with `Slab{:rs}`" defaultOpen={false}>
+  `Account<T>{:rs}` is a type alias for `Slab<T, HeaderOnly>{:rs}`. The header-only specialization uses a zero-sized item tail that never materializes, so the two share a single implementation without paying for a list of items the wrapper doesn't need.
+</Callout>
 
 ## `BorshAccount<T>{:rs}`
 
@@ -143,7 +145,11 @@ pub struct Reset {
 }
 ```
 
-`Nested<T>{:rs}` expands inline at the call site, so it does not consume an extra account slot in the instruction. The [`bench/programs/nested/anchor-v2`](https://github.com/solana-foundation/anchor/tree/anchor-next/bench/programs/nested/anchor-v2) program shows the pattern end-to-end.
+`Nested<T>{:rs}` expands inline at the call site, so it does not consume an extra account slot in the instruction.
+
+<Callout variant="example" title="Worked example">
+  The [`bench/programs/nested/anchor-v2`](https://github.com/solana-foundation/anchor/tree/anchor-next/bench/programs/nested/anchor-v2) program shows the pattern end-to-end, including how shared validation is exercised by multiple instructions without duplicating the constraint block.
+</Callout>
 
 ## `Signer{:rs}`
 
@@ -159,7 +165,11 @@ pub struct Reset {
 
 ## `UncheckedAccount{:rs}`
 
-`UncheckedAccount{:rs}` is the escape hatch for situations where v2's built-in validation is too restrictive or doesn't apply. The wrapper performs no checks at all, so pair it with explicit derive-level constraints like `address = X{:rs}` or `owner = Y{:rs}`, or hand-rolled validation inside the handler, to keep the boundary safe.
+`UncheckedAccount{:rs}` is the escape hatch for situations where v2's built-in validation is too restrictive or doesn't apply. The wrapper performs no checks at all.
+
+<Callout variant="danger" title="Always pair with explicit constraints">
+  An `UncheckedAccount{:rs}` field with no surrounding constraints is an unauthenticated handle to whatever account the caller passes in. Always pair it with `address = X{:rs}`, `owner = Y{:rs}`, or hand-rolled validation in the handler before reading or mutating the account.
+</Callout>
 
 ## `Sysvar<T>{:rs}`
 

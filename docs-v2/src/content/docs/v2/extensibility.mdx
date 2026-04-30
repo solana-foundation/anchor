@@ -55,7 +55,11 @@ impl<T: Pod + Discriminator + Owner> AnchorAccount for MyWrapper<T> {
 }
 ```
 
-`MIN_DATA_LEN{:rs}` is consulted by the PDA verifier to decide whether the on-curve check can be skipped: a wrapper that requires a non-empty account must have been created via signed CPI (which already ran the curve check), and the framework folds that observation into a hash-and-compare. The trait defaults `MIN_DATA_LEN{:rs}` to `0{:rs}`, which forces the curve check; data-carrying wrappers should override it to the discriminator-plus-payload minimum.
+The trait defaults `MIN_DATA_LEN{:rs}` to `0{:rs}`, which forces the on-curve check. Data-carrying wrappers should override it to the discriminator-plus-payload minimum so the verifier can fall back to a hash-and-compare.
+
+<Callout variant="intuition" title="What `MIN_DATA_LEN{:rs}` actually buys">
+  A wrapper that requires a non-empty account is one that must have been created via signed CPI, and `invoke_signed{:rs}` already ran the on-curve check at creation. Setting `MIN_DATA_LEN{:rs}` to a non-zero value tells the PDA verifier "this account was provably created through a signed path", which is the condition under which the curve re-check can be safely skipped.
+</Callout>
 
 Once implemented, `MyWrapper<T>{:rs}` is a first-class field type:
 
@@ -66,7 +70,9 @@ pub struct UseMine {
 }
 ```
 
-A real-world example of this pattern is [`anchor-dynamic-account`](https://github.com/chen-robert/anchor-dynamic-account), which adds zero-copy accounts with auto-reallocating `Vec<T>{:rs}` and `String{:rs}` tails. The entire wrapper lives in a third-party crate, with no changes required to v2 itself.
+<Callout variant="example" title="A third-party wrapper in the wild">
+  [`anchor-dynamic-account`](https://github.com/chen-robert/anchor-dynamic-account) adds zero-copy accounts with auto-reallocating `Vec<T>{:rs}` and `String{:rs}` tails. The entire wrapper lives in a third-party crate, with no changes required to v2 itself.
+</Callout>
 
 ## `AccountConstraint<A>{:rs}`
 
