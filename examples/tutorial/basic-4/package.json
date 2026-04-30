@@ -15,8 +15,5 @@
   },
   "scripts": {
     "test": "anchor test --skip-lint && anchor clean"
-  },
-  "dependencies": {
-    "@anchor-lang/core": "^1.0.1"
   }
 }
