@@ -239,7 +239,33 @@
 }
 
 @utility small {
-  @apply text-sm leading-6 [&_code]:text-xs [&_code]:px-[0.25rem] [&_code]:py-[0.1rem] [&_.shiki]:text-xs [&_.shiki]:px-[0.15rem] [&_.shiki]:py-[0.125rem] [&_.inline-shell-cmd]:text-xs [&_.inline-shell-cmd]:px-[0.25rem] [&_.inline-shell-cmd]:py-[0.1rem] [&_img,video,figure,details,blockquote,.katex-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
+  @apply text-sm leading-6;
+
+  code,
+  .inline-shell-cmd {
+    @apply text-xs px-[0.25rem] py-[0.1rem];
+  }
+
+  .shiki {
+    @apply text-xs px-[0.15rem] py-[0.125rem];
+  }
+
+  :is(img, video, figure, details, blockquote, .katex-display, .expressive-code) {
+    @apply my-4!;
+  }
+
+  li,
+  ol {
+    @apply mt-0;
+  }
+
+  p {
+    @apply my-2!;
+  }
+
+  ul {
+    @apply my-0;
+  }
 }
 
 @utility code-pill {
