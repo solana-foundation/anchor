@@ -5340,10 +5340,12 @@ fn logs_subscribe(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use anchor_lang_idl::types::{
-        IdlGenericArg, IdlInstructionAccount, IdlInstructionAccountItem, IdlPda, IdlSeed,
-        IdlSeedAccount, IdlTypeDef, IdlTypeDefGeneric,
+    use {
+        super::*,
+        anchor_lang_idl::types::{
+            IdlGenericArg, IdlInstructionAccount, IdlInstructionAccountItem, IdlPda, IdlSeed,
+            IdlSeedAccount, IdlTypeDef, IdlTypeDefGeneric,
+        },
     };
 
     #[test]
