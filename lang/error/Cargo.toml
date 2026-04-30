@@ -16,10 +16,10 @@ default = ["borsh"]
 borsh = ["dep:borsh", "solana-program-error/borsh"]
 
 [dependencies]
+anchor-attribute-error = { path = "../attribute/error", version = "1.0.1" }
+
 borsh = { version = "1.5.7", optional = true }
 
 solana-msg.workspace = true
 solana-program-error = { workspace = true }
 solana-pubkey.workspace = true
-
-anchor-attribute-error = { path = "../attribute/error", version = "1.0.1" }
