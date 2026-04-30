@@ -21,26 +21,29 @@
 //! 10k                 repeat count (e.g. move up 10 steps)
 //! ```
 
-use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+use {
+    super::{
+        highlight::highlight_rust,
+        model::{DebugSession, DebugStep, DebugTx},
+        path_label::{classify, PathLabel},
+    },
+    crossterm::{
+        event::{
+            self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+        },
+        execute,
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    },
+    ratatui::{
+        backend::CrosstermBackend,
+        layout::{Alignment, Constraint, Direction, Layout, Rect},
+        style::{Color, Modifier, Style},
+        text::{Line, Span},
+        widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
+        Frame, Terminal,
+    },
+    std::{collections::HashMap, io, path::PathBuf},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
-    Frame, Terminal,
-};
-use std::collections::HashMap;
-use std::io;
-use std::path::PathBuf;
-
-use super::highlight::highlight_rust;
-use super::model::{DebugSession, DebugStep, DebugTx};
-use super::path_label::{classify, PathLabel};
 
 type DebugTerm = Terminal<CrosstermBackend<io::Stdout>>;
 
@@ -49,8 +52,8 @@ type DebugTerm = Terminal<CrosstermBackend<io::Stdout>>;
 pub fn run(session: DebugSession) -> anyhow::Result<()> {
     if session.txs.is_empty() {
         anyhow::bail!(
-            "no traces to debug — did your tests call `anchor_v2_testing::svm()` \
-             and complete at least one transaction?"
+            "no traces to debug — did your tests call `anchor_v2_testing::svm()` and complete at \
+             least one transaction?"
         );
     }
 
@@ -195,7 +198,11 @@ impl App {
         let area = f.area();
         let [title, list, footer] = Layout::new(
             Direction::Vertical,
-            [Constraint::Length(3), Constraint::Min(3), Constraint::Length(3)],
+            [
+                Constraint::Length(3),
+                Constraint::Min(3),
+                Constraint::Length(3),
+            ],
         )
         .areas(area);
 
@@ -219,14 +226,10 @@ impl App {
                     // Compact header: indented less than the tx rows so it
                     // visually sits "above" them. Dim by default so the
                     // selected tx still pops.
-                    ListItem::new(Line::from(vec![
-                        Span::styled(
-                            format!("{name}"),
-                            Style::new()
-                                .fg(Color::Cyan)
-                                .add_modifier(Modifier::BOLD),
-                        ),
-                    ]))
+                    ListItem::new(Line::from(vec![Span::styled(
+                        format!("{name}"),
+                        Style::new().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                    )]))
                     // Disable selection-highlight on header rows so j/k
                     // visually skips them even mid-frame; the
                     // `next_selectable_*` helpers do the actual skipping.
@@ -234,7 +237,11 @@ impl App {
                 }
                 PickerRow::Tx(idx) => {
                     let tx = &self.session.txs[*idx];
-                    let top = tx.nodes.first().map(|n| n.program_label.as_str()).unwrap_or("");
+                    let top = tx
+                        .nodes
+                        .first()
+                        .map(|n| n.program_label.as_str())
+                        .unwrap_or("");
                     let cpis = tx.nodes.len().saturating_sub(1);
                     let cpi_badge = if cpis > 0 {
                         format!("  +{cpis} CPI")
@@ -264,7 +271,11 @@ impl App {
         );
         let list_widget = List::new(items)
             .block(Block::default().title(title).borders(Borders::ALL))
-            .highlight_style(Style::new().bg(Color::DarkGray).add_modifier(Modifier::BOLD))
+            .highlight_style(
+                Style::new()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD),
+            )
             .highlight_symbol("> ");
         f.render_stateful_widget(list_widget, list, &mut self.picker);
 
@@ -335,7 +346,9 @@ impl App {
     }
 
     fn open_selected(&mut self) {
-        let Some(i) = self.picker.selected() else { return };
+        let Some(i) = self.picker.selected() else {
+            return;
+        };
         if let Some(PickerRow::Tx(tx_idx)) = self.picker_rows.get(i) {
             self.current_tx = *tx_idx;
             self.current_node = 0;
@@ -372,7 +385,11 @@ impl App {
         // Header (title + invocation breadcrumb), main region, footer.
         let [header, main, footer] = Layout::new(
             Direction::Vertical,
-            [Constraint::Length(4), Constraint::Min(10), Constraint::Length(3)],
+            [
+                Constraint::Length(4),
+                Constraint::Min(10),
+                Constraint::Length(3),
+            ],
         )
         .areas(area);
 
@@ -396,8 +413,7 @@ impl App {
         self.draw_source(f, right_bot);
 
         let footer_text = Paragraph::new(
-            "j/k step   s/a step-over   c/C prev/next CPI   g/G first/last   \
-             t tx picker   q quit",
+            "j/k step   s/a step-over   c/C prev/next CPI   g/G first/last   t tx picker   q quit",
         )
         .block(Block::default().borders(Borders::ALL))
         .alignment(Alignment::Center);
@@ -478,8 +494,11 @@ impl App {
         let node = &tx.nodes[self.current_node];
         let Some(step) = node.steps.get(self.current_step) else {
             f.render_widget(
-                Paragraph::new("(no steps)")
-                    .block(Block::default().title(" instructions ").borders(Borders::ALL)),
+                Paragraph::new("(no steps)").block(
+                    Block::default()
+                        .title(" instructions ")
+                        .borders(Borders::ALL),
+                ),
                 area,
             );
             return;
@@ -557,7 +576,9 @@ impl App {
             spans.extend(insn.disasm_spans.iter().cloned());
             let line = Line::from(spans);
             let style = if is_current {
-                Style::new().bg(Color::DarkGray).add_modifier(Modifier::BOLD)
+                Style::new()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::new()
             };
@@ -597,7 +618,9 @@ impl App {
                 spans.extend(s.disasm_spans.iter().cloned());
                 let line = Line::from(spans);
                 let style = if idx == self.current_step {
-                    Style::new().bg(Color::DarkGray).add_modifier(Modifier::BOLD)
+                    Style::new()
+                        .bg(Color::DarkGray)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::new()
                 };
@@ -639,7 +662,10 @@ impl App {
             lines.push(Line::from(vec![
                 Span::raw(format!("r{:<2} ", r)),
                 Span::styled(format!("{:#018x}", val), style),
-                Span::styled(format!("  ({})", val as i64), Style::new().fg(Color::DarkGray)),
+                Span::styled(
+                    format!("  ({})", val as i64),
+                    Style::new().fg(Color::DarkGray),
+                ),
             ]));
         }
         lines.push(Line::from(vec![
@@ -669,30 +695,26 @@ impl App {
             let program_disasm = self.session.programs.get(&node.program_id);
             let msg = match program_disasm {
                 Some(d) if d.has_dwarf => format!(
-                    "pc {pc:#x} has no DWARF line entry.\n\n\
-                     This is normal for hand-written asm entrypoints, inlined\n\
-                     frames, compiler-generated stubs, and `.text` padding —\n\
-                     LLVM only emits (file, line) tuples for Rust source.\n\
-                     Other PCs in {program} resolve fine; stepping forward\n\
-                     should re-enter mapped code.\n\n\
-                     If you wrote an asm entrypoint, you can ignore this for\n\
-                     the asm region — registers + disasm above stay live.",
+                    "pc {pc:#x} has no DWARF line entry.\n\nThis is normal for hand-written asm \
+                     entrypoints, inlined\nframes, compiler-generated stubs, and `.text` padding \
+                     —\nLLVM only emits (file, line) tuples for Rust source.\nOther PCs in \
+                     {program} resolve fine; stepping forward\nshould re-enter mapped code.\n\nIf \
+                     you wrote an asm entrypoint, you can ignore this for\nthe asm region — \
+                     registers + disasm above stay live.",
                     pc = step.pc,
                     program = node.program_label,
                 ),
                 Some(_) => format!(
-                    "{program}: ELF has no DWARF line info.\n\n\
-                     Rebuild with debug info:\n  \
-                     CARGO_PROFILE_RELEASE_DEBUG=2 anchor build --no-idl\n\n\
-                     (`anchor debugger` sets this for you when it rebuilds.\n\
-                     The flag only sticks if the .so we read came from that build.)",
+                    "{program}: ELF has no DWARF line info.\n\nRebuild with debug info:\n  \
+                     CARGO_PROFILE_RELEASE_DEBUG=2 anchor build --no-idl\n\n(`anchor debugger` \
+                     sets this for you when it rebuilds.\nThe flag only sticks if the .so we read \
+                     came from that build.)",
                     program = node.program_label,
                 ),
                 None => format!(
-                    "no static disasm or DWARF for {program} (pc {pc:#x}).\n\n\
-                     The program's deployed `.so` wasn't resolvable from the\n\
-                     workspace's Anchor.toml — third-party deploy, or\n\
-                     mismatched program-id mapping.",
+                    "no static disasm or DWARF for {program} (pc {pc:#x}).\n\nThe program's \
+                     deployed `.so` wasn't resolvable from the\nworkspace's Anchor.toml — \
+                     third-party deploy, or\nmismatched program-id mapping.",
                     program = node.program_label,
                     pc = step.pc,
                 ),
@@ -753,7 +775,12 @@ impl App {
         let label = if let Some(cached) = self.label_cache.get(&path) {
             cached.clone()
         } else {
-            let l = classify(&path, &self.session.src_roots, &self.session.path_rewrites, self.session.cwd.as_deref());
+            let l = classify(
+                &path,
+                &self.session.src_roots,
+                &self.session.path_rewrites,
+                self.session.cwd.as_deref(),
+            );
             self.label_cache.insert(path.clone(), l.clone());
             l
         };
@@ -776,15 +803,14 @@ impl App {
                     // through a 30-line window only ever pays for the
                     // first time each line is shown.
                     let key = (path.clone(), n);
-                    let highlighted: Vec<Span<'static>> = if let Some(cached) =
-                        self.highlight_cache.get(&key)
-                    {
-                        cached.clone()
-                    } else {
-                        let h = highlight_rust(&content).spans;
-                        self.highlight_cache.insert(key, h.clone());
-                        h
-                    };
+                    let highlighted: Vec<Span<'static>> =
+                        if let Some(cached) = self.highlight_cache.get(&key) {
+                            cached.clone()
+                        } else {
+                            let h = highlight_rust(&content).spans;
+                            self.highlight_cache.insert(key, h.clone());
+                            h
+                        };
                     if is_current {
                         for span in highlighted {
                             let mut style = span.style;
@@ -797,7 +823,9 @@ impl App {
                     }
                 } else {
                     let style = if is_current {
-                        Style::new().bg(Color::DarkGray).add_modifier(Modifier::BOLD)
+                        Style::new()
+                            .bg(Color::DarkGray)
+                            .add_modifier(Modifier::BOLD)
                     } else {
                         Style::new()
                     };
@@ -807,8 +835,8 @@ impl App {
             })
             .collect();
 
-        let widget = Paragraph::new(text)
-            .block(Block::default().title(title).borders(Borders::ALL));
+        let widget =
+            Paragraph::new(text).block(Block::default().title(title).borders(Borders::ALL));
         f.render_widget(widget, area);
     }
 
@@ -855,7 +883,11 @@ impl App {
     }
 
     fn repeat(&mut self, mut f: impl FnMut(&mut Self)) {
-        let n = self.key_buffer.parse::<usize>().unwrap_or(1).clamp(1, 100_000);
+        let n = self
+            .key_buffer
+            .parse::<usize>()
+            .unwrap_or(1)
+            .clamp(1, 100_000);
         for _ in 0..n {
             f(self);
         }
@@ -918,11 +950,14 @@ impl TerminalGuard {
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         let _ = disable_raw_mode();
-        let _ = execute!(self.term.backend_mut(), LeaveAlternateScreen, DisableMouseCapture);
+        let _ = execute!(
+            self.term.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        );
         let _ = self.term.show_cursor();
     }
 }
-
 
 impl App {
     /// Read a source file from the cache, populating it on first miss.
@@ -947,11 +982,7 @@ impl App {
 /// Slice a centered window around `target_line` from already-loaded lines.
 /// Returns `(line_number, content, is_current)` triples for the source
 /// pane to render — does no I/O.
-fn window_from_lines(
-    lines: &[String],
-    target_line: u32,
-    height: u32,
-) -> Vec<(u32, String, bool)> {
+fn window_from_lines(lines: &[String], target_line: u32, height: u32) -> Vec<(u32, String, bool)> {
     let target_idx = target_line.saturating_sub(1) as usize;
     let half = (height / 2) as usize;
     let start = target_idx.saturating_sub(half).min(lines.len());
@@ -1036,4 +1067,3 @@ fn resolve_src_path(
     }
     None
 }
-

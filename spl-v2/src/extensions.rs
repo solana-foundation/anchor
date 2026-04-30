@@ -40,9 +40,7 @@ pub trait ExtensionType: Pod {
 ///
 /// Both mint and token account extensions share the same TLV start offset
 /// (166 bytes from the beginning of account data).
-pub fn get_mint_extension<T: ExtensionType>(
-    account: &AccountView,
-) -> Result<&T, ProgramError> {
+pub fn get_mint_extension<T: ExtensionType>(account: &AccountView) -> Result<&T, ProgramError> {
     get_extension::<T>(account)
 }
 
@@ -68,8 +66,7 @@ fn get_extension_from_tlv<T: ExtensionType>(tlv_data: &[u8]) -> Result<&T, Progr
 
     while offset + 4 <= tlv_data.len() {
         let ext_type = u16::from_le_bytes([tlv_data[offset], tlv_data[offset + 1]]);
-        let length =
-            u16::from_le_bytes([tlv_data[offset + 2], tlv_data[offset + 3]]) as usize;
+        let length = u16::from_le_bytes([tlv_data[offset + 2], tlv_data[offset + 3]]) as usize;
         let value_end = offset + 4 + length;
 
         if ext_type == 0 {
@@ -85,7 +82,9 @@ fn get_extension_from_tlv<T: ExtensionType>(tlv_data: &[u8]) -> Result<&T, Progr
                 return Err(ProgramError::InvalidAccountData);
             }
             let value_start = offset + 4;
-            return Ok(bytemuck::from_bytes(&tlv_data[value_start..value_start + ext_size]));
+            return Ok(bytemuck::from_bytes(
+                &tlv_data[value_start..value_start + ext_size],
+            ));
         }
 
         offset = value_end;
@@ -161,7 +160,6 @@ pub struct TransferFeeConfig {
     pub newer_transfer_fee: TransferFee,
 }
 
-
 impl TransferFeeConfig {
     pub fn withheld_amount(&self) -> u64 {
         u64::from_le_bytes(self.withheld_amount)
@@ -182,7 +180,6 @@ impl ExtensionType for TransferFeeConfig {
 pub struct TransferFeeAmount {
     pub withheld_amount: [u8; 8],
 }
-
 
 impl TransferFeeAmount {
     pub fn withheld_amount(&self) -> u64 {
@@ -205,7 +202,6 @@ pub struct MintCloseAuthority {
     pub close_authority: OptionalAddress,
 }
 
-
 impl ExtensionType for MintCloseAuthority {
     const TYPE_DISCRIMINANT: u16 = 3;
 }
@@ -222,7 +218,6 @@ pub struct DefaultAccountState {
     pub state: u8,
 }
 
-
 impl ExtensionType for DefaultAccountState {
     const TYPE_DISCRIMINANT: u16 = 6;
 }
@@ -237,7 +232,6 @@ impl ExtensionType for DefaultAccountState {
 pub struct PermanentDelegate {
     pub delegate: OptionalAddress,
 }
-
 
 impl ExtensionType for PermanentDelegate {
     const TYPE_DISCRIMINANT: u16 = 12;
@@ -255,7 +249,6 @@ pub struct TransferHook {
     pub program_id: OptionalAddress,
 }
 
-
 impl ExtensionType for TransferHook {
     const TYPE_DISCRIMINANT: u16 = 14;
 }
@@ -271,7 +264,6 @@ pub struct TransferHookAccount {
     /// Whether the account is currently being transferred.
     pub transferring: u8,
 }
-
 
 impl ExtensionType for TransferHookAccount {
     const TYPE_DISCRIMINANT: u16 = 15;
@@ -289,7 +281,6 @@ pub struct MetadataPointer {
     pub metadata_address: OptionalAddress,
 }
 
-
 impl ExtensionType for MetadataPointer {
     const TYPE_DISCRIMINANT: u16 = 18;
 }
@@ -306,7 +297,6 @@ pub struct GroupPointer {
     pub group_address: OptionalAddress,
 }
 
-
 impl ExtensionType for GroupPointer {
     const TYPE_DISCRIMINANT: u16 = 20;
 }
@@ -322,7 +312,6 @@ pub struct GroupMemberPointer {
     pub authority: OptionalAddress,
     pub member_address: OptionalAddress,
 }
-
 
 impl ExtensionType for GroupMemberPointer {
     const TYPE_DISCRIMINANT: u16 = 22;

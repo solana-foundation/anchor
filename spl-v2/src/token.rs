@@ -648,9 +648,7 @@ pub mod cpi {
         ctx.invoke(&data)
     }
 
-    pub fn revoke<'a>(
-        ctx: CpiContext<'a, accounts::Revoke<'a>>,
-    ) -> Result<(), ProgramError> {
+    pub fn revoke<'a>(ctx: CpiContext<'a, accounts::Revoke<'a>>) -> Result<(), ProgramError> {
         ctx.invoke(&[DISC_REVOKE])
     }
 

@@ -13,15 +13,21 @@ use {
 };
 
 fn program_id() -> Pubkey {
-    "Acc1111111111111111111111111111111111111111".parse().unwrap()
+    "Acc1111111111111111111111111111111111111111"
+        .parse()
+        .unwrap()
 }
 
 fn clock_sysvar_id() -> Pubkey {
-    "SysvarC1ock11111111111111111111111111111111".parse().unwrap()
+    "SysvarC1ock11111111111111111111111111111111"
+        .parse()
+        .unwrap()
 }
 
 fn rent_sysvar_id() -> Pubkey {
-    "SysvarRent111111111111111111111111111111111".parse().unwrap()
+    "SysvarRent111111111111111111111111111111111"
+        .parse()
+        .unwrap()
 }
 
 fn counter_pda() -> Pubkey {
@@ -107,7 +113,9 @@ fn read_clock_succeeds_and_sysvar_is_well_formed() {
     // Verify the Clock sysvar account exists and has the expected layout.
     // Clock layout: slot(u64) + epoch_start_timestamp(i64) + epoch(u64)
     //             + leader_schedule_epoch(u64) + unix_timestamp(i64) = 40 bytes.
-    let clock_account = svm.get_account(&clock_sysvar_id()).expect("clock sysvar exists");
+    let clock_account = svm
+        .get_account(&clock_sysvar_id())
+        .expect("clock sysvar exists");
     assert!(
         clock_account.data.len() >= 40,
         "clock sysvar data should be at least 40 bytes, got {}",
@@ -219,13 +227,18 @@ fn read_clock_sysvar_has_valid_fields() {
     // The Clock sysvar at its well-known address stores:
     // [slot:u64][epoch_start_timestamp:i64][epoch:u64][leader_schedule_epoch:u64][unix_timestamp:i64]
     // = 40 bytes total.
-    let account = svm.get_account(&clock_sysvar_id()).expect("clock sysvar exists");
+    let account = svm
+        .get_account(&clock_sysvar_id())
+        .expect("clock sysvar exists");
     assert_eq!(account.data.len(), 40, "Clock sysvar should be 40 bytes");
 
     let slot = u64::from_le_bytes(account.data[0..8].try_into().unwrap());
     let epoch = u64::from_le_bytes(account.data[16..24].try_into().unwrap());
     // LiteSVM starts at slot > 0 after genesis
-    assert!(slot > 0 || epoch == 0, "slot or epoch should reflect a valid genesis state");
+    assert!(
+        slot > 0 || epoch == 0,
+        "slot or epoch should reflect a valid genesis state"
+    );
 
     // Also verify the on-chain handler succeeds (already tested, but now
     // we know the sysvar is well-formed for the assertions above)
@@ -238,15 +251,26 @@ fn read_clock_sysvar_has_valid_fields() {
 fn read_rent_sysvar_has_positive_minimum_balance() {
     let (mut svm, payer) = setup();
     // Rent sysvar: [lamports_per_byte_year:u64][exemption_threshold:f64][burn_percent:u8]
-    let account = svm.get_account(&rent_sysvar_id()).expect("rent sysvar exists");
-    assert!(account.data.len() >= 17, "Rent sysvar should be at least 17 bytes");
+    let account = svm
+        .get_account(&rent_sysvar_id())
+        .expect("rent sysvar exists");
+    assert!(
+        account.data.len() >= 17,
+        "Rent sysvar should be at least 17 bytes"
+    );
 
     let lamports_per_byte = u64::from_le_bytes(account.data[0..8].try_into().unwrap());
-    assert!(lamports_per_byte > 0, "lamports_per_byte_year should be positive");
+    assert!(
+        lamports_per_byte > 0,
+        "lamports_per_byte_year should be positive"
+    );
 
     // Also verify minimum_balance_for_rent_exemption gives sensible output
     let min_balance = svm.minimum_balance_for_rent_exemption(100);
-    assert!(min_balance > 0, "minimum_balance for 100 bytes should be > 0");
+    assert!(
+        min_balance > 0,
+        "minimum_balance for 100 bytes should be > 0"
+    );
 
     // The on-chain handler should succeed
     let metas = vec![AccountMeta::new_readonly(rent_sysvar_id(), false)];
@@ -262,7 +286,9 @@ fn read_clock_rejects_wrong_sysvar_with_specific_error() {
     let err = format!("{:?}", result.unwrap_err().err);
     // The Sysvar<Clock> load checks the account address matches the Clock sysvar ID.
     assert!(
-        err.contains("InvalidArgument") || err.contains("InvalidAccountData") || err.contains("Custom("),
+        err.contains("InvalidArgument")
+            || err.contains("InvalidAccountData")
+            || err.contains("Custom("),
         "expected a specific error for wrong sysvar, got: {err}"
     );
 }
@@ -291,7 +317,12 @@ fn bump_boxed_accumulates_across_calls() {
 
         let account = svm.get_account(&counter).unwrap();
         let value = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
-        assert_eq!(value, expected, "counter should be {expected} after bump #{}", expected - 1);
+        assert_eq!(
+            value,
+            expected,
+            "counter should be {expected} after bump #{}",
+            expected - 1
+        );
 
         svm.expire_blockhash();
     }
@@ -314,7 +345,10 @@ fn bump_boxed_rejects_wrong_owner() {
 
     let metas = vec![AccountMeta::new(fake, false)];
     let result = call_raw(&mut svm, &payer, 1, metas);
-    assert!(result.is_err(), "system-owned account should fail Box<Account<Counter>> load");
+    assert!(
+        result.is_err(),
+        "system-owned account should fail Box<Account<Counter>> load"
+    );
 }
 
 #[test]
@@ -337,11 +371,18 @@ fn initialize_boxed_uses_box_init_path() {
     let counter = do_initialize_boxed(&mut svm, &payer);
     let account = svm.get_account(&counter).expect("boxed counter exists");
 
-    assert_eq!(account.owner, program_id(), "boxed init should assign program owner");
+    assert_eq!(
+        account.owner,
+        program_id(),
+        "boxed init should assign program owner"
+    );
     assert_eq!(account.data.len(), 16, "boxed counter should be disc + u64");
 
     let value = u64::from_le_bytes(account.data[8..16].try_into().unwrap());
-    assert_eq!(value, 7, "initialize_boxed should set the boxed counter value");
+    assert_eq!(
+        value, 7,
+        "initialize_boxed should set the boxed counter value"
+    );
 }
 
 #[test]
@@ -353,7 +394,10 @@ fn close_boxed_transfers_lamports_and_clears_account() {
 
     let receiver_before = svm.get_account(&receiver.pubkey()).unwrap().lamports;
     let counter_before = svm.get_account(&counter).unwrap().lamports;
-    assert!(counter_before > 0, "boxed counter must hold lamports before close");
+    assert!(
+        counter_before > 0,
+        "boxed counter must hold lamports before close"
+    );
 
     let metas = vec![
         AccountMeta::new(counter, false),
@@ -410,8 +454,16 @@ fn initialize_sets_correct_discriminator() {
     let account = svm.get_account(&counter).expect("counter exists");
 
     // Account should be: disc(8) + value(8) = 16 bytes, owned by program
-    assert_eq!(account.data.len(), 16, "counter should be 16 bytes (disc + u64)");
-    assert_eq!(account.owner, program_id(), "counter should be owned by accounts program");
+    assert_eq!(
+        account.data.len(),
+        16,
+        "counter should be 16 bytes (disc + u64)"
+    );
+    assert_eq!(
+        account.owner,
+        program_id(),
+        "counter should be owned by accounts program"
+    );
 
     // Discriminator should be non-zero (SHA256 hash prefix)
     let disc = &account.data[0..8];
@@ -435,5 +487,8 @@ fn initialize_rejects_double_init() {
         AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
     ];
     let result = call_raw(&mut svm, &payer, 0, metas);
-    assert!(result.is_err(), "double init on same PDA should be rejected");
+    assert!(
+        result.is_err(),
+        "double init on same PDA should be rejected"
+    );
 }

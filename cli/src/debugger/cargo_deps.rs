@@ -15,9 +15,13 @@
 //! each relative path through PC-and-symbol-aware dep selection — is
 //! disproportionate effort for the mostly-cosmetic win.
 
-use serde::Deserialize;
-use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use {
+    serde::Deserialize,
+    std::{
+        collections::BTreeSet,
+        path::{Path, PathBuf},
+    },
+};
 
 /// Minimal Cargo.lock schema — ignores anything we don't care about.
 #[derive(Deserialize)]

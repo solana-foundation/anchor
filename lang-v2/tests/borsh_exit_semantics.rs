@@ -15,14 +15,14 @@
 //!    size) — by design, exit treats in-memory `self.data` as
 //!    authoritative.
 
-use anchor_lang_v2::testing::AccountBuffer;
-
-use anchor_lang_v2::prelude::BorshAccount;
-use anchor_lang_v2::{AnchorAccount, Discriminator, Owner};
-use borsh::{BorshDeserialize, BorshSerialize};
-use pinocchio::account::RuntimeAccount;
-use pinocchio::address::Address;
-use solana_program_error::ProgramError;
+use {
+    anchor_lang_v2::{
+        prelude::BorshAccount, testing::AccountBuffer, AnchorAccount, Discriminator, Owner,
+    },
+    borsh::{BorshDeserialize, BorshSerialize},
+    pinocchio::{account::RuntimeAccount, address::Address},
+    solana_program_error::ProgramError,
+};
 
 const PROGRAM_ID: [u8; 32] = [0x42; 32];
 
@@ -39,9 +39,7 @@ impl Owner for Counter {
 
 impl Discriminator for Counter {
     // sha256("account:Counter")[..8]
-    const DISCRIMINATOR: &'static [u8] = &[
-        0xff, 0xb0, 0x04, 0xf5, 0xbc, 0xfd, 0x7c, 0x19,
-    ];
+    const DISCRIMINATOR: &'static [u8] = &[0xff, 0xb0, 0x04, 0xf5, 0xbc, 0xfd, 0x7c, 0x19];
 }
 
 fn counter_disc() -> [u8; 8] {
@@ -134,8 +132,8 @@ fn stale_detection_misses_content_only_out_of_band_mutation() {
     assert_eq!(
         u64::from_le_bytes(bytes.try_into().unwrap()),
         42,
-        "exit overwrites out-of-band content with in-memory self.data; \
-         the size-based stale detection does not catch content-only mutations"
+        "exit overwrites out-of-band content with in-memory self.data; the size-based stale \
+         detection does not catch content-only mutations"
     );
 }
 
@@ -172,8 +170,8 @@ fn reacquire_refreshes_self_data_from_cpi_changes() {
     // modification of 100.
     assert_eq!(
         acct.value, 777,
-        "post-fix: reacquire_borrow_mut refreshes self.data from the \
-         buffer — the CPI's write of 777 is reflected, not clobbered"
+        "post-fix: reacquire_borrow_mut refreshes self.data from the buffer — the CPI's write of \
+         777 is reflected, not clobbered"
     );
 
     // Post-fix: exit() runs on refreshed self.data (777), so the CPI's
@@ -217,9 +215,8 @@ fn reacquire_rejects_when_discriminator_changes_during_release() {
     assert_eq!(
         result.err(),
         Some(ProgramError::InvalidAccountData),
-        "reacquire_borrow_mut must reject a discriminator that no longer \
-         matches T — otherwise the program continues operating on a \
-         BorshAccount<T> over an incompatible account."
+        "reacquire_borrow_mut must reject a discriminator that no longer matches T — otherwise \
+         the program continues operating on a BorshAccount<T> over an incompatible account."
     );
 }
 
@@ -252,9 +249,9 @@ fn reacquire_rejects_when_owner_changes_during_release() {
     assert_eq!(
         result.err(),
         Some(ProgramError::IllegalOwner),
-        "reacquire_borrow_mut must reject when the on-chain owner no \
-         longer matches `T::owner(program_id)` — otherwise the program \
-         continues holding BorshAccount<T> over a foreign-owned account."
+        "reacquire_borrow_mut must reject when the on-chain owner no longer matches \
+         `T::owner(program_id)` — otherwise the program continues holding BorshAccount<T> over a \
+         foreign-owned account."
     );
 }
 
@@ -313,8 +310,7 @@ fn release_borrow_commits_in_memory_changes_to_buffer() {
     assert_eq!(
         u64::from_le_bytes(bytes.try_into().unwrap()),
         100,
-        "release_borrow must serialize self.data so a subsequent CPI \
-         sees the in-memory mutations"
+        "release_borrow must serialize self.data so a subsequent CPI sees the in-memory mutations"
     );
 }
 

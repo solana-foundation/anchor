@@ -1,10 +1,14 @@
 mod svg;
 pub(crate) mod trace;
 
-use anyhow::Result;
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::{Path, PathBuf};
+use {
+    anyhow::Result,
+    std::{
+        collections::BTreeMap,
+        fs,
+        path::{Path, PathBuf},
+    },
+};
 
 /// Build per-transaction flamegraph SVGs for a test, aggregating
 /// every program's invocations (top-level + CPIs) into one flamegraph

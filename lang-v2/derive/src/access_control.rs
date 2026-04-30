@@ -11,10 +11,8 @@ pub fn expand(args: TokenStream, input: TokenStream) -> TokenStream {
         Ok(exprs) => exprs,
         Err(err) => return err.to_compile_error().into(),
     };
-    let access_control: Vec<TokenStream2> = exprs
-        .into_iter()
-        .map(|expr| quote! { #expr?; })
-        .collect();
+    let access_control: Vec<TokenStream2> =
+        exprs.into_iter().map(|expr| quote! { #expr?; }).collect();
 
     let item_fn = parse_macro_input!(input as syn::ItemFn);
     let fn_attrs = item_fn.attrs;

@@ -81,8 +81,8 @@ pub fn expand(item: TokenStream) -> TokenStream {
             return TokenStream::from(
                 syn::Error::new_spanned(
                     &name,
-                    "#[pod_wrapper] only supports enums — \
-                     structs already have direct `#[derive(bytemuck::Pod)]` support.",
+                    "#[pod_wrapper] only supports enums — structs already have direct \
+                     `#[derive(bytemuck::Pod)]` support.",
                 )
                 .to_compile_error(),
             );
@@ -96,8 +96,8 @@ pub fn expand(item: TokenStream) -> TokenStream {
             return TokenStream::from(
                 syn::Error::new_spanned(
                     v,
-                    "#[pod_wrapper] only supports unit variants. \
-                     Payload-bearing variants can't be stored in a single u8.",
+                    "#[pod_wrapper] only supports unit variants. Payload-bearing variants can't \
+                     be stored in a single u8.",
                 )
                 .to_compile_error(),
             );
@@ -111,8 +111,8 @@ pub fn expand(item: TokenStream) -> TokenStream {
         return TokenStream::from(
             syn::Error::new_spanned(
                 &name,
-                "#[pod_wrapper] requires `#[repr(u8)]` on the enum so the \
-                 stored discriminant width is explicit.",
+                "#[pod_wrapper] requires `#[repr(u8)]` on the enum so the stored discriminant \
+                 width is explicit.",
             )
             .to_compile_error(),
         );
@@ -238,11 +238,7 @@ pub fn expand(item: TokenStream) -> TokenStream {
 }
 
 /// Build `x if x == Name::Variant as u8 => <body>,` arms for each variant.
-fn variant_match_arms<F>(
-    enm: &syn::DataEnum,
-    enum_name: &Ident,
-    mut body: F,
-) -> Vec<TokenStream2>
+fn variant_match_arms<F>(enm: &syn::DataEnum, enum_name: &Ident, mut body: F) -> Vec<TokenStream2>
 where
     F: FnMut(&Ident, &syn::Variant) -> TokenStream2,
 {
@@ -273,4 +269,3 @@ fn has_repr_u8(attrs: &[syn::Attribute]) -> bool {
         found
     })
 }
-

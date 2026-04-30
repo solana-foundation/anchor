@@ -18,10 +18,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
     let name = item_const.ident.to_string();
     let ty_json = rust_type_to_idl(&item_const.ty);
     let expr = &item_const.expr;
-    let fn_name = format_ident!(
-        "__anchor_private_print_idl_const_{}",
-        name.to_lowercase()
-    );
+    let fn_name = format_ident!("__anchor_private_print_idl_const_{}", name.to_lowercase());
 
     let idl_print = quote! {
         #[cfg(all(test, feature = "idl-build"))]

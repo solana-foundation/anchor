@@ -26,19 +26,27 @@ use {
 };
 
 fn program_id() -> Pubkey {
-    "SpL1111111111111111111111111111111111111111".parse().unwrap()
+    "SpL1111111111111111111111111111111111111111"
+        .parse()
+        .unwrap()
 }
 
 fn token_program_id() -> Pubkey {
-    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".parse().unwrap()
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        .parse()
+        .unwrap()
 }
 
 fn token_2022_program_id() -> Pubkey {
-    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb".parse().unwrap()
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        .parse()
+        .unwrap()
 }
 
 fn ata_program_id() -> Pubkey {
-    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL".parse().unwrap()
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        .parse()
+        .unwrap()
 }
 
 fn setup() -> (LiteSVM, Keypair) {
@@ -59,12 +67,7 @@ fn setup() -> (LiteSVM, Keypair) {
 }
 
 /// Build the send_instruction args for `init_mint` (discrim = 0).
-fn do_init_mint(
-    svm: &mut LiteSVM,
-    payer: &Keypair,
-    mint_kp: &Keypair,
-    authority: &Pubkey,
-) {
+fn do_init_mint(svm: &mut LiteSVM, payer: &Keypair, mint_kp: &Keypair, authority: &Pubkey) {
     let metas = vec![
         AccountMeta::new(payer.pubkey(), true),
         AccountMeta::new_readonly(*authority, false),
@@ -180,8 +183,7 @@ fn mint_to_increases_supply_and_balance() {
     let owner = keypair_for("owner");
     let (mint, token) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 500);
 
-    let mint_state =
-        SplMint::unpack(&svm.get_account(&mint).unwrap().data).expect("unpack mint");
+    let mint_state = SplMint::unpack(&svm.get_account(&mint).unwrap().data).expect("unpack mint");
     assert_eq!(mint_state.supply, 500);
 
     let token_state =
@@ -325,7 +327,10 @@ fn close_account_returns_lamports_to_destination() {
     let (_mint, token) = mint_and_fund(&mut svm, &payer, &mint_authority, &owner.pubkey(), 0);
 
     let dest = keypair_for("dest");
-    let dest_before = svm.get_account(&dest.pubkey()).map(|a| a.lamports).unwrap_or(0);
+    let dest_before = svm
+        .get_account(&dest.pubkey())
+        .map(|a| a.lamports)
+        .unwrap_or(0);
     let token_lamports = svm.get_account(&token).unwrap().lamports;
 
     // do_close_account (discrim = 8)
@@ -477,7 +482,10 @@ fn transfer_checked_rejects_wrong_decimals() {
         AccountMeta::new_readonly(token_program_id(), false),
     ];
     let result = send_instruction(&mut svm, program_id(), data, metas, &payer, &[&owner]);
-    assert!(result.is_err(), "wrong decimals should be rejected by SPL token program");
+    assert!(
+        result.is_err(),
+        "wrong decimals should be rejected by SPL token program"
+    );
 }
 
 #[test]
@@ -527,7 +535,10 @@ fn mint_to_rejects_wrong_authority() {
 
     // Verify nothing was minted
     let state = SplTokenAccount::unpack(&svm.get_account(&token).unwrap().data).unwrap();
-    assert_eq!(state.amount, 0, "balance should be unchanged after failed mint");
+    assert_eq!(
+        state.amount, 0,
+        "balance should be unchanged after failed mint"
+    );
 }
 
 #[test]
@@ -552,7 +563,10 @@ fn burn_rejects_wrong_authority() {
     assert!(result.is_err(), "wrong burn authority should be rejected");
 
     let state = SplTokenAccount::unpack(&svm.get_account(&token).unwrap().data).unwrap();
-    assert_eq!(state.amount, 500, "balance should be unchanged after failed burn");
+    assert_eq!(
+        state.amount, 500,
+        "balance should be unchanged after failed burn"
+    );
 }
 
 #[test]
@@ -570,7 +584,10 @@ fn close_account_rejects_non_zero_balance() {
         AccountMeta::new_readonly(token_program_id(), false),
     ];
     let result = send_instruction(&mut svm, program_id(), vec![8], metas, &payer, &[&owner]);
-    assert!(result.is_err(), "closing account with non-zero balance should be rejected");
+    assert!(
+        result.is_err(),
+        "closing account with non-zero balance should be rejected"
+    );
 }
 
 // ---- Constraint negative tests --------------------------------------------
@@ -595,7 +612,10 @@ fn mint_decimals_constraint_rejects_mismatch() {
     // check_mint_decimals (discrim=11) expects decimals=6
     let metas = vec![AccountMeta::new(mint.pubkey(), false)];
     let result = send_instruction(&mut svm, program_id(), vec![11], metas, &payer, &[]);
-    assert!(result.is_err(), "mint with decimals=9 should fail decimals=6 constraint");
+    assert!(
+        result.is_err(),
+        "mint with decimals=9 should fail decimals=6 constraint"
+    );
 }
 
 #[test]
@@ -632,7 +652,10 @@ fn token_authority_constraint_rejects_mismatch() {
         AccountMeta::new(token, false),
     ];
     let result = send_instruction(&mut svm, program_id(), vec![14], metas, &payer, &[]);
-    assert!(result.is_err(), "token::authority mismatch should be rejected");
+    assert!(
+        result.is_err(),
+        "token::authority mismatch should be rejected"
+    );
 }
 
 // ---- ATA derivation --------------------------------------------------------
@@ -736,7 +759,11 @@ fn pack_base_mint_with_freeze(
 }
 
 /// Build a 165-byte legacy `SplTokenAccount` state.
-fn pack_base_token_account(mint: &Pubkey, owner: &Pubkey, amount: u64) -> [u8; SplTokenAccount::LEN] {
+fn pack_base_token_account(
+    mint: &Pubkey,
+    owner: &Pubkey,
+    amount: u64,
+) -> [u8; SplTokenAccount::LEN] {
     let state = SplTokenAccount {
         mint: to_spl(mint),
         owner: to_spl(owner),
@@ -761,12 +788,7 @@ fn push_tlv(buf: &mut Vec<u8>, ext_type: u16, value: &[u8]) {
 
 /// Build data for a Token-2022 extended mint: 82-byte base + zero pad to 165 +
 /// `AccountType::Mint = 1` at byte 165 + caller-provided TLV region.
-fn build_mint_data(
-    authority: &Pubkey,
-    decimals: u8,
-    supply: u64,
-    tlv: &[u8],
-) -> Vec<u8> {
+fn build_mint_data(authority: &Pubkey, decimals: u8, supply: u64, tlv: &[u8]) -> Vec<u8> {
     let mut data = Vec::with_capacity(166 + tlv.len());
     data.extend_from_slice(&pack_base_mint(authority, decimals, supply));
     // pad to 165
@@ -785,7 +807,9 @@ fn build_mint_data_with_freeze(
     tlv: &[u8],
 ) -> Vec<u8> {
     let mut data = Vec::with_capacity(166 + tlv.len());
-    data.extend_from_slice(&pack_base_mint_with_freeze(authority, freeze, decimals, supply));
+    data.extend_from_slice(&pack_base_mint_with_freeze(
+        authority, freeze, decimals, supply,
+    ));
     data.resize(165, 0);
     data.push(1); // AccountType::Mint
     data.extend_from_slice(tlv);
@@ -794,12 +818,7 @@ fn build_mint_data_with_freeze(
 
 /// Build data for a Token-2022 extended token account: 165-byte base +
 /// `AccountType::Account = 2` at byte 165 + caller-provided TLV region.
-fn build_token_account_data(
-    mint: &Pubkey,
-    owner: &Pubkey,
-    amount: u64,
-    tlv: &[u8],
-) -> Vec<u8> {
+fn build_token_account_data(mint: &Pubkey, owner: &Pubkey, amount: u64, tlv: &[u8]) -> Vec<u8> {
     let mut data = Vec::with_capacity(166 + tlv.len());
     data.extend_from_slice(&pack_base_token_account(mint, owner, amount));
     data.push(2); // AccountType::Account
@@ -988,11 +1007,7 @@ fn seed_t22_mint_and_token(
     let mint = Pubkey::new_unique();
     let token = Pubkey::new_unique();
     seed_token_2022_account(svm, mint, build_mint_data(mint_authority, 6, 0, &[]));
-    seed_token_2022_account(
-        svm,
-        token,
-        build_token_account_data(&mint, owner, 0, &[]),
-    );
+    seed_token_2022_account(svm, token, build_token_account_data(&mint, owner, 0, &[]));
     (mint, token)
 }
 
@@ -1316,11 +1331,11 @@ fn tlv_transfer_fee_config(
     value.extend_from_slice(authority.as_ref());
     value.extend_from_slice(withdraw_authority.as_ref());
     value.extend_from_slice(&0u64.to_le_bytes()); // withheld_amount
-    // older_transfer_fee: zeroed
+                                                  // older_transfer_fee: zeroed
     value.extend_from_slice(&[0u8; 8]); // epoch
     value.extend_from_slice(&[0u8; 8]); // max_fee
     value.extend_from_slice(&[0u8; 2]); // basis points
-    // newer_transfer_fee
+                                        // newer_transfer_fee
     value.extend_from_slice(&newer_epoch.to_le_bytes());
     value.extend_from_slice(&newer_max.to_le_bytes());
     value.extend_from_slice(&newer_bps.to_le_bytes());

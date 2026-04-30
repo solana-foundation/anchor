@@ -8,13 +8,14 @@ extern crate alloc;
 
 pub mod accounts;
 mod context;
-pub mod cpi;
 mod context_cpi;
+pub mod cpi;
 pub mod cursor;
 mod dispatch;
 pub mod event;
 pub mod hash;
 #[cfg(feature = "idl-build")]
+#[doc(hidden)]
 pub mod idl_build;
 pub mod loader;
 pub mod pod;
@@ -114,24 +115,39 @@ pub const BORSH_CONFIG: wincode::config::Configuration<
 // Internal: only used by `#[cfg(feature = "idl-build")]` codegen from the
 // derive macros to split type-def JSON in `__anchor_private_print_idl_program`.
 // Not part of the stable API — hence the `__` prefix.
+/// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
+/// array. Always exported; the emitted impl body is itself
+/// `#[cfg(feature = "idl-build")]`, so non-IDL builds pay nothing.
+pub use anchor_derive_accounts_v2::IdlType;
+#[cfg(feature = "idl-build")]
+pub use idl_build::IdlAccountType;
 #[cfg(feature = "idl-build")]
 #[doc(hidden)]
 pub use serde_json as __serde_json;
+// ---------------------------------------------------------------------------
+// Client-side types — for building instructions off-chain (tests, CPI, SDK)
+// ---------------------------------------------------------------------------
+/// Metadata for a single account in a transaction instruction.
+///
+/// Re-exported from `solana-instruction` so tests and CPI builders can pass
+/// the output of `to_account_metas()` straight into `solana_instruction::
+/// Instruction::new_with_bytes` without a manual field rename.
+pub use solana_instruction::account_meta::AccountMeta;
 pub use {
     accounts::{AccountInitialize, SlabInit},
     anchor_derive_accounts_v2::{
-        access_control, account, constant, emit, error_code, event, pod_wrapper, program,
-        Accounts, InitSpace,
+        access_control, account, constant, emit, error_code, event, pod_wrapper, program, Accounts,
+        InitSpace,
     },
     borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
     context::{Bumps, Context},
+    context_cpi::CpiContext,
     cpi::{
         create_account, create_account_signed, create_program_address,
         find_and_verify_program_address, find_and_verify_program_address_skip_curve,
         find_program_address, verify_program_address,
     },
-    context_cpi::CpiContext,
     cursor::{mut_mask_or_shifted, mut_mask_set_bit, AccountBitvec, AccountCursor},
     dispatch::{run_handler, TryAccounts},
     event::{sol_log_data, Event},
@@ -140,24 +156,6 @@ pub use {
     pinocchio::{self, account::AccountView, address::Address},
     traits::*,
 };
-
-#[cfg(feature = "idl-build")]
-pub use idl_build::IdlAccountType;
-/// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
-/// array. Always exported; the emitted impl body is itself
-/// `#[cfg(feature = "idl-build")]`, so non-IDL builds pay nothing.
-pub use anchor_derive_accounts_v2::IdlType;
-
-// ---------------------------------------------------------------------------
-// Client-side types — for building instructions off-chain (tests, CPI, SDK)
-// ---------------------------------------------------------------------------
-
-/// Metadata for a single account in a transaction instruction.
-///
-/// Re-exported from `solana-instruction` so tests and CPI builders can pass
-/// the output of `to_account_metas()` straight into `solana_instruction::
-/// Instruction::new_with_bytes` without a manual field rename.
-pub use solana_instruction::account_meta::AccountMeta;
 
 /// Re-export of the Solana SDK `Instruction` + `AccountMeta` types under a v1-
 /// compatible module path. Lets users write

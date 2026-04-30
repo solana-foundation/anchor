@@ -53,14 +53,7 @@ fn call(
     disc: u8,
     accounts: Vec<AccountMeta>,
 ) -> anyhow::Result<()> {
-    send_instruction(
-        svm,
-        program_id(),
-        vec![disc],
-        accounts,
-        payer,
-        &[],
-    )?;
+    send_instruction(svm, program_id(), vec![disc], accounts, payer, &[])?;
     Ok(())
 }
 
@@ -72,23 +65,41 @@ fn init_and_check_literal_seeds() {
     let data = data_pda();
 
     // 1. Init with literal seeds
-    call(&mut svm, &payer, 0, vec![
-        AccountMeta::new(payer.pubkey(), true),
-        AccountMeta::new(data, false),
-        AccountMeta::new_readonly(Pubkey::default(), false),
-    ]).expect("init_literal");
+    call(
+        &mut svm,
+        &payer,
+        0,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(data, false),
+            AccountMeta::new_readonly(Pubkey::default(), false),
+        ],
+    )
+    .expect("init_literal");
 
     // 2. Check literal seeds + bare bump
-    call(&mut svm, &payer, 1, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(data, false),
-    ]).expect("check_literal");
+    call(
+        &mut svm,
+        &payer,
+        1,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(data, false),
+        ],
+    )
+    .expect("check_literal");
 
     // 3. Check literal seeds + explicit bump
-    call(&mut svm, &payer, 2, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(data, false),
-    ]).expect("check_literal_explicit_bump");
+    call(
+        &mut svm,
+        &payer,
+        2,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(data, false),
+        ],
+    )
+    .expect("check_literal_explicit_bump");
 }
 
 #[test]
@@ -97,23 +108,41 @@ fn check_fn_seeds() {
     let data = data_pda();
 
     // Init first
-    call(&mut svm, &payer, 0, vec![
-        AccountMeta::new(payer.pubkey(), true),
-        AccountMeta::new(data, false),
-        AccountMeta::new_readonly(Pubkey::default(), false),
-    ]).expect("init_literal");
+    call(
+        &mut svm,
+        &payer,
+        0,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(data, false),
+            AccountMeta::new_readonly(Pubkey::default(), false),
+        ],
+    )
+    .expect("init_literal");
 
     // 4. Function-call seeds + bare bump
-    call(&mut svm, &payer, 3, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(data, false),
-    ]).expect("check_fn_seeds");
+    call(
+        &mut svm,
+        &payer,
+        3,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(data, false),
+        ],
+    )
+    .expect("check_fn_seeds");
 
     // 5. Function-call seeds + explicit bump
-    call(&mut svm, &payer, 4, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(data, false),
-    ]).expect("check_fn_seeds_explicit_bump");
+    call(
+        &mut svm,
+        &payer,
+        4,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(data, false),
+        ],
+    )
+    .expect("check_fn_seeds_explicit_bump");
 }
 
 #[test]
@@ -122,17 +151,29 @@ fn check_const_seeds() {
     let data = data_pda();
 
     // Init first
-    call(&mut svm, &payer, 0, vec![
-        AccountMeta::new(payer.pubkey(), true),
-        AccountMeta::new(data, false),
-        AccountMeta::new_readonly(Pubkey::default(), false),
-    ]).expect("init_literal");
+    call(
+        &mut svm,
+        &payer,
+        0,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(data, false),
+            AccountMeta::new_readonly(Pubkey::default(), false),
+        ],
+    )
+    .expect("init_literal");
 
     // 6. Const-item seeds + bare bump
-    call(&mut svm, &payer, 5, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(data, false),
-    ]).expect("check_const_seeds");
+    call(
+        &mut svm,
+        &payer,
+        5,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(data, false),
+        ],
+    )
+    .expect("check_const_seeds");
 }
 
 #[test]
@@ -141,17 +182,29 @@ fn init_and_check_mixed_seeds() {
     let data = user_pda(&payer.pubkey());
 
     // 7. Init with mixed seeds
-    call(&mut svm, &payer, 7, vec![
-        AccountMeta::new(payer.pubkey(), true),
-        AccountMeta::new(data, false),
-        AccountMeta::new_readonly(Pubkey::default(), false),
-    ]).expect("init_mixed");
+    call(
+        &mut svm,
+        &payer,
+        7,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(data, false),
+            AccountMeta::new_readonly(Pubkey::default(), false),
+        ],
+    )
+    .expect("init_mixed");
 
     // 8. Check mixed seeds
-    call(&mut svm, &payer, 8, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(data, false),
-    ]).expect("check_mixed");
+    call(
+        &mut svm,
+        &payer,
+        8,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(data, false),
+        ],
+    )
+    .expect("check_mixed");
 }
 
 #[test]
@@ -160,18 +213,29 @@ fn wrong_pda_rejected() {
     let data = data_pda();
 
     // Init first
-    call(&mut svm, &payer, 0, vec![
-        AccountMeta::new(payer.pubkey(), true),
-        AccountMeta::new(data, false),
-        AccountMeta::new_readonly(Pubkey::default(), false),
-    ]).expect("init_literal");
+    call(
+        &mut svm,
+        &payer,
+        0,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(data, false),
+            AccountMeta::new_readonly(Pubkey::default(), false),
+        ],
+    )
+    .expect("init_literal");
 
     // Pass wrong account for fn-seeds check — should fail
     let wrong = Pubkey::new_unique();
-    let result = call(&mut svm, &payer, 3, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(wrong, false),
-    ]);
+    let result = call(
+        &mut svm,
+        &payer,
+        3,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(wrong, false),
+        ],
+    );
     assert!(result.is_err(), "wrong PDA should be rejected");
 }
 
@@ -195,11 +259,17 @@ fn wrong_bump_value_rejected() {
     let data = data_pda();
 
     // Init the PDA — stores canonical bump in data.bump (byte offset 16)
-    call(&mut svm, &payer, 0, vec![
-        AccountMeta::new(payer.pubkey(), true),
-        AccountMeta::new(data, false),
-        AccountMeta::new_readonly(Pubkey::default(), false),
-    ]).expect("init_literal");
+    call(
+        &mut svm,
+        &payer,
+        0,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(data, false),
+            AccountMeta::new_readonly(Pubkey::default(), false),
+        ],
+    )
+    .expect("init_literal");
 
     // Read the canonical bump and corrupt it
     let mut account = svm.get_account(&data).expect("data exists");
@@ -209,10 +279,15 @@ fn wrong_bump_value_rejected() {
 
     // check_literal_explicit_bump (discrim=2) uses `bump = data.bump`
     // — the corrupted bump won't match the PDA derivation
-    let result = call_raw(&mut svm, &payer, 2, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(data, false),
-    ]);
+    let result = call_raw(
+        &mut svm,
+        &payer,
+        2,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(data, false),
+        ],
+    );
     assert!(result.is_err(), "off-by-one bump should be rejected");
     let err = format!("{:?}", result.unwrap_err().err);
     assert!(
@@ -226,25 +301,37 @@ fn mixed_seeds_wrong_order_rejected() {
     let (mut svm, payer) = setup();
 
     // Derive PDA with reversed seed order: [payer, b"user"] instead of [b"user", payer]
-    let wrong_pda = Pubkey::find_program_address(
-        &[payer.pubkey().as_ref(), b"user"],
-        &program_id(),
-    ).0;
+    let wrong_pda =
+        Pubkey::find_program_address(&[payer.pubkey().as_ref(), b"user"], &program_id()).0;
 
     // Init the correct PDA first so the program is deployed
     let correct_pda = user_pda(&payer.pubkey());
-    call(&mut svm, &payer, 7, vec![
-        AccountMeta::new(payer.pubkey(), true),
-        AccountMeta::new(correct_pda, false),
-        AccountMeta::new_readonly(Pubkey::default(), false),
-    ]).expect("init_mixed");
+    call(
+        &mut svm,
+        &payer,
+        7,
+        vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(correct_pda, false),
+            AccountMeta::new_readonly(Pubkey::default(), false),
+        ],
+    )
+    .expect("init_mixed");
 
     svm.expire_blockhash();
 
     // check_mixed (discrim=8) with the reversed-seed PDA
-    let result = call_raw(&mut svm, &payer, 8, vec![
-        AccountMeta::new_readonly(payer.pubkey(), true),
-        AccountMeta::new_readonly(wrong_pda, false),
-    ]);
-    assert!(result.is_err(), "PDA from wrong seed order should be rejected");
+    let result = call_raw(
+        &mut svm,
+        &payer,
+        8,
+        vec![
+            AccountMeta::new_readonly(payer.pubkey(), true),
+            AccountMeta::new_readonly(wrong_pda, false),
+        ],
+    );
+    assert!(
+        result.is_err(),
+        "PDA from wrong seed order should be rejected"
+    );
 }

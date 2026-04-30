@@ -71,11 +71,7 @@ fn classify_cwd(path: &Path, cwd: &Path) -> Option<PathLabel> {
     let rel = path.strip_prefix(cwd).ok()?;
     let pkg = enclosing_package_name(cwd, rel);
     let label = pkg
-        .or_else(|| {
-            cwd.file_name()
-                .and_then(|n| n.to_str())
-                .map(str::to_owned)
-        })
+        .or_else(|| cwd.file_name().and_then(|n| n.to_str()).map(str::to_owned))
         .unwrap_or_else(|| "workspace".to_owned());
     Some(PathLabel {
         label,
@@ -151,11 +147,7 @@ fn classify_workspace(path: &Path, src_roots: &[PathBuf]) -> Option<PathLabel> {
         };
         let pkg = enclosing_package_name(root, rel);
         let label = pkg
-            .or_else(|| {
-                root.file_name()
-                    .and_then(|n| n.to_str())
-                    .map(str::to_owned)
-            })
+            .or_else(|| root.file_name().and_then(|n| n.to_str()).map(str::to_owned))
             .unwrap_or_else(|| "workspace".to_owned());
         return Some(PathLabel {
             label,

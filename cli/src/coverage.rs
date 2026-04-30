@@ -6,14 +6,19 @@
 //! dependencies). Programs must be built with `CARGO_PROFILE_RELEASE_DEBUG=2`
 //! to include DWARF in the unstripped `.so`.
 
-use anyhow::{Context, Result};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-
-use crate::debugger::source::SourceResolver;
-use crate::flamegraph::trace::{find_unstripped_binary, REGS_ENTRY_SIZE};
+use {
+    crate::{
+        debugger::source::SourceResolver,
+        flamegraph::trace::{find_unstripped_binary, REGS_ENTRY_SIZE},
+    },
+    anyhow::{Context, Result},
+    std::{
+        collections::{BTreeMap, BTreeSet, HashMap},
+        fs,
+        io::Write,
+        path::{Path, PathBuf},
+    },
+};
 
 /// Generate an LCOV file from register trace data.
 ///
@@ -103,8 +108,8 @@ pub fn generate_lcov(
     }
 
     // Write LCOV format.
-    let mut out = fs::File::create(output)
-        .with_context(|| format!("create {}", output.display()))?;
+    let mut out =
+        fs::File::create(output).with_context(|| format!("create {}", output.display()))?;
 
     let mut sorted_files: Vec<_> = line_hits.into_iter().collect();
     sorted_files.sort_by(|a, b| a.0.cmp(&b.0));
@@ -154,9 +159,7 @@ fn resolve_source_path(file: &Path, workspace_root: Option<&Path>) -> Option<Pat
 ///   - flat `<dir>/<hash>.regs` (litesvm's `SBF_TRACE_DIR`)
 ///   - nested `<dir>/<test_name>/<inv>__tx<N>.regs` (anchor-v2-testing's
 ///     `ANCHOR_PROFILE_DIR`, used by `anchor debugger`)
-fn collect_pcs_from_traces(
-    trace_dir: &Path,
-) -> Result<BTreeMap<String, BTreeSet<u64>>> {
+fn collect_pcs_from_traces(trace_dir: &Path) -> Result<BTreeMap<String, BTreeSet<u64>>> {
     let mut result: BTreeMap<String, BTreeSet<u64>> = BTreeMap::new();
 
     if !trace_dir.exists() {
@@ -167,10 +170,7 @@ fn collect_pcs_from_traces(
     Ok(result)
 }
 
-fn visit_dir(
-    dir: &Path,
-    result: &mut BTreeMap<String, BTreeSet<u64>>,
-) -> Result<()> {
+fn visit_dir(dir: &Path, result: &mut BTreeMap<String, BTreeSet<u64>>) -> Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();

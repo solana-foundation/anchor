@@ -62,15 +62,8 @@ fn test_borsh_realloc_grow() {
         AccountMeta::new(pda, false),
         AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
     ];
-    send_instruction(
-        &mut svm,
-        program_id(),
-        init_data,
-        init_metas,
-        &payer,
-        &[],
-    )
-    .expect("initialize should succeed");
+    send_instruction(&mut svm, program_id(), init_data, init_metas, &payer, &[])
+        .expect("initialize should succeed");
 
     let items = read_items(&svm, &pda);
     assert_eq!(items, vec![1, 2, 3], "initial data should be [1,2,3]");
@@ -86,15 +79,8 @@ fn test_borsh_realloc_grow() {
         AccountMeta::new(pda, false),
         AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
     ];
-    send_instruction(
-        &mut svm,
-        program_id(),
-        grow_data,
-        grow_metas,
-        &payer,
-        &[],
-    )
-    .expect("grow should succeed");
+    send_instruction(&mut svm, program_id(), grow_data, grow_metas, &payer, &[])
+        .expect("grow should succeed");
 
     let items = read_items(&svm, &pda);
     assert_eq!(items, new_items, "data should be [1..=10] after grow");
@@ -112,15 +98,8 @@ fn test_borsh_realloc_shrink() {
         AccountMeta::new(pda, false),
         AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
     ];
-    send_instruction(
-        &mut svm,
-        program_id(),
-        init_data,
-        init_metas,
-        &payer,
-        &[],
-    )
-    .expect("initialize should succeed");
+    send_instruction(&mut svm, program_id(), init_data, init_metas, &payer, &[])
+        .expect("initialize should succeed");
 
     // 2. Grow first so we have room to shrink
     let big_items: Vec<u8> = (1..=10).collect();
@@ -133,15 +112,8 @@ fn test_borsh_realloc_shrink() {
         AccountMeta::new(pda, false),
         AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
     ];
-    send_instruction(
-        &mut svm,
-        program_id(),
-        grow_data,
-        grow_metas,
-        &payer,
-        &[],
-    )
-    .expect("grow should succeed");
+    send_instruction(&mut svm, program_id(), grow_data, grow_metas, &payer, &[])
+        .expect("grow should succeed");
 
     // 3. Shrink: realloc down and set items = [1, 2]
     let small_items: Vec<u8> = vec![1, 2];
@@ -191,10 +163,7 @@ fn test_borsh_realloc_shrink_to_empty() {
     assert_eq!(read_items(&svm, &pda), vec![1, 2, 3]);
 
     // Shrink to empty vec
-    let shrink_data = borsh_realloc::instruction::Shrink {
-        new_items: vec![],
-    }
-    .data();
+    let shrink_data = borsh_realloc::instruction::Shrink { new_items: vec![] }.data();
     send_instruction(
         &mut svm,
         program_id(),
@@ -210,7 +179,10 @@ fn test_borsh_realloc_shrink_to_empty() {
     .expect("shrink to empty");
 
     let items = read_items(&svm, &pda);
-    assert!(items.is_empty(), "items should be empty after shrink to zero");
+    assert!(
+        items.is_empty(),
+        "items should be empty after shrink to zero"
+    );
 
     // Verify account size: disc(8) + vec_len(4) + 0 data = 12
     let account = svm.get_account(&pda).unwrap();
@@ -299,7 +271,11 @@ fn test_borsh_realloc_grow_shrink_grow_roundtrip() {
         &[],
     )
     .expect("re-grow to 11");
-    assert_eq!(read_items(&svm, &pda), regrown, "data should survive grow-shrink-grow roundtrip");
+    assert_eq!(
+        read_items(&svm, &pda),
+        regrown,
+        "data should survive grow-shrink-grow roundtrip"
+    );
 }
 
 #[test]
@@ -324,10 +300,7 @@ fn test_borsh_realloc_grow_from_empty() {
     .expect("initialize");
 
     // Shrink to empty
-    let shrink_data = borsh_realloc::instruction::Shrink {
-        new_items: vec![],
-    }
-    .data();
+    let shrink_data = borsh_realloc::instruction::Shrink { new_items: vec![] }.data();
     send_instruction(
         &mut svm,
         program_id(),
@@ -362,5 +335,9 @@ fn test_borsh_realloc_grow_from_empty() {
         &[],
     )
     .expect("grow from empty");
-    assert_eq!(read_items(&svm, &pda), items, "should grow correctly from empty state");
+    assert_eq!(
+        read_items(&svm, &pda),
+        items,
+        "should grow correctly from empty state"
+    );
 }

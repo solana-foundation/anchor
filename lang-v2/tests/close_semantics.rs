@@ -45,13 +45,13 @@
 //!    without going through create_account" scenario that reads the stale
 //!    discriminator?
 
-use anchor_lang_v2::testing::AccountBuffer;
-
-use anchor_lang_v2::prelude::BorshAccount;
-use anchor_lang_v2::{AnchorAccount, Discriminator, Owner};
-use borsh::{BorshDeserialize, BorshSerialize};
-use pinocchio::account::RuntimeAccount;
-use pinocchio::address::Address;
+use {
+    anchor_lang_v2::{
+        prelude::BorshAccount, testing::AccountBuffer, AnchorAccount, Discriminator, Owner,
+    },
+    borsh::{BorshDeserialize, BorshSerialize},
+    pinocchio::{account::RuntimeAccount, address::Address},
+};
 
 const PROGRAM_ID: [u8; 32] = [0x42; 32];
 
@@ -69,9 +69,7 @@ impl Owner for Vault {
 
 impl Discriminator for Vault {
     // sha256("account:Vault")[..8] = d308e82b02987577
-    const DISCRIMINATOR: &'static [u8] = &[
-        0xd3, 0x08, 0xe8, 0x2b, 0x02, 0x98, 0x75, 0x77,
-    ];
+    const DISCRIMINATOR: &'static [u8] = &[0xd3, 0x08, 0xe8, 0x2b, 0x02, 0x98, 0x75, 0x77];
 }
 
 fn vault_disc() -> [u8; 8] {
@@ -80,14 +78,7 @@ fn vault_disc() -> [u8; 8] {
 
 fn setup_vault_buf(buf: &mut AccountBuffer<256>) {
     let data_len = 8 + 32 + 8;
-    buf.init(
-        [0xAA; 32],
-        PROGRAM_ID,
-        data_len,
-        false,
-        true,
-        false,
-    );
+    buf.init([0xAA; 32], PROGRAM_ID, data_len, false, true, false);
     let mut data = [0u8; 48];
     data[..8].copy_from_slice(&vault_disc());
     // Vault contents: authority at [8..40], balance at [40..48]
@@ -213,8 +204,8 @@ fn load_after_close_rejects_with_data_too_small() {
     let result = BorshAccount::<Vault>::load(view, &program_id);
     assert!(
         result.is_err(),
-        "BorshAccount::load must reject a closed account \
-         (owner is [0;32] != program_id, AND data_len=0 < DISC_LEN)"
+        "BorshAccount::load must reject a closed account (owner is [0;32] != program_id, AND \
+         data_len=0 < DISC_LEN)"
     );
 }
 
@@ -302,7 +293,7 @@ fn create_account_zeroes_data_on_allocation() {
     let result = BorshAccount::<Vault>::load(view, &program_id);
     assert!(
         result.is_err(),
-        "after create_account's SVM-mandated zero-on-allocate, \
-         load must reject (data[..8] = [0; 8] != Vault::DISCRIMINATOR)"
+        "after create_account's SVM-mandated zero-on-allocate, load must reject (data[..8] = [0; \
+         8] != Vault::DISCRIMINATOR)"
     );
 }

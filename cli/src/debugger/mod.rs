@@ -12,9 +12,13 @@
 //! debugger and flamegraph don't drift: any improvement to the trace
 //! pipeline is picked up by both.
 
-use anyhow::Result;
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use {
+    anyhow::Result,
+    std::{
+        collections::BTreeMap,
+        path::{Path, PathBuf},
+    },
+};
 
 pub mod arena;
 pub mod cargo_deps;
@@ -48,6 +52,7 @@ pub fn run(
     // round-trips an OSC 11 query on a regular TTY; once the TUI raw-mode
     // takeover starts, the reply might not get back to us cleanly.
     highlight::detect_theme_mode_once();
-    let session = arena::build_session(profile_dir, programs, manifest_dir, crate_dir, test_filter)?;
+    let session =
+        arena::build_session(profile_dir, programs, manifest_dir, crate_dir, test_filter)?;
     tui::run(session)
 }

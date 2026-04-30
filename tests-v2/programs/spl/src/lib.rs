@@ -256,9 +256,7 @@ pub mod spl_test {
 
     /// `token::mint = mint` on `InterfaceAccount<TokenAccount>`.
     #[discrim = 20]
-    pub fn check_interface_token_mint(
-        _ctx: &mut Context<CheckInterfaceTokenMint>,
-    ) -> Result<()> {
+    pub fn check_interface_token_mint(_ctx: &mut Context<CheckInterfaceTokenMint>) -> Result<()> {
         Ok(())
     }
 
@@ -319,8 +317,7 @@ pub mod spl_test {
         ctx: &mut Context<ReadTransferFeeConfig>,
         expected_bps: u16,
     ) -> Result<()> {
-        let ext: &TransferFeeConfig =
-            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        let ext: &TransferFeeConfig = extensions::get_mint_extension(ctx.accounts.mint.account())?;
         if ext.newer_transfer_fee.basis_points() != expected_bps {
             return Err(ProgramError::InvalidAccountData.into());
         }
@@ -335,8 +332,7 @@ pub mod spl_test {
         expected_authority: Address,
         expected_metadata: Address,
     ) -> Result<()> {
-        let ext: &MetadataPointer =
-            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        let ext: &MetadataPointer = extensions::get_mint_extension(ctx.accounts.mint.account())?;
         if ext.authority != expected_authority || ext.metadata_address != expected_metadata {
             return Err(ProgramError::InvalidAccountData.into());
         }
@@ -349,8 +345,7 @@ pub mod spl_test {
         ctx: &mut Context<ReadTransferHook>,
         expected_program_id: Address,
     ) -> Result<()> {
-        let ext: &TransferHook =
-            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        let ext: &TransferHook = extensions::get_mint_extension(ctx.accounts.mint.account())?;
         if ext.program_id != expected_program_id {
             return Err(ProgramError::InvalidAccountData.into());
         }
@@ -364,8 +359,7 @@ pub mod spl_test {
         ctx: &mut Context<ReadMintCloseAuthority>,
         expected_authority: Address,
     ) -> Result<()> {
-        let ext: &MintCloseAuthority =
-            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        let ext: &MintCloseAuthority = extensions::get_mint_extension(ctx.accounts.mint.account())?;
         match extensions::optional_address(&ext.close_authority) {
             Some(addr) if *addr == expected_authority => Ok(()),
             _ => Err(ProgramError::InvalidAccountData.into()),
@@ -378,8 +372,7 @@ pub mod spl_test {
         ctx: &mut Context<ReadPermanentDelegate>,
         expected_delegate: Address,
     ) -> Result<()> {
-        let ext: &PermanentDelegate =
-            extensions::get_mint_extension(ctx.accounts.mint.account())?;
+        let ext: &PermanentDelegate = extensions::get_mint_extension(ctx.accounts.mint.account())?;
         match extensions::optional_address(&ext.delegate) {
             Some(addr) if *addr == expected_delegate => Ok(()),
             _ => Err(ProgramError::InvalidAccountData.into()),

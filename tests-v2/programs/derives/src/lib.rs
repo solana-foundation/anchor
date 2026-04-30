@@ -149,7 +149,10 @@ pub mod derives_test {
             return Err(ProgramError::InvalidAccountData.into());
         }
         // Checked arith — should succeed for values < MAX.
-        let _ = c.value.checked_add(1u64).ok_or(ProgramError::ArithmeticOverflow)?;
+        let _ = c
+            .value
+            .checked_add(1u64)
+            .ok_or(ProgramError::ArithmeticOverflow)?;
         let _ = c.value.saturating_sub(1u64);
         // pod_wrapper comparison crosses the PodMode ↔ Mode boundary.
         if c.mode == Mode::Idle {

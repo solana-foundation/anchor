@@ -6,9 +6,10 @@
 //! + CPIs) in that tx; each node owns the stream of [`DebugStep`]s it
 //! executed.
 
-use ratatui::text::Span;
-use std::collections::BTreeMap;
-use std::path::PathBuf;
+use {
+    ratatui::text::Span,
+    std::{collections::BTreeMap, path::PathBuf},
+};
 
 /// Top-level debugger state: every trace captured across every test.
 pub struct DebugSession {

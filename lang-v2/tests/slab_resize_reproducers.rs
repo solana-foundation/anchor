@@ -11,12 +11,12 @@
 //!
 //! Run: `cargo test -p anchor-lang-v2 --test slab_resize_reproducers`
 
-use anchor_lang_v2::testing::AccountBuffer;
-
-use anchor_lang_v2::{accounts::Slab, AnchorAccount, Discriminator, Owner};
-use bytemuck::{Pod, Zeroable};
-use pinocchio::address::Address;
-use solana_program_error::ProgramError;
+use {
+    anchor_lang_v2::{accounts::Slab, testing::AccountBuffer, AnchorAccount, Discriminator, Owner},
+    bytemuck::{Pod, Zeroable},
+    pinocchio::address::Address,
+    solana_program_error::ProgramError,
+};
 
 const PROGRAM_ID: [u8; 32] = [0x42; 32];
 
@@ -36,9 +36,7 @@ impl Owner for Counter {
 
 impl Discriminator for Counter {
     // sha256("account:Counter")[..8]
-    const DISCRIMINATOR: &'static [u8] = &[
-        0xff, 0xb0, 0x04, 0xf5, 0xbc, 0xfd, 0x7c, 0x19,
-    ];
+    const DISCRIMINATOR: &'static [u8] = &[0xff, 0xb0, 0x04, 0xf5, 0xbc, 0xfd, 0x7c, 0x19];
 }
 
 type CounterLedger = Slab<Counter, [u8; 8]>;
@@ -58,11 +56,7 @@ fn setup_ledger(capacity: usize, populated_len: u32) -> AccountBuffer<256> {
     let mut buf = AccountBuffer::<256>::new();
     let data_len = ITEMS_OFFSET + capacity * ITEM_SIZE;
     buf.init(
-        [0xAA; 32],
-        PROGRAM_ID,
-        data_len,
-        /*signer*/ false,
-        /*writable*/ true,
+        [0xAA; 32], PROGRAM_ID, data_len, /*signer*/ false, /*writable*/ true,
         /*executable*/ false,
     );
     let mut data = [0u8; 256];
@@ -104,8 +98,8 @@ fn load_mut_rejects_data_len_below_items_offset() {
     let reload = unsafe { CounterLedger::load_mut(view2, &program_id) };
     assert!(
         reload.is_err(),
-        "load_mut should reject data_len < ITEMS_OFFSET — if it doesn't, \
-         the subsequent capacity() computation will underflow"
+        "load_mut should reject data_len < ITEMS_OFFSET — if it doesn't, the subsequent \
+         capacity() computation will underflow"
     );
 }
 
@@ -239,7 +233,10 @@ fn swap_remove_panics_when_index_geq_effective_len() {
 }
 
 #[test]
-#[should_panic(expected = "Slab<H, T> mutated through a read-only load. Add #[account(mut)] to your accounts struct.")]
+#[should_panic(
+    expected = "Slab<H, T> mutated through a read-only load. Add #[account(mut)] to your accounts \
+                struct."
+)]
 fn clear_panics_when_tail_mutation_uses_guard_bytes_mut_on_read_only_slab() {
     let mut buf = setup_ledger(/*capacity*/ 2, /*len*/ 1);
     let program_id = Address::new_from_array(PROGRAM_ID);

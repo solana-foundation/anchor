@@ -21,7 +21,8 @@ pub fn render(report: &FlamegraphReport) -> String {
     let mut opts = Options::default();
     opts.title = format!("{} flamegraph", report.program_name);
     opts.subtitle = Some(format!(
-        "Approximate CU: {} (BPF insns × 1 + ComputeBudget syscall base costs; variable syscall costs underestimated)",
+        "Approximate CU: {} (BPF insns × 1 + ComputeBudget syscall base costs; variable syscall \
+         costs underestimated)",
         report.total_cu
     ));
     opts.count_name = "CU".to_string();
@@ -34,14 +35,14 @@ pub fn render(report: &FlamegraphReport) -> String {
         // pipeline doesn't blow up the whole test command.
         return error_svg(&format!("flamegraph render failed: {err}"));
     }
-    String::from_utf8(out).unwrap_or_else(|err| error_svg(&format!("invalid UTF-8 from inferno: {err}")))
+    String::from_utf8(out)
+        .unwrap_or_else(|err| error_svg(&format!("invalid UTF-8 from inferno: {err}")))
 }
 
 fn error_svg(msg: &str) -> String {
     format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"60\">\n\
-         <text x=\"8\" y=\"30\" font-family=\"monospace\" fill=\"#b00\">{}</text>\n\
-         </svg>\n",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"60\">\n<text x=\"8\" \
+         y=\"30\" font-family=\"monospace\" fill=\"#b00\">{}</text>\n</svg>\n",
         msg.replace('<', "&lt;").replace('&', "&amp;")
     )
 }

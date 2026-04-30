@@ -11,11 +11,12 @@
 //! standard DWARF line tuples on those byte addresses so `addr2line` works
 //! once we do that translation.
 
-use addr2line::Loader;
-use object::{Object, ObjectSection};
-use std::path::{Path, PathBuf};
-
-use super::model::SrcLoc;
+use {
+    super::model::SrcLoc,
+    addr2line::Loader,
+    object::{Object, ObjectSection},
+    std::path::{Path, PathBuf},
+};
 
 const INSN_SIZE: u64 = 8;
 
@@ -66,10 +67,13 @@ impl SourceResolver {
         let Some(inner) = self.inner.as_ref() else {
             return Vec::<SrcLoc>::new();
         };
-        let Some(vaddr) = inner.text_addr.checked_add(match pc.checked_mul(INSN_SIZE) {
-            Some(v) => v,
-            None => return Vec::<SrcLoc>::new(),
-        }) else {
+        let Some(vaddr) = inner
+            .text_addr
+            .checked_add(match pc.checked_mul(INSN_SIZE) {
+                Some(v) => v,
+                None => return Vec::<SrcLoc>::new(),
+            })
+        else {
             return Vec::<SrcLoc>::new();
         };
         let mut out: Vec<SrcLoc> = Vec::new();
@@ -105,8 +109,7 @@ pub const CI_PLATFORM_TOOLS_PREFIX: &str =
 pub const CI_PLATFORM_TOOLS_PREFIX: &str =
     "/home/runner/work/platform-tools/platform-tools/out/rust/library/";
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-pub const CI_PLATFORM_TOOLS_PREFIX: &str =
-    compile_error!("Current platform is not supported");
+pub const CI_PLATFORM_TOOLS_PREFIX: &str = compile_error!("Current platform is not supported");
 
 /// Locate every `platform-tools/rust/lib/rustlib/src/rust/library/` tree
 /// under `~/.cache/solana/` and return them newest-version-first. Empty

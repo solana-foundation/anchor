@@ -37,7 +37,9 @@ const CONSTRAINT_ZERO: u32 = 2004;
 
 // Matching the pinned address baked into the program.
 fn pinned_address() -> Pubkey {
-    "Pin1111111111111111111111111111111111111111".parse().unwrap()
+    "Pin1111111111111111111111111111111111111111"
+        .parse()
+        .unwrap()
 }
 
 fn other_program() -> Pubkey {
@@ -527,10 +529,7 @@ fn close_self_close_rejected() {
         &mut svm,
         &payer,
         10,
-        vec![
-            AccountMeta::new(data, false),
-            AccountMeta::new(data, false),
-        ],
+        vec![AccountMeta::new(data, false), AccountMeta::new(data, false)],
         &[],
     );
     let rendered = format!("{:?}", result.as_ref().err().expect("should fail").err);
@@ -580,7 +579,10 @@ fn init_if_needed_creates_then_reuses() {
     let pda = maybe_pda();
 
     // Account must not yet exist.
-    assert!(svm.get_account(&pda).map(|a| a.data.is_empty()).unwrap_or(true));
+    assert!(svm
+        .get_account(&pda)
+        .map(|a| a.data.is_empty())
+        .unwrap_or(true));
 
     // First call: init path.
     call(

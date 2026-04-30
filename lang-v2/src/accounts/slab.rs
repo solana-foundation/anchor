@@ -6,10 +6,7 @@ use {
         marker::PhantomData,
         ops::{Deref, DerefMut, Index, IndexMut},
     },
-    pinocchio::{
-        account::AccountView,
-        address::Address,
-    },
+    pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
 };
 
@@ -399,10 +396,7 @@ where
     /// account below the Slab's structural minimum).
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        self.view
-            .data_len()
-            .saturating_sub(Self::ITEMS_OFFSET)
-            / core::mem::size_of::<T>()
+        self.view.data_len().saturating_sub(Self::ITEMS_OFFSET) / core::mem::size_of::<T>()
     }
 
     /// Live `len` clamped to current `capacity`. The stored `len` may
@@ -760,4 +754,3 @@ where
         H::__register_idl_deps(types);
     }
 }
-

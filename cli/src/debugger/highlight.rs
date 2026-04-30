@@ -14,13 +14,17 @@
 //! foreground — acceptable, and we keep the option open to swap in a
 //! dedicated SBPF syntax later without changing call sites.
 
-use ratatui::text::{Line, Span};
-use std::sync::OnceLock;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::{Theme, ThemeSet};
-use syntect::parsing::{syntax_definition::SyntaxDefinition, SyntaxReference, SyntaxSet};
-use syntect_tui::into_span;
-use terminal_colorsaurus::{theme_mode, QueryOptions, ThemeMode};
+use {
+    ratatui::text::{Line, Span},
+    std::sync::OnceLock,
+    syntect::{
+        easy::HighlightLines,
+        highlighting::{Theme, ThemeSet},
+        parsing::{syntax_definition::SyntaxDefinition, SyntaxReference, SyntaxSet},
+    },
+    syntect_tui::into_span,
+    terminal_colorsaurus::{theme_mode, QueryOptions, ThemeMode},
+};
 
 /// Sublime-syntax grammar for Solana SBPF disassembly. Compiled into
 /// syntect's engine at startup; declarative — no Rust code parses asm.
@@ -60,12 +64,9 @@ fn ctx() -> &'static Ctx {
         // that we surface by panicking — better than silently rendering
         // monochrome asm.
         let mut builder = two_face::syntax::extra_newlines().into_builder();
-        let sbpf_def = SyntaxDefinition::load_from_str(
-            SBPF_SYNTAX_YAML,
-            true,
-            Some("SBPF Assembly"),
-        )
-        .expect("compile bundled sbpf.sublime-syntax");
+        let sbpf_def =
+            SyntaxDefinition::load_from_str(SBPF_SYNTAX_YAML, true, Some("SBPF Assembly"))
+                .expect("compile bundled sbpf.sublime-syntax");
         builder.add(sbpf_def);
         let syntaxes = builder.build();
         let themes = ThemeSet::load_defaults();
@@ -83,7 +84,14 @@ fn ctx() -> &'static Ctx {
             .get(theme_name)
             .cloned()
             .or_else(|| themes.themes.get(dark_name).cloned())
-            .unwrap_or_else(|| themes.themes.values().next().cloned().expect("default theme"));
+            .unwrap_or_else(|| {
+                themes
+                    .themes
+                    .values()
+                    .next()
+                    .cloned()
+                    .expect("default theme")
+            });
 
         let rust_syntax = syntaxes
             .find_syntax_by_token("rs")

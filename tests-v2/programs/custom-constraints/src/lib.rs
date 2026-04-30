@@ -101,10 +101,7 @@ pub mod counter_ns {
     impl AccountConstraint<BorshAccount<Counter>> for InitValueConstraint {
         type Value = u64;
 
-        fn init(
-            account: &mut BorshAccount<Counter>,
-            value: &u64,
-        ) -> Result<(), ProgramError> {
+        fn init(account: &mut BorshAccount<Counter>, value: &u64) -> Result<(), ProgramError> {
             account.value = *value;
             Ok(())
         }
@@ -116,10 +113,7 @@ pub mod counter_ns {
     impl AccountConstraint<BorshAccount<Counter>> for MinValueConstraint {
         type Value = u64;
 
-        fn check(
-            account: &BorshAccount<Counter>,
-            min: &u64,
-        ) -> Result<(), ProgramError> {
+        fn check(account: &BorshAccount<Counter>, min: &u64) -> Result<(), ProgramError> {
             if account.value < *min {
                 return Err(ProgramError::InvalidAccountData);
             }
@@ -134,10 +128,7 @@ pub mod counter_ns {
     impl AccountConstraint<BorshAccount<Counter>> for SetValueConstraint {
         type Value = u64;
 
-        fn update(
-            account: &mut BorshAccount<Counter>,
-            value: &u64,
-        ) -> Result<(), ProgramError> {
+        fn update(account: &mut BorshAccount<Counter>, value: &u64) -> Result<(), ProgramError> {
             account.value = *value;
             Ok(())
         }
@@ -151,10 +142,7 @@ pub mod counter_ns {
     impl AccountConstraint<BorshAccount<Counter>> for BumpOnExitConstraint {
         type Value = u64;
 
-        fn exit(
-            account: &mut BorshAccount<Counter>,
-            bump: &u64,
-        ) -> Result<(), ProgramError> {
+        fn exit(account: &mut BorshAccount<Counter>, bump: &u64) -> Result<(), ProgramError> {
             account.value = account.value.saturating_add(*bump);
             Ok(())
         }

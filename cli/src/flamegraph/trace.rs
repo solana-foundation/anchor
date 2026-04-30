@@ -1,18 +1,17 @@
-use anyhow::{anyhow, Context, Result};
-use object::{Object, ObjectSection, ObjectSymbol, SymbolKind};
-use rustc_demangle::demangle;
-use solana_compute_budget::compute_budget::ComputeBudget;
-use solana_sbpf::{
-    ebpf,
-    elf::Executable,
-    program::BuiltinProgram,
-    static_analysis::Analysis,
-    vm::{Config, ContextObject},
+use {
+    anyhow::{anyhow, Context, Result},
+    object::{Object, ObjectSection, ObjectSymbol, SymbolKind},
+    rustc_demangle::demangle,
+    solana_compute_budget::compute_budget::ComputeBudget,
+    solana_sbpf::{
+        ebpf,
+        elf::Executable,
+        program::BuiltinProgram,
+        static_analysis::Analysis,
+        vm::{Config, ContextObject},
+    },
+    std::{collections::BTreeMap, fs, path::Path, sync::Arc},
 };
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::Path;
-use std::sync::Arc;
 
 /// Returns the base compute-unit cost agave charges for `syscall_name`.
 ///
@@ -32,9 +31,7 @@ fn syscall_cost(budget: &ComputeBudget, syscall_name: &str) -> u64 {
         "sol_create_program_address" | "sol_try_find_program_address" => {
             budget.create_program_address_units
         }
-        "sol_memcpy_" | "sol_memmove_" | "sol_memset_" | "sol_memcmp_" => {
-            budget.mem_op_base_cost
-        }
+        "sol_memcpy_" | "sol_memmove_" | "sol_memset_" | "sol_memcmp_" => budget.mem_op_base_cost,
         "sol_get_clock_sysvar"
         | "sol_get_epoch_schedule_sysvar"
         | "sol_get_fees_sysvar"
@@ -478,8 +475,8 @@ pub fn load_function_map(
     elf_path: &Path,
     manifest_dir: Option<&Path>,
 ) -> Result<(BTreeMap<u64, String>, BTreeMap<u32, String>)> {
-    let elf_bytes = fs::read(elf_path)
-        .with_context(|| format!("Failed to read ELF {}", elf_path.display()))?;
+    let elf_bytes =
+        fs::read(elf_path).with_context(|| format!("Failed to read ELF {}", elf_path.display()))?;
 
     // Parse through SBPF to get function registry labels.
     let loader = Arc::new(BuiltinProgram::new_loader(Config {
@@ -715,11 +712,7 @@ fn find_workspace_root(manifest_dir: &Path) -> Option<std::path::PathBuf> {
 /// not stripped (larger than the matching deployed .so would be — we can't
 /// cheaply check strip state, but filtering by "inside release" usually
 /// works since cargo's own target tree always keeps symbols).
-fn search_for_unstripped(
-    dir: &Path,
-    file_name: &str,
-    depth: usize,
-) -> Option<std::path::PathBuf> {
+fn search_for_unstripped(dir: &Path, file_name: &str, depth: usize) -> Option<std::path::PathBuf> {
     // Hard cap on recursion: repo layouts never nest workspaces more than
     // ~4 deep (e.g. `<repo>/bench/programs/<family>/<variant>/target/...`).
     // 6 is generous and cheap.

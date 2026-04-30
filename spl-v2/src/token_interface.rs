@@ -158,9 +158,7 @@ impl SlabInit for Interface<crate::TokenAccount> {
     ) -> Result<(), ProgramError> {
         let mint = params.mint.ok_or(ProgramError::InvalidArgument)?;
         let authority = params.authority.ok_or(ProgramError::InvalidArgument)?;
-        let token_program = params
-            .token_program
-            .ok_or(ProgramError::InvalidArgument)?;
+        let token_program = params.token_program.ok_or(ProgramError::InvalidArgument)?;
         let program_id = token_program.address();
 
         let space = core::mem::size_of::<crate::TokenAccount>();
@@ -207,9 +205,7 @@ impl SlabInit for Interface<crate::Mint> {
     ) -> Result<(), ProgramError> {
         let decimals = params.decimals.ok_or(ProgramError::InvalidArgument)?;
         let authority = params.authority.ok_or(ProgramError::InvalidArgument)?;
-        let token_program = params
-            .token_program
-            .ok_or(ProgramError::InvalidArgument)?;
+        let token_program = params.token_program.ok_or(ProgramError::InvalidArgument)?;
         let program_id = token_program.address();
 
         let space = core::mem::size_of::<crate::Mint>();

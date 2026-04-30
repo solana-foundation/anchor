@@ -34,7 +34,10 @@ fn setup() -> (LiteSVM, Keypair) {
     let test_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let deploy_dir = test_dir.join("target/deploy");
     build_program(
-        test_dir.join("programs/custom-constraints").to_str().unwrap(),
+        test_dir
+            .join("programs/custom-constraints")
+            .to_str()
+            .unwrap(),
         deploy_dir.to_str().unwrap(),
     );
 
@@ -122,8 +125,15 @@ fn check_hook_accepts_at_or_above_minimum() {
     // Bump the counter above the minimum via the update hook first.
     let update_data = custom_constraints::instruction::HandleUpdate {}.data();
     let update_metas = vec![AccountMeta::new(counter_pda(), false)];
-    send_instruction(&mut svm, program_id(), update_data, update_metas, &payer, &[])
-        .expect("handle_update should succeed");
+    send_instruction(
+        &mut svm,
+        program_id(),
+        update_data,
+        update_metas,
+        &payer,
+        &[],
+    )
+    .expect("handle_update should succeed");
     assert_eq!(read_counter_value(&svm, &counter_pda()), 42);
 
     // Now check: 42 >= 10 → should pass.
@@ -205,7 +215,10 @@ fn boxed_close_transfers_lamports_and_removes_account() {
         .get_account(&boxed_counter_pda())
         .expect("boxed counter exists")
         .lamports;
-    assert!(counter_before > 0, "boxed counter must hold lamports before close");
+    assert!(
+        counter_before > 0,
+        "boxed counter must hold lamports before close"
+    );
 
     let data = custom_constraints::instruction::HandleBoxedClose {}.data();
     let metas = vec![
@@ -254,8 +267,15 @@ fn init_if_needed_exist_branch_runs_check() {
     // fires against the LIVE value, not against the init-time default.
     let update_data = custom_constraints::instruction::HandleUpdate {}.data();
     let update_metas = vec![AccountMeta::new(counter_pda(), false)];
-    send_instruction(&mut svm, program_id(), update_data, update_metas, &payer, &[])
-        .expect("handle_update");
+    send_instruction(
+        &mut svm,
+        program_id(),
+        update_data,
+        update_metas,
+        &payer,
+        &[],
+    )
+    .expect("handle_update");
     assert_eq!(read_counter_value(&svm, &counter_pda()), 42);
 
     // Now init_if_needed should take the exist branch: value is 42,

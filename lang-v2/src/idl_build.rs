@@ -9,6 +9,9 @@
 //! recursive `__register_idl_deps`.
 //!
 //! Only present under `idl-build` cfg; compiles out for on-chain builds.
+//!
+//! This module is exposed only for IDL generation;
+//! it is NOT part of the stable API and is subject to change.
 
 extern crate alloc;
 
@@ -58,9 +61,18 @@ macro_rules! impl_idl_account_type_noop {
 
 impl_idl_account_type_noop!(
     bool,
-    u8, u16, u32, u64, u128,
-    i8, i16, i32, i64, i128,
-    f32, f64,
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    f32,
+    f64,
     alloc::string::String,
     pinocchio::address::Address,
 );
@@ -125,5 +137,90 @@ where
 {
     fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
         T::__register_idl_deps(types);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Runtime seed-const JSON emission
+// ---------------------------------------------------------------------------
+//
+// Used by the `Accounts` derive when a `seeds = [...]` entry is an arbitrary
+// const-evaluatable expression that the macro can't byte-fold itself
+// (e.g. `MY_PREFIX`, `crate::seeds::TAG`, `<Marker as Id>::id()`). The
+// derive emits a runtime call to this helper from inside `__idl_accounts()`,
+// turning anything that implements `AsRef<[u8]>` into the IDL's
+// `{"kind":"const","value":[...]}` shape. Centralized so the byte-formatting
+// is testable and lives in one place.
+pub fn __idl_const_seed_json(value: impl AsRef<[u8]>) -> alloc::string::String {
+    let bytes = value.as_ref();
+    let mut s = alloc::string::String::from(r#"{"kind":"const","value":["#);
+    let mut first = true;
+    for b in bytes {
+        if !first {
+            s.push(',');
+        }
+        first = false;
+        s.push_str(&alloc::format!("{b}"));
+    }
+    s.push_str("]}");
+    s
+}
+
+#[cfg(test)]
+mod const_seed_json_tests {
+    use {super::*, pinocchio::address::Address};
+
+    #[test]
+    fn empty_bytes_render_empty_value_array() {
+        assert_eq!(
+            __idl_const_seed_json([0u8; 0]),
+            r#"{"kind":"const","value":[]}"#
+        );
+    }
+
+    #[test]
+    fn array_of_bytes_renders_decimal_values() {
+        // Boundary values exercise the format path: 0, mid, max u8.
+        assert_eq!(
+            __idl_const_seed_json([0u8, 1, 99, 255]),
+            r#"{"kind":"const","value":[0,1,99,255]}"#
+        );
+    }
+
+    #[test]
+    fn string_literal_renders_as_utf8_bytes() {
+        // Surfaces the `&str` path used by `seeds = [MY_STR]` patterns.
+        assert_eq!(
+            __idl_const_seed_json("ab"),
+            r#"{"kind":"const","value":[97,98]}"#
+        );
+    }
+
+    #[test]
+    fn byte_slice_renders_in_order() {
+        let s: &[u8] = &[10u8, 20, 30];
+        assert_eq!(
+            __idl_const_seed_json(s),
+            r#"{"kind":"const","value":[10,20,30]}"#
+        );
+    }
+
+    #[test]
+    fn pinocchio_address_lands_as_32_decimal_bytes() {
+        // The const-fallback case: `<Marker>::id()` returns Address; the
+        // helper has to accept it via the AsRef<[u8]> blanket. Pick a
+        // base58 with a recognizable byte pattern.
+        let addr = Address::from_str_const("11111111111111111111111111111111");
+        let json = __idl_const_seed_json(addr);
+        assert!(
+            json.starts_with(r#"{"kind":"const","value":["#),
+            "missing prefix: {json}"
+        );
+        assert!(json.ends_with("]}"), "missing suffix: {json}");
+        // System program id is the all-zero pubkey — 32 zeros.
+        assert_eq!(
+            json,
+            r#"{"kind":"const","value":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}"#
+        );
     }
 }

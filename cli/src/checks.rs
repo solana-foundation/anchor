@@ -65,10 +65,10 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
             .find(|ver| ver != &cli_version);
         if let Some(ver) = mismatched {
             eprintln!(
-                "WARNING: `{dep_name}` version({ver}) and the current CLI \
-                 version({cli_version}) don't match.\n\n\tThis can lead to unwanted behavior. To \
-                 use the same CLI version, add:\n\n\t[toolchain]\n\tanchor_version = \
-                 \"{ver}\"\n\n\tto Anchor.toml\n"
+                "WARNING: `{dep_name}` version({ver}) and the current CLI version({cli_version}) \
+                 don't match.\n\n\tThis can lead to unwanted behavior. To use the same CLI \
+                 version, add:\n\n\t[toolchain]\n\tanchor_version = \"{ver}\"\n\n\tto \
+                 Anchor.toml\n"
             );
         }
     }

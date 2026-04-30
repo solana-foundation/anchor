@@ -23,16 +23,14 @@ declare_id!("Con9ukTn9BRPXWcjS2UBbuN3NnCwy1hcaDNZ9Hb8QMNp");
 /// Dummy program id used as the derivation domain for the
 /// `seeds::program = OTHER_PROGRAM` override test. The PDA only has to be
 /// verifiable under this key — it is never actually invoked.
-pub const OTHER_PROGRAM: Address = Address::from_str_const(
-    "Gue5TpR6sstSyGhSvmVeH2TeKqBYYqmXpRCacB9jAk8u",
-);
+pub const OTHER_PROGRAM: Address =
+    Address::from_str_const("Gue5TpR6sstSyGhSvmVeH2TeKqBYYqmXpRCacB9jAk8u");
 
 /// Expected address for the `address = PINNED_ADDRESS` check.
 /// Pinned to a known off-curve pubkey — tests pass this exact address
 /// on the happy path and a different one on the violation path.
-pub const PINNED_ADDRESS: Address = Address::from_str_const(
-    "Pin1111111111111111111111111111111111111111",
-);
+pub const PINNED_ADDRESS: Address =
+    Address::from_str_const("Pin1111111111111111111111111111111111111111");
 
 // -- Custom error enum -------------------------------------------------------
 
@@ -77,9 +75,7 @@ pub mod constraints {
     }
 
     #[discrim = 2]
-    pub fn check_address_custom_err(
-        _ctx: &mut Context<CheckAddressCustomErr>,
-    ) -> Result<()> {
+    pub fn check_address_custom_err(_ctx: &mut Context<CheckAddressCustomErr>) -> Result<()> {
         Ok(())
     }
 
@@ -89,9 +85,7 @@ pub mod constraints {
     }
 
     #[discrim = 4]
-    pub fn check_has_one_custom_err(
-        _ctx: &mut Context<CheckHasOneCustomErr>,
-    ) -> Result<()> {
+    pub fn check_has_one_custom_err(_ctx: &mut Context<CheckHasOneCustomErr>) -> Result<()> {
         Ok(())
     }
 
@@ -101,9 +95,7 @@ pub mod constraints {
     }
 
     #[discrim = 6]
-    pub fn check_owner_custom_err(
-        _ctx: &mut Context<CheckOwnerCustomErr>,
-    ) -> Result<()> {
+    pub fn check_owner_custom_err(_ctx: &mut Context<CheckOwnerCustomErr>) -> Result<()> {
         Ok(())
     }
 
@@ -113,9 +105,7 @@ pub mod constraints {
     }
 
     #[discrim = 8]
-    pub fn check_constraint_custom_err(
-        _ctx: &mut Context<CheckConstraintCustomErr>,
-    ) -> Result<()> {
+    pub fn check_constraint_custom_err(_ctx: &mut Context<CheckConstraintCustomErr>) -> Result<()> {
         Ok(())
     }
 
@@ -161,9 +151,7 @@ pub mod constraints {
     /// the `authority` field; same semantics as handler 3's `has_one`
     /// path but reached via the `address` codegen branch.
     #[discrim = 15]
-    pub fn check_address_field_path(
-        _ctx: &mut Context<CheckAddressFieldPath>,
-    ) -> Result<()> {
+    pub fn check_address_field_path(_ctx: &mut Context<CheckAddressFieldPath>) -> Result<()> {
         Ok(())
     }
 }

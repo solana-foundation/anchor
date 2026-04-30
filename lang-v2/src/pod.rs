@@ -598,8 +598,8 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     // monomorphization so `PodVec<T, N>` with `N > 65_535` fails to compile.
     const _MAX_FITS_U16: () = assert!(
         MAX <= u16::MAX as usize,
-        "PodVec<T, MAX>: MAX must be <= 65_535 (u16::MAX). Use a larger \
-         length-prefix wrapper for capacities beyond this."
+        "PodVec<T, MAX>: MAX must be <= 65_535 (u16::MAX). Use a larger length-prefix wrapper for \
+         capacities beyond this."
     );
 
     // --- Length / capacity ---
