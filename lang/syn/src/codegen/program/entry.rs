@@ -52,6 +52,20 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         impl anchor_lang::AnchorProgram for program::#name {
             const ID: Pubkey = #program_id;
 
+            fn entrypoint<'info>(
+                program_id: &'info Pubkey,
+                accounts: &'info [AccountInfo<'info>],
+                data: &'info [u8],
+            ) -> std::result::Result<(), anchor_lang::solana_program::program_error::ProgramError>
+            {
+                if *program_id != Self::ID {
+                    return Err(Self::handle_error(
+                        anchor_lang::error::ErrorCode::DeclaredProgramIdMismatch.into(),
+                    ));
+                }
+                Self::dispatch(program_id, accounts, data).map_err(Self::handle_error)
+            }
+
             fn dispatch<'info>(
                 program_id: &'info Pubkey,
                 accounts: &'info [AccountInfo<'info>],
