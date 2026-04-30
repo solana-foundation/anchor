@@ -136,3 +136,30 @@ where
         T::__register_idl_deps(types);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Runtime seed-const JSON emission
+// ---------------------------------------------------------------------------
+//
+// Used by the `Accounts` derive when a `seeds = [...]` entry is an arbitrary
+// const-evaluatable expression that the macro can't byte-fold itself
+// (e.g. `MY_PREFIX`, `crate::seeds::TAG`, `<Marker as Id>::id()`). The
+// derive emits a runtime call to this helper from inside `__idl_accounts()`,
+// turning anything that implements `AsRef<[u8]>` into the IDL's
+// `{"kind":"const","value":[...]}` shape. Centralized so the byte-formatting
+// is testable and lives in one place.
+#[doc(hidden)]
+pub fn __idl_const_seed_json(value: impl AsRef<[u8]>) -> alloc::string::String {
+    let bytes = value.as_ref();
+    let mut s = alloc::string::String::from(r#"{"kind":"const","value":["#);
+    let mut first = true;
+    for b in bytes {
+        if !first {
+            s.push(',');
+        }
+        first = false;
+        s.push_str(&alloc::format!("{b}"));
+    }
+    s.push_str("]}");
+    s
+}

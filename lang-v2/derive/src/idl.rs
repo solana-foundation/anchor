@@ -160,9 +160,12 @@ pub struct AccountsJsonField<'a> {
     /// `#[doc = "..."]` lines on the field, in source order. Emitted as
     /// `"docs":[...]`.
     pub docs: &'a [String],
-    /// Pre-built `pda: {...}` object (JSON body, no leading comma). `None`
-    /// when the field has no `seeds = [...]` attr.
-    pub pda_json: Option<String>,
+    /// Token expression evaluating at IDL-build time to the `pda: {...}`
+    /// object JSON body (no leading comma). `None` when the field has no
+    /// `seeds = [...]` attr. Built by [`pda_object_emission`]; runtime
+    /// rather than static so const-evaluatable seed expressions resolve
+    /// to their actual bytes via `__idl_const_seed_json`.
+    pub pda_json: Option<TokenStream2>,
     /// The wrapper `Type` (post-`Option` unwrap) whose trait consts we
     /// dispatch on at runtime. Should match `AccountField::idl_field_ty`.
     pub field_ty: &'a Option<Type>,
@@ -240,11 +243,22 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
             } else {
                 format!(",\"docs\":{}", docs_to_json_array(f.docs))
             };
-            let pda_json = f
-                .pda_json
-                .as_ref()
-                .map(|p| format!(",\"pda\":{p}"))
-                .unwrap_or_default();
+            // `pda` body is now a runtime expression so const-fallback
+            // seeds resolve to their actual bytes via `__idl_const_seed_json`.
+            // Static-only fields still pay one `String::from` allocation —
+            // immaterial in the test-only IDL build path.
+            let pda_json_expr = match &f.pda_json {
+                Some(ts) => quote! {
+                    let __pda_json: anchor_lang_v2::__alloc::string::String = {
+                        let __body: anchor_lang_v2::__alloc::string::String = #ts;
+                        anchor_lang_v2::__alloc::format!(",\"pda\":{}", __body)
+                    };
+                },
+                None => quote! {
+                    let __pda_json: anchor_lang_v2::__alloc::string::String =
+                        anchor_lang_v2::__alloc::string::String::new();
+                },
+            };
             // `#[account(address = <expr>)]` override, pre-formatted as a
             // JSON fragment. When set, takes precedence over the wrapper
             // type's `__IDL_ADDRESS` — emitted at macro time so no runtime
@@ -278,6 +292,7 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                             || #init_signer;
                         let __signer_json: &str = if __signer { ",\"signer\":true" } else { "" };
                         #addr_json_expr
+                        #pda_json_expr
                         anchor_lang_v2::__alloc::format!(
                             "{{\"name\":\"{}\"{}{}{}{}{}{}{}}}",
                             #name,
@@ -287,7 +302,7 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                             #optional_json,
                             #relations_json,
                             #docs_json,
-                            #pda_json,
+                            __pda_json,
                         )
                     }
                 }
@@ -297,17 +312,20 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
                 // flags. Never triggers for valid Accounts structs.
                 let signer_json = if init_signer { ",\"signer\":true" } else { "" };
                 quote! {
-                    anchor_lang_v2::__alloc::format!(
-                        "{{\"name\":\"{}\"{}{}{}{}{}{}{}}}",
-                        #name,
-                        #writable_json,
-                        #signer_json,
-                        #address_override_json,
-                        #optional_json,
-                        #relations_json,
-                        #docs_json,
-                        #pda_json,
-                    )
+                    {
+                        #pda_json_expr
+                        anchor_lang_v2::__alloc::format!(
+                            "{{\"name\":\"{}\"{}{}{}{}{}{}{}}}",
+                            #name,
+                            #writable_json,
+                            #signer_json,
+                            #address_override_json,
+                            #optional_json,
+                            #relations_json,
+                            #docs_json,
+                            __pda_json,
+                        )
+                    }
                 }
             }
         })
@@ -534,11 +552,38 @@ fn docs_value(docs: &[String]) -> Value {
 // Seed classification (Part E — `pda: {...}` emission)
 // ---------------------------------------------------------------------------
 
+/// Classified seed expression. Static cases carry pre-built JSON; the
+/// `Runtime` variant carries a token expression that evaluates to a JSON
+/// `String` at IDL-build time, used for arbitrary const-evaluatable
+/// expressions whose bytes the macro can't fold itself.
+#[derive(Clone)]
+pub enum SeedJson {
+    /// Pre-serialized JSON object — known at macro time.
+    Static(String),
+    /// Token expression evaluating to `alloc::string::String` at runtime.
+    /// Built around `anchor_lang_v2::idl_build::__idl_const_seed_json` for
+    /// the const-fallback path.
+    Runtime(TokenStream2),
+}
+
+impl SeedJson {
+    /// Token expression evaluating to `String` at IDL-build time. Static
+    /// payloads become `String::from("<literal>")`; runtime payloads pass
+    /// through unchanged.
+    pub fn into_string_expr(self) -> TokenStream2 {
+        match self {
+            SeedJson::Static(s) => quote! {
+                anchor_lang_v2::__alloc::string::String::from(#s)
+            },
+            SeedJson::Runtime(ts) => ts,
+        }
+    }
+}
+
 /// Classify a single seed expression into one of the `IdlSeed` variants
-/// (spec:111-134) and return a pre-built JSON object string ready to splice
-/// into a `seeds` array.
+/// (spec:111-134).
 ///
-/// Recognized shapes:
+/// Statically recognized shapes (returned as `SeedJson::Static`):
 /// - byte literal (`b"counter"`)              → `{"kind":"const","value":[...]}`
 /// - byte-array literal (`[1, 2, 3]`)         → `{"kind":"const","value":[...]}`
 /// - string literal (`"counter"`)             → `{"kind":"const","value":[<bytes>]}`
@@ -551,13 +596,32 @@ fn docs_value(docs: &[String]) -> Value {
 ///   `nonce.to_le_bytes()`, `nonce.as_ref()`)
 ///   with `nonce` in `ix_arg_names`
 ///   → `{"kind":"arg","path":"nonce"}`
-/// - anything else (e.g. `Some::Path::call()`) → `const` with empty value
-///   + eprintln warning so the anchor build CLI surfaces it.
-pub fn classify_seed(expr: &Expr, field_names: &[String], ix_arg_names: &[String]) -> String {
-    classify_seed_value(expr, field_names, ix_arg_names).to_string()
+///
+/// Anything else (a constant ref like `MY_PREFIX`, a const-fn call like
+/// `<Marker as Id>::id()`, etc.) is emitted as `SeedJson::Runtime`: the
+/// derive splices a call to
+/// `anchor_lang_v2::idl_build::__idl_const_seed_json(<expr>)` into
+/// `__idl_accounts()`. That helper accepts any `AsRef<[u8]>` value, so any
+/// const whose value implements `AsRef<[u8]>` (`Pubkey`, `[u8; N]`,
+/// `&[u8]`, `&str`, …) lands as a real `{"kind":"const","value":[...]}`
+/// entry rather than the empty placeholder we used to emit.
+pub fn classify_seed(
+    expr: &Expr,
+    field_names: &[String],
+    ix_arg_names: &[String],
+) -> SeedJson {
+    classify_seed_inner(expr, field_names, ix_arg_names)
 }
 
-fn classify_seed_value(expr: &Expr, field_names: &[String], ix_arg_names: &[String]) -> Value {
+fn static_seed(value: Value) -> SeedJson {
+    SeedJson::Static(value.to_string())
+}
+
+fn classify_seed_inner(
+    expr: &Expr,
+    field_names: &[String],
+    ix_arg_names: &[String],
+) -> SeedJson {
     // Peel `&<inner>` wrappers — they're common in seed expressions and
     // always transparent to classification.
     let mut cur = expr;
@@ -567,9 +631,9 @@ fn classify_seed_value(expr: &Expr, field_names: &[String], ix_arg_names: &[Stri
 
     if let Expr::Lit(lit) = cur {
         match &lit.lit {
-            Lit::ByteStr(bs) => return const_seed_value(&bs.value()),
-            Lit::Str(s) => return const_seed_value(s.value().as_bytes()),
-            Lit::Byte(b) => return const_seed_value(&[b.value()]),
+            Lit::ByteStr(bs) => return static_seed(const_seed_value(&bs.value())),
+            Lit::Str(s) => return static_seed(const_seed_value(s.value().as_bytes())),
+            Lit::Byte(b) => return static_seed(const_seed_value(&[b.value()])),
             _ => {}
         }
     }
@@ -591,21 +655,22 @@ fn classify_seed_value(expr: &Expr, field_names: &[String], ix_arg_names: &[Stri
             break;
         }
         if let Some(b) = bytes {
-            return const_seed_value(&b);
+            return static_seed(const_seed_value(&b));
         }
     }
 
-    // Bare ident — field ref wins, then ix arg.
+    // Bare ident — field ref wins, then ix arg, otherwise it's a const
+    // path that falls through to the runtime helper below.
     if let Expr::Path(ep) = cur {
         if ep.qself.is_none() && ep.path.segments.len() == 1 && ep.path.leading_colon.is_none() {
             let seg = &ep.path.segments[0];
             if seg.arguments.is_empty() {
                 let name = seg.ident.to_string();
                 if field_names.contains(&name) {
-                    return account_seed_value(&name);
+                    return static_seed(account_seed_value(&name));
                 }
                 if ix_arg_names.contains(&name) {
-                    return arg_seed_value(&name);
+                    return static_seed(arg_seed_value(&name));
                 }
             }
         }
@@ -616,10 +681,10 @@ fn classify_seed_value(expr: &Expr, field_names: &[String], ix_arg_names: &[Stri
     // `foo.to_le_bytes()`, `foo[0]`, `(foo)`, etc.
     if let Some(root) = receiver_root_ident(cur) {
         if field_names.contains(&root) {
-            return account_seed_value(&root);
+            return static_seed(account_seed_value(&root));
         }
         if ix_arg_names.contains(&root) {
-            return arg_seed_value(&root);
+            return static_seed(arg_seed_value(&root));
         }
     }
 
@@ -631,50 +696,23 @@ fn classify_seed_value(expr: &Expr, field_names: &[String], ix_arg_names: &[Stri
         }) = &*mc.receiver
         {
             if mc.method == "as_bytes" {
-                return const_seed_value(s.value().as_bytes());
+                return static_seed(const_seed_value(s.value().as_bytes()));
             }
         }
     }
 
-    // Zero-arg path-call like `AssociatedToken::id()` or `System::id()`.
-    // These show up in `seeds::program = <Marker>::id()` overrides (ATA
-    // derivation is the canonical case). The `Id` trait's `IDL_ADDRESS`
-    // already declares each marker's pubkey at the type level; we mirror
-    // the mapping here and emit the base58-decoded bytes as a const seed
-    // so clients derive the PDA against the correct program override
-    // rather than the empty-bytes fallback.
-    //
-    // Only the five well-known markers ship in `lang-v2/src/programs.rs`;
-    // custom user markers still fall through to the warn path.
-    if let Expr::Call(call) = cur {
-        if call.args.is_empty() {
-            if let Expr::Path(ep) = &*call.func {
-                let segs = &ep.path.segments;
-                if segs.len() >= 2 && segs[segs.len() - 1].ident == "id" {
-                    let marker = segs[segs.len() - 2].ident.to_string();
-                    let addr_b58: Option<&str> = match marker.as_str() {
-                        "System" => Some("11111111111111111111111111111111"),
-                        "Token" => Some("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-                        "Token2022" => Some("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
-                        "AssociatedToken" => Some("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
-                        "Memo" => Some("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
-                        _ => None,
-                    };
-                    if let Some(b58) = addr_b58 {
-                        if let Ok(bytes) = bs58::decode(b58).into_vec() {
-                            return const_seed_value(&bytes);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    eprintln!(
-        "anchor-v2 idl: unable to classify seed expression `{}`; emitting empty const",
-        quote!(#expr)
-    );
-    const_seed_value(&[])
+    // Const-evaluatable fallback. Anything that survives to here — a
+    // constant path (`MY_PREFIX`), a const-fn call (`<Marker as Id>::id()`),
+    // a `crate::seeds::TAG`, etc. — is forwarded to the runtime helper so
+    // its bytes land in the IDL. The `AsRef<[u8]>` bound covers
+    // `Pubkey` / `Address`, `[u8; N]`, `&[u8]`, `&str`, and any user type
+    // that implements it. Expressions whose value isn't `AsRef<[u8]>`
+    // become a compile error in the IDL-build test binary — strictly
+    // better than the previous silent-empty-bytes behavior, since the
+    // build surfaces it instead of shipping a broken IDL.
+    SeedJson::Runtime(quote! {
+        anchor_lang_v2::idl_build::__idl_const_seed_json(#expr)
+    })
 }
 
 /// Walk down a method-call / field-access / index chain and return the
@@ -719,23 +757,46 @@ fn arg_seed_value(path: &str) -> Value {
 }
 
 /// Assemble the `pda: {...}` object body from a field's classified seeds
-/// plus optional program override. Returns the JSON object (without the
+/// plus optional program override. Returns a token expression that
+/// evaluates to the JSON object string at IDL-build time (without the
 /// leading `,"pda":` — that's spliced by `build_accounts_emission`).
-pub fn pda_object_json(seeds: &[String], program: Option<&String>) -> String {
-    // Seed strings come in pre-serialized (via `classify_seed`) so we
-    // re-parse them back to `Value`s for structured composition. The
-    // parse can't fail because `classify_seed` controls the producer.
-    let seeds_arr: Vec<Value> = seeds
+///
+/// Static seeds become string-literal pushes; runtime seeds (from
+/// const-evaluatable expressions classified into `SeedJson::Runtime`)
+/// invoke `__idl_const_seed_json` at runtime and have their result spliced
+/// in. The whole expression assembles a single `String` via `push_str`,
+/// avoiding intermediate `Vec` / `serde_json::Value` round-trips.
+pub fn pda_object_emission(seeds: &[SeedJson], program: Option<&SeedJson>) -> TokenStream2 {
+    let seed_pushes: Vec<TokenStream2> = seeds
         .iter()
-        .map(|s| serde_json::from_str(s).expect("classify_seed emits valid JSON"))
+        .enumerate()
+        .map(|(i, s)| {
+            let expr = s.clone().into_string_expr();
+            let comma = if i == 0 { "" } else { "," };
+            quote! {
+                __pda.push_str(#comma);
+                __pda.push_str(&{ #expr });
+            }
+        })
         .collect();
-    let mut obj = serde_json::Map::new();
-    obj.insert("seeds".into(), Value::Array(seeds_arr));
-    if let Some(p) = program {
-        // The program override comes from `seeds::program = <expr>` and is
-        // also a pre-serialized JSON value (an address or a defined ref).
-        let program_val: Value = serde_json::from_str(p).expect("program seed value is valid JSON");
-        obj.insert("program".into(), program_val);
+    let program_part = match program {
+        None => quote! {},
+        Some(p) => {
+            let expr = p.clone().into_string_expr();
+            quote! {
+                __pda.push_str(",\"program\":");
+                __pda.push_str(&{ #expr });
+            }
+        }
+    };
+    quote! {
+        {
+            let mut __pda = anchor_lang_v2::__alloc::string::String::from("{\"seeds\":[");
+            #(#seed_pushes)*
+            __pda.push(']');
+            #program_part
+            __pda.push('}');
+            __pda
+        }
     }
-    Value::Object(obj).to_string()
 }

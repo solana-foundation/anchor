@@ -399,14 +399,15 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         m
     };
 
-    // Pre-build per-field pda JSON bodies so the emission site only has
-    // to splice strings. Saves duplicating the seed-classification logic.
-    let pda_jsons: Vec<Option<String>> = fields
+    // Pre-build per-field `pda` body emission. Each entry is a token
+    // expression that evaluates to the JSON string at IDL-build time;
+    // `build_accounts_emission` splices it into the runtime assembly.
+    let pda_jsons: Vec<Option<proc_macro2::TokenStream>> = fields
         .iter()
         .map(|f| {
             f.idl_pda
                 .as_ref()
-                .map(|p| idl::pda_object_json(&p.seeds, p.program.as_ref()))
+                .map(|p| idl::pda_object_emission(&p.seeds, p.program.as_ref()))
         })
         .collect();
 

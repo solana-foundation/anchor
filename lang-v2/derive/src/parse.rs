@@ -78,12 +78,13 @@ pub struct AccountAttrs {
 }
 
 /// PDA metadata produced by seed classification. Each entry is a pre-built
-/// JSON string matching the `IdlSeed` enum shape (`{"kind":"const"...}`
-/// etc.). `program` mirrors the optional `seeds::program = expr` override.
-#[derive(Clone, Debug)]
+/// Per-seed metadata in either pre-serialized JSON form (static cases) or
+/// as a runtime token expression (const-evaluatable fallback). `program`
+/// mirrors the optional `seeds::program = expr` override.
+#[derive(Clone)]
 pub struct IdlPdaMeta {
-    pub seeds: Vec<String>,
-    pub program: Option<String>,
+    pub seeds: Vec<crate::idl::SeedJson>,
+    pub program: Option<crate::idl::SeedJson>,
 }
 
 pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
@@ -879,13 +880,15 @@ pub fn parse_field(
     };
     let idl_docs = crate::idl::extract_doc_lines(&field.attrs);
     let idl_pda = attrs.seeds.as_ref().map(|seeds_expr| {
-        let seed_entries = if let Expr::Array(arr) = seeds_expr {
+        let seed_entries: Vec<crate::idl::SeedJson> = if let Expr::Array(arr) = seeds_expr {
             arr.elems
                 .iter()
                 .map(|s| crate::idl::classify_seed(s, field_names, ix_arg_names))
                 .collect()
         } else {
-            vec![r#"{"kind":"expr"}"#.to_string()]
+            // Non-array seed expr — surface as the placeholder `{"kind":"expr"}`
+            // shape. Static because it doesn't depend on the user's expr value.
+            vec![crate::idl::SeedJson::Static(r#"{"kind":"expr"}"#.to_string())]
         };
         IdlPdaMeta {
             seeds: seed_entries,
