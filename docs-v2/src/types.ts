@@ -89,11 +89,3 @@ export type FlatDoc = {
   label: string
   hidden: boolean
 }
-
-export type HeroAction = {
-  label: string
-  link: string
-  variant?: 'primary' | 'secondary' | 'ghost'
-  icon?: string
-  external?: boolean
-}

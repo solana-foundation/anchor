@@ -6,7 +6,6 @@ import LastUpdated from '@/components/docs/last-updated.astro'
 import MobileSidebar from '@/components/docs/mobile-sidebar.astro'
 import Header from '@/components/header.astro'
 import PageHead from '@/components/page-head.astro'
-import Hero from '@/components/splash/hero.astro'
 import TOCHeader from '@/components/toc-header.astro'
 import TOCSidebar from '@/components/toc-sidebar.astro'
 import Card from '@/components/mdx/card.astro'
@@ -47,9 +46,6 @@ const {
   indexChildren,
 } = Astro.props
 
-const isSplash = doc.data.template === 'splash'
-const showToc = tocEnabled && !isSplash
-
 const offsetClass = 'xl:ml-[max(0px,calc((100vw-16rem-96rem)/2))]'
 
 const renderedTitle = await renderDescription(doc.data.title)
@@ -77,33 +73,27 @@ const renderedIndexChildren = await Promise.all(
         <Header />
       </header>
 
-      {showToc && <TOCHeader headings={headings} minDepth={tocMinDepth} maxDepth={tocMaxDepth} />}
+      {tocEnabled && <TOCHeader headings={headings} minDepth={tocMinDepth} maxDepth={tocMaxDepth} />}
 
       <main class={cn('mx-auto flex w-full grow flex-col gap-y-6 px-4', offsetClass)}>
         <div class="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,42rem)_minmax(14rem,16rem)]">
           <article class="mx-auto w-full min-w-0 max-w-2xl xl:mx-0" data-pagefind-body>
-            {
-              isSplash ? (
-                doc.data.hero && <Hero hero={doc.data.hero} />
-              ) : (
-                <header class="mt-6 mb-8 flex flex-col gap-3 xl:-mt-3">
-                  <h1
-                    id="post-title"
-                    class="text-3xl leading-tight font-medium sm:text-4xl"
-                    data-doc-title
-                    set:html={renderedTitle.html}
-                  />
+            <header class="mt-6 mb-8 flex flex-col gap-3 xl:-mt-3">
+              <h1
+                id="post-title"
+                class="text-3xl leading-tight font-medium sm:text-4xl"
+                data-doc-title
+                set:html={renderedTitle.html}
+              />
 
-                  {renderedDescription && (
-                    <p
-                      class="text-muted-foreground text-lg text-pretty"
-                      data-doc-description
-                      set:html={renderedDescription.html}
-                    />
-                  )}
-                </header>
-              )
-            }
+              {renderedDescription && (
+                <p
+                  class="text-muted-foreground text-lg text-pretty"
+                  data-doc-description
+                  set:html={renderedDescription.html}
+                />
+              )}
+            </header>
 
             <div class="prose max-w-none">
               <slot />
@@ -123,24 +113,20 @@ const renderedIndexChildren = await Promise.all(
               )
             }
 
-            {
-              !isSplash && (
-                <footer
-                  class="border-border/70 mt-16 flex flex-col gap-6 border-t pt-6 pb-4"
-                  data-pagefind-ignore
-                >
-                  <DocNavigation prev={prev} next={next} />
-                  <div class="text-muted-foreground flex flex-wrap items-center justify-between gap-3 text-sm">
-                    {lastUpdated && <LastUpdated date={lastUpdated} />}
-                    {editUrl && <EditLink href={editUrl} />}
-                  </div>
-                </footer>
-              )
-            }
+            <footer
+              class="border-border/70 mt-16 flex flex-col gap-6 border-t pt-6 pb-4"
+              data-pagefind-ignore
+            >
+              <DocNavigation prev={prev} next={next} />
+              <div class="text-muted-foreground flex flex-wrap items-center justify-between gap-3 text-sm">
+                {lastUpdated && <LastUpdated date={lastUpdated} />}
+                {editUrl && <EditLink href={editUrl} />}
+              </div>
+            </footer>
           </article>
 
           {
-            showToc ? (
+            tocEnabled ? (
               <TOCSidebar
                 headings={headings}
                 minDepth={tocMinDepth}
