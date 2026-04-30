@@ -1,6 +1,5 @@
 use {
     anchor_attribute_error::error_code,
-    borsh::io::Error as BorshIoError,
     solana_program_error::ProgramError,
     solana_pubkey::Pubkey,
     std::{
@@ -324,8 +323,10 @@ impl From<ProgramError> for Error {
         Self::ProgramError(Box::new(program_error.into()))
     }
 }
-impl From<BorshIoError> for Error {
-    fn from(error: BorshIoError) -> Self {
+
+#[cfg(feature = "borsh")]
+impl From<borsh::io::Error> for Error {
+    fn from(error: borsh::io::Error) -> Self {
         Error::ProgramError(Box::new(ProgramError::from(error).into()))
     }
 }

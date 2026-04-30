@@ -11,11 +11,15 @@ description = "Error definitions for anchor-lang"
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[features]
+default = ["borsh"]
+borsh = ["dep:borsh", "solana-program-error/borsh"]
+
 [dependencies]
-borsh = "1.5.7"
+borsh = { version = "1.5.7", optional = true }
 
 solana-msg.workspace = true
-solana-program-error = { workspace = true, features = ["borsh"] }
+solana-program-error = { workspace = true }
 solana-pubkey.workspace = true
 
 anchor-attribute-error = { path = "../attribute/error", version = "1.0.1" }
