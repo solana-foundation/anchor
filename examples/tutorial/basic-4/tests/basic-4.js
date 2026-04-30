@@ -51,12 +51,6 @@ describe("basic-4", () => {
     await program.methods
       .increment()
       .accounts({
-        // counter: counterPubkey,
-        /* 
-        A accounts whose seeds are fully declared in the IDL 
-        (e.g. counter has pda.seeds = [{ kind: "const", value: [...] }])
-        client derives the address at call time, no need to pass it.
-        */
         authority: provider.wallet.publicKey,
       })
       .rpc();
