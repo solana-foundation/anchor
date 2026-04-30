@@ -15,7 +15,7 @@ describe("basic-4", () => {
   before(async () => {
     [counterPubkey] = await anchor.web3.PublicKey.findProgramAddress(
       [counterSeed],
-      program.programId,
+      program.programId
     );
   });
 

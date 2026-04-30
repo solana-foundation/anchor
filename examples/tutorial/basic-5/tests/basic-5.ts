@@ -12,7 +12,7 @@ describe("basic-5", () => {
 
   let [actionState] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("action-state"), user.toBuffer()],
-    program.programId,
+    program.programId
   );
 
   it("basic-5: Robot actions!", async () => {
@@ -112,14 +112,15 @@ describe("basic-5", () => {
   });
 
   async function createAndSendV0Tx(
-    txInstructions: anchor.web3.TransactionInstruction[],
+    txInstructions: anchor.web3.TransactionInstruction[]
   ) {
     // Step 1 - Fetch the latest blockhash
-    let latestBlockhash =
-      await provider.connection.getLatestBlockhash("confirmed");
+    let latestBlockhash = await provider.connection.getLatestBlockhash(
+      "confirmed"
+    );
     console.log(
       "   ✅ - Fetched latest blockhash. Last Valid Height:",
-      latestBlockhash.lastValidBlockHeight,
+      latestBlockhash.lastValidBlockHeight
     );
 
     // Step 2 - Generate Transaction Message
@@ -149,7 +150,7 @@ describe("basic-5", () => {
     });
     if (confirmation.value.err) {
       throw new Error(
-        `   ❌ - Transaction not confirmed.\nReason: ${confirmation.value.err}`,
+        `   ❌ - Transaction not confirmed.\nReason: ${confirmation.value.err}`
       );
     }
 
