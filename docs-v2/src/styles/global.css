@@ -131,36 +131,17 @@
   }
 }
 
-/* View transitions: Astro's <ClientRouter /> calls startViewTransition
-   on every navigation, but the browser's default cross-fade is so short
-   (~250ms) and subtle on a static-content swap that it reads as no
-   animation at all. Define explicit fade keyframes for the root snapshot
-   so navigations get a visible transition. Persisted elements (sidebar,
-   theme toggle) are excluded: they keep their own view-transition-name
-   and morph independently. */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes fade-out {
-  to {
-    opacity: 0;
-  }
-}
-
+/* View transitions: drive the root cross-fade off the keyframes Astro
+   already ships in viewtransitions.css. The browser default would do
+   the same shape of animation, but Astro's keyframes use
+   `mix-blend-mode: plus-lighter` so the alpha sums to 1 across the
+   crossfade — without that, the page reads as a faint ghost during the
+   transition because both snapshots sit at ~50% opacity at the midpoint.
+   Reduced-motion is already gated by Astro's own UA-style media query. */
 ::view-transition-old(root) {
-  animation: 220ms cubic-bezier(0.4, 0, 0.2, 1) both fade-out;
+  animation: 200ms cubic-bezier(0.4, 0, 0.2, 1) both astroFadeOut;
 }
 
 ::view-transition-new(root) {
-  animation: 220ms cubic-bezier(0.4, 0, 0.2, 1) both fade-in;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none !important;
-  }
+  animation: 200ms cubic-bezier(0.4, 0, 0.2, 1) both astroFadeIn;
 }
