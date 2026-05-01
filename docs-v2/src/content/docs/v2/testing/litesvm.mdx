@@ -1,0 +1,42 @@
+---
+title: LiteSVM
+description: "Use `anchor-v2-testing` as the LiteSVM test harness."
+---
+
+`anchor-v2-testing` re-exports LiteSVM and common Solana test types. Its `svm(){:rs}` function is `LiteSVM::new(){:rs}` by default, and switches to a trace-recording VM when the crate is built with the `profile` feature.
+
+```toml title="Cargo.toml" showLineNumbers=false
+[dev-dependencies]
+anchor-v2-testing = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+
+[features]
+profile = ["anchor-v2-testing/profile"]
+```
+
+## Test shape
+
+```rust showLineNumbers=false
+use anchor_v2_testing::{Keypair, Message, Signer, VersionedMessage, VersionedTransaction};
+
+#[test]
+fn test_initialize() {
+    let mut svm = anchor_v2_testing::svm();
+    let payer = Keypair::new();
+
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+    // add program, build instruction, sign tx, send transaction
+}
+```
+
+The scaffolded template uses this pattern under `programs/<name>/tests/`.
+
+## Why use the wrapper
+
+Use `anchor_v2_testing::svm(){:rs}` instead of calling `LiteSVM::new(){:rs}` directly. The wrapper is what lets the same tests participate in:
+
+- ordinary `$ [34manchor[0m test{:ansi}`
+- `$ [34manchor[0m test [2m--profile[0m{:ansi}`
+- `$ [34manchor[0m debugger{:ansi}`
+- `$ [34manchor[0m coverage{:ansi}`
+
+Without the wrapper, the test may pass normally but produce no traces for the tools that need them.

@@ -1,5 +1,6 @@
 ---
 import Sidebar from '@/components/docs/sidebar.astro'
+import VersionSwitcher from '@/components/docs/version-switcher.astro'
 import Link from '@/components/link.astro'
 import { Button } from '@/components/ui/button'
 import { SITE } from '@/consts'
@@ -12,16 +13,19 @@ import wordmarkLight from '@/assets/wordmark-light.svg'
 
 interface Props {
   tree: SidebarNode[]
+  versionTrees?: {
+    v1: SidebarNode[]
+    v2: SidebarNode[]
+  }
 }
 
-const { tree } = Astro.props
+const { tree, versionTrees } = Astro.props
 ---
 
 <dialog
   id="mobile-sidebar"
   class="bg-background text-foreground fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-80 max-w-full border-r p-0 outline-none backdrop:bg-black/40 open:flex open:flex-col open:gap-2 open:p-4 xl:hidden"
   aria-label="Documentation navigation"
-  transition:persist="mobile-sidebar"
 >
   <header class="flex items-center justify-between pb-2">
     <Link href={BASE_URL} class="flex items-center no-underline" aria-label={SITE.title}>
@@ -39,8 +43,22 @@ const { tree } = Astro.props
       <Icon name="x" class="size-4" />
     </Button>
   </header>
+  <VersionSwitcher />
   <div class="min-h-0 flex-1">
-    <Sidebar tree={tree} class="h-full" />
+    {
+      versionTrees ? (
+        <>
+          <div class="h-full" data-version-sidebar="v2">
+            <Sidebar tree={versionTrees.v2} class="h-full" />
+          </div>
+          <div class="h-full" data-version-sidebar="v1" hidden>
+            <Sidebar tree={versionTrees.v1} class="h-full" />
+          </div>
+        </>
+      ) : (
+        <Sidebar tree={tree} class="h-full" />
+      )
+    }
   </div>
 </dialog>
 

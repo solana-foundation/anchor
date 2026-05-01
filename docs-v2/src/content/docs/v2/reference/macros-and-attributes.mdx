@@ -1,9 +1,9 @@
 ---
 title: Macros and derives
-description: Reference for `#[program]{:rs}`, `#[derive(Accounts)]{:rs}`, `#[account]{:rs}`, `#[event]{:rs}`, and the v2 attribute family.
+description: Reference for `#[program]{:rs}`, `#[derive(Accounts)]{:rs}`, `#[account]{:rs}`, `#[event]{:rs}`, and related attributes.
 ---
 
-v2 keeps v1's macro surface where the names are familiar and ships a few new attributes for the things that changed. Most v1 patterns translate one-to-one, with the differences spelled out below.
+Anchor programs use attributes and derives to declare instruction handlers, account validation, account layouts, events, errors, constants, and access guards. This page collects the core macros and the code they generate.
 
 ## `#[program]{:rs}`
 
@@ -40,7 +40,7 @@ pub mod vault {
 
 - A `TryAccounts{:rs}` impl that loads each declared account from the pre-walked view slice, applies constraints, and returns the validated struct
 - A `Bumps{:rs}` impl whose associated type carries one `u8{:rs}` per PDA seed group (or `Option<u8>{:rs}` for optional accounts)
-- A `Resolved{:rs}` companion struct: a subset of fields the caller must supply when building an instruction from a client or test; the rest auto-derive (PDAs) or auto-fill (system / token programs)
+- A `Resolved{:rs}` companion struct: a subset of fields the caller must supply when building an instruction from a client or test. The rest auto-derive (PDAs) or auto-fill (system / token programs)
 - A `to_account_metas(){:rs}` method for client-side instruction building
 
 ```rust title="lib.rs" showLineNumbers=false
@@ -56,7 +56,7 @@ pub struct Create {
 
 ### Constraints
 
-The constraint syntax mirrors v1's. Each clause inside `#[account(...)]{:rs}` maps to an [`AccountConstraint{:rs}`](/docs/v2/extensibility/#accountconstraint) implementation, which exposes the four lifecycle hooks `init{:rs}`, `check{:rs}`, `update{:rs}`, and `exit{:rs}`. The most common built-in clauses are:
+The derive handles built-in clauses directly. Namespaced extension clauses such as `token::mint{:rs}` and third-party `my_ns::key{:rs}` route through [`AccountConstraint{:rs}`](/docs/v2/programs/extensibility/#accountconstraint), which exposes the four lifecycle hooks `init{:rs}`, `check{:rs}`, `update{:rs}`, and `exit{:rs}`. The most common built-in clauses are:
 
 | Clause | Effect |
 | --- | --- |
@@ -66,14 +66,14 @@ The constraint syntax mirrors v1's. Each clause inside `#[account(...)]{:rs}` ma
 | `payer = payer{:rs}` | Funds rent for `init{:rs}` / `init_if_needed{:rs}`. |
 | `seeds = [...]{:rs}` and `bump{:rs}` | Validates the account is a PDA from the listed seeds. |
 | `bump = field{:rs}` | Uses a stored bump instead of searching at runtime. |
-| `address = expr{:rs}` | Validates `account.address() == expr{:rs}`. Use this in place of v1's `has_one{:rs}`. |
+| `address = expr{:rs}` | Validates `account.address() == expr{:rs}`. Prefer this for checking that a sibling account matches a stored address field. |
 | `owner = program_id{:rs}` | Validates `account.owner() == program_id{:rs}`. |
 | `space = N{:rs}` | Account size in bytes for `init{:rs}`. |
 | `close = dest{:rs}` | On exit, transfers all lamports to `dest{:rs}` and zeros the data. |
 
 ### Macro-time PDA bump precomputation
 
-When all seed values in `seeds = [...]{:rs}` are byte literals, the derive runs `find_program_address{:rs}` at compile time and bakes the canonical bump in as a `const{:rs}`. The runtime PDA search is skipped. See [Optimizations](/docs/v2/optimizations/#macro-time-pda-bump-precomputation).
+When all seed values in `seeds = [...]{:rs}` are byte literals, the derive runs `find_program_address{:rs}` at compile time and bakes the canonical bump in as a `const{:rs}`. The runtime PDA search is skipped. See [Performance and optimizations](/docs/v2/security/performance-and-optimizations/).
 
 ### Topological seed resolution
 
@@ -92,7 +92,7 @@ pub struct ExecuteTransfer {
 
 ## `#[account]{:rs}`
 
-The `#[account]{:rs}` attribute marks a struct as an account type. It has two modes: the default zero-copy form and an opt-in borsh form.
+The `#[account]{:rs}` attribute marks a struct as an account type. It has two modes. The default form is zero-copy, and the opt-in form uses borsh.
 
 ### Default zero-copy form
 
@@ -124,7 +124,7 @@ Borsh accounts deserialize on load and serialize on exit, so reach for the borsh
 
 ## `#[event]{:rs}` and `#[event(bytemuck)]{:rs}`
 
-v2 provides two encoding modes for emitting program events, and the right choice depends on whether the event has any variable-length fields.
+Program events have two encoding modes. The right choice depends on whether the event has any variable-length fields.
 
 The default mode encodes through wincode with a borsh-wire-compatible config: `u8{:rs}` enum tags, `u32{:rs}` little-endian length prefixes, and no alignment checks. It still supports `Vec{:rs}`, `String{:rs}`, `Option{:rs}`, and enums, while running roughly 3 to 10 times cheaper than borsh on SBF:
 
@@ -192,7 +192,7 @@ pub const MAX_SIGNERS: usize = 10;
 
 ## `#[error_code]{:rs}`
 
-The `#[error_code]{:rs}` attribute declares a custom error enum. Each variant maps to an `Error::Custom(discriminant + offset){:rs}` where `offset{:rs}` defaults to `6000{:rs}` (matching v1's `ERROR_CODE_OFFSET{:rs}`), and the variant names plus `#[msg(...)]{:rs}` strings land in the generated IDL so clients can decode the codes back into named variants:
+The `#[error_code]{:rs}` attribute declares a custom error enum. Each variant maps to an `Error::Custom(discriminant + offset){:rs}` where `offset{:rs}` defaults to `6000{:rs}`. The variant names and `#[msg(...)]{:rs}` strings land in the generated IDL so clients can decode the codes back into named variants:
 
 ```rust title="lib.rs" showLineNumbers=false
 #[error_code]
@@ -206,10 +206,10 @@ pub enum MultisigError {
 }
 ```
 
-Override the starting offset with `#[error_code(offset = N)]{:rs}` when porting a v1 program that uses a non-default error-code base.
+Override the starting offset with `#[error_code(offset = N)]{:rs}` when a program needs a non-default error-code base.
 
 <Callout variant="remark" title="No runtime `AnchorError{:rs}`">
-  Unlike v1, v2 does not allocate an `AnchorError{:rs}` struct at runtime. The `#[msg(...)]{:rs}` text is IDL-only metadata, so emitting an error costs only the `Custom(u32){:rs}` write.
+  The runtime does not allocate an `AnchorError{:rs}` struct. The `#[msg(...)]{:rs}` text is IDL-only metadata, so emitting an error costs only the `Custom(u32){:rs}` write.
 </Callout>
 
 ## `#[access_control]{:rs}`
@@ -238,4 +238,4 @@ impl Reset {
 
 ## `#[pod_wrapper]{:rs}`
 
-Generates a transparent `u8{:rs}`-backed wrapper that validates discriminants on equality and conversion. See [Pod types](/docs/v2/pod-types/#pod_wrapper-for-enums).
+Generates a transparent `u8{:rs}`-backed wrapper that validates discriminants on equality and conversion. See [Pod types](/docs/v2/programs/pod-types/#pod_wrapper-for-enums).

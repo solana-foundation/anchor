@@ -1,0 +1,122 @@
+---
+title: First program
+description: Scaffold, build, and test an Anchor program with the `LiteSVM{:rs}` template.
+---
+
+The quickest path is the default `$ [34manchor[0m init{:ansi}` template. It creates a multi-file Rust program and a LiteSVM integration test under `programs/<name>/tests/`.
+
+```ansi showLineNumbers=false
+$ [34manchor[0m init [2m--no-install[0m counter
+$ [34mcd[0m counter
+```
+
+`[2m--no-install[0m{:ansi}` skips the JavaScript package install. The default test template is Rust + LiteSVM, so the program can build and test without Node.
+
+## Generated program shape
+
+The default program template uses `anchor_lang_v2::prelude::*{:rs}`, `&mut Context<T>{:rs}`, and account wrappers without `<'info>{:rs}` lifetimes:
+
+```rust title="programs/counter/src/instructions/initialize.rs" showLineNumbers=false
+use anchor_lang_v2::prelude::*;
+
+use crate::state::Counter;
+
+#[derive(Accounts)]
+pub struct Initialize {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(init, payer = payer)]
+    pub counter: Account<Counter>,
+    pub system_program: Program<System>,
+}
+
+pub fn handler(ctx: &mut Context<Initialize>) -> Result<()> {
+    ctx.accounts.counter.count = 0;
+    ctx.accounts.counter.authority = *ctx.accounts.payer.address();
+    msg!("Counter initialized");
+    Ok(())
+}
+```
+
+The account data is fixed-size, so it uses the default zero-copy account form:
+
+```rust title="programs/counter/src/state.rs" showLineNumbers=false
+use anchor_lang_v2::prelude::*;
+
+#[account]
+pub struct Counter {
+    pub count: u64,
+    pub authority: Address,
+}
+```
+
+`#[account]{:rs}` makes `Counter{:rs}` Pod-backed and gives `Account<Counter>{:rs}` the layout `[8-byte discriminator][Counter bytes]`. Use [`BorshAccount<T>{:rs}`](/docs/v2/programs/borsh-accounts-and-realloc/) instead when the account contains `Vec{:rs}`, `String{:rs}`, or payload enums.
+
+## Build and test
+
+```ansi showLineNumbers=false
+$ [34manchor[0m build
+$ [34manchor[0m test
+```
+
+The LiteSVM test adds the deployed SBF program to an in-process VM, builds an instruction using generated account structs, and sends a signed transaction:
+
+```rust title="programs/counter/tests/test_initialize.rs" showLineNumbers=false
+use {
+    anchor_lang_v2::{
+        accounts::Account, bytemuck, programs::System,
+        solana_program::instruction::Instruction, Id, InstructionData, Space, ToAccountMetas,
+    },
+    anchor_v2_testing::{Keypair, LiteSVM, Message, Signer, VersionedMessage, VersionedTransaction},
+};
+
+#[test]
+fn test_initialize() {
+    let program_id = counter::id();
+    let payer = Keypair::new();
+    let counter = Keypair::new();
+    let mut svm = anchor_v2_testing::svm();
+
+    svm.add_program(program_id, include_bytes!("../../../target/deploy/counter.so")).unwrap();
+    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
+
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &counter::instruction::Initialize {}.data(),
+        counter::accounts::Initialize {
+            payer: payer.pubkey(),
+            counter: counter.pubkey(),
+            system_program: System::id(),
+        }
+        .to_account_metas(None),
+    );
+
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(
+        VersionedMessage::Legacy(msg),
+        &[&payer, &counter],
+    )
+    .unwrap();
+
+    let res = svm.send_transaction(tx);
+    assert!(res.is_ok(), "send_transaction failed: {:?}", res);
+
+    let account = svm.get_account(&counter.pubkey()).expect("counter account");
+    assert_eq!(account.data.len(), <Account<counter::state::Counter> as Space>::INIT_SPACE);
+    let counter_state: &counter::state::Counter = bytemuck::from_bytes(&account.data[8..]);
+    assert_eq!(counter_state.count, 0);
+    assert_eq!(counter_state.authority, payer.pubkey());
+}
+```
+
+## Profile and debug
+
+The generated `profile = ["anchor-v2-testing/profile"]{:toml}` feature lets the same tests feed the profiler and debugger:
+
+```ansi showLineNumbers=false
+$ [34manchor[0m test [2m--profile[0m
+$ [34manchor[0m debugger
+```
+
+The trace-backed tooling is covered in [Profiling and debugger](/docs/v2/testing/profiling-and-debugger/).

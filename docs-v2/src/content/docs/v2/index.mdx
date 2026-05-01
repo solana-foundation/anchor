@@ -1,38 +1,63 @@
 ---
 title: Anchor v2
-description: The next-generation Anchor runtime, built on pinocchio. Programs are up to 94% smaller than v1 and run with 3 to 6 times fewer CU per instruction.
+description: Alpha docs for anchor-lang-v2, the pinocchio-based Anchor runtime.
+autoCards: false
 ---
 
-`anchor-lang-v2` is the next-generation Anchor runtime, built on [pinocchio](https://github.com/anza-xyz/pinocchio) and `#![no_std]{:rs}` by default. v2 is a drop-in replacement for v1 that produces up to **94% smaller binaries** and **3 to 6 times fewer CU per instruction**.
+Anchor is a framework for Solana programs. It provides a Rust eDSL for writing programs, an IDL format for describing them, generated client surfaces, and a CLI for the workspace loop.
+
+`anchor-lang-v2` is the alpha runtime for this version of Anchor. It is pinocchio-based, `#![no_std]{:rs}`, zero-copy by default for fixed-size accounts, and organized around traits so account wrappers, constraints, CPI helpers, and IDL metadata can be extended from downstream crates.
 
 <Callout variant="warning" title="Alpha">
-  v2 is in alpha. It has not been audited, is not on `crates.io`, and APIs may break between commits. Depend on it via git on the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch. The v1 (`lang/`) code in the same repository remains the stable, published path.
+  This version is alpha software. It has not been audited, is not published on `crates.io`, and APIs may break between commits. Depend on it from git on the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch.
 </Callout>
 
-## Why v2
+## Design
 
-1. v2 swaps v1's `solana_program` foundation for pinocchio and drops `std` entirely, replacing the heavy macro generation with trait dispatch. The bench numbers below quantify what that buys you.
+Anchor programs are written as Rust handlers plus account validation structs. The runtime loads accounts, verifies constraints, derives PDAs, emits IDL metadata, and dispatches instructions into your handlers.
 
-2. Most v1 programs port with the renames in [Migrating from v1](/docs/v2/migration/). Larger programs that lean on v1-shape logging can opt into a `compat` feature that restores helpers like `debug!{:rs}`.
-
-3. Most of v2's logic lives behind traits rather than inside the macro, so the core derive is materially smaller and third-party crates can ship new account primitives and constraint markers without forking. See [Extensibility](/docs/v2/extensibility/).
-
-4. Safer APIs steer users away from common v1 footguns. Whole classes of runtime bugs become compile errors, and fuzzing, static analysis, and formal verification are first-class concerns rather than afterthoughts.
-
-5. `$ [34manchor[0m debugger{:ansi}` rounds out the toolchain. It ships a TUI that steps through SBF instructions per test, built on the same register traces that `$ [34manchor[0m test [2m--profile[0m{:ansi}` consumes for flamegraphs.
+The default account model is fixed-size and zero-copy. Use `Account<T>{:rs}` for Pod-backed account state, and use `BorshAccount<T>{:rs}` when an account needs variable-length fields such as `Vec{:rs}` or `String{:rs}`. CPI uses borrow-tracked `CpiHandle<'a>{:rs}` values so typed account access and cross-program calls share the same safety model.
 
 ## Bench numbers
 
 <Callout variant="example" title="Bench programs">
-  Worked programs live under [`bench/programs/`](https://github.com/solana-foundation/anchor/tree/anchor-next/bench/programs), paired with v1 for head-to-head comparison.
+  Worked programs live under [`bench/programs/`](https://github.com/solana-foundation/anchor/tree/anchor-next/bench/programs). Binary sizes and CU ranges below are from the current Anchor programs in this branch.
 </Callout>
 
-| Program | Description | Binary | CU range | Bin ↓ | CU ↓ |
+| Program | Description | Binary | CU range | Bin down | CU down |
 | --- | --- | --- | --- | --- | --- |
-| `helloworld` | Single-instruction counter | 6.9 KB | 1,382 | 18× | 4.2× |
-| `prop-amm` | Oracle feed with asm fast-path | 9.2 KB | 26-1,382 | 15× | 3.1-50× |
-| `vault` | Single-depositor SOL vault | 5.9 KB | 403-1,910 | 18× | 3.0-6.1× |
-| `nested` | Shared-validation via `Nested<T>{:rs}` | 13 KB | 475-2,745 | 12× | 7.2-10× |
-| `multisig` | Four-instruction SOL multisig | 31 KB | 476-2,362 | 5.3× | 3.0-9.1× |
+| `helloworld` | Single-instruction counter | 6.4 KB | 1,381 | 19x | 4.2x |
+| `prop-amm` | Oracle feed with asm fast-path | 8.6 KB | 26-1,375 | 16x | 3.1-50x |
+| `vault` | Single-depositor SOL vault | 5.4 KB | 389-1,899 | 20x | 3.0-6.4x |
+| `nested` | Shared validation via `Nested<T>{:rs}` | 12.4 KB | 473-2,716 | 13x | 7.3-10x |
+| `multisig` | Four-instruction SOL multisig | 31 KB | 469-3,016 | 5.5x | 3.0-9.2x |
 
-## What's in this section
+## Where to start
+
+<CardGrid>
+
+<Card icon="download" title="Installation" href="/docs/v2/get-started/installation/">
+
+Install the CLI from `anchor-next` and add git dependencies for `anchor-lang-v2`, `anchor-spl-v2`, and `anchor-v2-testing`.
+
+</Card>
+
+<Card icon="code" title="First program" href="/docs/v2/get-started/first-program/">
+
+Scaffold a LiteSVM project and walk through the generated program, accounts, test, and profiling commands.
+
+</Card>
+
+<Card icon="rotate" title="Migrating from v1" href="/docs/v2/get-started/migrating-from-v1/">
+
+Port an existing v1 program with the rename table and account-model changes.
+
+</Card>
+
+<Card icon="file-text" title="Account data model" href="/docs/v2/programs/account-data-model/">
+
+Understand why `Account<T>{:rs}` is zero-copy by default and when to use `BorshAccount<T>{:rs}` instead.
+
+</Card>
+
+</CardGrid>

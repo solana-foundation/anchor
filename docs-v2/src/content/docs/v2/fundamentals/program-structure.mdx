@@ -1,0 +1,95 @@
+---
+title: Program structure
+description: "How Anchor programs are organized around `#![no_std]{:rs}`, `#[program]{:rs}`, handlers, and generated modules."
+---
+
+An Anchor program declares a program id, marks one module with `#[program]{:rs}`, and declares one `#[derive(Accounts)]{:rs}` struct per handler. Handlers take `&mut Context<T>{:rs}`, and the crate is `#![no_std]{:rs}` compatible.
+
+Most programs keep their on-chain entrypoint in `programs/<program-name>/src/lib.rs`. The file usually reads top to bottom as imports, program id, instruction handlers, account validation structs, and account data structs. The framework turns those ordinary Rust items into the Solana entrypoint, account parser, IDL metadata, and client-facing instruction builders.
+
+```rust title="programs/counter/src/lib.rs" showLineNumbers=false
+use anchor_lang_v2::prelude::*;
+
+declare_id!("Counter111111111111111111111111111111111111");
+
+#[program]
+pub mod counter {
+    use super::*;
+
+    pub fn initialize(ctx: &mut Context<Initialize>) -> Result<()> {
+        ctx.accounts.counter.count = 0;
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct Initialize {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(init, payer = payer)]
+    pub counter: Account<Counter>,
+    pub system_program: Program<System>,
+}
+
+#[account]
+pub struct Counter {
+    pub count: u64,
+}
+```
+
+Each top-level item has a specific role:
+
+- `declare_id!(){:rs}` records the program address expected by the binary.
+- `#[program]{:rs}` marks the module whose public functions become instructions.
+- `Context<Initialize>{:rs}` gives the handler access to validated accounts, typed bumps, the program id, and remaining accounts.
+- `#[derive(Accounts)]{:rs}` generates account loading, validation, PDA bump discovery, and client account metadata for `Initialize{:rs}`.
+- `#[account]{:rs}` marks `Counter{:rs}` as program-owned account data. Fixed-size data uses `Account<T>{:rs}` with a Pod layout. Variable-length state belongs in `BorshAccount<T>{:rs}`.
+
+The example keeps the handler small on purpose. Anchor account constraints do the runtime checks before `initialize(){:rs}` runs, then the handler mutates the already-validated `counter{:rs}` account.
+
+## Handler dispatch
+
+`#[program]{:rs}` generates the entrypoint and a discriminator-keyed dispatcher. By default, each handler gets the first 8 bytes of `sha256("global:" + handler_name){:rs}` as its discriminator, matching Anchor's familiar instruction-data shape.
+
+The first parameter is always the instruction context. Any additional parameters become instruction data encoded by the generated client and decoded before the handler is called. A handler can return `Result<()>` or `Result<T>{:rs}` where `T{:rs}` is a supported return type for the surrounding tooling.
+
+CU-sensitive programs can use compact one-byte discriminators:
+
+```rust title="lib.rs" showLineNumbers=false
+#[program]
+pub mod vault {
+    use super::*;
+
+    #[discrim = 0]
+    pub fn deposit(ctx: &mut Context<Deposit>, amount: u64) -> Result<()> {
+        // ...
+        Ok(())
+    }
+
+    #[discrim = 1]
+    pub fn withdraw(ctx: &mut Context<Withdraw>, amount: u64) -> Result<()> {
+        // ...
+        Ok(())
+    }
+}
+```
+
+If one handler in the module uses `#[discrim = N]{:rs}`, every handler in that module must declare a unique byte discriminator.
+
+## Generated modules
+
+The program macro emits the same kinds of generated surfaces that clients and tests rely on:
+
+- `program::instruction::*{:rs}` structs that implement `InstructionData{:rs}`
+- `program::accounts::*{:rs}` structs that implement `ToAccountMetas{:rs}`
+- typed `Bumps{:rs}` for each account struct
+- IDL print hooks behind `idl-build`
+- `program::cpi::*{:rs}` wrappers behind the `cpi` feature
+
+Those generated modules are why the LiteSVM template can build instructions with normal Rust structs instead of hand-assembling byte arrays and account metas.
+
+The generated modules are compile-time output from the macros, not source files checked into the program. Tests and CPI callers can still import them as normal Rust modules because the macro expands them into the crate.
+
+## `#![no_std]{:rs}` by default
+
+`anchor-lang-v2` itself is `#![no_std]{:rs}`. The default `alloc` feature is on, so user programs can still use `Vec{:rs}`, `String{:rs}`, and generated macro code that needs allocation. Disabling `alloc` is possible, but most real programs should keep the default feature set.

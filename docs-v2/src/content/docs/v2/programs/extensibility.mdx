@@ -3,7 +3,7 @@ title: Extensibility
 description: How to write your own account primitives and constraint markers without forking the Anchor macro.
 ---
 
-In v1, anything the macro did not already support meant forking the derive and maintaining a parallel branch of Anchor. v2 moves most of that logic out of the macro and behind traits, so anyone can ship new account primitives, constraint markers, or program-ID identities from a separate crate without touching `anchor-lang-v2`.
+Anchor moves account loading, constraint checks, program identities, and discriminator behavior behind traits. That lets downstream crates ship new account primitives, constraint markers, or program-ID identities without changing the derive macro.
 
 The core trait surface that extensions implement is intentionally small:
 
@@ -16,7 +16,7 @@ The core trait surface that extensions implement is intentionally small:
 
 ## `AnchorAccount{:rs}`
 
-Implementing `AnchorAccount{:rs}` on a wrapper type is what makes it usable as a field in `#[derive(Accounts)]{:rs}`. The trait extends `Deref<Target = Self::Data>{:rs}`, so consumers can reach the inner data directly through `&*account{:rs}`. The required methods are `load{:rs}`, `account{:rs}`, and (optionally) `load_mut{:rs}`, `exit{:rs}`, and `close{:rs}`; `cpi_handle{:rs}` and `cpi_handle_mut{:rs}` come with default impls:
+Implementing `AnchorAccount{:rs}` on a wrapper type is what makes it usable as a field in `#[derive(Accounts)]{:rs}`. The trait extends `Deref<Target = Self::Data>{:rs}`, so consumers can reach the inner data directly through `&*account{:rs}`. The required methods are `load{:rs}`, `account{:rs}`, and (optionally) `load_mut{:rs}`, `exit{:rs}`, and `close{:rs}`. `cpi_handle{:rs}` and `cpi_handle_mut{:rs}` come with default impls:
 
 ```rust title="my_wrapper.rs" showLineNumbers=false
 use anchor_lang_v2::prelude::*;
@@ -71,7 +71,7 @@ pub struct UseMine {
 ```
 
 <Callout variant="example" title="A third-party wrapper in the wild">
-  [`anchor-dynamic-account`](https://github.com/chen-robert/anchor-dynamic-account) adds zero-copy accounts with auto-reallocating `Vec<T>{:rs}` and `String{:rs}` tails. The entire wrapper lives in a third-party crate, with no changes required to v2 itself.
+  [`anchor-dynamic-account`](https://github.com/chen-robert/anchor-dynamic-account) adds zero-copy accounts with auto-reallocating `Vec<T>{:rs}` and `String{:rs}` tails. The entire wrapper lives in a third-party crate, with no changes required to the core runtime.
 </Callout>
 
 ## `AccountConstraint<A>{:rs}`
@@ -93,7 +93,7 @@ pub trait AccountConstraint<A> {
 - `update{:rs}` runs inside an `update(...){:rs}` constraint clause
 - `exit{:rs}` always runs during the account exit phase
 
-Once the impl is in scope, a constraint marker named `my_namespace::key{:rs}` becomes available as `#[account(my_namespace::key = value)]{:rs}` on any account field. The `anchor-spl-v2` crate is built on top of this pattern, using it to implement `token::*{:rs}`, `mint::*{:rs}`, and `associated_token::*{:rs}` as a downstream crate rather than baking them into the core derive.
+Once the impl is in scope, a constraint marker named `my_namespace::key{:rs}` becomes available as `#[account(my_namespace::key = value)]{:rs}` on any account field. The `anchor-spl-v2` crate is built on top of this pattern, using it to implement `token::*{:rs}` and `mint::*{:rs}` as a downstream crate rather than baking them into the core derive. Its `associated_token{:rs}` module currently exposes associated token address derivation helpers.
 
 ## `Id{:rs}` for `Program<T: Id>{:rs}`
 

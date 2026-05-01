@@ -26,3 +26,4 @@ test-keypair.json
 tsconfig.tsbuildinfo
 .vscode
 *.stackdump
+CODEX_NOTES.md

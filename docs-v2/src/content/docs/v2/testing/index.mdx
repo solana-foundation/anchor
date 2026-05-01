@@ -1,0 +1,23 @@
+---
+title: Testing and debugging
+description: Test programs with LiteSVM, profile them, debug SBF traces, and generate coverage.
+autoCards: false
+---
+
+The testing loop centers on Rust tests and trace-backed tooling. `anchor-v2-testing` wraps LiteSVM, `$ [34manchor[0m test [2m--profile[0m{:ansi}` renders flamegraphs, `$ [34manchor[0m debugger{:ansi}` opens an instruction stepper, and `$ [34manchor[0m coverage{:ansi}` emits LCOV from the same register traces.
+
+<CardGrid>
+
+<Card title="LiteSVM" href="/docs/v2/testing/litesvm/">
+Use `anchor_v2_testing::svm(){:rs}` in Rust integration tests.
+</Card>
+
+<Card title="Profiling and debugger" href="/docs/v2/testing/profiling-and-debugger/">
+Record per-test SBF traces, render flamegraphs, and step through instructions in the TUI.
+</Card>
+
+<Card title="Coverage" href="/docs/v2/testing/coverage/">
+Generate source-level LCOV from SBF register traces.
+</Card>
+
+</CardGrid>

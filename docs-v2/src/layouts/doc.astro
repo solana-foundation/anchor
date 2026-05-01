@@ -22,6 +22,10 @@ interface Props {
   doc: Doc
   headings: MarkdownHeading[]
   sidebar: SidebarNode[]
+  versionSidebars?: {
+    v1: SidebarNode[]
+    v2: SidebarNode[]
+  }
   prev: FlatDoc | null
   next: FlatDoc | null
   editUrl: string | null
@@ -36,6 +40,7 @@ const {
   doc,
   headings,
   sidebar,
+  versionSidebars,
   prev,
   next,
   editUrl,
@@ -65,8 +70,8 @@ const renderedIndexChildren = await Promise.all(
   {editUrl && <meta slot="head" name="docs-edit-url" content={editUrl} />}
 
   <div class="grid flex-1 grid-cols-1 xl:grid-cols-[16rem_minmax(0,1fr)]">
-    <DocsAside tree={sidebar} />
-    <MobileSidebar tree={sidebar} />
+    <DocsAside tree={sidebar} versionTrees={versionSidebars} />
+    <MobileSidebar tree={sidebar} versionTrees={versionSidebars} />
 
     <div class="flex flex-col overflow-x-clip xl:pt-16 xl:pb-6">
       <header class="bg-background/80 sticky top-0 z-40 border-b backdrop-blur-sm xl:hidden">

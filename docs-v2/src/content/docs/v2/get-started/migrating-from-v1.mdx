@@ -1,0 +1,100 @@
+---
+title: Migrating from v1
+description: Port a v1 program to v2 with the main rename and account-model changes.
+---
+
+Most v1 programs port to v2 with mechanical renames plus one important account-model decision. Fixed-size state should use zero-copy `Account<T>{:rs}`, while variable-length state should use `BorshAccount<T>{:rs}`.
+
+## Rename table
+
+| v1 | v2 |
+| --- | --- |
+| `use anchor_lang::prelude::*{:rs}` | `use anchor_lang_v2::prelude::*{:rs}` |
+| `solana_program{:rs}` | `pinocchio{:rs}` or v2 re-exports |
+| `std{:rs}` required | `#![no_std]{:rs}` compatible, with `alloc{:rs}` on by default |
+| `<'info>{:rs}` lifetimes on wrappers | removed |
+| `Context<T>{:rs}` handlers | `&mut Context<T>{:rs}` handlers |
+| `Pubkey{:rs}` | `Address{:rs}` |
+| `Account<'info, T>{:rs}` for fixed-size data | `Account<T>{:rs}` with `T: Pod{:rs}` |
+| `Account<'info, T>{:rs}` for `Vec{:rs}`, `String{:rs}`, payload enums | `BorshAccount<T>{:rs}` |
+| `AccountLoader<'info, T>{:rs}` zero-copy | `Account<T>{:rs}` |
+| `ctx.bumps.get("name"){:rs}` | `ctx.bumps.name{:rs}` |
+| `has_one = field{:rs}` | `address = parent.field{:rs}` on the sibling account |
+
+<Callout variant="note" title="AccountLoader means something else in v2">
+  v2 still has a type named `AccountLoader{:rs}`, but it is the sequential account cursor used internally by generated validation code. It is not the v1 user-facing zero-copy wrapper.
+</Callout>
+
+## Account data choice
+
+`Account<T>{:rs}` is now zero-copy by default. The account bytes are cast directly into `T{:rs}`, so `T{:rs}` must be fixed-size and Pod-compatible:
+
+```rust title="v2 fixed-size state" showLineNumbers=false
+#[account]
+pub struct Counter {
+    pub count: u64,
+    pub authority: Address,
+}
+
+#[derive(Accounts)]
+pub struct Increment {
+    #[account(mut)]
+    pub counter: Account<Counter>,
+}
+```
+
+For variable-length data, use `#[account(borsh)]{:rs}` and `BorshAccount<T>{:rs}`:
+
+```rust title="v2 variable-length state" showLineNumbers=false
+#[account(borsh)]
+pub struct Profile {
+    pub owner: Address,
+    pub name: String,
+    pub friends: Vec<Address>,
+}
+
+#[derive(Accounts)]
+pub struct EditProfile {
+    #[account(mut)]
+    pub profile: BorshAccount<Profile>,
+}
+```
+
+## Constraint changes
+
+The v1 `has_one{:rs}` constraint still parses, but v2 emits a deprecation warning. Prefer moving the check onto the sibling account with `address{:rs}`:
+
+```rust title="v1 style" del={3} showLineNumbers=false
+#[derive(Accounts)]
+pub struct Withdraw {
+    #[account(has_one = creator)]
+    pub config: Account<Config>,
+    pub creator: UncheckedAccount,
+}
+```
+
+```rust title="v2 style" add={5} showLineNumbers=false
+#[derive(Accounts)]
+pub struct Withdraw {
+    pub config: Account<Config>,
+    #[account(address = config.creator)]
+    pub creator: UncheckedAccount,
+}
+```
+
+`address{:rs}` is more general. The right-hand side can be any expression, not only a field with the same name as a sibling account.
+
+## Compat feature
+
+The `compat` feature exposes `debug!{:rs}`, a v1-shaped logging macro that accepts Rust format strings by routing through `alloc::format!{:rs}`:
+
+```toml title="Cargo.toml" showLineNumbers=false
+[dependencies]
+anchor-lang-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next", features = ["compat"] }
+```
+
+Keep it off in production unless you need that logging shape. It allocates and is more expensive than v2's native `msg!{:rs}`.
+
+## Still alpha
+
+Some surfaces are intentionally incomplete while v2 is alpha. Less-common `anchor-spl` constraints, parts of the TypeScript publishing story, and some client-codegen shapes are still settling. See [Alpha limitations](/docs/v2/reference/alpha-limitations/) before porting a large production program.

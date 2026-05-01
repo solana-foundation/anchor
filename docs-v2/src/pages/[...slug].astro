@@ -31,6 +31,13 @@ const { Content, headings } = await render(doc)
 
 const href = docHref(doc.id)
 const sidebar = await getSidebarTree(href)
+const isUpdatesDoc = doc.id.startsWith('updates/')
+const versionSidebars = isUpdatesDoc
+  ? {
+      v1: await getSidebarTree(`${href}?version=v1`),
+      v2: await getSidebarTree(`${href}?version=v2`),
+    }
+  : undefined
 const { prev, next } = await getPrevNext(href)
 const editUrl = getEditUrl(doc)
 
@@ -49,6 +56,7 @@ const indexChildren = isIndex && doc.data.autoCards !== false ? await getIndexCh
   doc={doc}
   headings={headings}
   sidebar={sidebar}
+  versionSidebars={versionSidebars}
   prev={prev}
   next={next}
   editUrl={editUrl}

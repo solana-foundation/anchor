@@ -1,0 +1,10 @@
+import type { MetaFile } from '@/types'
+
+export default {
+  label: 'Security and production',
+  items: {
+    'secure-by-default': { order: 0 },
+    'production-builds': { order: 1 },
+    'performance-and-optimizations': { order: 2 },
+  },
+} satisfies MetaFile

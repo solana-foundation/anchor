@@ -1,0 +1,78 @@
+---
+title: PDAs and resolution
+description: PDA constraints, bump generation, account resolution, and IDL seed metadata.
+---
+
+PDA validation is declared on account fields with `seeds{:rs}` and `bump{:rs}`:
+
+```rust showLineNumbers=false
+#[derive(Accounts)]
+pub struct Initialize {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(init, payer = payer, seeds = [b"counter", payer.address().as_ref()], bump)]
+    pub counter: Account<Counter>,
+    pub system_program: Program<System>,
+}
+```
+
+The generated bumps struct stores the canonical bump as a typed field:
+
+```rust showLineNumbers=false
+ctx.accounts.counter.bump = ctx.bumps.counter;
+```
+
+## Literal seed optimization
+
+If all seeds are byte literals, Anchor can run PDA discovery at macro expansion time and bake the result into generated code:
+
+```rust showLineNumbers=false
+#[account(seeds = [b"global-config"], bump)]
+pub config: Account<Config>,
+```
+
+Seeds that depend on runtime accounts or instruction arguments still use the runtime path.
+
+## Explicit bumps
+
+Stored bumps avoid a runtime search when reloading an account:
+
+```rust showLineNumbers=false
+#[account(seeds = [b"counter"], bump = counter.bump)]
+pub counter: Account<Counter>,
+```
+
+Use this for accounts that store their own bump during initialization.
+
+## Resolved account structs
+
+For client and test code, `#[derive(Accounts)]{:rs}` emits account-meta builders. Full structs include every account. Resolved structs include only fields the caller must provide while PDAs and well-known programs are derived or filled in:
+
+```rust showLineNumbers=false
+let metas = multisig_v2::accounts::CreateResolved {
+    creator: creator.pubkey(),
+}
+.to_account_metas(None);
+```
+
+If `Create{:rs}` contains a `config{:rs}` PDA derived from `creator{:rs}` and a `system_program{:rs}`, the resolved form supplies only `creator{:rs}`. The builder derives `config{:rs}` and inserts the System Program account in the right position.
+
+## IDL seed metadata
+
+Anchor emits PDA metadata into the IDL when it can inspect the seed list. Array-form seeds get the richest output:
+
+```rust showLineNumbers=false
+#[account(seeds = [b"profile", user.address().as_ref(), slug.as_ref()], bump)]
+pub profile: Account<Profile>,
+```
+
+For array-form seeds, the macro can classify literals as const seeds, sibling accounts as account seeds, and instruction args as arg seeds. Const-evaluable expressions such as constant paths are rendered through the IDL build helper when they implement `AsRef<[u8]>{:rs}`.
+
+Opaque expression seeds are valid for runtime validation, but client-side auto-derivation has less information:
+
+```rust showLineNumbers=false
+#[account(seeds = tag_seeds(), bump)]
+pub data: Account<Data>,
+```
+
+Use array-form seeds for accounts that clients should auto-resolve. Use expression-form seeds when the runtime abstraction matters more than generated client metadata.

@@ -55,7 +55,9 @@ import Icon from '@/components/icon.astro'
 
   let pagefindPromise: Promise<Pagefind | null> | null = null
 
-  const PAGEFIND_URL = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/pagefind/pagefind.js`
+  const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '')
+  const PAGEFIND_URL = `${BASE_PATH}/pagefind/pagefind.js`
+  const VERSION_STORAGE_KEY = 'anchor-docs-version'
 
   async function loadPagefind(): Promise<Pagefind | null> {
     if (pagefindPromise) return pagefindPromise
@@ -86,6 +88,37 @@ import Icon from '@/components/icon.astro'
       .replace(/<\/mark>/g, '</mark>')
   }
 
+  function searchScopePrefixes(): string[] {
+    const path = window.location.pathname
+    const versionPrefix = (version: 'v1' | 'v2') => `${BASE_PATH}/${version}/`
+    const updatesPrefix = `${BASE_PATH}/updates/`
+
+    if (path === `${BASE_PATH}/v1` || path.startsWith(versionPrefix('v1'))) {
+      return [versionPrefix('v1'), updatesPrefix]
+    }
+    if (path === `${BASE_PATH}/v2` || path.startsWith(versionPrefix('v2'))) {
+      return [versionPrefix('v2'), updatesPrefix]
+    }
+    if (path.startsWith(updatesPrefix)) {
+      const queryVersion = new URLSearchParams(window.location.search).get('version')
+      const storedVersion = localStorage.getItem(VERSION_STORAGE_KEY)
+      const version =
+        queryVersion === 'v1' || queryVersion === 'v2'
+          ? queryVersion
+          : storedVersion === 'v1'
+            ? 'v1'
+            : 'v2'
+      return [versionPrefix(version), updatesPrefix]
+    }
+    return []
+  }
+
+  function isInSearchScope(url: string, prefixes: string[]): boolean {
+    if (prefixes.length === 0) return true
+    const path = new URL(url, window.location.origin).pathname
+    return prefixes.some((prefix) => path === prefix.slice(0, -1) || path.startsWith(prefix))
+  }
+
   async function runSearch(query: string) {
     const results = document.getElementById('search-results')
     if (!results) return
@@ -113,7 +146,17 @@ import Icon from '@/components/icon.astro'
     }
 
     const { results: found } = await pagefind.search(query)
-    if (found.length === 0) {
+    const scopePrefixes = searchScopePrefixes()
+    const top = []
+
+    for (const result of found) {
+      const data = await result.data()
+      if (!isInSearchScope(data.url, scopePrefixes)) continue
+      top.push(data)
+      if (top.length >= 8) break
+    }
+
+    if (top.length === 0) {
       const p = document.createElement('p')
       p.className = 'text-muted-foreground px-3 py-8 text-center text-sm'
       p.textContent = 'No results found.'
@@ -124,7 +167,6 @@ import Icon from '@/components/icon.astro'
     const list = document.createElement('ul')
     list.className = 'flex flex-col gap-1'
 
-    const top = await Promise.all(found.slice(0, 8).map((r) => r.data()))
     top.forEach((data, index) => {
       const li = document.createElement('li')
       const a = document.createElement('a')

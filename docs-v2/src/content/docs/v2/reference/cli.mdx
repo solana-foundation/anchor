@@ -1,0 +1,295 @@
+---
+title: Anchor CLI
+description: CLI reference for project scaffolding, builds, tests, profiling, debugger, coverage, IDL, and workspace commands.
+---
+
+The Anchor CLI manages an Anchor workspace by scaffolding projects, building programs, running tests, generating IDLs, deploying programs, and driving trace tooling.
+
+This alpha is installed from git:
+
+```ansi showLineNumbers=false
+$ [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor.git [2m--branch[0m anchor-next anchor-cli [2m--force[0m
+```
+
+<Callout variant="warning" title="Overwrites `anchor{:ansi}` on PATH">
+  `$ [34mcargo[0m install{:ansi}` overwrites the `anchor` binary on your `PATH`, including one managed by AVM. To keep another Anchor install available, run this binary from a source checkout.
+</Callout>
+
+Run `$ [34manchor[0m [2m--help[0m{:ansi}` or `$ [34manchor[0m [2m<command>[0m [2m--help[0m{:ansi}` for the exact flags supported by your checkout.
+
+## Common commands
+
+| Command | Purpose |
+| --- | --- |
+| `$ [34manchor[0m init{:ansi}` | Create a new workspace. |
+| `$ [34manchor[0m new{:ansi}` | Add a program to an existing workspace. |
+| `$ [34manchor[0m build{:ansi}` | Build workspace programs and emit IDLs. |
+| `$ [34manchor[0m test{:ansi}` | Build, deploy when needed, and run tests. |
+| `$ [34manchor[0m test [2m--profile[0m{:ansi}` | Run tests with register tracing and flamegraphs. |
+| `$ [34manchor[0m debugger{:ansi}` | Open the instruction-level debugger. |
+| `$ [34manchor[0m coverage{:ansi}` | Generate LCOV from SBF register traces. |
+| `$ [34manchor[0m idl{:ansi}` | Build, fetch, initialize, and manage IDLs. |
+| `$ [34manchor[0m account{:ansi}` | Deserialize an account using an IDL type. |
+| `$ [34manchor[0m keys{:ansi}` | Inspect and sync program keypairs. |
+| `$ [34manchor[0m program{:ansi}` | Deploy and manage programs. |
+
+## `[34manchor[0m init{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m init counter [2m--no-install[0m
+```
+
+Initializes a new workspace. The default program template is the modular Rust template, and the default test template is LiteSVM.
+
+The generated workspace includes:
+
+<FileTree>
+  <Dir name="programs" comment="Solana program crates" />
+  <Dir name="migrations" comment="Deploy scripts" />
+  <Dir name="tests" comment="Workspace-level tests when selected" />
+  <File name="Anchor.toml" comment="Anchor workspace config" />
+  <File name="Cargo.toml" comment="Rust workspace config" />
+  <File name="package.json" comment="JavaScript dependencies when installed" />
+</FileTree>
+
+Useful flags:
+
+| Flag | Description |
+| --- | --- |
+| `[2m--no-install[0m{:ansi}` | Skip JavaScript dependency installation. |
+| `[2m--no-git[0m{:ansi}` | Skip git initialization. |
+| `[2m--template[0m [2mmultiple[0m{:ansi}` | Use the modular Rust program layout. This is the default. |
+| `[2m--template[0m [2msingle[0m{:ansi}` | Use a single `lib.rs` program layout. |
+| `[2m--test-template[0m [2mlitesvm[0m{:ansi}` | Generate Rust LiteSVM tests. This is the default. |
+| `[2m--test-template[0m [2mmollusk[0m{:ansi}` | Generate Mollusk Rust tests. |
+| `[2m--javascript[0m{:ansi}` | Use JavaScript instead of TypeScript for JS templates. |
+| `[2m--package-manager[0m [2mpnpm[0m{:ansi}` | Choose a package manager instead of auto-detecting. |
+
+The LiteSVM template sets `skip_local_validator = true{:toml}` in `Anchor.toml` and adds this feature to the program crate:
+
+```toml showLineNumbers=false
+[features]
+profile = ["anchor-v2-testing/profile"]
+```
+
+That feature is what powers `$ [34manchor[0m test [2m--profile[0m{:ansi}`, `$ [34manchor[0m debugger{:ansi}`, and `$ [34manchor[0m coverage{:ansi}`.
+
+## `[34manchor[0m new{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m new escrow
+```
+
+Creates a new program under `programs/` in an existing workspace. It uses the modular template by default:
+
+```ansi showLineNumbers=false
+$ [34manchor[0m new escrow [2m--template[0m multiple
+$ [34manchor[0m new prototype [2m--template[0m single
+```
+
+`$ [34manchor[0m new{:ansi}` does not create the workspace-level test harness. Use `$ [34manchor[0m init{:ansi}` when starting a new project from scratch.
+
+## `[34manchor[0m build{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m build
+```
+
+Builds the workspace programs through `$ [34mcargo[0m build-sbf{:ansi}`, writes deploy artifacts under `target/deploy/`, and emits IDLs under `target/idl/`.
+
+Useful flags:
+
+| Flag | Description |
+| --- | --- |
+| `[2m--program-name[0m [2m<name>[0m{:ansi}` | Build a single program. |
+| `[2m--no-idl[0m{:ansi}` | Build the SBF program without emitting IDL. |
+| `[2m--idl[0m [2m<dir>[0m{:ansi}` | Write IDL JSON to a custom directory. |
+| `[2m--idl-ts[0m [2m<dir>[0m{:ansi}` | Write TypeScript IDL types to a custom directory. |
+| `[2m--ignore-keys[0m{:ansi}` | Skip the program-keypair and `declare_id!{:rs}` mismatch check. |
+| `[2m--verifiable[0m{:ansi}` | Build in a deterministic Docker environment. |
+| `[2m--no-docs[0m{:ansi}` | Suppress doc strings in IDL output. |
+
+Forward arguments to `$ [34mcargo[0m build-sbf{:ansi}` after `[2m--[0m{:ansi}`:
+
+```ansi showLineNumbers=false
+$ [34manchor[0m build [2m--[0m [2m--features[0m my-feature
+```
+
+## `[34manchor[0m test{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m test
+```
+
+Builds the workspace, deploys programs when needed, and runs the configured test script.
+
+In LiteSVM workspaces, the scaffolded `skip_local_validator = true{:toml}` setting means `$ [34manchor[0m test{:ansi}` runs Rust tests without starting a validator. If the setting is absent and the configured cluster is localnet, the CLI can still start a local validator unless `[2m--skip-local-validator[0m{:ansi}` is passed.
+
+Useful flags:
+
+| Flag | Description |
+| --- | --- |
+| `[2m--program-name[0m [2m<name>[0m{:ansi}` | Build and test one program. |
+| `[2m--skip-build[0m{:ansi}` | Reuse existing build artifacts. |
+| `[2m--skip-deploy[0m{:ansi}` | Run tests against already deployed programs. |
+| `[2m--skip-local-validator[0m{:ansi}` | Do not start a local validator. |
+| `[2m--no-idl[0m{:ansi}` | Skip IDL generation. |
+| `[2m--run[0m [2m<path>[0m{:ansi}` | Run tests under a specific path. |
+| `[2m--validator[0m [2msurfpool[0m{:ansi}` | Use Surfpool as the local network backend. |
+| `[2m--validator[0m [2mlegacy[0m{:ansi}` | Use `$ [34msolana-test-validator[0m{:ansi}`. |
+
+### Profiling
+
+```ansi showLineNumbers=false
+$ [34manchor[0m test [2m--profile[0m
+```
+
+Records per-test SBF register traces and renders flamegraph SVGs under `target/anchor-v2-profile/`. This requires Rust tests that call `anchor_v2_testing::svm(){:rs}` and a crate feature that forwards to `anchor-v2-testing/profile`.
+
+## `[34manchor[0m debugger{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m debugger
+$ [34manchor[0m debugger initialize
+$ [34manchor[0m debugger [2m--skip-run[0m
+```
+
+Runs the same trace-producing path as `$ [34manchor[0m test [2m--profile[0m{:ansi}`, then opens a TUI over captured instructions. The optional positional argument filters captured traces to tests whose name contains that substring.
+
+Useful flags:
+
+| Flag | Description |
+| --- | --- |
+| `[2m--skip-run[0m{:ansi}` | Open the TUI over existing traces in `target/anchor-v2-profile/`. |
+| `[2m--skip-build[0m{:ansi}` | Skip `$ [34mcargo[0m build-sbf{:ansi}` when the deploy artifact is fresh. |
+| `[2m--skip-lint[0m{:ansi}` | Forwarded to the underlying test invocation. |
+| `[2m--gdb[0m{:ansi}` | Capture traces through the sbpf gdb-stub path. This is much slower. |
+
+The debugger only works with trace-producing Rust tests. If no traces are found, check that the tests call `anchor_v2_testing::svm(){:rs}` and that the program crate has `profile = ["anchor-v2-testing/profile"]{:toml}`.
+
+## `[34manchor[0m coverage{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m coverage
+```
+
+Builds programs with DWARF info, runs LiteSVM tests with register tracing, maps executed program counters back to Rust source lines, and writes LCOV.
+
+Useful flags:
+
+| Flag | Description |
+| --- | --- |
+| `[2m--skip-run[0m{:ansi}` | Generate coverage from existing traces. |
+| `[2m--skip-build[0m{:ansi}` | Skip `$ [34mcargo[0m build-sbf{:ansi}` when artifacts are fresh. |
+| `[2m--output[0m [2m<path>[0m{:ansi}` | Write LCOV somewhere other than `target/coverage/sbf.lcov`. |
+| `[2m--trace-dir[0m [2m<dir>[0m{:ansi}` | Read or write traces from a custom directory. |
+
+```ansi showLineNumbers=false
+$ [34manchor[0m coverage [2m--output[0m target/coverage/sbf.lcov
+$ [34manchor[0m coverage [2m--skip-run[0m [2m--trace-dir[0m target/coverage/traces
+```
+
+## `[34manchor[0m idl{:ansi}`
+
+The `idl` subcommand builds local IDL files and manages on-chain IDL metadata accounts.
+
+```ansi showLineNumbers=false
+$ [34manchor[0m idl build
+```
+
+Builds the IDL for the current program. Use `[2m-o[0m{:ansi}` to write JSON to a file and `[2m-t[0m{:ansi}` to write the generated TypeScript IDL type:
+
+```ansi showLineNumbers=false
+$ [34manchor[0m idl build [2m--program-name[0m counter [2m-o[0m target/idl/counter.json [2m-t[0m target/types/counter.ts
+```
+
+```ansi showLineNumbers=false
+$ [34manchor[0m idl init [2m-f[0m target/idl/counter.json [2m<program-id>[0m
+```
+
+Creates an on-chain IDL account for the given program and writes the IDL file into it.
+
+```ansi showLineNumbers=false
+$ [34manchor[0m idl fetch [2m-o[0m counter.json [2m<program-id>[0m
+```
+
+Fetches an on-chain IDL.
+
+```ansi showLineNumbers=false
+$ [34manchor[0m idl upgrade [2m-f[0m target/idl/counter.json [2m<program-id>[0m
+```
+
+Upgrades an existing on-chain IDL metadata account.
+
+Other useful IDL commands:
+
+| Command | Purpose |
+| --- | --- |
+| `$ [34manchor[0m idl type [2m<path/to/idl.json>[0m{:ansi}` | Generate a TypeScript type from an IDL file. |
+| `$ [34manchor[0m idl convert [2m<legacy-idl.json>[0m{:ansi}` | Convert a legacy IDL to the newer IDL spec. |
+| `$ [34manchor[0m idl create-buffer [2m-f[0m [2m<path/to/idl.json>[0m{:ansi}` | Create a buffer metadata account. |
+| `$ [34manchor[0m idl set-buffer-authority [2m<buffer>[0m [2m-n[0m [2m<new-authority>[0m{:ansi}` | Set a new authority on a buffer account. |
+| `$ [34manchor[0m idl write-buffer [2m<program-id>[0m [2m--buffer[0m [2m<buffer>[0m{:ansi}` | Write metadata from a buffer account. |
+| `$ [34manchor[0m idl close [2m<program-id>[0m{:ansi}` | Close a metadata account and recover rent. |
+
+Use on-chain IDLs carefully while this version is alpha because IDL shapes may change between commits.
+
+## `[34manchor[0m account{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m account [2m<program-name>[0m.[2m<AccountTypeName>[0m [2m<account-pubkey>[0m
+$ [34manchor[0m account [2m<program-name>[0m.[2m<AccountTypeName>[0m [2m<account-pubkey>[0m [2m--idl[0m [2m<path/to/idl.json>[0m
+```
+
+Fetches an account and deserializes it to JSON using an IDL type. Not every account wrapper is a borsh account with an Anchor discriminator. SPL accounts and Pod-backed zero-copy accounts have different layouts.
+
+## Workspace utilities
+
+### `[34manchor[0m keys{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m keys list
+$ [34manchor[0m keys sync
+```
+
+Lists program keypairs and syncs each program's `declare_id!(){:rs}` value with the keypair file.
+
+### `[34manchor[0m cluster{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m cluster list
+```
+
+Lists configured cluster endpoints.
+
+### `[34manchor[0m run{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m run [2m<script-name>[0m
+```
+
+Runs a script declared in the workspace's `Anchor.toml`.
+
+### `[34manchor[0m shell{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m shell
+```
+
+Starts a Node.js shell with an Anchor client configured from the local workspace. This workflow is most useful for IDL inspection and client experiments while TypeScript package support is alpha.
+
+### `[34manchor[0m clean{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m clean
+```
+
+Removes generated artifacts except program keypairs.
+
+### `[34manchor[0m verify{:ansi}`
+
+```ansi showLineNumbers=false
+$ [34manchor[0m verify [2m<program-id>[0m
+```
+
+Verifies that on-chain bytecode matches a locally compiled artifact. Use `$ [34manchor[0m build [2m--verifiable[0m{:ansi}` for deterministic builds.

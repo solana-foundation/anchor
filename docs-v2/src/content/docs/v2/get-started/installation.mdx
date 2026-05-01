@@ -1,0 +1,61 @@
+---
+title: Installation
+description: Install the Anchor CLI and depend on the alpha crates from the anchor-next branch.
+---
+
+The alpha crates have not been published to `crates.io` yet, so install the CLI directly from the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch:
+
+```ansi showLineNumbers=false
+$ [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor.git [2m--branch[0m anchor-next anchor-cli [2m--force[0m
+```
+
+<Callout variant="warning" title="Overwrites the anchor binary">
+  `$ [34mcargo[0m install{:ansi}` overwrites the `anchor` binary on your `PATH`. To keep another Anchor install available, run this binary from a source checkout instead of putting it first on `PATH`.
+</Callout>
+
+## macOS LTO workaround
+
+On macOS, the final link can fail with an error like `ld: could not parse bitcode object file ... Unknown attribute kind`. If that happens, disable LTO for this install:
+
+```ansi showLineNumbers=false
+$ CARGO_PROFILE_RELEASE_LTO=off [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor.git [2m--branch[0m anchor-next anchor-cli [2m--force[0m
+```
+
+## Building from a local checkout
+
+Use a local checkout when you want to inspect internals, patch the CLI, or run the debugger against the checked-in bench programs:
+
+```ansi showLineNumbers=false
+$ [34mgit[0m clone https://github.com/solana-foundation/anchor.git
+$ [34mcd[0m anchor
+$ [34mgit[0m checkout anchor-next
+$ [34mcargo[0m install [2m--path[0m cli [2m--force[0m
+```
+
+Prepend `CARGO_PROFILE_RELEASE_LTO=off` on macOS if you hit the LTO error above.
+
+## Program dependencies
+
+Programs depend on the Anchor crates by git:
+
+```toml title="Cargo.toml" showLineNumbers=false
+[dependencies]
+anchor-lang-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+anchor-spl-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+```
+
+The default `anchor-lang-v2` feature set is `alloc`, `guardrails`, and `account-resize`. Optional features include `const-rent`, `compat`, `idl-build`, and `testing`. See [Feature flags](/docs/v2/reference/feature-flags/) for the tradeoffs.
+
+## Test dependencies
+
+The default scaffold uses Rust tests with `anchor-v2-testing`:
+
+```toml title="Cargo.toml" showLineNumbers=false
+[dev-dependencies]
+anchor-v2-testing = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+
+[features]
+profile = ["anchor-v2-testing/profile"]
+```
+
+That `profile` feature is what `$ [34manchor[0m test [2m--profile[0m{:ansi}`, `$ [34manchor[0m debugger{:ansi}`, and `$ [34manchor[0m coverage{:ansi}` use to record SBF register traces.
