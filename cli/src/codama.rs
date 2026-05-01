@@ -15,7 +15,6 @@ use {
     serde_json::{json, Map, Value as JsonValue},
     std::{
         collections::{BTreeSet, HashMap},
-        ffi::OsStr,
         fs,
         path::{Path, PathBuf},
         process::{Command, Stdio},
@@ -171,23 +170,33 @@ pub fn generate(idl_path: String, base_path: String, languages: Vec<Language>) -
         .with_context(|| format!("Failed to write `{}`", staged_idl.display()))?;
 
     // 3. Build a Codama config pointing at the staged IDL with one script per
-    //    requested language. Paths in the config are resolved relative to the
-    //    config file itself, so we compute outputs relative to `stage_dir`.
+    //    requested language. We use absolute paths for both the IDL and the
+    //    output directories: Codama only resolves visitor *module* paths and
+    //    the `idl` field against the config file — visitor *args* are
+    //    forwarded to the renderer verbatim, and the renderer uses them with
+    //    `node:fs` calls that resolve against `process.cwd()` at render
+    //    time. Absolute paths sidestep that ambiguity (and the inevitable
+    //    "EACCES: mkdir '../../../...'" when the renderer happens to be
+    //    invoked from a deeper cwd).
+    let abs_base = base
+        .canonicalize()
+        .with_context(|| format!("Failed to resolve `{}`", base.display()))?;
+    let abs_idl = staged_idl
+        .canonicalize()
+        .with_context(|| format!("Failed to resolve `{}`", staged_idl.display()))?;
     let mut scripts = Map::new();
     for lang in &unique {
-        let out_dir = base.join(lang.id());
-        let rel = relative_from(&stage_dir, &out_dir).unwrap_or_else(|| out_dir.clone());
+        let out_dir = abs_base.join(lang.id());
         scripts.insert(
             lang.id().to_string(),
             json!({
                 "from": lang.renderer_package(),
-                "args": [rel.to_string_lossy()],
+                "args": [out_dir.to_string_lossy()],
             }),
         );
     }
-    let idl_rel = relative_from(&stage_dir, &staged_idl).unwrap_or_else(|| staged_idl.clone());
     let config = json!({
-        "idl": idl_rel.to_string_lossy(),
+        "idl": abs_idl.to_string_lossy(),
         "scripts": scripts,
     });
     let config_path = stage_dir.join("codama.json");
@@ -256,39 +265,6 @@ fn display_command(program: &str, args: &[String]) -> String {
         program.to_string()
     } else {
         format!("{program} {}", args.join(" "))
-    }
-}
-
-/// Produce `to` expressed relative to `from` when both share a prefix, falling
-/// back to `None` when no relative path is shorter than the absolute one.
-/// Codama's CLI resolves config-file paths relative to the config, so keeping
-/// them relative makes `<base>/.codama/codama.json` portable across moves.
-fn relative_from(from: &Path, to: &Path) -> Option<PathBuf> {
-    let from = from
-        .canonicalize()
-        .ok()
-        .unwrap_or_else(|| from.to_path_buf());
-    let to = to.canonicalize().ok().unwrap_or_else(|| to.to_path_buf());
-    let from_components: Vec<_> = from.components().collect();
-    let to_components: Vec<_> = to.components().collect();
-    let mut common = 0;
-    while common < from_components.len()
-        && common < to_components.len()
-        && from_components[common] == to_components[common]
-    {
-        common += 1;
-    }
-    let mut rel = PathBuf::new();
-    for _ in common..from_components.len() {
-        rel.push(OsStr::new(".."));
-    }
-    for c in &to_components[common..] {
-        rel.push(c.as_os_str());
-    }
-    if rel.as_os_str().is_empty() {
-        Some(PathBuf::from("."))
-    } else {
-        Some(rel)
     }
 }
 
@@ -1797,27 +1773,6 @@ mod tests {
             }
             other => panic!("expected Generate, got {other:?}"),
         }
-    }
-
-    #[test]
-    fn relative_from_handles_sibling_and_self_paths() {
-        let tmp = std::env::temp_dir().join("anchor_codama_relative_test");
-        let _ = fs::remove_dir_all(&tmp);
-        fs::create_dir_all(tmp.join(".codama")).unwrap();
-        fs::create_dir_all(tmp.join("js")).unwrap();
-        fs::write(tmp.join(".codama/idl.json"), "{}").unwrap();
-
-        let from = tmp.join(".codama");
-        let to = tmp.join("js");
-        let rel = relative_from(&from, &to).unwrap();
-        // Always go up one and across; never absolute.
-        assert!(rel.starts_with(".."), "got {}", rel.display());
-        assert!(rel.ends_with("js"));
-
-        let self_rel = relative_from(&from, &from).unwrap();
-        assert_eq!(self_rel, PathBuf::from("."));
-
-        fs::remove_dir_all(&tmp).ok();
     }
 
     #[test]
