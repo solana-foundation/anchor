@@ -33,7 +33,8 @@ pub mod caller {
             data: ctx.accounts.callee_data.cpi_handle_mut(),
             authority: ctx.accounts.authority.cpi_handle(),
         };
-        let cpi_ctx = CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
+        let cpi_ctx =
+            CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
         callee::cpi::set_data(cpi_ctx, value)?;
         Ok(())
     }
@@ -45,8 +46,22 @@ pub mod caller {
             data: ctx.accounts.callee_data.cpi_handle_mut(),
             authority: ctx.accounts.authority.cpi_handle(),
         };
-        let cpi_ctx = CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
+        let cpi_ctx =
+            CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
         callee::cpi::noop(cpi_ctx)?;
+        Ok(())
+    }
+
+    /// CPIs into the zero-account `empty` handler. Constructs the
+    /// auto-generated `cpi::accounts::Empty` via its `new()` ctor — the
+    /// only viable route since the lifetime-anchoring `_phantom` field
+    /// is hidden.
+    pub fn proxy_empty(ctx: &mut Context<ProxyEmpty>) -> Result<()> {
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.callee_program.address(),
+            callee::cpi::accounts::Empty::new(),
+        );
+        callee::cpi::empty(cpi_ctx)?;
         Ok(())
     }
 
@@ -60,7 +75,8 @@ pub mod caller {
             authority: ctx.accounts.authority.cpi_handle(),
             spectator: ctx.accounts.spectator.cpi_handle(),
         };
-        let cpi_ctx = CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
+        let cpi_ctx =
+            CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
         callee::cpi::touch(cpi_ctx, delta)?;
         Ok(())
     }
@@ -74,6 +90,11 @@ pub struct ProxySetData {
     #[account(mut)]
     pub callee_data: Account<CalleeData>,
     pub authority: Signer,
+    pub callee_program: UncheckedAccount,
+}
+
+#[derive(Accounts)]
+pub struct ProxyEmpty {
     pub callee_program: UncheckedAccount,
 }
 

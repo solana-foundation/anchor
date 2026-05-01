@@ -25,6 +25,13 @@ pub mod callee {
         Ok(())
     }
 
+    /// Zero-account handler — drives the empty-fields branch of the cpi
+    /// accounts codegen, where `'a` has no `CpiHandle` field to anchor it
+    /// and would otherwise fail E0392.
+    pub fn empty(_ctx: &mut Context<Empty>) -> Result<()> {
+        Ok(())
+    }
+
     /// Drives all four `InstructionAccount::{writable_signer, writable,
     /// readonly_signer, readonly}` ctor branches of the auto-generated
     /// `ToCpiAccounts` impl.
@@ -62,6 +69,11 @@ pub struct SetData {
     #[account(address = data.authority)]
     pub authority: Signer,
 }
+
+/// Empty Accounts struct — exercises the `'a`-anchoring `PhantomData`
+/// fallback in the auto-generated `__cpi_accounts_empty` module.
+#[derive(Accounts)]
+pub struct Empty {}
 
 /// Mixes one of each writable/signer combination so the cpi-accounts
 /// codegen has to emit each `InstructionAccount` ctor variant.

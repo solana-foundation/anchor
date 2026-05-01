@@ -70,6 +70,28 @@ fn init_data_account(
     data_pda
 }
 
+/// Regression: an Accounts struct with zero fields used to fail E0392
+/// in the auto-generated CPI module ("lifetime parameter `'a` is never
+/// used"). The `_phantom: PhantomData<&'a ()>` field anchors `'a` on
+/// `Self`; this test confirms the resulting `cpi::accounts::Empty::new()`
+/// constructor flows through a real CPI call.
+#[test]
+fn test_cpi_empty_accounts() {
+    let (mut svm, payer) = setup();
+
+    let proxy_empty = caller::instruction::ProxyEmpty {}.data();
+    let proxy_metas = vec![AccountMeta::new_readonly(callee_id(), false)];
+    send_instruction(
+        &mut svm,
+        caller_id(),
+        proxy_empty,
+        proxy_metas,
+        &payer,
+        &[],
+    )
+    .expect("caller::proxy_empty should succeed");
+}
+
 #[test]
 fn test_direct_set_data() {
     let (mut svm, payer) = setup();

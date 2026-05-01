@@ -882,13 +882,43 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
                 quote! { self.#n }
             })
             .collect();
+        // An empty Accounts struct would otherwise emit `pub struct Foo<'a> {}`,
+        // which fails E0392 because nothing on `Self` references `'a`. Anchor
+        // the lifetime via a `PhantomData<&'a ()>` field — kept hidden — and
+        // expose a no-arg `new()` / `Default` so callers don't need to spell
+        // out the marker. Non-empty structs already bind `'a` through their
+        // `CpiHandle<'a>` fields and skip the extra field entirely.
+        let (extra_field, ctor_impl) = if fields.is_empty() {
+            (
+                quote! {
+                    #[doc(hidden)]
+                    pub _phantom: ::core::marker::PhantomData<&'a ()>,
+                },
+                quote! {
+                    impl<'a> #name<'a> {
+                        #[inline]
+                        pub const fn new() -> Self {
+                            Self { _phantom: ::core::marker::PhantomData }
+                        }
+                    }
+                    impl<'a> ::core::default::Default for #name<'a> {
+                        #[inline]
+                        fn default() -> Self { Self::new() }
+                    }
+                },
+            )
+        } else {
+            (quote! {}, quote! {})
+        };
         quote! {
             pub mod #cpi_mod_name {
                 extern crate alloc;
                 use super::*;
                 pub struct #name<'a> {
                     #(#cpi_field_decls,)*
+                    #extra_field
                 }
+                #ctor_impl
                 impl<'a> anchor_lang_v2::ToCpiAccounts<'a> for #name<'a> {
                     fn to_instruction_accounts(
                         &self,
