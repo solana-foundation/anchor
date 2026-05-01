@@ -330,6 +330,7 @@ pub struct Config {
     pub scripts: ScriptsConfig,
     pub hooks: HooksConfig,
     pub workspace: WorkspaceConfig,
+    pub clients: ClientsConfig,
     // Separate entry next to test_config because
     // "anchor localnet" only has access to the Anchor.toml,
     // not the Test.toml files
@@ -467,6 +468,119 @@ pub enum HookType {
     PostTest,
     PreDeploy,
     PostDeploy,
+}
+
+/// `[clients]` section of `Anchor.toml`.
+///
+/// Declares which Codama-generated client SDKs the workspace ships, where
+/// they live on disk, and whether they should be regenerated automatically
+/// (e.g. as part of `anchor build` once that integration lands).
+///
+/// TOML shape:
+///
+/// ```toml
+/// [clients]
+/// auto = true
+/// rust = true                                    # enables `clients/rust`
+/// js   = { enable = true }                       # equivalent to `js = true`
+/// go   = { enable = true, path = "go-client" }   # custom output dir
+/// js-umi = false                                 # explicitly disabled
+/// ```
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClientsConfig {
+    /// Regenerate clients automatically on `anchor build` / IDL change.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub auto: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub js: Option<ClientLanguageConfig>,
+    #[serde(
+        default,
+        rename = "js-umi",
+        alias = "js_umi",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub js_umi: Option<ClientLanguageConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rust: Option<ClientLanguageConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub go: Option<ClientLanguageConfig>,
+}
+
+/// Per-language client entry. Accepts either a bare `bool` (`rust = true`)
+/// or a table with explicit `enable` and optional `path` keys.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ClientLanguageConfig {
+    /// `lang = true` / `lang = false`.
+    Enabled(bool),
+    /// `lang = { enable = bool, path = "..." }`.
+    Detailed {
+        #[serde(default = "ClientLanguageConfig::default_enable")]
+        enable: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        path: Option<String>,
+    },
+}
+
+impl ClientLanguageConfig {
+    fn default_enable() -> bool {
+        true
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            Self::Enabled(b) => *b,
+            Self::Detailed { enable, .. } => *enable,
+        }
+    }
+
+    pub fn path(&self) -> Option<&str> {
+        match self {
+            Self::Enabled(_) => None,
+            Self::Detailed { path, .. } => path.as_deref(),
+        }
+    }
+}
+
+/// Stable identifiers used both as TOML keys and as Codama script names so
+/// `Anchor.toml` and `anchor codama generate -l <lang>` agree on spelling.
+pub const CLIENT_LANGUAGES: &[&str] = &["js", "js-umi", "rust", "go"];
+
+impl ClientsConfig {
+    /// Look up a language entry by its [`CLIENT_LANGUAGES`] id.
+    pub fn get(&self, language: &str) -> Option<&ClientLanguageConfig> {
+        match language {
+            "js" => self.js.as_ref(),
+            "js-umi" => self.js_umi.as_ref(),
+            "rust" => self.rust.as_ref(),
+            "go" => self.go.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Languages the user has explicitly enabled, paired with the resolved
+    /// output directory (`<base>/<lang>` if no `path` was set on the entry).
+    pub fn enabled(&self, base: &Path) -> Vec<(&'static str, PathBuf)> {
+        CLIENT_LANGUAGES
+            .iter()
+            .filter_map(|&lang| {
+                let entry = self.get(lang)?;
+                if !entry.is_enabled() {
+                    return None;
+                }
+                let path = entry
+                    .path()
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| base.join(lang));
+                Some((lang, path))
+            })
+            .collect()
+    }
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -613,6 +727,8 @@ struct _Config {
     surfpool: Option<_SurfpoolConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     skip_local_validator: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    clients: Option<ClientsConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -715,6 +831,19 @@ impl fmt::Display for Config {
                 .then(|| self.workspace.clone()),
             surfpool: self.surfpool_config.clone().map(Into::into),
             skip_local_validator: self.skip_local_validator,
+            clients: {
+                let c = &self.clients;
+                let empty = !c.auto
+                    && c.js.is_none()
+                    && c.js_umi.is_none()
+                    && c.rust.is_none()
+                    && c.go.is_none();
+                if empty {
+                    None
+                } else {
+                    Some(c.clone())
+                }
+            },
         };
 
         let cfg = toml::to_string(&cfg).expect("Must be well formed");
@@ -744,6 +873,7 @@ impl FromStr for Config {
             workspace: cfg.workspace.unwrap_or_default(),
             surfpool_config: cfg.surfpool.map(Into::into),
             skip_local_validator: cfg.skip_local_validator,
+            clients: cfg.clients.unwrap_or_default(),
         })
     }
 }
@@ -1665,6 +1795,81 @@ mod tests {
         let string = BASE_CONFIG.to_owned() + "[features]\nskip-lint = true";
         let config = Config::from_str(&string).unwrap();
         assert!(config.features.skip_lint);
+    }
+
+    #[test]
+    fn parse_clients_section() {
+        let toml = BASE_CONFIG.to_owned()
+            + r#"
+[clients]
+auto = true
+rust = true
+js = false
+js-umi = { enable = true }
+go = { enable = true, path = "go-client" }
+"#;
+        let config = Config::from_str(&toml).unwrap();
+        let clients = &config.clients;
+        assert!(clients.auto);
+        assert!(clients.rust.as_ref().unwrap().is_enabled());
+        assert!(!clients.js.as_ref().unwrap().is_enabled());
+        assert!(clients.js_umi.as_ref().unwrap().is_enabled());
+        let go = clients.go.as_ref().unwrap();
+        assert!(go.is_enabled());
+        assert_eq!(go.path(), Some("go-client"));
+
+        let resolved = clients.enabled(Path::new("clients"));
+        // js is explicitly disabled; rust gets the default path; go uses the
+        // override; js-umi is enabled with no `path` so it falls back to the
+        // base+id default.
+        assert_eq!(
+            resolved,
+            vec![
+                ("js-umi", PathBuf::from("clients/js-umi")),
+                ("rust", PathBuf::from("clients/rust")),
+                ("go", PathBuf::from("go-client")),
+            ]
+        );
+    }
+
+    #[test]
+    fn clients_section_round_trips() {
+        // Round-trip the table form through Display+FromStr to make sure
+        // serde's untagged enum picks the same variant we wrote out.
+        let toml = BASE_CONFIG.to_owned()
+            + r#"
+[clients]
+auto = true
+rust = true
+go = { enable = true, path = "go-client" }
+"#;
+        let config = Config::from_str(&toml).unwrap();
+        let serialized = config.to_string();
+        let reparsed = Config::from_str(&serialized).unwrap();
+        assert!(reparsed.clients.auto);
+        assert!(reparsed.clients.rust.as_ref().unwrap().is_enabled());
+        assert_eq!(
+            reparsed.clients.go.as_ref().and_then(|g| g.path()),
+            Some("go-client"),
+        );
+    }
+
+    #[test]
+    fn clients_section_omitted_when_default() {
+        // An empty [clients] section should not be emitted: a fresh `anchor
+        // init` workspace has no clients configured, so we don't want a
+        // confusing empty stanza in `Anchor.toml`.
+        let config = Config::from_str(BASE_CONFIG).unwrap();
+        assert!(!config.to_string().contains("[clients]"));
+    }
+
+    #[test]
+    fn unknown_clients_field_is_rejected() {
+        // `deny_unknown_fields` on `ClientsConfig` catches typos like
+        // `[clients] python = true` so users don't silently ship a config
+        // that no Codama renderer will pick up.
+        let toml = BASE_CONFIG.to_owned() + "[clients]\npython = true\n";
+        assert!(Config::from_str(&toml).is_err());
     }
 
     #[test]
