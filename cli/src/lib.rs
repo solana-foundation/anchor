@@ -50,6 +50,7 @@ use {
 
 mod account;
 mod checks;
+pub mod codama;
 pub mod config;
 pub mod coverage;
 pub mod debugger;
@@ -482,6 +483,11 @@ pub enum Command {
     Program {
         #[clap(subcommand)]
         subcmd: ProgramCommand,
+    },
+    /// Codama IDL integration commands
+    Codama {
+        #[clap(subcommand)]
+        subcmd: codama::CodamaCommand,
     },
 }
 
@@ -1438,6 +1444,7 @@ fn process_command(opts: Opts) -> Result<()> {
         Command::ShowAccount { cmd } => account::show_account(&opts.cfg_override, cmd),
         Command::Keygen { subcmd } => keygen::keygen(&opts.cfg_override, subcmd),
         Command::Program { subcmd } => program::program(&opts.cfg_override, subcmd),
+        Command::Codama { subcmd } => codama::entry(subcmd),
     }
 }
 

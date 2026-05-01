@@ -261,6 +261,7 @@ dependencies = [
  "anyhow",
  "base64 0.21.7",
  "bincode",
+ "bs58",
  "cargo_toml",
  "clap 4.6.0",
  "clap_complete",
