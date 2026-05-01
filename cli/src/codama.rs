@@ -1,16 +1,25 @@
 //! Codama IDL integration for the Anchor CLI.
 //!
-//! Provides `anchor codama convert <path>` which translates a (post-0.30,
-//! v0.1.x spec) Anchor IDL JSON file into a Codama IDL JSON tree rooted at a
-//! `rootNode`. The conversion mirrors the reference TypeScript implementation
-//! shipped in `@codama/nodes-from-anchor` (`v01/`), so the output should be
-//! byte-stable against the JS toolchain modulo property ordering.
+//! - `anchor codama convert <path>` translates a (post-0.30, v0.1.x spec)
+//!   Anchor IDL JSON file into a Codama IDL JSON tree rooted at a `rootNode`.
+//!   The conversion mirrors the reference TypeScript implementation shipped
+//!   in `@codama/nodes-from-anchor` (`v01/`), so the output should be
+//!   byte-stable against the JS toolchain modulo property ordering.
+//! - `anchor codama generate -l <langs> -p <path> <idl>` first runs the same
+//!   conversion in-process, then drives `@codama/cli` to render clients in
+//!   the requested languages (`js`, `js-umi`, `rust`, `go`).
 
 use {
     anyhow::{anyhow, bail, Context, Result},
-    clap::Parser,
+    clap::{Parser, ValueEnum},
     serde_json::{json, Map, Value as JsonValue},
-    std::{collections::HashMap, fs},
+    std::{
+        collections::{BTreeSet, HashMap},
+        ffi::OsStr,
+        fs,
+        path::{Path, PathBuf},
+        process::{Command, Stdio},
+    },
 };
 
 /// The `@codama/nodes` package version we target. The Codama IDL is versioned
@@ -30,11 +39,74 @@ pub enum CodamaCommand {
         #[clap(short, long)]
         out: Option<String>,
     },
+    /// Convert an Anchor IDL and run Codama renderers to produce client
+    /// libraries in one or more languages.
+    ///
+    /// The IDL is converted in-process; the resulting Codama IDL is handed to
+    /// `@codama/cli` (run via `npx --yes codama` by default), which loads the
+    /// per-language renderer packages and writes generated sources under
+    /// `<path>/<language>`.
+    Generate {
+        /// Languages to generate clients for. Repeat the flag or comma-
+        /// separate values: `-l js,go -l rust`.
+        #[clap(
+            short = 'l',
+            long = "language",
+            value_delimiter = ',',
+            value_enum,
+            required = true
+        )]
+        language: Vec<Language>,
+        /// Base output directory; per-language clients are written to
+        /// `<path>/<language>`.
+        #[clap(short = 'p', long = "path", default_value = "clients")]
+        path: String,
+        /// Path to the Anchor IDL JSON file.
+        idl: String,
+    },
+}
+
+/// Languages with an officially-published `@codama/renderers-*` package.
+#[derive(Debug, Clone, Copy, ValueEnum, Eq, Ord, PartialEq, PartialOrd)]
+#[clap(rename_all = "kebab-case")]
+pub enum Language {
+    Js,
+    JsUmi,
+    Rust,
+    Go,
+}
+
+impl Language {
+    /// Stable identifier used both as the Codama script name and the
+    /// per-language output subdirectory.
+    fn id(self) -> &'static str {
+        match self {
+            Language::Js => "js",
+            Language::JsUmi => "js-umi",
+            Language::Rust => "rust",
+            Language::Go => "go",
+        }
+    }
+
+    /// npm package providing the renderer's default export.
+    fn renderer_package(self) -> &'static str {
+        match self {
+            Language::Js => "@codama/renderers-js",
+            Language::JsUmi => "@codama/renderers-js-umi",
+            Language::Rust => "@codama/renderers-rust",
+            Language::Go => "@codama/renderers-go",
+        }
+    }
 }
 
 pub fn entry(cmd: CodamaCommand) -> Result<()> {
     match cmd {
         CodamaCommand::Convert { path, out } => convert(path, out),
+        CodamaCommand::Generate {
+            language,
+            path,
+            idl,
+        } => generate(idl, path, language),
     }
 }
 
@@ -49,6 +121,175 @@ pub fn convert(path: String, out: Option<String>) -> Result<()> {
         None => println!("{json}"),
     }
     Ok(())
+}
+
+/// Convert the Anchor IDL at `idl_path` to a Codama IDL, then drive the
+/// Codama CLI to render clients for each requested language under
+/// `<base_path>/<language>`.
+///
+/// Implementation notes:
+/// - Conversion happens in-process via [`root_node_from_anchor`]. The
+///   converted Codama IDL is staged under `<base_path>/.codama/idl.json`
+///   alongside a generated `codama.json` config so the user can inspect or
+///   re-run the rendering manually with `codama run --all`.
+/// - The Codama CLI is invoked as `npx --yes codama run --config <cfg>
+///   --all` by default. Set `ANCHOR_CODAMA_CMD` to override the binary
+///   (e.g. when `codama` is already on `PATH`); arguments are appended as
+///   given. Codama itself installs missing renderer packages on demand.
+pub fn generate(idl_path: String, base_path: String, languages: Vec<Language>) -> Result<()> {
+    if languages.is_empty() {
+        bail!("`anchor codama generate` requires at least one --language");
+    }
+    // Dedup while keeping a deterministic order for the generated config so
+    // re-runs produce identical files.
+    let unique: BTreeSet<Language> = languages.into_iter().collect();
+
+    // 1. Load + convert the Anchor IDL.
+    let bytes =
+        fs::read(&idl_path).with_context(|| format!("Failed to read IDL file `{idl_path}`"))?;
+    let idl: JsonValue = serde_json::from_slice(&bytes)
+        .with_context(|| format!("Failed to parse IDL JSON at `{idl_path}`"))?;
+    let root = root_node_from_anchor(&idl)?;
+
+    // 2. Stage the converted IDL + config in `<base_path>/.codama/`. Putting
+    //    them next to the generated clients (rather than in $TMPDIR) means
+    //    failures leave a debuggable artifact and `codama run --all` can be
+    //    re-invoked manually if the user wants to iterate without rebuilding.
+    let base = PathBuf::from(&base_path);
+    fs::create_dir_all(&base)
+        .with_context(|| format!("Failed to create output directory `{}`", base.display()))?;
+    let stage_dir = base.join(".codama");
+    fs::create_dir_all(&stage_dir).with_context(|| {
+        format!(
+            "Failed to create staging directory `{}`",
+            stage_dir.display()
+        )
+    })?;
+
+    let staged_idl = stage_dir.join("idl.json");
+    fs::write(&staged_idl, serde_json::to_string_pretty(&root)?)
+        .with_context(|| format!("Failed to write `{}`", staged_idl.display()))?;
+
+    // 3. Build a Codama config pointing at the staged IDL with one script per
+    //    requested language. Paths in the config are resolved relative to the
+    //    config file itself, so we compute outputs relative to `stage_dir`.
+    let mut scripts = Map::new();
+    for lang in &unique {
+        let out_dir = base.join(lang.id());
+        let rel = relative_from(&stage_dir, &out_dir).unwrap_or_else(|| out_dir.clone());
+        scripts.insert(
+            lang.id().to_string(),
+            json!({
+                "from": lang.renderer_package(),
+                "args": [rel.to_string_lossy()],
+            }),
+        );
+    }
+    let idl_rel = relative_from(&stage_dir, &staged_idl).unwrap_or_else(|| staged_idl.clone());
+    let config = json!({
+        "idl": idl_rel.to_string_lossy(),
+        "scripts": scripts,
+    });
+    let config_path = stage_dir.join("codama.json");
+    fs::write(&config_path, serde_json::to_string_pretty(&config)?)
+        .with_context(|| format!("Failed to write `{}`", config_path.display()))?;
+
+    // 4. Invoke Codama. By default we use `npx --yes codama` so users don't
+    //    need a global install; this also lets Codama auto-install missing
+    //    renderer packages on first run.
+    let langs_label: Vec<&str> = unique.iter().map(|l| l.id()).collect();
+    eprintln!(
+        "Generating Codama clients [{}] under `{}` ...",
+        langs_label.join(", "),
+        base.display(),
+    );
+    run_codama(&config_path)?;
+    eprintln!("Done.");
+    Ok(())
+}
+
+fn run_codama(config_path: &Path) -> Result<()> {
+    let (program, leading_args) = match std::env::var("ANCHOR_CODAMA_CMD") {
+        Ok(s) if !s.trim().is_empty() => {
+            // Allow the override to bake in flags (e.g. `pnpm codama`).
+            let mut parts = s.split_whitespace().map(str::to_owned);
+            let program = parts.next().expect("non-empty after trim");
+            (program, parts.collect::<Vec<_>>())
+        }
+        _ => (
+            "npx".to_string(),
+            vec!["--yes".to_string(), "codama".to_string()],
+        ),
+    };
+
+    let mut cmd = Command::new(&program);
+    for arg in &leading_args {
+        cmd.arg(arg);
+    }
+    cmd.arg("run")
+        .arg("--config")
+        .arg(config_path.as_os_str())
+        .arg("--all")
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+
+    let status = cmd.status().map_err(|e| {
+        anyhow!(
+            "Failed to spawn `{}`: {e}. Install Node.js + npm, or set ANCHOR_CODAMA_CMD to point \
+             at your Codama binary.",
+            display_command(&program, &leading_args),
+        )
+    })?;
+    if !status.success() {
+        bail!(
+            "`{} run --config {} --all` failed with {status}",
+            display_command(&program, &leading_args),
+            config_path.display(),
+        );
+    }
+    Ok(())
+}
+
+fn display_command(program: &str, args: &[String]) -> String {
+    if args.is_empty() {
+        program.to_string()
+    } else {
+        format!("{program} {}", args.join(" "))
+    }
+}
+
+/// Produce `to` expressed relative to `from` when both share a prefix, falling
+/// back to `None` when no relative path is shorter than the absolute one.
+/// Codama's CLI resolves config-file paths relative to the config, so keeping
+/// them relative makes `<base>/.codama/codama.json` portable across moves.
+fn relative_from(from: &Path, to: &Path) -> Option<PathBuf> {
+    let from = from
+        .canonicalize()
+        .ok()
+        .unwrap_or_else(|| from.to_path_buf());
+    let to = to.canonicalize().ok().unwrap_or_else(|| to.to_path_buf());
+    let from_components: Vec<_> = from.components().collect();
+    let to_components: Vec<_> = to.components().collect();
+    let mut common = 0;
+    while common < from_components.len()
+        && common < to_components.len()
+        && from_components[common] == to_components[common]
+    {
+        common += 1;
+    }
+    let mut rel = PathBuf::new();
+    for _ in common..from_components.len() {
+        rel.push(OsStr::new(".."));
+    }
+    for c in &to_components[common..] {
+        rel.push(c.as_os_str());
+    }
+    if rel.as_os_str().is_empty() {
+        Some(PathBuf::from("."))
+    } else {
+        Some(rel)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1516,6 +1757,67 @@ mod tests {
         let root = convert_str(&serde_json::to_string(&idl).unwrap());
         let acc = &root["program"]["instructions"][0]["accounts"][0];
         assert!(acc.get("defaultValue").is_none());
+    }
+
+    #[test]
+    fn language_id_and_renderer_package_are_stable() {
+        // The script name doubles as the per-language output subdirectory, so
+        // changing it would silently move users' generated clients.
+        assert_eq!(Language::Js.id(), "js");
+        assert_eq!(Language::JsUmi.id(), "js-umi");
+        assert_eq!(Language::Rust.id(), "rust");
+        assert_eq!(Language::Go.id(), "go");
+        assert_eq!(Language::Js.renderer_package(), "@codama/renderers-js");
+        assert_eq!(
+            Language::JsUmi.renderer_package(),
+            "@codama/renderers-js-umi"
+        );
+        assert_eq!(Language::Rust.renderer_package(), "@codama/renderers-rust");
+        assert_eq!(Language::Go.renderer_package(), "@codama/renderers-go");
+    }
+
+    #[test]
+    fn generate_cli_parses_repeated_and_comma_separated_languages() {
+        use clap::Parser;
+        // Sanity-check the flag plumbing: `-l go,js -l rust` should yield three
+        // distinct languages, in the order they were supplied.
+        let parsed = CodamaCommand::try_parse_from([
+            "codama", "generate", "-l", "go,js", "-l", "rust", "-p", "out", "idl.json",
+        ])
+        .expect("flags parse");
+        match parsed {
+            CodamaCommand::Generate {
+                language,
+                path,
+                idl,
+            } => {
+                assert_eq!(language, vec![Language::Go, Language::Js, Language::Rust]);
+                assert_eq!(path, "out");
+                assert_eq!(idl, "idl.json");
+            }
+            other => panic!("expected Generate, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn relative_from_handles_sibling_and_self_paths() {
+        let tmp = std::env::temp_dir().join("anchor_codama_relative_test");
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(tmp.join(".codama")).unwrap();
+        fs::create_dir_all(tmp.join("js")).unwrap();
+        fs::write(tmp.join(".codama/idl.json"), "{}").unwrap();
+
+        let from = tmp.join(".codama");
+        let to = tmp.join("js");
+        let rel = relative_from(&from, &to).unwrap();
+        // Always go up one and across; never absolute.
+        assert!(rel.starts_with(".."), "got {}", rel.display());
+        assert!(rel.ends_with("js"));
+
+        let self_rel = relative_from(&from, &from).unwrap();
+        assert_eq!(self_rel, PathBuf::from("."));
+
+        fs::remove_dir_all(&tmp).ok();
     }
 
     #[test]
