@@ -33,6 +33,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Fallback to a priority fee of 0 on localnet ([#4259](https://github.com/solana-foundation/anchor/pull/4259/)).
 - lang: Support module constants in `max_len` attribute ([#3879](https://github.com/solana-foundation/anchor/pull/3879)).
 - spl: Deprecate broken `cpi_guard_enable/disable` functions ([#4465](https://github.com/solana-foundation/anchor/pull/4465)).
+- lang/syn: Fix compile error with `init` and a runtime seeds expression ([#4495](https://github.com/solana-foundation/anchor/pull/4495)).
 
 ### Breaking
 
