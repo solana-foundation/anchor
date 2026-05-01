@@ -78,7 +78,7 @@ pub enum Language {
 impl Language {
     /// Stable identifier used both as the Codama script name and the
     /// per-language output subdirectory.
-    fn id(self) -> &'static str {
+    pub fn id(self) -> &'static str {
         match self {
             Language::Js => "js",
             Language::JsUmi => "js-umi",
@@ -87,8 +87,20 @@ impl Language {
         }
     }
 
+    /// Inverse of [`Self::id`]. Returns `None` for unknown ids so callers
+    /// can decide whether to error or silently skip.
+    pub fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "js" => Some(Language::Js),
+            "js-umi" => Some(Language::JsUmi),
+            "rust" => Some(Language::Rust),
+            "go" => Some(Language::Go),
+            _ => None,
+        }
+    }
+
     /// npm package providing the renderer's default export.
-    fn renderer_package(self) -> &'static str {
+    pub fn renderer_package(self) -> &'static str {
         match self {
             Language::Js => "@codama/renderers-js",
             Language::JsUmi => "@codama/renderers-js-umi",
@@ -142,56 +154,138 @@ pub fn generate(idl_path: String, base_path: String, languages: Vec<Language>) -
     // Dedup while keeping a deterministic order for the generated config so
     // re-runs produce identical files.
     let unique: BTreeSet<Language> = languages.into_iter().collect();
+    let base = PathBuf::from(&base_path);
+    let targets: Vec<(Language, PathBuf)> =
+        unique.iter().map(|l| (*l, base.join(l.id()))).collect();
+    let stage_dir = base.join(".codama");
+    render_targets(Path::new(&idl_path), &stage_dir, &targets)
+}
 
-    // 1. Load + convert the Anchor IDL.
-    let bytes =
-        fs::read(&idl_path).with_context(|| format!("Failed to read IDL file `{idl_path}`"))?;
+/// Convenience entry point for the `anchor build` integration: reads the
+/// `[clients]` section of `Anchor.toml`, expands it into resolved
+/// `(Language, output_path)` targets, and runs Codama for each IDL produced
+/// by the build.
+///
+/// `workspace_dir` is the root of the workspace (the directory containing
+/// `Anchor.toml`); IDL files are expected at `<workspace_dir>/target/idl/*.json`
+/// (the standard `anchor build` output). When the workspace ships more than
+/// one program the configured per-language path is treated as a *base*
+/// directory and clients land at `<base>/<program>` to avoid clobbering.
+pub fn auto_generate_for_workspace(
+    clients_cfg: &crate::config::ClientsConfig,
+    workspace_dir: &Path,
+    idl_paths: &[PathBuf],
+) -> Result<()> {
+    if !clients_cfg.auto {
+        return Ok(());
+    }
+    let base = workspace_dir.join("clients");
+    let entries = clients_cfg.enabled(&base);
+    if entries.is_empty() {
+        eprintln!(
+            "warning: `[clients] auto = true` but no language is enabled — nothing to generate.",
+        );
+        return Ok(());
+    }
+    if idl_paths.is_empty() {
+        eprintln!(
+            "warning: `[clients] auto = true` but no IDL files were produced by the build — \
+             nothing to generate.",
+        );
+        return Ok(());
+    }
+
+    let multi_program = idl_paths.len() > 1;
+    let codama_stage_root = workspace_dir.join("target").join("codama");
+    for idl_path in idl_paths {
+        let stem = idl_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| anyhow!("Invalid IDL filename: {}", idl_path.display()))?;
+        let targets: Vec<(Language, PathBuf)> = entries
+            .iter()
+            .filter_map(|(id, path)| {
+                let lang = Language::from_id(id)?;
+                let out = if multi_program {
+                    path.join(stem)
+                } else {
+                    path.clone()
+                };
+                Some((lang, out))
+            })
+            .collect();
+        if targets.is_empty() {
+            continue;
+        }
+        let stage_dir = codama_stage_root.join(stem);
+        render_targets(idl_path, &stage_dir, &targets)?;
+    }
+    Ok(())
+}
+
+/// Shared rendering backend used by both the `anchor codama generate`
+/// subcommand and the `anchor build` auto-generation hook.
+///
+/// Steps:
+/// 1. Convert the Anchor IDL at `idl_path` to a Codama IDL JSON tree.
+/// 2. Stage the converted IDL + a generated `codama.json` config under
+///    `stage_dir/`. Keeping the stage on disk (rather than in `$TMPDIR`)
+///    means failures leave a debuggable artifact and `codama run --all`
+///    can be re-invoked manually.
+/// 3. Spawn the Codama CLI (`npx --yes codama` by default; see
+///    [`run_codama`] for the override knob) which loads each renderer
+///    package and writes generated sources into the per-language paths.
+///
+/// All paths in the generated config are absolute: Codama forwards visitor
+/// args to the renderer verbatim and the renderer's `node:fs` calls resolve
+/// relative paths against the *runtime* cwd, which would otherwise depend
+/// on where the user invoked `anchor` from.
+fn render_targets(
+    idl_path: &Path,
+    stage_dir: &Path,
+    targets: &[(Language, PathBuf)],
+) -> Result<()> {
+    if targets.is_empty() {
+        return Ok(());
+    }
+
+    let bytes = fs::read(idl_path)
+        .with_context(|| format!("Failed to read IDL file `{}`", idl_path.display()))?;
     let idl: JsonValue = serde_json::from_slice(&bytes)
-        .with_context(|| format!("Failed to parse IDL JSON at `{idl_path}`"))?;
+        .with_context(|| format!("Failed to parse IDL JSON at `{}`", idl_path.display()))?;
     let root = root_node_from_anchor(&idl)?;
 
-    // 2. Stage the converted IDL + config in `<base_path>/.codama/`. Putting
-    //    them next to the generated clients (rather than in $TMPDIR) means
-    //    failures leave a debuggable artifact and `codama run --all` can be
-    //    re-invoked manually if the user wants to iterate without rebuilding.
-    let base = PathBuf::from(&base_path);
-    fs::create_dir_all(&base)
-        .with_context(|| format!("Failed to create output directory `{}`", base.display()))?;
-    let stage_dir = base.join(".codama");
-    fs::create_dir_all(&stage_dir).with_context(|| {
+    fs::create_dir_all(stage_dir).with_context(|| {
         format!(
             "Failed to create staging directory `{}`",
             stage_dir.display()
         )
     })?;
-
     let staged_idl = stage_dir.join("idl.json");
     fs::write(&staged_idl, serde_json::to_string_pretty(&root)?)
         .with_context(|| format!("Failed to write `{}`", staged_idl.display()))?;
 
-    // 3. Build a Codama config pointing at the staged IDL with one script per
-    //    requested language. We use absolute paths for both the IDL and the
-    //    output directories: Codama only resolves visitor *module* paths and
-    //    the `idl` field against the config file — visitor *args* are
-    //    forwarded to the renderer verbatim, and the renderer uses them with
-    //    `node:fs` calls that resolve against `process.cwd()` at render
-    //    time. Absolute paths sidestep that ambiguity (and the inevitable
-    //    "EACCES: mkdir '../../../...'" when the renderer happens to be
-    //    invoked from a deeper cwd).
-    let abs_base = base
-        .canonicalize()
-        .with_context(|| format!("Failed to resolve `{}`", base.display()))?;
+    // Build per-target output dirs eagerly so `canonicalize` succeeds; the
+    // renderers themselves will (re)create + clean them, but they must exist
+    // for path resolution.
+    for (_lang, out) in targets {
+        fs::create_dir_all(out)
+            .with_context(|| format!("Failed to create output directory `{}`", out.display()))?;
+    }
+
     let abs_idl = staged_idl
         .canonicalize()
         .with_context(|| format!("Failed to resolve `{}`", staged_idl.display()))?;
     let mut scripts = Map::new();
-    for lang in &unique {
-        let out_dir = abs_base.join(lang.id());
+    for (lang, out) in targets {
+        let abs_out = out
+            .canonicalize()
+            .with_context(|| format!("Failed to resolve `{}`", out.display()))?;
         scripts.insert(
             lang.id().to_string(),
             json!({
                 "from": lang.renderer_package(),
-                "args": [out_dir.to_string_lossy()],
+                "args": [abs_out.to_string_lossy()],
             }),
         );
     }
@@ -203,17 +297,13 @@ pub fn generate(idl_path: String, base_path: String, languages: Vec<Language>) -
     fs::write(&config_path, serde_json::to_string_pretty(&config)?)
         .with_context(|| format!("Failed to write `{}`", config_path.display()))?;
 
-    // 4. Invoke Codama. By default we use `npx --yes codama` so users don't
-    //    need a global install; this also lets Codama auto-install missing
-    //    renderer packages on first run.
-    let langs_label: Vec<&str> = unique.iter().map(|l| l.id()).collect();
+    let labels: Vec<&str> = targets.iter().map(|(l, _)| l.id()).collect();
     eprintln!(
-        "Generating Codama clients [{}] under `{}` ...",
-        langs_label.join(", "),
-        base.display(),
+        "Generating Codama clients [{}] for `{}` ...",
+        labels.join(", "),
+        idl_path.display(),
     );
     run_codama(&config_path)?;
-    eprintln!("Done.");
     Ok(())
 }
 
@@ -1773,6 +1863,53 @@ mod tests {
             }
             other => panic!("expected Generate, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn language_from_id_is_inverse_of_id() {
+        for lang in [Language::Js, Language::JsUmi, Language::Rust, Language::Go] {
+            assert_eq!(Language::from_id(lang.id()), Some(lang));
+        }
+        assert_eq!(Language::from_id("python"), None);
+    }
+
+    #[test]
+    fn auto_generate_noops_when_auto_disabled() {
+        // `auto = false` (the default) must not spawn Codama even when a
+        // language is enabled and an IDL is present — otherwise a workspace
+        // that just declared `[clients]` for documentation purposes would
+        // start triggering downloads on every `anchor build`.
+        use crate::config::{ClientLanguageConfig, ClientsConfig};
+        let cfg = ClientsConfig {
+            auto: false,
+            rust: Some(ClientLanguageConfig::Enabled(true)),
+            ..Default::default()
+        };
+        let tmp = std::env::temp_dir().join("anchor_codama_auto_disabled");
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(&tmp).unwrap();
+        let idl = tmp.join("p.json");
+        fs::write(&idl, "{}").unwrap();
+        // If Codama were spawned this would fail (no `npx`/`codama` in test
+        // env, no real IDL); it returns Ok(()) because we short-circuit.
+        auto_generate_for_workspace(&cfg, &tmp, &[idl]).unwrap();
+        fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn auto_generate_warns_when_no_languages_enabled() {
+        use crate::config::ClientsConfig;
+        let cfg = ClientsConfig {
+            auto: true,
+            ..Default::default()
+        };
+        let tmp = std::env::temp_dir().join("anchor_codama_no_langs");
+        let _ = fs::remove_dir_all(&tmp);
+        fs::create_dir_all(&tmp).unwrap();
+        // `auto = true` but every language is `None` → the function logs a
+        // warning and exits cleanly without invoking Codama.
+        auto_generate_for_workspace(&cfg, &tmp, &[]).unwrap();
+        fs::remove_dir_all(&tmp).ok();
     }
 
     #[test]
