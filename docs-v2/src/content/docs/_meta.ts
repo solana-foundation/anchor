@@ -2,16 +2,9 @@ import type { MetaFile } from '@/types'
 
 export default {
   items: {
-    index: { label: 'Introduction', order: 0 },
-    installation: { order: 1 },
-    quickstart: { order: 2 },
-    basics: { order: 3 },
-    clients: { order: 4 },
-    testing: { order: 5 },
-    features: { order: 6 },
-    tokens: { order: 7 },
-    references: { order: 8 },
-    v2: { order: 9 },
-    updates: { order: 10 },
+    index: { label: 'Docs home', order: 0 },
+    v1: { label: 'Anchor v1', order: 1 },
+    v2: { label: 'Anchor v2 (alpha)', order: 2, badge: 'beta' },
+    updates: { order: 3 },
   },
 } satisfies MetaFile
