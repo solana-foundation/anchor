@@ -3,7 +3,9 @@ title: Account validation
 description: "How `#[derive(Accounts)]{:rs}` loads accounts, runs constraints, and rejects duplicate mutable aliases."
 ---
 
-`#[derive(Accounts)]{:rs}` is the heart of Anchor validation. The derive delegates account loading and constraint behavior to traits.
+`#[derive(Accounts)]{:rs}` is the heart of Anchor validation. It describes the accounts an instruction expects and the checks Anchor should run before the handler starts.
+
+This is the piece that lets handler code stay small. Instead of opening `AccountInfo{:rs}` values by hand, checking owners, checking signers, deriving PDAs, and then decoding data, you write those requirements on fields:
 
 ```rust showLineNumbers=false
 #[derive(Accounts)]
@@ -23,6 +25,8 @@ For each accounts struct, the macro emits:
 - a `MUT_MASK{:rs}` for duplicate mutable account detection
 - account-meta builders for clients and tests
 - IDL account metadata under `idl-build`
+
+The order of fields matters because it is the order clients use when they build the instruction. Anchor validates each field in order, stores PDA bumps in `ctx.bumps{:rs}`, then calls the handler with the loaded account struct.
 
 ## Built-in constraints
 

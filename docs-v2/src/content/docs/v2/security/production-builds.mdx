@@ -5,6 +5,8 @@ description: Feature-flag and release considerations for production programs.
 
 Keep the default `anchor-lang-v2` features while developing. They preserve diagnostics and runtime support that are useful while tests, fuzzers, and reviewers are still exercising the program.
 
+Think of production builds as the last step, not the first. Start with the defaults, measure the program, then remove features only when you understand which checks or helpers the program no longer needs.
+
 ```toml showLineNumbers=false
 anchor-lang-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
 ```

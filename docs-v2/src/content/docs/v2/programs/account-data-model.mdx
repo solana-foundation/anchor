@@ -3,6 +3,8 @@ title: Account data model
 description: "How Anchor stores account data and why `Account<T>{:rs}` is zero-copy by default."
 ---
 
+Solana accounts are byte arrays with an owner. Anchor's account wrappers decide how those bytes are checked and interpreted before your handler uses them.
+
 `Account<T>{:rs}` is the default wrapper for fixed-size program state. It is zero-copy, so it views account bytes as `T{:rs}` instead of deserializing into an owned value.
 
 For a normal program-owned account, the on-chain layout is:
@@ -12,6 +14,8 @@ For a normal program-owned account, the on-chain layout is:
 ```
 
 Loading `Account<T>{:rs}` validates the owner, discriminator, and size, then casts the raw account bytes into `T{:rs}`. Exit is a no-op because mutations already happened in the account buffer.
+
+The main decision is whether the account has a fixed layout. Fixed-size structs use `Account<T>{:rs}`. Accounts with `Vec{:rs}`, `String{:rs}`, or other variable-length payloads use `BorshAccount<T>{:rs}`.
 
 ## Fixed-size state
 

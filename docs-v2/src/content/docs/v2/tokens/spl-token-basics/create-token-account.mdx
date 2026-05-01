@@ -59,7 +59,10 @@ use {
 };
 ```
 
-## Create a token account
+## Account patterns
+
+<Tabs items={['Keypair account', 'Associated token account', 'PDA token account']}>
+<Tab>
 
 Use `token::mint{:rs}` and `token::authority{:rs}` constraints to initialize a token account:
 
@@ -90,37 +93,8 @@ pub fn create_token_account(_ctx: &mut Context<CreateTokenAccount>) -> Result<()
 }
 ```
 
-## Account constraints
-
-Use these constraints together for a new legacy SPL Token account:
-
-| Constraint | Description |
-| --- | --- |
-| `init{:rs}` | Creates the account through the System Program and initializes it as a token account. |
-| `init_if_needed{:rs}` | Creates only when absent, then validates the existing account on later calls. |
-| `payer = payer{:rs}` | Pays rent for the new token account. |
-| `token::mint = mint{:rs}` | Sets or validates the mint associated with the token account. |
-| `token::authority = authority{:rs}` | Sets or validates the token authority. |
-
-After initialization, the same constraints validate existing accounts:
-
-```rust showLineNumbers=false
-#[derive(Accounts)]
-pub struct UseTokenAccount {
-    pub mint: Account<Mint>,
-    pub authority: Signer,
-    #[account(
-        mut,
-        token::mint = mint,
-        token::authority = authority,
-    )]
-    pub token_account: Account<TokenAccount>,
-}
-```
-
-Use `init_if_needed{:rs}` only when the instruction is designed to be idempotent. The existing-account branch still checks `token::mint{:rs}` and `token::authority{:rs}`, so a caller cannot pass a token account for a different mint or authority.
-
-## Associated token accounts
+</Tab>
+<Tab>
 
 An associated token account is a token account at the canonical PDA derived from the wallet, token program, and mint under the Associated Token Program.
 
@@ -153,7 +127,8 @@ Use this when the associated token account is created elsewhere, or when your in
   The ATA address belongs to the Associated Token Program's PDA space, so a normal `init{:rs}` constraint from your program cannot sign for that address. Until the `associated_token::*{:rs}` init constraints are available, create ATAs outside this instruction or through a lower-level CPI to the Associated Token Program, then validate the resulting address with `get_associated_token_address{:rs}`.
 </Callout>
 
-## PDA token account
+</Tab>
+<Tab>
 
 A token account can also live at a PDA controlled by your program:
 
@@ -181,6 +156,9 @@ pub struct CreateVaultTokenAccount {
 
 Later CPI calls can transfer or burn from the token account by signing with the `vault_authority{:rs}` PDA seeds. A program can also use the same PDA for the token account address and its authority, but a separate authority PDA is easier to read and avoids duplicate-account edge cases in examples.
 
+</Tab>
+</Tabs>
+
 ## Interface accounts
 
 `Account<TokenAccount>{:rs}` accepts legacy Token Program accounts with the exact 165-byte base layout. Use `InterfaceAccount<TokenAccount>{:rs}` when a read or validation path should accept Token-2022 accounts with TLV extension data after the base state:
@@ -201,6 +179,36 @@ pub struct UseEitherTokenProgram {
 ```
 
 For initialization through an interface account, include `token::token_program = token_program{:rs}` and constrain the supplied token program to either the legacy Token Program or Token-2022 before using it.
+
+## Account constraints
+
+Use these constraints together for a new legacy SPL Token account:
+
+| Constraint | Description |
+| --- | --- |
+| `init{:rs}` | Creates the account through the System Program and initializes it as a token account. |
+| `init_if_needed{:rs}` | Creates only when absent, then validates the existing account on later calls. |
+| `payer = payer{:rs}` | Pays rent for the new token account. |
+| `token::mint = mint{:rs}` | Sets or validates the mint associated with the token account. |
+| `token::authority = authority{:rs}` | Sets or validates the token authority. |
+
+After initialization, the same constraints validate existing accounts:
+
+```rust showLineNumbers=false
+#[derive(Accounts)]
+pub struct UseTokenAccount {
+    pub mint: Account<Mint>,
+    pub authority: Signer,
+    #[account(
+        mut,
+        token::mint = mint,
+        token::authority = authority,
+    )]
+    pub token_account: Account<TokenAccount>,
+}
+```
+
+Use `init_if_needed{:rs}` only when the instruction is designed to be idempotent. The existing-account branch still checks `token::mint{:rs}` and `token::authority{:rs}`, so a caller cannot pass a token account for a different mint or authority.
 
 ## Client and test checks
 

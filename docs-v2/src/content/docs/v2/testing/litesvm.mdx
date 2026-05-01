@@ -3,6 +3,8 @@ title: LiteSVM
 description: "Use `anchor-v2-testing` as the LiteSVM test harness."
 ---
 
+LiteSVM is an in-process Solana VM for tests. It lets a Rust test load the compiled `.so`, create accounts, send transactions, and inspect results without starting a validator process.
+
 `anchor-v2-testing` re-exports LiteSVM and common Solana test types. Its `svm(){:rs}` function is `LiteSVM::new(){:rs}` by default, and switches to a trace-recording VM when the crate is built with the `profile` feature.
 
 ```toml title="Cargo.toml" showLineNumbers=false
@@ -14,6 +16,8 @@ profile = ["anchor-v2-testing/profile"]
 ```
 
 ## Test shape
+
+A typical test does the same work a real client would do, but it runs against an in-memory VM:
 
 ```rust showLineNumbers=false
 use anchor_v2_testing::{Keypair, Message, Signer, VersionedMessage, VersionedTransaction};

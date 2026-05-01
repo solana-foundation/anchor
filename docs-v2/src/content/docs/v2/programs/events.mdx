@@ -3,6 +3,8 @@ title: Events
 description: "Emit program events with `wincode{:rs}` or `bytemuck{:rs}` encoding."
 ---
 
+Events are structured log records emitted by a program. Clients and indexers can read them from transaction logs instead of trying to infer every state change from account data.
+
 Events are declared with `#[event]{:rs}` and emitted with `emit!{:rs}`. The default encoder is wincode configured to match borsh wire layout for Anchor-supported shapes.
 
 ## Default events

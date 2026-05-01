@@ -5,6 +5,8 @@ description: Use generated IDLs and TypeScript type output from Anchor programs.
 
 The TypeScript surface is currently an alpha integration path. The CLI builds IDL JSON and emits TypeScript type files. Current scaffolds use `@anchor-lang/core` `^1.0.0` while the stable v2 npm surface is still settling.
 
+Use this page when you are connecting an app, script, or frontend to a v2 program. The examples show the familiar Anchor client flow, but the current alpha package should be treated as less authoritative than the generated Rust helpers.
+
 <Callout variant="warning" title="Alpha package surface">
   Current scaffolds are pinned to `@anchor-lang/core` `^1.0.0` until a stable v2 package is published. Treat TypeScript codegen as active development, and use Rust tests as the source of truth for exact instruction construction.
 </Callout>
@@ -30,9 +32,30 @@ $ [34manchor[0m build
 
 The generated IDL includes instruction names, discriminators, args, accounts, account types, events, constants, errors, optional account markers, and PDA seed metadata when the macro can inspect the seed list.
 
+A typical app or script imports the generated files from the Anchor workspace:
+
+<FileTree>
+  <Dir name="target">
+    <Dir name="idl">
+      <File name="counter.json" comment="IDL JSON" />
+    </Dir>
+    <Dir name="types">
+      <File name="counter.ts" comment="TypeScript IDL type" />
+    </Dir>
+  </Dir>
+  <Dir name="app">
+    <Dir name="src">
+      <File name="program.ts" comment="Constructs the Program client" />
+    </Dir>
+  </Dir>
+</FileTree>
+
 ## Client program
 
 A `Program{:ts}` is built from an IDL and a provider. Read-only flows can use any provider-shaped object with a `connection{:ts}`. Calls that send transactions need an `AnchorProvider{:ts}` or another provider that implements `sendAndConfirm{:ts}`.
+
+<Tabs items={['Frontend provider', 'Read-only connection']}>
+<Tab>
 
 In a frontend, wire the connection and wallet adapter into an Anchor provider before constructing the program:
 
@@ -57,7 +80,10 @@ setProvider(provider)
 export const program = new Program(idl as Counter, provider)
 ```
 
-A read-only script can construct a program from a connection without a wallet:
+</Tab>
+<Tab>
+
+A read-only script can construct a program from a connection without a wallet.
 
 ```ts showLineNumbers=false
 import { clusterApiUrl, Connection } from '@solana/web3.js'
@@ -74,19 +100,12 @@ export const program = new Program(idl as Counter, {
 
 This is useful for account queries, IDL-backed name lookup, and early integration tests that do not sign transactions.
 
+</Tab>
+</Tabs>
+
 ## Invoke instructions
 
 The methods builder remains the design center for TypeScript clients:
-
-```ts showLineNumbers=false
-const signature = await program.methods
-  .initialize()
-  .accounts({
-    payer: wallet.publicKey,
-    counter,
-  })
-  .rpc()
-```
 
 The builder chain has these pieces:
 
@@ -100,7 +119,48 @@ The builder chain has these pieces:
 | `.transaction(){:ts}` | Builds a transaction without sending it. |
 | `.instruction(){:ts}` | Builds one instruction for manual transaction composition. |
 
-Use `.instruction(){:ts}` when an app needs to compose an Anchor instruction with wallet-adapter flows, compute-budget instructions, or non-Anchor instructions:
+The basic chain looks like this:
+
+```ts showLineNumbers=false
+const signature = await program.methods
+  .increment()
+  .accounts({
+    counter,
+    authority: wallet.publicKey,
+  })
+  .rpc()
+```
+
+Start at `program.methods{:ts}`, call the instruction by name, pass any instruction args to that method, supply accounts with `.accounts(){:ts}`, add extra keypair signers with `.signers(){:ts}` when needed, then choose one terminal method.
+
+<Tabs items={['.rpc(){:ts}', '.transaction(){:ts}', '.instruction(){:ts}']}>
+<Tab>
+
+```ts showLineNumbers=false
+const signature = await program.methods
+  .increment()
+  .accounts({
+    counter,
+    authority: wallet.publicKey,
+  })
+  .rpc()
+```
+
+</Tab>
+<Tab>
+
+```ts showLineNumbers=false
+const transaction = await program.methods
+  .increment()
+  .accounts({
+    counter,
+    authority: wallet.publicKey,
+  })
+  .transaction()
+```
+
+</Tab>
+<Tab>
 
 ```ts showLineNumbers=false
 const ix = await program.methods
@@ -111,6 +171,9 @@ const ix = await program.methods
   })
   .instruction()
 ```
+
+</Tab>
+</Tabs>
 
 During alpha, compare important TypeScript-built transactions against the generated Rust instruction helper for the same instruction. The Rust helper currently has the final say on compact instruction discriminators, resolved account ordering, optional account sentinels, and generated PDA metadata.
 
@@ -136,14 +199,54 @@ For public client-facing instructions, prefer array-form seeds whenever generate
 
 Account clients are exposed under `program.account{:ts}`:
 
+<Tabs items={['.fetch(){:ts}', '.fetchMultiple(){:ts}', '.all(){:ts}', 'memcmp{:ts}']}>
+<Tab>
+
+Fetch and deserialize one account by address:
+
 ```ts showLineNumbers=false
 const counterAccount = await program.account.counter.fetch(counter)
-const allCounters = await program.account.counter.all()
+```
+
+</Tab>
+<Tab>
+
+Fetch multiple accounts by address:
+
+```ts showLineNumbers=false
 const manyCounters = await program.account.counter.fetchMultiple([
   counterA,
   counterB,
 ])
 ```
+
+</Tab>
+<Tab>
+
+Fetch all accounts of a given account type:
+
+```ts showLineNumbers=false
+const allCounters = await program.account.counter.all()
+```
+
+</Tab>
+<Tab>
+
+Filter accounts by matching bytes at an offset:
+
+```ts showLineNumbers=false
+const counters = await program.account.counter.all([
+  {
+    memcmp: {
+      offset: 16,
+      bytes: authority.toBase58(),
+    },
+  },
+])
+```
+
+</Tab>
+</Tabs>
 
 Use the account wrapper to choose the right decoding and filter offsets. Not every account starts with an Anchor discriminator followed by a borsh payload.
 
@@ -161,11 +264,28 @@ For memcmp filters, calculate offsets from the actual wrapper layout. SPL token 
 
 Most projects should keep Rust integration tests as the exact execution harness:
 
-1. Define the instruction and accounts in Rust.
-2. Run `$ [34manchor[0m build{:ansi}` and inspect `target/idl/` plus `target/types/`.
-3. Write or update a LiteSVM test using the generated Rust helper.
-4. Build the TypeScript integration against the same IDL.
-5. Keep TypeScript assumptions small until the alpha package lands.
+<Steps>
+<Step title="Define the program surface">
+
+Define the instruction and accounts in Rust.
+
+</Step>
+<Step title="Regenerate IDL artifacts">
+
+Run `$ [34manchor[0m build{:ansi}` and inspect `target/idl/` plus `target/types/`.
+
+</Step>
+<Step title="Prove the transaction shape">
+
+Write or update a LiteSVM test using the generated Rust helper.
+
+</Step>
+<Step title="Integrate TypeScript">
+
+Build the app integration against the same IDL and keep TypeScript assumptions small until the alpha package lands.
+
+</Step>
+</Steps>
 
 This gives app developers a usable IDL and type file without making the TypeScript package carry guarantees that the alpha code has not made yet.
 

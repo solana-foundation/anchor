@@ -4,9 +4,13 @@ description: Build instructions from generated Rust account structs and the alph
 autoCards: false
 ---
 
+Clients are the code that builds instructions for your program. A client chooses the instruction, serializes the arguments, orders the accounts, signs the transaction, and sends it to a cluster or test VM.
+
 Anchor clients are built around the IDL and the generated helper structs emitted by the program crate. The Rust path is the most complete alpha path today because it has typed instruction structs, account-meta builders, resolved account helpers, and LiteSVM test integration.
 
 TypeScript support exists through the current IDL and the `@anchor-lang/core` scaffold. The stable v2 npm surface is not published yet. Treat TypeScript as an integration and inspection surface while the package is settling, and use Rust tests as the source of truth for exact instruction construction.
+
+For a new v2 program, start with Rust tests. Once the transaction shape is proven there, use the generated IDL and TypeScript type output for app integration.
 
 <CardGrid>
 

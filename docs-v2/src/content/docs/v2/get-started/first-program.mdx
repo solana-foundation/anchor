@@ -1,9 +1,14 @@
 ---
 title: First program
-description: Scaffold, build, and test an Anchor program with the `LiteSVM{:rs}` template.
+description: Scaffold, build, and test an Anchor program with the LiteSVM template.
 ---
 
-The quickest path is the default `$ [34manchor[0m init{:ansi}` template. It creates a multi-file Rust program and a LiteSVM integration test under `programs/<name>/tests/`.
+The quickest path is the default `$ [34manchor[0m init{:ansi}` template. It creates a workspace, a multi-file Rust program, and a LiteSVM integration test under `programs/<name>/tests/`.
+
+This walkthrough uses a tiny counter program so the generated files are easy to inspect. The important part is the shape of the project. Anchor writes the Solana entrypoint, account validation, tests, IDL output, and build artifacts into predictable places.
+
+<Steps>
+<Step title="Scaffold the workspace">
 
 ```ansi showLineNumbers=false
 $ [34manchor[0m init [2m--no-install[0m counter
@@ -12,9 +17,68 @@ $ [34mcd[0m counter
 
 `[2m--no-install[0m{:ansi}` skips the JavaScript package install. The default test template is Rust + LiteSVM, so the program can build and test without Node.
 
-## Generated program shape
+The new workspace has this shape:
 
-The default program template uses `anchor_lang_v2::prelude::*{:rs}`, `&mut Context<T>{:rs}`, and account wrappers without `<'info>{:rs}` lifetimes:
+<FileTree>
+  <Dir name="app" comment="Frontend code, empty by default" />
+  <Dir name="migrations" comment="Optional deploy scripts">
+    <File name="deploy.ts" />
+  </Dir>
+  <Dir name="programs" comment="On-chain programs">
+    <Dir name="counter">
+      <Dir name="src">
+        <Dir name="instructions" comment="Instruction handlers">
+          <File name="initialize.rs" />
+        </Dir>
+        <File name="constants.rs" comment="Program constants" />
+        <File name="error.rs" comment="Custom errors" />
+        <File name="instructions.rs" comment="Instruction module root" />
+        <File name="lib.rs" comment="Program entrypoint" highlight />
+        <File name="state.rs" comment="Account data types" />
+      </Dir>
+      <Dir name="tests" comment="LiteSVM integration tests">
+        <File name="test_initialize.rs" />
+      </Dir>
+      <File name="Cargo.toml" comment="Program crate manifest" />
+    </Dir>
+  </Dir>
+  <File name="Anchor.toml" comment="Workspace config" />
+  <File name="Cargo.toml" comment="Rust workspace manifest" />
+  <File name="package.json" comment="TypeScript package metadata" />
+  <File name="rust-toolchain.toml" comment="Rust toolchain pin" />
+  <File name="tsconfig.json" comment="TypeScript config" />
+</FileTree>
+
+</Step>
+<Step title="Inspect the generated program">
+
+Start with `programs/counter/src/lib.rs`. It declares the modules, the program id, and the instruction entrypoints. The default multi-file template keeps the handler body in `instructions/initialize.rs`, then the `#[program]{:rs}` module forwards to it.
+
+```rust title="programs/counter/src/lib.rs" showLineNumbers=false
+pub mod constants;
+pub mod error;
+pub mod instructions;
+pub mod state;
+
+use anchor_lang_v2::prelude::*;
+
+pub use instructions::*;
+
+declare_id!("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg");
+
+#[program]
+pub mod counter {
+    use super::*;
+
+    pub fn initialize(ctx: &mut Context<Initialize>) -> Result<()> {
+        initialize::handler(ctx)
+    }
+}
+```
+
+Your generated `declare_id!(){:rs}` value will be different. Anchor creates it from the program keypair under `target/deploy/`.
+
+The first real instruction lives in `programs/counter/src/instructions/initialize.rs`. It uses `anchor_lang_v2::prelude::*{:rs}`, `&mut Context<T>{:rs}`, and account wrappers without `<'info>{:rs}` lifetimes:
 
 ```rust title="programs/counter/src/instructions/initialize.rs" showLineNumbers=false
 use anchor_lang_v2::prelude::*;
@@ -52,12 +116,19 @@ pub struct Counter {
 
 `#[account]{:rs}` makes `Counter{:rs}` Pod-backed and gives `Account<Counter>{:rs}` the layout `[8-byte discriminator][Counter bytes]`. Use [`BorshAccount<T>{:rs}`](/docs/v2/programs/borsh-accounts-and-realloc/) instead when the account contains `Vec{:rs}`, `String{:rs}`, or payload enums.
 
-## Build and test
+The account struct under `#[derive(Accounts)]{:rs}` is the checklist Anchor runs before the handler. In this example, `payer{:rs}` must be writable, `counter{:rs}` is created and paid for by `payer{:rs}`, and `system_program{:rs}` is needed because account creation is a System Program instruction.
+
+</Step>
+<Step title="Build and test">
 
 ```ansi showLineNumbers=false
 $ [34manchor[0m build
 $ [34manchor[0m test
 ```
+
+`$ [34manchor[0m build{:ansi}` compiles the program and writes the SBF binary to `target/deploy/counter.so`. It also writes client-facing artifacts such as `target/idl/counter.json` and `target/types/counter.ts`.
+
+`$ [34manchor[0m test{:ansi}` runs the script in `Anchor.toml`. For the default LiteSVM template, that script is `cargo test`, and the workspace is configured to skip starting a local validator.
 
 The LiteSVM test adds the deployed SBF program to an in-process VM, builds an instruction using generated account structs, and sends a signed transaction:
 
@@ -110,7 +181,8 @@ fn test_initialize() {
 }
 ```
 
-## Profile and debug
+</Step>
+<Step title="Profile and debug">
 
 The generated `profile = ["anchor-v2-testing/profile"]{:toml}` feature lets the same tests feed the profiler and debugger:
 
@@ -120,3 +192,6 @@ $ [34manchor[0m debugger
 ```
 
 The trace-backed tooling is covered in [Profiling and debugger](/docs/v2/testing/profiling-and-debugger/).
+
+</Step>
+</Steps>

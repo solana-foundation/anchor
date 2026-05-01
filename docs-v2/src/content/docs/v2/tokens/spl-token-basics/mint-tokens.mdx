@@ -33,7 +33,10 @@ use {
 };
 ```
 
-## Mint tokens via CPI
+## CPI patterns
+
+<Tabs items={['Signer authority', 'PDA authority']}>
+<Tab>
 
 At minimum, the instruction needs a writable mint, a writable destination token account, the mint authority, and the token program:
 
@@ -65,29 +68,8 @@ pub fn mint_tokens(ctx: &mut Context<MintTokens>, amount: u64) -> Result<()> {
 
 The `mint::authority = authority{:rs}` constraint is not required for correctness because the Token Program checks it during CPI. It is still useful because the Anchor validation path fails earlier and returns a clearer account-validation error.
 
-## Checked minting
-
-Use `mint_to_checked{:rs}` when the caller should also provide the expected decimals:
-
-```rust showLineNumbers=false
-pub fn mint_tokens_checked(
-    ctx: &mut Context<MintTokens>,
-    amount: u64,
-    decimals: u8,
-) -> Result<()> {
-    let accounts = token_cpi::accounts::MintToChecked {
-        mint: ctx.accounts.mint.cpi_handle_mut(),
-        to: ctx.accounts.token_account.cpi_handle_mut(),
-        authority: ctx.accounts.authority.cpi_handle(),
-    };
-    let cpi = CpiContext::new(ctx.accounts.token_program.address(), accounts);
-    token_cpi::mint_to_checked(cpi, amount, decimals)
-}
-```
-
-This is a good public-instruction default because it forces the caller and program to agree on the mint's decimal configuration.
-
-## Mint with a PDA authority
+</Tab>
+<Tab>
 
 When the mint authority is a PDA, the program authorizes the CPI by reconstructing the PDA seeds and attaching them with `with_signer(){:rs}`.
 
@@ -124,9 +106,34 @@ pub fn mint_tokens(ctx: &mut Context<MintTokens>, amount: u64) -> Result<()> {
 
 This is the standard pattern for program-controlled supply. A design can use the mint PDA itself as the mint authority, but a separate authority PDA is easier to explain and avoids borrowing the same account as both writable mint and authority in examples.
 
+</Tab>
+</Tabs>
+
+## Checked minting
+
+Use `mint_to_checked{:rs}` when the caller should also provide the expected decimals:
+
+```rust showLineNumbers=false
+pub fn mint_tokens_checked(
+    ctx: &mut Context<MintTokens>,
+    amount: u64,
+    decimals: u8,
+) -> Result<()> {
+    let accounts = token_cpi::accounts::MintToChecked {
+        mint: ctx.accounts.mint.cpi_handle_mut(),
+        to: ctx.accounts.token_account.cpi_handle_mut(),
+        authority: ctx.accounts.authority.cpi_handle(),
+    };
+    let cpi = CpiContext::new(ctx.accounts.token_program.address(), accounts);
+    token_cpi::mint_to_checked(cpi, amount, decimals)
+}
+```
+
+This is a good public-instruction default because it forces the caller and program to agree on the mint's decimal configuration.
+
 ## Destination checks
 
-The destination account should be validated before the CPI:
+Validate the destination account before the CPI:
 
 ```rust showLineNumbers=false
 #[derive(Accounts)]

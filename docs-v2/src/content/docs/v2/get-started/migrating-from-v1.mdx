@@ -5,6 +5,31 @@ description: Port a v1 program to v2 with the main rename and account-model chan
 
 Most v1 programs port to v2 with mechanical renames plus one important account-model decision. Fixed-size state should use zero-copy `Account<T>{:rs}`, while variable-length state should use `BorshAccount<T>{:rs}`.
 
+This page is for existing programs. If you are learning Anchor for the first time, start with [First program](/docs/v2/get-started/first-program/) and come back here only when you need to compare old code to new code.
+
+<Steps>
+<Step title="Apply the mechanical renames">
+
+Update the crate name, handler signatures, wrapper lifetimes, and key type names using the table below.
+
+</Step>
+<Step title="Choose the account model">
+
+Move fixed-size state to `Account<T>{:rs}` and move variable-length state to `BorshAccount<T>{:rs}`.
+
+</Step>
+<Step title="Refresh constraints">
+
+Replace deprecated `has_one{:rs}` checks with explicit `address{:rs}` checks where possible, then verify PDA seeds and bumps compile.
+
+</Step>
+<Step title="Rebuild the test harness">
+
+Use LiteSVM tests through `anchor_v2_testing::svm(){:rs}` so the same tests can feed profiling, debugger, and coverage tooling.
+
+</Step>
+</Steps>
+
 ## Rename table
 
 | v1 | v2 |
@@ -29,6 +54,9 @@ Most v1 programs port to v2 with mechanical renames plus one important account-m
 
 `Account<T>{:rs}` is now zero-copy by default. The account bytes are cast directly into `T{:rs}`, so `T{:rs}` must be fixed-size and Pod-compatible:
 
+<Tabs items={['Account<T>{:rs}', 'BorshAccount<T>{:rs}']}>
+<Tab>
+
 ```rust title="v2 fixed-size state" showLineNumbers=false
 #[account]
 pub struct Counter {
@@ -43,7 +71,10 @@ pub struct Increment {
 }
 ```
 
-For variable-length data, use `#[account(borsh)]{:rs}` and `BorshAccount<T>{:rs}`:
+</Tab>
+<Tab>
+
+For variable-length data, use `#[account(borsh)]{:rs}`:
 
 ```rust title="v2 variable-length state" showLineNumbers=false
 #[account(borsh)]
@@ -60,9 +91,15 @@ pub struct EditProfile {
 }
 ```
 
+</Tab>
+</Tabs>
+
 ## Constraint changes
 
 The v1 `has_one{:rs}` constraint still parses, but v2 emits a deprecation warning. Prefer moving the check onto the sibling account with `address{:rs}`:
+
+<Tabs items={['has_one{:rs}', 'address{:rs}']}>
+<Tab>
 
 ```rust title="v1 style" del={3} showLineNumbers=false
 #[derive(Accounts)]
@@ -73,6 +110,9 @@ pub struct Withdraw {
 }
 ```
 
+</Tab>
+<Tab>
+
 ```rust title="v2 style" add={5} showLineNumbers=false
 #[derive(Accounts)]
 pub struct Withdraw {
@@ -81,6 +121,9 @@ pub struct Withdraw {
     pub creator: UncheckedAccount,
 }
 ```
+
+</Tab>
+</Tabs>
 
 `address{:rs}` is more general. The right-hand side can be any expression, not only a field with the same name as a sibling account.
 

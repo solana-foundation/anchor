@@ -5,6 +5,23 @@ description: Build instructions in Rust with generated instruction, account, and
 
 Rust is the primary client and test surface while the TypeScript package story is still alpha. An Anchor program crate generates typed modules that Rust tests and other Rust clients can use directly, without reading an IDL at runtime.
 
+The generated Rust surface is useful even if you do not plan to ship a Rust client. It gives tests a strongly typed way to build the exact instruction bytes and account metas that the program expects.
+
+For the default LiteSVM scaffold, the Rust client lives next to the program as an integration test:
+
+<FileTree>
+  <Dir name="programs">
+    <Dir name="counter">
+      <Dir name="tests">
+        <File name="test_initialize.rs" comment="Builds and sends instructions" />
+      </Dir>
+      <Dir name="src">
+        <File name="lib.rs" comment="Program crate that emits generated modules" />
+      </Dir>
+    </Dir>
+  </Dir>
+</FileTree>
+
 The generated modules mirror the shape Anchor users expect:
 
 - `program::instruction::*{:rs}` structs encode instruction discriminators and arguments.
@@ -24,7 +41,10 @@ let data = vault::instruction::Deposit { amount: 1_000_000 }.data();
 
 By default, instruction discriminators are the first 8 bytes of `sha256("global:" + handler_name){:rs}`. Programs that opt into compact byte discriminators with `#[discrim = N]{:rs}` still use the same `InstructionData{:rs}` trait.
 
-## Full account structs
+## Account builders
+
+<Tabs items={['Full accounts', 'Resolved accounts', 'to_instruction(){:rs}']}>
+<Tab>
 
 Full account structs include every account the instruction expects. This is the most explicit form and works for every account shape:
 
@@ -48,7 +68,8 @@ let ix = Instruction::new_with_bytes(
 
 Use this form when you already know every address, when an account cannot be derived from IDL seed metadata, or when you want a test to be very explicit about the transaction shape.
 
-## Resolved account structs
+</Tab>
+<Tab>
 
 When the derive can infer account addresses, Anchor also emits a `Resolved{:rs}` struct. The resolved form asks only for accounts the caller must supply and fills in the rest:
 
@@ -63,6 +84,9 @@ let metas = multisig_v2::accounts::CreateResolved {
 
 Resolved structs can derive PDAs whose seeds are visible to the macro, and they can insert well-known program accounts such as System or Token when the account wrapper determines the address.
 
+</Tab>
+<Tab>
+
 The instruction struct also has a convenience `to_instruction(){:rs}` method:
 
 ```rust showLineNumbers=false
@@ -75,6 +99,9 @@ let ix = multisig_v2::instruction::Create {
 ```
 
 This is the shape used by several bench tests because it keeps the test focused on the accounts the caller actually controls.
+
+</Tab>
+</Tabs>
 
 ## PDA helpers
 

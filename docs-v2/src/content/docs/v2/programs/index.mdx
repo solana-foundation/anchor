@@ -4,7 +4,9 @@ description: Build program state, errors, events, and extension points.
 autoCards: false
 ---
 
-Program development starts with the account data model. Fixed-size state is zero-copy by default, variable-length state opts into borsh, and account or constraint behavior can be extended from downstream crates.
+Program development starts with the account data model. A Solana program mostly reads accounts, checks that they are the right accounts, mutates account data, and sometimes calls other programs.
+
+In v2, fixed-size state is zero-copy by default, variable-length state opts into borsh, and account or constraint behavior can be extended from downstream crates. If you are unsure which page to read first, start with Account data model, then Account types.
 
 <CardGrid>
 

@@ -90,7 +90,10 @@ pub struct UseMint {
 }
 ```
 
-## Keypair mint
+## Address choices
+
+<Tabs items={['Keypair mint', 'PDA mint']}>
+<Tab>
 
 Use a normal account address when a client should generate the mint keypair and pass it to the instruction:
 
@@ -115,7 +118,8 @@ pub struct CreateMint {
 
 The client or Rust test must include the mint keypair as a signer because the address is not a PDA.
 
-## PDA mint
+</Tab>
+<Tab>
 
 Use `seeds{:rs}` and `bump{:rs}` when the program should own a deterministic mint address. For program-controlled minting, a separate authority PDA keeps later CPI code simple:
 
@@ -142,6 +146,9 @@ pub struct CreateMint {
 ```
 
 Later CPI calls can sign with the `mint_authority{:rs}` seeds to mint tokens. A design can use the same PDA as both the mint address and the mint authority, but a separate authority PDA avoids duplicate-account examples and works cleanly with CPI handles.
+
+</Tab>
+</Tabs>
 
 <Callout variant="note" title="Token-2022 and interface accounts">
   `Account<Mint>{:rs}` is the legacy Token Program wrapper and validates exact legacy mint size. Use `InterfaceAccount<Mint>{:rs}` from `anchor_spl_v2::token_interface{:rs}` when a read or validation path should accept either Token or Token-2022-owned mints. Token-2022 extension parsing is covered in [Token-2022 and extensions](/docs/v2/tokens/token-2022-and-extensions/).

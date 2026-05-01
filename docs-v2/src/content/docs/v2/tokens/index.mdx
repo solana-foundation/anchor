@@ -4,9 +4,13 @@ description: SPL token account types, constraints, CPI helpers, and Token-2022 i
 autoCards: false
 ---
 
+SPL token programs own token mints and token accounts. Your program usually does not edit those accounts directly. It validates the accounts it was given, then calls the Token Program through CPI.
+
 `anchor-spl-v2` provides zero-copy SPL account types, namespaced constraints, CPI helpers, associated token address utilities, and Token-2022 interface account support.
 
 The token surface is built like the rest of Anchor. Account wrappers implement shared traits, constraints are downstream `AccountConstraint{:rs}` markers, and CPI helpers use `CpiHandle<'a>{:rs}` so token instructions can run through the cheaper CPI path.
+
+If you are new to SPL tokens, start with the basic pages in order. Create a mint first, create a token account for that mint, mint tokens into it, then transfer tokens between token accounts.
 
 <CardGrid>
 

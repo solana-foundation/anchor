@@ -37,6 +37,7 @@ const currentPath = trimTrailingSlash(Astro.url.pathname)
   type DocsVersion = 'v1' | 'v2'
 
   const STORAGE_KEY = 'anchor-docs-version'
+  const SIDEBAR_PENDING_SCROLL_KEY = 'anchor-docs-sidebar-pending-scroll'
   const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '')
 
   function versionFromPath(path: string): DocsVersion | null {
@@ -76,6 +77,21 @@ const currentPath = trimTrailingSlash(Astro.url.pathname)
       if (active && samePath) option.setAttribute('aria-current', 'page')
       else option.removeAttribute('aria-current')
     })
+
+    window.dispatchEvent(new CustomEvent('anchor-docs:version-focus'))
+  }
+
+  function isHidden(element: HTMLElement): boolean {
+    return Boolean(element.closest('[hidden]')) || element.getClientRects().length === 0
+  }
+
+  function savePendingSidebarScroll() {
+    const viewport = Array.from(
+      document.querySelectorAll<HTMLElement>('nav[aria-label="Documentation"] [data-slot="scroll-area-viewport"]'),
+    ).find((candidate) => !isHidden(candidate))
+
+    if (!viewport) return
+    sessionStorage.setItem(SIDEBAR_PENDING_SCROLL_KEY, String(viewport.scrollTop))
   }
 
   function setupVersionSwitcher() {
@@ -83,6 +99,8 @@ const currentPath = trimTrailingSlash(Astro.url.pathname)
 
     document.querySelectorAll<HTMLAnchorElement>('[data-version-option]').forEach((option) => {
       option.addEventListener('click', () => {
+        savePendingSidebarScroll()
+
         const version = option.dataset.versionOption
         if (version === 'v1' || version === 'v2') localStorage.setItem(STORAGE_KEY, version)
       })

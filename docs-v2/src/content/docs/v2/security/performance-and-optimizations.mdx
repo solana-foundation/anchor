@@ -5,6 +5,8 @@ description: Where Anchor's binary and CU savings come from.
 
 Anchor's performance gains are cumulative. No single change explains the full result. The savings come from many smaller choices that compose.
 
+For application developers, the useful takeaway is simple. Write normal Anchor code first, then reach for the lower-level options only after tests and measurements show where the program spends binary size or compute.
+
 The main sources are:
 
 - the pinocchio and `#![no_std]{:rs}` runtime path

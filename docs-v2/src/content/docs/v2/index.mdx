@@ -8,6 +8,8 @@ Anchor is a framework for Solana programs. It provides a Rust eDSL for writing p
 
 `anchor-lang-v2` is the alpha runtime for this version of Anchor. It is pinocchio-based, `#![no_std]{:rs}`, zero-copy by default for fixed-size accounts, and organized around traits so account wrappers, constraints, CPI helpers, and IDL metadata can be extended from downstream crates.
 
+If you are new to Anchor, read the getting started pages first and keep the generated counter project open while reading the fundamentals. Most pages refer back to the same few pieces of the model: a handler, a `Context<T>{:rs}`, an accounts struct, account data, and generated client helpers.
+
 <Callout variant="warning" title="Alpha">
   This version is alpha software. It has not been audited, is not published on `crates.io`, and APIs may break between commits. Depend on it from git on the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch.
 </Callout>

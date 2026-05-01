@@ -3,7 +3,7 @@ title: Borsh accounts and realloc
 description: "Variable-length account data, `InitSpace{:rs}`, realloc constraints, and borrow release."
 ---
 
-Use `BorshAccount<T>{:rs}` when account data is naturally variable-length:
+Use `BorshAccount<T>{:rs}` when account data is naturally variable-length. This is the account model for state that needs `Vec{:rs}`, `String{:rs}`, or enum payloads that cannot fit into a fixed Pod layout:
 
 ```rust showLineNumbers=false
 #[account(borsh)]

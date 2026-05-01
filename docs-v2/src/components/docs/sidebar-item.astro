@@ -9,10 +9,13 @@ import Icon from '@/components/icon.astro'
 interface Props {
   node: SidebarNode
   depth?: number
+  path?: string[]
 }
 
-const { node, depth = 0 } = Astro.props
+const { node, depth = 0, path = [] } = Astro.props
 const renderedLabel = await renderDescription(node.label)
+const groupPath = [...path, node.label]
+const groupKey = groupPath.join('/')
 ---
 
 {
@@ -34,7 +37,7 @@ const renderedLabel = await renderDescription(node.label)
       {node.badge && <SidebarBadge badge={node.badge} />}
     </Link>
   ) : node.forceOpen ? (
-    <div data-sidebar-group data-force-open data-group-path={node.label}>
+    <div data-sidebar-group data-force-open data-group-path={groupKey}>
       <div
         class={cn(
           'text-foreground flex items-center justify-between gap-2 rounded-md px-2 py-1 text-sm font-medium select-none',
@@ -48,7 +51,7 @@ const renderedLabel = await renderDescription(node.label)
       <ul class="border-border/70 mt-1 ml-3 flex flex-col gap-0.5 border-l pl-2">
         {node.items.map((child) => (
           <li>
-            <Astro.self node={child} depth={depth + 1} />
+            <Astro.self node={child} depth={depth + 1} path={groupPath} />
           </li>
         ))}
       </ul>
@@ -57,7 +60,7 @@ const renderedLabel = await renderDescription(node.label)
     <details
       open={!node.collapsed}
       data-sidebar-group
-      data-group-path={node.label}
+      data-group-path={groupKey}
     >
       <summary
         class={cn(
@@ -77,7 +80,7 @@ const renderedLabel = await renderDescription(node.label)
       <ul class={cn('border-border/70 mt-1 ml-3 flex flex-col gap-0.5 border-l pl-2')}>
         {node.items.map((child) => (
           <li>
-            <Astro.self node={child} depth={depth + 1} />
+            <Astro.self node={child} depth={depth + 1} path={groupPath} />
           </li>
         ))}
       </ul>

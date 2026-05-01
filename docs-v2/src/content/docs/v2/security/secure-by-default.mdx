@@ -5,6 +5,8 @@ description: Safety defaults that turn common bugs into compile errors or valida
 
 Anchor's security posture is to make the safe path the ordinary path. Some checks still happen at runtime, but several common bug classes become compile-time errors or explicit opt-ins.
 
+This page is a map of the defaults you inherit when writing a normal v2 program. It does not replace an audit, but it should help you understand which problems Anchor is trying to catch before your handler logic runs.
+
 The main defaults are:
 
 - `Account<T>{:rs}` requires `T: Pod{:rs}` and a no-padding layout. If a field would make zero-copy unsound, the program fails to compile instead of silently reading ambiguous bytes.

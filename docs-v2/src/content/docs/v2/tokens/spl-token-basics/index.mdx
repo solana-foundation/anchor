@@ -6,6 +6,8 @@ autoCards: false
 
 This section covers the common SPL token operations from an Anchor program. The examples focus on the legacy Token Program path because that surface is the most complete today. Token-2022 interface accounts and extension readers are covered separately.
 
+A mint defines a token. A token account holds a balance for one mint and one authority. Minting creates new units of a token, and transferring moves existing units between token accounts. Anchor helps by checking the mint, authority, and writable accounts before your handler invokes the Token Program.
+
 The SPL surface mirrors Anchor's normal account model:
 
 - `Account<Mint>{:rs}` zero-copies SPL mint data

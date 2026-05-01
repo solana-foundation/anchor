@@ -5,6 +5,8 @@ description: Account wrappers and when to use each one.
 
 Account wrappers load from pinocchio `AccountView{:rs}` values and implement the shared `AnchorAccount{:rs}` trait. The wrapper you choose determines the account's ownership checks, data layout, borrow behavior, and exit behavior.
 
+For most program-owned state, the choice is between `Account<T>{:rs}` and `BorshAccount<T>{:rs}`. Use the rest of the wrappers to describe special accounts such as signers, programs, sysvars, optional accounts, or intentionally unchecked accounts.
+
 | Type | Use for |
 | --- | --- |
 | `Account<T>{:rs}` | Program-owned fixed-size data. Zero-copy, Pod-backed. |

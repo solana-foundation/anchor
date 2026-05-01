@@ -7,7 +7,7 @@ Transferring tokens moves units between two token accounts for the same mint. Th
 
 Anchor exposes transfer helpers under `anchor_spl_v2::token::cpi{:rs}`. Prefer `transfer_checked{:rs}` for user-facing transfers because it includes the mint account and verifies the mint decimals.
 
-## Transfer tokens via CPI
+## Imports
 
 Import the token CPI module and account wrappers:
 
@@ -20,6 +20,11 @@ use {
     },
 };
 ```
+
+## Transfer patterns
+
+<Tabs items={['Checked transfer', 'Unchecked transfer']}>
+<Tab>
 
 The account struct should validate that the source and destination accounts use the expected mint, and that the source account belongs to the signer:
 
@@ -61,7 +66,8 @@ pub fn transfer_tokens(
 
 `amount{:rs}` is in base units. If the mint has `6{:rs}` decimals, `1_000_000{:rs}` is one whole token. The `decimals{:rs}` argument must match the mint account.
 
-## Unchecked transfer
+</Tab>
+<Tab>
 
 The plain `transfer{:rs}` helper omits the mint and decimals check:
 
@@ -79,7 +85,10 @@ pub fn transfer(ctx: &mut Context<TransferTokens>, amount: u64) -> Result<()> {
 
 Use it only when another part of the instruction already guarantees the mint and decimals relationship you need.
 
-## Transfer with a PDA authority
+</Tab>
+</Tabs>
+
+## PDA authority
 
 When a program controls the source token account, set the token account authority to a PDA and sign the CPI with that PDA's seeds:
 

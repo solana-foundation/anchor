@@ -1,39 +1,68 @@
 ---
 title: Cross-program invocation
-description: "`CpiContext{:rs}`, `CpiHandle{:rs}`, generated CPI wrappers, and unchecked pinocchio CPI."
+description: "Learn how to make CPIs with `CpiContext{:rs}`, `CpiHandle{:rs}`, generated CPI wrappers, and PDA signer seeds."
 ---
 
-Anchor CPI uses typed account structs and borrow-tracked account handles. `CpiContext<T>{:rs}` bundles typed accounts, the target program address, signer seeds, and remaining accounts. `CpiHandle<'a>{:rs}` carries account handles into the CPI.
+A Cross Program Invocation (CPI) is one program calling an instruction on another program. This is how composability works on Solana. Token transfers, account creation through the System Program, and calls into another Anchor program all use CPI.
 
-## SPL CPI
+A CPI is constructed from the same three pieces as any Solana instruction:
 
-`anchor-spl-v2` exposes account structs and helpers for common token instructions:
+1. The program ID of the program being called.
+2. The accounts required by the instruction.
+3. Any instruction data required as arguments.
 
-```rust showLineNumbers=false
-use anchor_lang_v2::prelude::*;
-use anchor_spl_v2::token::{self, accounts::TransferChecked};
+Anchor's v2 CPI path keeps those pieces typed. `CpiContext<T>{:rs}` bundles the target program address, typed CPI accounts, signer seeds, and remaining accounts. `CpiHandle<'a>{:rs}` carries account handles into the CPI without exposing the raw account view for accidental re-borrows.
 
-let accounts = TransferChecked {
-    from: ctx.accounts.from.cpi_handle_mut(),
-    mint: ctx.accounts.mint.cpi_handle(),
-    to: ctx.accounts.to.cpi_handle_mut(),
-    authority: ctx.accounts.authority.cpi_handle(),
-};
+## SPL token CPI
 
-let cpi = CpiContext::new(ctx.accounts.token_program.address(), accounts);
-token::transfer_checked(cpi, amount, decimals)?;
-```
+`anchor-spl-v2` exposes account structs and helper functions for common SPL Token instructions. The example below transfers tokens with `transfer_checked{:rs}`.
 
-For PDA signatures, attach signer seeds:
+The instruction needs a source token account, mint, destination token account, authority, and token program:
 
 ```rust showLineNumbers=false
-let seeds: &[&[&[u8]]] = &[&[b"vault", &[ctx.bumps.vault]]];
-let cpi = CpiContext::new(token_program, accounts).with_signer(seeds);
+#[derive(Accounts)]
+pub struct TransferTokens {
+    pub mint: Account<Mint>,
+    #[account(
+        mut,
+        token::mint = mint,
+        token::authority = authority,
+    )]
+    pub from: Account<TokenAccount>,
+    #[account(mut, token::mint = mint)]
+    pub to: Account<TokenAccount>,
+    pub authority: Signer,
+    pub token_program: Program<Token>,
+}
 ```
 
-## Generated program CPI
+The handler builds the CPI accounts, wraps them in `CpiContext{:rs}`, then calls the SPL helper:
 
-For Anchor programs, `#[program]{:rs}` emits CPI wrappers behind the `cpi` feature. A caller can use the callee's generated `program::cpi::accounts::*{:rs}` structs and wrapper functions:
+```rust showLineNumbers=false
+use anchor_spl_v2::token::{self, cpi as token_cpi};
+
+pub fn transfer_tokens(
+    ctx: &mut Context<TransferTokens>,
+    amount: u64,
+    decimals: u8,
+) -> Result<()> {
+    let accounts = token_cpi::accounts::TransferChecked {
+        from: ctx.accounts.from.cpi_handle_mut(),
+        mint: ctx.accounts.mint.cpi_handle(),
+        to: ctx.accounts.to.cpi_handle_mut(),
+        authority: ctx.accounts.authority.cpi_handle(),
+    };
+
+    let cpi = CpiContext::new(ctx.accounts.token_program.address(), accounts);
+    token_cpi::transfer_checked(cpi, amount, decimals)
+}
+```
+
+The account constraints protect the CPI from mismatched accounts before the Token Program runs. `token::mint = mint{:rs}` ensures both token accounts belong to the expected mint, and `token::authority = authority{:rs}` ensures the signer controls the source account.
+
+## Generated Anchor CPI
+
+When one Anchor program calls another Anchor program, the callee can expose generated CPI wrappers behind the `cpi` feature. A caller can then use the callee's `program::cpi::accounts::*{:rs}` structs and wrapper functions.
 
 ```rust showLineNumbers=false
 let cpi_accounts = callee::cpi::accounts::SetData {
@@ -51,27 +80,26 @@ The generated CPI account structs contain one `CpiHandle<'a>{:rs}` per account a
   Generated CPI account wrappers currently skip accounts structs that contain `Option<_>{:rs}` or `Nested<_>{:rs}`. Those shapes need extra flattening and fallback logic. Runtime validation still supports them. This caveat is only about generated CPI wrappers.
 </Callout>
 
-## CpiHandle
+## PDA signer seeds
 
-`CpiHandle<'a>{:rs}` is intentionally narrow:
+A program can sign a CPI for a PDA derived from its own program ID. This is the mechanism used for program-owned vaults, authorities, and other accounts with no private key.
 
-- `account.cpi_handle(){:rs}` creates a read-only handle
-- `account.cpi_handle_mut(){:rs}` creates a writable handle and requires the account to be marked `mut{:rs}`
-- `handle.address(){:rs}` returns the account address
-- the handle does not deref to `AccountView{:rs}`
+Attach signer seeds with `with_signer(){:rs}` when a PDA authorizes the CPI:
 
-That missing `Deref{:rs}` is part of the safety story. It prevents accidental use with checked pinocchio CPI builders that would re-borrow the same account views.
+```rust showLineNumbers=false
+let signer_seeds: &[&[&[u8]]] = &[&[
+    b"vault-authority",
+    ctx.accounts.mint.address().as_ref(),
+    &[ctx.bumps.vault_authority],
+]];
 
-## Why unchecked CPI is safe here
+let cpi = CpiContext::new(ctx.accounts.token_program.address(), accounts)
+    .with_signer(signer_seeds);
+```
 
-`CpiContext::invoke(data){:rs}` uses pinocchio's `invoke_signed_unchecked{:rs}`. The unchecked path skips a runtime borrow check, and Anchor replaces it with two constraints:
+The outer slice can hold multiple signer PDAs. Each inner slice is the ordered seed list for one PDA, including its bump.
 
-1. `CpiHandle<'a>{:rs}` borrows the typed account wrapper for as long as the CPI account struct exists, so Rust rejects concurrent typed mutable access.
-2. pinocchio's account borrow state still catches stale raw-borrow cases after the CPI.
-
-The goal is to turn common runtime borrow failures into compile-time errors while avoiding a check on every CPI.
-
-## BorshAccount re-entry
+## `BorshAccount<T>{:rs}` re-entry
 
 If a CPI mutates an account that the current handler holds as `BorshAccount<T>{:rs}`, release and reacquire the borrow around the call:
 
@@ -82,3 +110,16 @@ ctx.accounts.profile.reacquire_borrow_mut(ctx.program_id)?;
 ```
 
 `Account<T>{:rs}` does not need this because its zero-copy fields read from the underlying buffer directly.
+
+## `CpiHandle<'a>{:rs}`
+
+`CpiHandle<'a>{:rs}` is intentionally narrow:
+
+- `account.cpi_handle(){:rs}` creates a read-only handle
+- `account.cpi_handle_mut(){:rs}` creates a writable handle and requires the account to be marked `mut{:rs}`
+- `handle.address(){:rs}` returns the account address
+- the handle does not deref to `AccountView{:rs}`
+
+That missing `Deref{:rs}` is part of the safety story. It prevents accidental use with checked pinocchio CPI builders that would re-borrow the same account views.
+
+`CpiContext::invoke(data){:rs}` uses pinocchio's `invoke_signed_unchecked{:rs}`. Anchor keeps that path safe for ordinary typed CPI by making CPI account structs hold `CpiHandle<'a>{:rs}` values that borrow the typed account wrappers for the duration of the call. Rust rejects concurrent typed mutable access, while pinocchio's account borrow state still catches stale raw-borrow cases after the CPI.

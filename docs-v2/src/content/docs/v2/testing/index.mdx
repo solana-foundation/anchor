@@ -4,7 +4,9 @@ description: Test programs with LiteSVM, profile them, debug SBF traces, and gen
 autoCards: false
 ---
 
-The testing loop centers on Rust tests and trace-backed tooling. `anchor-v2-testing` wraps LiteSVM, `$ [34manchor[0m test [2m--profile[0m{:ansi}` renders flamegraphs, `$ [34manchor[0m debugger{:ansi}` opens an instruction stepper, and `$ [34manchor[0m coverage{:ansi}` emits LCOV from the same register traces.
+The default v2 test loop is Rust-first. Instead of starting a local validator and driving it from TypeScript, the scaffolded test loads the compiled SBF program into LiteSVM inside the Rust test process.
+
+`anchor-v2-testing` wraps LiteSVM, `$ [34manchor[0m test [2m--profile[0m{:ansi}` renders flamegraphs, `$ [34manchor[0m debugger{:ansi}` opens an instruction stepper, and `$ [34manchor[0m coverage{:ansi}` emits LCOV from the same register traces. The result is one test harness for normal tests, performance work, debugging, and coverage.
 
 <CardGrid>
 
