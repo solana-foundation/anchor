@@ -18,6 +18,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Make idl build time way faster by caching `CrateContext` ([#4325](https://github.com/solana-foundation/anchor/pull/4325)).
 - cli: Bind `localnet` to `127.0.0.1` by default to fix a panic in `solana-test-validator` version `3.1.10` ([#4397](https://github.com/solana-foundation/anchor/pull/4397)).
 - cli: Fallback to a priority fee of 0 on localnet ([#4259](https://github.com/solana-foundation/anchor/pull/4259/)).
+- lang/syn: Fix compile error with `init` and a runtime seeds expression ([#4495](https://github.com/solana-foundation/anchor/pull/4495)).
 
 ### Breaking
 
