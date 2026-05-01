@@ -178,7 +178,7 @@ pub struct UseEitherTokenProgram {
 }
 ```
 
-For initialization through an interface account, include `token::token_program = token_program{:rs}` and constrain the supplied token program to either the legacy Token Program or Token-2022 before using it.
+For high-level initialization through an interface account, include `token::token_program = token_program{:rs}` and use `Program<Token>{:rs}` for the current legacy Token Program path. Token-2022 account creation and extension setup should use lower-level Token-2022 APIs, then validate the resulting account through `InterfaceAccount<TokenAccount>{:rs}`.
 
 ## Account constraints
 

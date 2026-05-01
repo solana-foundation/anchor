@@ -51,7 +51,7 @@ $ [34mgit[0m checkout anchor-next
 $ [34mcargo[0m install [2m--path[0m cli [2m--force[0m
 ```
 
-Prepend `CARGO_PROFILE_RELEASE_LTO=off` on macOS if you hit the LTO error above.
+Prepend `CARGO_PROFILE_RELEASE_LTO=off{:ansi}` on macOS if you hit the LTO error above.
 
 </Step>
 </Steps>
@@ -68,7 +68,7 @@ anchor-spl-v2 = { git = "https://github.com/solana-foundation/anchor.git", branc
 
 These lines live in the program crate at `programs/<program-name>/Cargo.toml`, not the workspace root `Cargo.toml`.
 
-The default `anchor-lang-v2` feature set is `alloc`, `guardrails`, and `account-resize`. Optional features include `const-rent`, `compat`, `idl-build`, and `testing`. See [Feature flags](/docs/v2/reference/feature-flags/) for the tradeoffs.
+The default `anchor-lang-v2` feature set is `alloc{:toml}`, `guardrails{:toml}`, and `account-resize{:toml}`. Optional features include `const-rent{:toml}`, `compat{:toml}`, `idl-build{:toml}`, and `testing{:toml}`. See [Feature flags](/docs/v2/reference/feature-flags/) for the tradeoffs.
 
 ## Test dependencies
 
@@ -82,4 +82,4 @@ anchor-v2-testing = { git = "https://github.com/solana-foundation/anchor.git", b
 profile = ["anchor-v2-testing/profile"]
 ```
 
-That `profile` feature is what `$ [34manchor[0m test [2m--profile[0m{:ansi}`, `$ [34manchor[0m debugger{:ansi}`, and `$ [34manchor[0m coverage{:ansi}` use to record SBF register traces.
+That `profile{:toml}` feature is what `$ [34manchor[0m test [2m--profile[0m{:ansi}`, `$ [34manchor[0m debugger{:ansi}`, and `$ [34manchor[0m coverage{:ansi}` use to record SBF register traces.

@@ -116,7 +116,7 @@ pub struct Counter {
 
 `#[account]{:rs}` makes `Counter{:rs}` Pod-backed and gives `Account<Counter>{:rs}` the layout `[8-byte discriminator][Counter bytes]`. Use [`BorshAccount<T>{:rs}`](/docs/v2/programs/borsh-accounts-and-realloc/) instead when the account contains `Vec{:rs}`, `String{:rs}`, or payload enums.
 
-The account struct under `#[derive(Accounts)]{:rs}` is the checklist Anchor runs before the handler. In this example, `payer{:rs}` must be writable, `counter{:rs}` is created and paid for by `payer{:rs}`, and `system_program{:rs}` is needed because account creation is a System Program instruction.
+The account struct under `#[derive(Accounts)]{:rs}` is the checklist Anchor runs before the handler. In this example, `payer{:rs}` must be writable, `counter{:rs}` is created and paid for by `payer{:rs}`, and `system_program{:rs}` is a checked well-known program field in the scaffolded account list.
 
 </Step>
 <Step title="Build and test">
@@ -128,7 +128,7 @@ $ [34manchor[0m test
 
 `$ [34manchor[0m build{:ansi}` compiles the program and writes the SBF binary to `target/deploy/counter.so`. It also writes client-facing artifacts such as `target/idl/counter.json` and `target/types/counter.ts`.
 
-`$ [34manchor[0m test{:ansi}` runs the script in `Anchor.toml`. For the default LiteSVM template, that script is `cargo test`, and the workspace is configured to skip starting a local validator.
+`$ [34manchor[0m test{:ansi}` runs the script in `Anchor.toml`. For the default LiteSVM template, that script is `$ cargo test{:ansi}`, and the workspace is configured to skip starting a local validator.
 
 The LiteSVM test adds the deployed SBF program to an in-process VM, builds an instruction using generated account structs, and sends a signed transaction:
 

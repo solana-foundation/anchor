@@ -175,7 +175,7 @@ const ix = await program.methods
 </Tab>
 </Tabs>
 
-During alpha, compare important TypeScript-built transactions against the generated Rust instruction helper for the same instruction. The Rust helper currently has the final say on compact instruction discriminators, resolved account ordering, optional account sentinels, and generated PDA metadata.
+During alpha, compare important TypeScript-built transactions against the generated Rust instruction helper for the same instruction. The Rust helper is the strongest reference for account ordering, PDA metadata, and any instruction shape that depends on code generated inside the program crate.
 
 ## PDA seed metadata
 
@@ -291,14 +291,12 @@ This gives app developers a usable IDL and type file without making the TypeScri
 
 ## Current limitations
 
-Some features are still settling in downstream clients:
+Some surfaces are still worth testing carefully in downstream clients:
 
-- compact one-byte instruction discriminators
-- richer account-resolution metadata
-- optional account sentinel handling
+- account-resolution paths that rely on generated PDA metadata
 - generated CPI metadata
 - opaque seed expressions
-- Pod-backed account decoding
+- Pod-backed account decoding conventions
 - SPL and Token-2022 interface-account surfaces
 
 Use the IDL for integration planning and early experiments, but keep Rust tests and generated Rust account builders as the reference implementation until the TypeScript package catches up.

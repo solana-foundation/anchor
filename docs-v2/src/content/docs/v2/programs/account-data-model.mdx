@@ -13,7 +13,7 @@ For a normal program-owned account, the on-chain layout is:
 [8-byte discriminator][repr(C) T]
 ```
 
-Loading `Account<T>{:rs}` validates the owner, discriminator, and size, then casts the raw account bytes into `T{:rs}`. Exit is a no-op because mutations already happened in the account buffer.
+Loading `Account<T>{:rs}` validates the owner, discriminator, and minimum data length, then casts the raw account bytes into `T{:rs}`. Exit is a no-op because mutations already happened in the account buffer.
 
 The main decision is whether the account has a fixed layout. Fixed-size structs use `Account<T>{:rs}`. Accounts with `Vec{:rs}`, `String{:rs}`, or other variable-length payloads use `BorshAccount<T>{:rs}`.
 

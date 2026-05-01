@@ -53,7 +53,7 @@ It serializes on successful exit and provides `release_borrow(){:rs}` / `reacqui
 
 `Slab<H, Item>{:rs}` stores a Pod header followed by a dynamic item tail. It is useful for account-local ledgers, order books, ring buffers, and other bounded collections that should stay zero-copy.
 
-The wrapper exposes vector-style methods such as `try_push{:rs}`, `pop{:rs}`, `iter{:rs}`, indexing, and resize helpers behind the `account-resize` feature.
+The wrapper exposes vector-style methods such as `try_push{:rs}`, `pop{:rs}`, `iter{:rs}`, indexing, and resize helpers behind the `account-resize{:toml}` feature.
 
 ## `Option<A>{:rs}`
 
@@ -62,9 +62,9 @@ The wrapper exposes vector-style methods such as `try_push{:rs}`, `pop{:rs}`, `i
 ```rust showLineNumbers=false
 #[derive(Accounts)]
 pub struct MaybeProfile {
+    pub user: Signer,
     #[account(seeds = [b"profile", user.address().as_ref()], bump)]
     pub profile: Option<Account<Profile>>,
-    pub user: Signer,
 }
 ```
 

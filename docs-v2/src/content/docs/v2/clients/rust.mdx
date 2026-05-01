@@ -135,6 +135,7 @@ use anchor_lang_v2::{
 
 let mut svm: LiteSVM = anchor_v2_testing::svm();
 let payer = Keypair::new();
+let counter_account = Keypair::new();
 svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
 
 let bytes = include_bytes!("../../../target/deploy/counter.so");
@@ -145,14 +146,19 @@ let ix = Instruction::new_with_bytes(
     &counter::instruction::Initialize {}.data(),
     counter::accounts::Initialize {
         payer: payer.pubkey(),
-        counter: counter.pubkey(),
+        counter: counter_account.pubkey(),
         system_program: anchor_lang_v2::programs::System::id(),
     }
     .to_account_metas(None),
 );
 
-let msg = Message::new(&[ix], Some(&payer.pubkey()));
-let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[&payer]).unwrap();
+let blockhash = svm.latest_blockhash();
+let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
+let tx = VersionedTransaction::try_new(
+    VersionedMessage::Legacy(msg),
+    &[&payer, &counter_account],
+)
+.unwrap();
 let result = svm.send_transaction(tx);
 assert!(result.is_ok());
 ```

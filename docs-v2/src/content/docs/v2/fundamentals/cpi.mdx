@@ -62,7 +62,7 @@ The account constraints protect the CPI from mismatched accounts before the Toke
 
 ## Generated Anchor CPI
 
-When one Anchor program calls another Anchor program, the callee can expose generated CPI wrappers behind the `cpi` feature. A caller can then use the callee's `program::cpi::accounts::*{:rs}` structs and wrapper functions.
+When one Anchor program calls another Anchor program, the callee can expose generated CPI wrappers behind the `cpi{:toml}` feature. A caller can then use the callee's `program::cpi::accounts::*{:rs}` structs and wrapper functions.
 
 ```rust showLineNumbers=false
 let cpi_accounts = callee::cpi::accounts::SetData {

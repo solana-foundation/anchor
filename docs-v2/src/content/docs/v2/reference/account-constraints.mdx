@@ -19,7 +19,10 @@ Account constraints are declared on fields inside a `#[derive(Accounts)]{:rs}` s
 | `seeds::program = expr{:rs}` | Derives against another program id. |
 | `address = expr{:rs}` | Checks the account address against an expression. |
 | `owner = expr{:rs}` | Checks the owner address. |
+| `executable{:rs}` | Requires the account's executable flag. |
 | `constraint = expr{:rs}` | Runs a custom boolean expression. |
+| `has_one = field{:rs}` | Deprecated relation check. Prefer `address = parent.field{:rs}` on the sibling account. |
+| `zeroed{:rs}` | Initializes an allocated account whose discriminator is still all zero bytes. |
 | `close = dest{:rs}` | Closes account on successful exit. |
 | `realloc = expr{:rs}` | Resizes account data when enabled. |
 | `realloc_payer = field{:rs}` | Pays for realloc growth. |
@@ -42,7 +45,7 @@ The derive routes each marker through lifecycle hooks:
 | Syntax | Hook |
 | --- | --- |
 | `ns::key = value{:rs}` | `check{:rs}` |
-| `init, ns::key = value{:rs}` | `init{:rs}` during creation, then normal validation as needed |
+| `init, ns::key = value{:rs}` | `init{:rs}` during creation for runtime-only markers. Built-in namespace markers are handled by init params. |
 | `init_if_needed, ns::key = value{:rs}` | `init{:rs}` then `check{:rs}` on create, `check{:rs}` on existing |
 | `update(ns::key = value){:rs}` | `update{:rs}` |
 | any successful path | `exit{:rs}` during account exit |

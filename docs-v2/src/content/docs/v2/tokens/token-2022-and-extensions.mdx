@@ -75,7 +75,7 @@ Use a concrete `Program<Token>{:rs}` or `Program<Token2022>{:rs}` field when an 
 
 ## Interface init
 
-Interface init paths include an explicit token program field so the init code knows which program should own the new account:
+The current high-level interface init path is for the legacy Token Program. It is useful when you want to initialize a base SPL mint or token account while keeping the account type as `InterfaceAccount<T>{:rs}` for later read and validation paths:
 
 ```rust showLineNumbers=false
 #[derive(Accounts)]
@@ -83,11 +83,7 @@ pub struct InitInterfaceMint {
     #[account(mut)]
     pub payer: Signer,
     pub authority: UncheckedAccount,
-    #[account(
-        constraint = *token_program.address() == Token::id()
-            || *token_program.address() == Token2022::id()
-    )]
-    pub token_program: UncheckedAccount,
+    pub token_program: Program<Token>,
     #[account(
         init,
         payer = payer,
@@ -100,7 +96,7 @@ pub struct InitInterfaceMint {
 }
 ```
 
-The interface init path initializes the base mint or token account. Extension-specific initialization may still require lower-level CPI calls, and most Token-2022 extensions must be selected before the base account is initialized.
+For Token-2022 account creation or extension selection, use lower-level Token-2022 APIs, then validate or read the resulting account with `InterfaceAccount<T>{:rs}`. Most Token-2022 extensions must be selected before the base account is initialized.
 
 ## Extension data
 

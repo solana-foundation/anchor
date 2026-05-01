@@ -40,9 +40,9 @@ Optional accounts produce optional bumps:
 ```rust showLineNumbers=false
 #[derive(Accounts)]
 pub struct MaybeProfile {
+    pub user: Signer,
     #[account(seeds = [b"profile", user.address().as_ref()], bump)]
     pub profile: Option<Account<Profile>>,
-    pub user: Signer,
 }
 
 pub fn handle(ctx: &mut Context<MaybeProfile>) -> Result<()> {

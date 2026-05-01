@@ -79,7 +79,7 @@ By default, the program ID is the public key of the keypair at `target/deploy/<p
 $ [34manchor[0m keys sync
 ```
 
-<Callout variant="tip" title="When to run `anchor keys sync{:ansi}`">
+<Callout variant="tip" title="When to run `$ anchor keys sync{:ansi}`">
   Run `$ [34manchor[0m keys sync{:ansi}` after cloning a repository or regenerating a program keypair. Syncing prevents a mismatch between the declared ID and the program keypair used during deployment.
 </Callout>
 
@@ -190,7 +190,7 @@ For a normal program-owned account, the on-chain layout is:
 Use `Account<T>{:rs}` for fixed-size Pod-backed state. Use `BorshAccount<T>{:rs}` when the account needs variable-length fields such as `Vec{:rs}`, `String{:rs}`, or payload enums.
 
 <Callout variant="important" title="Choosing the account model">
-  v2's `Account<T>{:rs}` is not the same model as v1's default borsh account. It is zero-copy and Pod-backed by default. For variable-length data, mark the type with `#[account(borsh)]{:rs}` and use `BorshAccount<T>{:rs}` in the accounts struct.
+  `Account<T>{:rs}` is zero-copy and Pod-backed by default. For variable-length data, mark the type with `#[account(borsh)]{:rs}` and use `BorshAccount<T>{:rs}` in the accounts struct.
 </Callout>
 
 ## Generated modules
@@ -200,11 +200,11 @@ The program macro emits generated surfaces that clients and tests rely on:
 - `program::instruction::*{:rs}` structs that implement `InstructionData{:rs}`
 - `program::accounts::*{:rs}` structs that implement `ToAccountMetas{:rs}`
 - typed `Bumps{:rs}` for each accounts struct
-- IDL print hooks behind `idl-build`
-- `program::cpi::*{:rs}` wrappers behind the `cpi` feature
+- IDL print hooks behind `idl-build{:toml}`
+- `program::cpi::*{:rs}` wrappers behind the `cpi{:toml}` feature
 
 Those modules are compile-time output from the macros, not source files checked into the program. Tests and CPI callers can still import them as normal Rust modules because the macro expands them into the crate.
 
 ## `#![no_std]{:rs}` by default
 
-`anchor-lang-v2` itself is `#![no_std]{:rs}`. The default `alloc` feature is on, so user programs can still use `Vec{:rs}`, `String{:rs}`, and generated macro code that needs allocation. Disabling `alloc` is possible, but most real programs should keep the default feature set.
+`anchor-lang-v2` itself is `#![no_std]{:rs}`. The default `alloc{:toml}` feature is on, so user programs can still use `Vec{:rs}`, `String{:rs}`, and generated macro code that needs allocation. Disabling `alloc{:toml}` is possible, but most real programs should keep the default feature set.

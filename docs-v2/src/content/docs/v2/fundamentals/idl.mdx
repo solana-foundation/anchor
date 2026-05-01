@@ -9,7 +9,7 @@ An Interface Description Language (IDL) file for an Anchor program is a standard
   The `$ [34manchor[0m build{:ansi}` command writes the IDL to `target/idl/<program-name>.json` and the generated TypeScript type file to `target/types/<program-name>.ts`.
 </Callout>
 
-Anchor builds the IDL from the same Rust items used by the program. The emission path is trait-driven. Account wrappers and type wrappers expose metadata through `IdlAccountType{:rs}` and `IdlType{:rs}` under the `idl-build` feature.
+Anchor builds the IDL from the same Rust items used by the program. The emission path is trait-driven. Account wrappers and type wrappers expose metadata through `IdlAccountType{:rs}` and `IdlType{:rs}` under the `idl-build{:toml}` feature.
 
 `idl-build{:toml}` pulls in IDL assembly machinery and should not be shipped in production SBF binaries.
 
@@ -55,7 +55,7 @@ The IDL captures the instruction name, discriminator, account list, and argument
   "accounts": [
     { "name": "payer", "writable": true, "signer": true },
     { "name": "counter", "writable": true },
-    { "name": "systemProgram" }
+    { "name": "systemProgram", "address": "11111111111111111111111111111111" }
   ],
   "args": [
     { "name": "start", "type": "u64" }

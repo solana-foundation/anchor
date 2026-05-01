@@ -71,10 +71,10 @@ $ [34mcargo[0m test [2m-p[0m anchor-bench multisig_end_to_end [2m--[0m [2
 $ [34mcargo[0m test [2m-p[0m anchor-bench prop_amm_end_to_end [2m--[0m [2m--nocapture[0m
 ```
 
-Set `BENCH_SKIP_BUILD=1` in your shell to reuse existing `.so` artifacts:
+Set `BENCH_SKIP_BUILD=1{:ansi}` in your shell to reuse existing `.so` artifacts:
 
 ```ansi showLineNumbers=false
-$ [34mcargo[0m test [2m-p[0m anchor-bench helloworld_end_to_end [2m--[0m [2m--nocapture[0m
+$ BENCH_SKIP_BUILD=1 [34mcargo[0m test [2m-p[0m anchor-bench helloworld_end_to_end [2m--[0m [2m--nocapture[0m
 ```
 
 Run the full benchmark test suite when updating all headline numbers:

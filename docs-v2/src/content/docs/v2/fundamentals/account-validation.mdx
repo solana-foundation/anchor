@@ -24,9 +24,9 @@ For each accounts struct, the macro emits:
 - typed bumps
 - a `MUT_MASK{:rs}` for duplicate mutable account detection
 - account-meta builders for clients and tests
-- IDL account metadata under `idl-build`
+- IDL account metadata under `idl-build{:toml}`
 
-The order of fields matters because it is the order clients use when they build the instruction. Anchor validates each field in order, stores PDA bumps in `ctx.bumps{:rs}`, then calls the handler with the loaded account struct.
+The order of fields matters because it is the order clients use when they build the instruction. Anchor validates each field in order, stores PDA bumps in `ctx.bumps{:rs}`, then calls the handler with the loaded account struct. If a constraint expression references a sibling field, put that sibling field earlier in the struct so it is already loaded.
 
 ## Built-in constraints
 
@@ -45,7 +45,7 @@ Common constraints include:
 | `address = expr{:rs}` | Requires the account address to equal an expression. |
 | `owner = expr{:rs}` | Requires the account owner to equal an expression. |
 | `close = dest{:rs}` | Transfers lamports and zeros data on successful exit. |
-| `realloc = expr{:rs}` | Resizes account data when `account-resize` is enabled. |
+| `realloc = expr{:rs}` | Resizes account data when `account-resize{:toml}` is enabled. |
 
 `has_one{:rs}` is still accepted but deprecated. Put `address = parent.field{:rs}` on the sibling account instead.
 

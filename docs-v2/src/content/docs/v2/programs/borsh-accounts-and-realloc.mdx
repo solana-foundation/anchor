@@ -38,26 +38,33 @@ The extra `8` is the Anchor discriminator.
 
 ## Realloc
 
-The derive supports realloc constraints for accounts that need to grow or shrink:
+The derive supports realloc constraints for accounts that need to grow or shrink. This example follows the v2 realloc fixture and keeps the size formula tied to one variable-length field:
 
 ```rust showLineNumbers=false
+#[account(borsh)]
+pub struct DynData {
+    pub items: Vec<u8>,
+}
+
 #[derive(Accounts)]
-#[instruction(new_name: String)]
-pub struct RenameProfile {
+#[instruction(new_items: Vec<u8>)]
+pub struct Grow {
     #[account(mut)]
     pub payer: Signer,
     #[account(
         mut,
-        realloc = 8 + 32 + 4 + new_name.len(),
+        realloc = 8 + 4 + new_items.len(),
         realloc_payer = payer,
         realloc_zero = false,
     )]
-    pub profile: BorshAccount<Profile>,
+    pub data: BorshAccount<DynData>,
     pub system_program: Program<System>,
 }
 ```
 
-The `account-resize` feature is on by default because realloc needs pinocchio's account-resize hook. Do not disable that feature while the program still uses realloc helpers.
+The `8` is the Anchor discriminator. The `4` is the borsh length prefix for `Vec<u8>{:rs}`.
+
+The `account-resize{:toml}` feature is on by default because realloc needs pinocchio's account-resize hook. Do not disable that feature while the program still uses realloc helpers.
 
 ## CPI re-entry
 

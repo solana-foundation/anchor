@@ -36,7 +36,7 @@ Use LiteSVM tests through `anchor_v2_testing::svm(){:rs}` so the same tests can 
 | --- | --- |
 | `use anchor_lang::prelude::*{:rs}` | `use anchor_lang_v2::prelude::*{:rs}` |
 | `solana_program{:rs}` | `pinocchio{:rs}` or v2 re-exports |
-| `std{:rs}` required | `#![no_std]{:rs}` compatible, with `alloc{:rs}` on by default |
+| `std{:rs}` required | `#![no_std]{:rs}` compatible, with `alloc{:toml}` on by default |
 | `<'info>{:rs}` lifetimes on wrappers | removed |
 | `Context<T>{:rs}` handlers | `&mut Context<T>{:rs}` handlers |
 | `Pubkey{:rs}` | `Address{:rs}` |
@@ -129,7 +129,7 @@ pub struct Withdraw {
 
 ## Compat feature
 
-The `compat` feature exposes `debug!{:rs}`, a v1-shaped logging macro that accepts Rust format strings by routing through `alloc::format!{:rs}`:
+The `compat{:toml}` feature exposes `debug!{:rs}`, a v1-shaped logging macro that accepts Rust format strings by routing through `alloc::format!{:rs}`:
 
 ```toml title="Cargo.toml" showLineNumbers=false
 [dependencies]

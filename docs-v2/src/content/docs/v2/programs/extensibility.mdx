@@ -55,10 +55,10 @@ impl<T: Pod + Discriminator + Owner> AnchorAccount for MyWrapper<T> {
 }
 ```
 
-The trait defaults `MIN_DATA_LEN{:rs}` to `0{:rs}`, which forces the on-curve check. Data-carrying wrappers should override it to the discriminator-plus-payload minimum so the verifier can fall back to a hash-and-compare.
+The trait defaults `MIN_DATA_LEN{:rs}` to `0{:rs}`, which forces the on-curve check. Wrappers that require non-empty account data can override it with a non-zero structural minimum so the verifier can fall back to a hash-and-compare.
 
 <Callout variant="intuition" title="What `MIN_DATA_LEN{:rs}` actually buys">
-  A wrapper that requires a non-empty account is one that must have been created via signed CPI, and `invoke_signed{:rs}` already ran the on-curve check at creation. Setting `MIN_DATA_LEN{:rs}` to a non-zero value tells the PDA verifier "this account was provably created through a signed path", which is the condition under which the curve re-check can be safely skipped.
+  A wrapper that requires a non-empty account is one that must have been created via signed CPI, and `invoke_signed{:rs}` already ran the on-curve check at creation. Setting `MIN_DATA_LEN{:rs}` to a non-zero value tells the PDA verifier "this account was provably created through a signed path", which is the condition under which the curve re-check can be skipped.
 </Callout>
 
 Once implemented, `MyWrapper<T>{:rs}` is a first-class field type:
@@ -113,7 +113,7 @@ pub struct UseMine {
 }
 ```
 
-At load time, `Program<MyProgram>{:rs}` validates that the account's address matches `MyProgram::id(){:rs}`, and (under the default `guardrails` feature) that the account is `executable{:rs}`.
+At load time, `Program<MyProgram>{:rs}` validates that the account's address matches `MyProgram::id(){:rs}`, and (under the default `guardrails{:toml}` feature) that the account is `executable{:rs}`.
 
 ## Why this works
 

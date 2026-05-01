@@ -58,7 +58,7 @@ counter = "Counter111111111111111111111111111111111111"
 counter = "DevCounter11111111111111111111111111111111"
 ```
 
-The program name should match the Rust crate name after Anchor normalizes it to snake case. Commands such as `$ [34manchor[0m keys list{:ansi}`, `$ [34manchor[0m keys sync{:ansi}`, `$ [34manchor[0m build{:ansi}`, `$ [34manchor[0m deploy{:ansi}`, and `$ [34manchor[0m test{:ansi}` use this map to connect source crates, keypair files, IDLs, and deployed program addresses.
+The program name should match the Rust crate name after Anchor normalizes it to snake case. Commands such as `$ [34manchor[0m keys list{:ansi}`, `$ [34manchor[0m keys sync{:ansi}`, `$ [34manchor[0m build{:ansi}`, `$ [34manchor[0m program deploy{:ansi}`, and `$ [34manchor[0m test{:ansi}` use this map to connect source crates, keypair files, IDLs, and deployed program addresses.
 
 The CLI also accepts object-form program entries when a command needs a custom deployment path or IDL path:
 
@@ -87,7 +87,7 @@ Set `skip_local_validator = true{:toml}` when the test harness does not need a l
 skip_local_validator = true
 ```
 
-LiteSVM and Mollusk tests usually set this because the test VM runs inside the Rust process. If the flag is absent and the provider cluster is localnet, `$ [34manchor[0m test{:ansi}` can start a local validator before running the test script.
+The LiteSVM scaffold sets this because the test VM runs inside the Rust process. Use the same setting for other in-process Rust harnesses that do not need an RPC validator. If the flag is absent and the provider cluster is localnet, `$ [34manchor[0m test{:ansi}` can start a local validator before running the test script.
 
 ## `[features]{:toml}`
 

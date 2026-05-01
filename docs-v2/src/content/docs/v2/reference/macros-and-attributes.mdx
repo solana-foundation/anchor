@@ -103,7 +103,7 @@ In the default form, the macro generates:
 - A `Discriminator{:rs}` impl with `sha256("account:" + name)[..8]{:rs}`
 - An `Owner{:rs}` impl returning `program_id{:rs}` (program-owned)
 - A no-padding assertion (struct size must equal the sum of field sizes)
-- An IDL type entry under `idl-build`
+- An IDL type entry under `idl-build{:toml}`
 
 The struct must be `#[repr(C)]{:rs}` (added by the macro) and every field must itself be `Pod{:rs}`. Pairing it with `Account<T>{:rs}` then yields a fully zero-copy load.
 
