@@ -68,6 +68,24 @@ if [[ "$is_prerelease" -eq 0 ]]; then
     # Keep release notes and changelog the same
     git restore updates
     popd
+
+    # If the release notes are missing from the website, we should at the minimum create a placeholder linking to the github release notes
+    VERSION_URL=$(echo $version | sed 's/\./-/g')
+    VERSION_CHANGELOG=$(echo $version | sed 's/\.//g')
+    if [[ ! -f "docs/content/docs/updates/release-notes/${VERSION_URL}.mdx" ]]; then
+        cat <<EOF > "docs/content/docs/updates/release-notes/${VERSION_URL}.mdx"
+---
+title: $version
+description: Anchor - Release Notes $version
+---
+
+See the full 
+[CHANGELOG](https://github.com/solana-foundation/anchor/blob/v${version}/CHANGELOG.md#${VERSION_CHANGELOG}---$(date '+%Y-%m-%d')).
+EOF
+
+        # Insert the version into release notes meta, and sort the versions so the order is correct
+        jq --arg v "$VERSION_URL" '.pages |= (. + [$v] | sort_by(split("-") | map(tonumber)))' docs/content/docs/updates/release-notes/meta.json
+    fi
 fi
 
 # Potential for collisions in `package.json` files, handle those separately
