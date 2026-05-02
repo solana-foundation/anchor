@@ -142,7 +142,10 @@ fn cursor_walk_n_returns_all_views_at_once() {
 
     let (views, dups) = unsafe { cursor.walk_n(4) };
     assert_eq!(views.len(), 4);
-    assert!(dups.is_none(), "no duplicates present → bitvec stays lazy None");
+    assert!(
+        dups.is_none(),
+        "no duplicates present → bitvec stays lazy None"
+    );
     for (i, v) in views.iter().enumerate() {
         assert_eq!(v.address().to_bytes(), unique_addr(i as u8));
     }
@@ -182,13 +185,7 @@ fn cursor_dup_resolves_to_earlier_view_and_flags_bitvec() {
 #[test]
 fn remaining_accounts_walks_trailing_region() {
     // Full transaction has 5 accounts: 2 declared, 3 trailing.
-    let records = [
-        non_dup(0),
-        non_dup(1),
-        non_dup(2),
-        non_dup(3),
-        non_dup(4),
-    ];
+    let records = [non_dup(0), non_dup(1), non_dup(2), non_dup(3), non_dup(4)];
     let mut sbf = SbfInputBuffer::build(&records);
     let mut lookup = fresh_lookup();
     let mut cursor =
@@ -199,8 +196,13 @@ fn remaining_accounts_walks_trailing_region() {
     assert_eq!(cursor.consumed(), 2);
 
     let program_id = Address::new_from_array([0x42; 32]);
-    let mut ctx: Context<'_, DummyHeader> =
-        Context::new(&program_id, DummyHeader, (), &mut cursor, /*remaining_num*/ 3);
+    let mut ctx: Context<'_, DummyHeader> = Context::new(
+        &program_id,
+        DummyHeader,
+        (),
+        &mut cursor,
+        /*remaining_num*/ 3,
+    );
 
     let remaining = ctx.remaining_accounts();
     assert_eq!(remaining.len(), 3);
@@ -239,8 +241,13 @@ fn remaining_accounts_caches_and_does_not_re_walk_cursor() {
 
     let program_id = Address::new_from_array([0x42; 32]);
     let consumed_before = cursor.consumed();
-    let mut ctx: Context<'_, DummyHeader> =
-        Context::new(&program_id, DummyHeader, (), &mut cursor, /*remaining_num*/ 2);
+    let mut ctx: Context<'_, DummyHeader> = Context::new(
+        &program_id,
+        DummyHeader,
+        (),
+        &mut cursor,
+        /*remaining_num*/ 2,
+    );
 
     let first = ctx.remaining_accounts();
     let second = ctx.remaining_accounts();

@@ -19,9 +19,11 @@
 //! // Use `view` in tests — e.g. Miri soundness witnesses.
 //! ```
 
-use core::cell::UnsafeCell;
-use pinocchio::account::{AccountView, RuntimeAccount};
-use solana_address::Address;
+use {
+    core::cell::UnsafeCell,
+    pinocchio::account::{AccountView, RuntimeAccount},
+    solana_address::Address,
+};
 
 /// Size of the RuntimeAccount header + minimum 8 bytes for data/padding.
 pub const MIN_ACCOUNT_BUF: usize = core::mem::size_of::<RuntimeAccount>() + 8;

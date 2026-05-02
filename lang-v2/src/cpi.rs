@@ -1,13 +1,12 @@
+/// Re-export pinocchio CPI building blocks for instruction construction.
+pub use pinocchio::cpi::{Seed as CpiSeed, Signer as CpiSigner};
+pub use pinocchio::instruction::{InstructionAccount, InstructionView};
 #[cfg(feature = "const-rent")]
 use pinocchio::sysvars::rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_LAMPORTS_PER_BYTE};
 use {
     pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
 };
-
-/// Re-export pinocchio CPI building blocks for instruction construction.
-pub use pinocchio::cpi::{Seed as CpiSeed, Signer as CpiSigner};
-pub use pinocchio::instruction::{InstructionAccount, InstructionView};
 
 /// Largest `space` that won't overflow `u64` in the const rent formula.
 /// In practice unreachable (Solana caps accounts at 10 MiB).

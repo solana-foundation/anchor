@@ -18,7 +18,9 @@ use {
 };
 
 fn program_id() -> Pubkey {
-    "Der1111111111111111111111111111111111111111".parse().unwrap()
+    "Der1111111111111111111111111111111111111111"
+        .parse()
+        .unwrap()
 }
 
 fn counter_pda() -> Pubkey {
@@ -53,13 +55,7 @@ fn do_initialize(svm: &mut LiteSVM, payer: &Keypair) -> Pubkey {
     counter
 }
 
-fn do_bump(
-    svm: &mut LiteSVM,
-    payer: &Keypair,
-    counter: Pubkey,
-    amount: u64,
-    step: i32,
-) {
+fn do_bump(svm: &mut LiteSVM, payer: &Keypair, counter: Pubkey, amount: u64, step: i32) {
     let mut data = vec![1];
     data.extend_from_slice(&amount.to_le_bytes());
     data.extend_from_slice(&step.to_le_bytes());
@@ -277,8 +273,7 @@ fn program_data_from_logs(logs: &[String]) -> Vec<u8> {
         .find(|l| l.starts_with("Program data: "))
         .expect("should have a `Program data:` log line");
     let b64 = line.trim_start_matches("Program data: ").trim();
-    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b64)
-        .expect("base64 decode")
+    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b64).expect("base64 decode")
 }
 
 #[test]
@@ -296,8 +291,15 @@ fn emit_wincode_event_logs_program_data() {
         .expect("bump should succeed");
 
     let bytes = program_data_from_logs(&meta.logs);
-    assert!(bytes.len() >= 8, "event payload should include discriminator");
-    assert_eq!(&bytes[..8], &event_discriminator("Bumped"), "discriminator mismatch");
+    assert!(
+        bytes.len() >= 8,
+        "event payload should include discriminator"
+    );
+    assert_eq!(
+        &bytes[..8],
+        &event_discriminator("Bumped"),
+        "discriminator mismatch"
+    );
 
     // Default-mode event uses wincode with a borsh-compatible wire format:
     // u64 LE (8) + i32 LE (4) + bool (1 byte). Total = 21 including disc.
@@ -323,7 +325,11 @@ fn emit_bytemuck_event_copies_repr_c_bytes() {
         .expect("snapshot should succeed");
 
     let bytes = program_data_from_logs(&meta.logs);
-    assert_eq!(&bytes[..8], &event_discriminator("SnapshotTaken"), "discriminator mismatch");
+    assert_eq!(
+        &bytes[..8],
+        &event_discriminator("SnapshotTaken"),
+        "discriminator mismatch"
+    );
 
     // Bytemuck layout: repr(C) struct bytes verbatim.
     // SnapshotTaken { value: u64 (8), mode: u8 (1), _pad: [u8; 7] (7) } = 16

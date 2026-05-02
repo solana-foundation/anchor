@@ -26,5 +26,7 @@
 pub mod account_buffer;
 pub mod sbf_input_buffer;
 
-pub use account_buffer::{AccountBuffer, MIN_ACCOUNT_BUF};
-pub use sbf_input_buffer::{AccountRecord, SbfInputBuffer};
+pub use {
+    account_buffer::{AccountBuffer, MIN_ACCOUNT_BUF},
+    sbf_input_buffer::{AccountRecord, SbfInputBuffer},
+};

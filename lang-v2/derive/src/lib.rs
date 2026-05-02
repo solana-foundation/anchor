@@ -105,7 +105,18 @@ fn with_ix_lifetime(ty: &Type, ix: &syn::Lifetime) -> Type {
 struct ArgsDeser {
     deser: TokenStream2,
     arg_types: Vec<Type>,
-    has_refs: bool,
+}
+
+/// Compute lifetime-rewritten argument types plus a flag indicating whether
+/// any argument carries an instruction-data borrow.
+fn args_meta(args: &[(&Ident, &Type)]) -> (Vec<Type>, bool) {
+    let ix_lifetime: syn::Lifetime = syn::parse_quote!('ix);
+    let arg_types: Vec<Type> = args
+        .iter()
+        .map(|(_, t)| with_ix_lifetime(t, &ix_lifetime))
+        .collect();
+    let has_refs = args.iter().any(|(_, t)| needs_ix_lifetime(t));
+    (arg_types, has_refs)
 }
 
 /// Build the `#[derive(SchemaRead)] struct + deserialize` block for a list of
@@ -164,11 +175,7 @@ fn emit_args_deser(args: &[(&Ident, &Type)], struct_name: &str, inline_error: bo
         }
     };
 
-    ArgsDeser {
-        deser,
-        arg_types,
-        has_refs,
-    }
+    ArgsDeser { deser, arg_types }
 }
 
 /// Parse `#[instruction(name: Type, ...)]` from struct-level attributes.
@@ -392,14 +399,15 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         m
     };
 
-    // Pre-build per-field pda JSON bodies so the emission site only has
-    // to splice strings. Saves duplicating the seed-classification logic.
-    let pda_jsons: Vec<Option<String>> = fields
+    // Pre-build per-field `pda` body emission. Each entry is a token
+    // expression that evaluates to the JSON string at IDL-build time;
+    // `build_accounts_emission` splices it into the runtime assembly.
+    let pda_jsons: Vec<Option<proc_macro2::TokenStream>> = fields
         .iter()
         .map(|f| {
             f.idl_pda
                 .as_ref()
-                .map(|p| idl::pda_object_json(&p.seeds, p.program.as_ref()))
+                .map(|p| idl::pda_object_emission(&p.seeds, p.program.as_ref()))
         })
         .collect();
 
@@ -439,11 +447,18 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         .filter_map(|f| f.idl_field_ty.as_ref())
         .collect();
 
-    let ix_deser = if ix_args.is_empty() {
-        quote! {}
+    let (ix_deser, ix_args_assoc, ix_args_return) = if ix_args.is_empty() {
+        (quote! {}, quote! { type IxArgs<'ix> = (); }, quote! { () })
     } else {
         let pairs: Vec<(&Ident, &Type)> = ix_args.iter().map(|(n, t)| (n, t)).collect();
-        emit_args_deser(&pairs, "__IxArgs", false).deser
+        let ix_args_deser = emit_args_deser(&pairs, "__IxArgs", false);
+        let ix_arg_types = ix_args_deser.arg_types;
+        let ix_arg_names: Vec<&Ident> = ix_args.iter().map(|(n, _)| n).collect();
+        (
+            ix_args_deser.deser,
+            quote! { type IxArgs<'ix> = (#(#ix_arg_types,)*); },
+            quote! { (#(#ix_arg_names,)*) },
+        )
     };
 
     // Conditional bumps: empty → type alias, non-empty → struct
@@ -814,6 +829,114 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
     let resolved_name = syn::Ident::new(&format!("{name}Resolved"), name.span());
 
+    // --- CPI accounts struct (cross-program invocation, on-chain side) ---
+    //
+    // Emits a sibling `__cpi_accounts_<name>` module containing a struct of
+    // `CpiHandle<'a>` fields and a `ToCpiAccounts<'a>` impl driven by each
+    // field's compile-time writable / signer flags. Skipped when the
+    // Accounts struct contains `Option<_>` or `Nested<_>` fields — those
+    // shapes need bespoke flattening / fallback logic that this initial
+    // codegen pass does not yet handle. The `#[program]` macro re-exports
+    // the resulting type under `cpi::accounts::<name>` and synthesizes the
+    // per-instruction wrapper functions.
+    let cpi_mod_name = syn::Ident::new(
+        &format!("__cpi_accounts_{}", name.to_string().to_lowercase()),
+        name.span(),
+    );
+    let cpi_unsupported = fields
+        .iter()
+        .any(|f| f.is_optional || parse::is_nested_type(&f.ty));
+    let cpi_accounts_mod = if cpi_unsupported {
+        quote! {}
+    } else {
+        let cpi_field_decls: Vec<_> = fields
+            .iter()
+            .map(|f| {
+                let n = &f.name;
+                quote! { pub #n: anchor_lang_v2::CpiHandle<'a> }
+            })
+            .collect();
+        let cpi_meta_entries: Vec<_> = fields
+            .iter()
+            .map(|f| {
+                let n = &f.name;
+                let writable = f.idl_writable;
+                let is_signer_ty = parse::field_ty_str(&f.ty) == "Signer" || f.idl_init_signer;
+                let ctor = match (writable, is_signer_ty) {
+                    (true, true) => quote! { writable_signer },
+                    (true, false) => quote! { writable },
+                    (false, true) => quote! { readonly_signer },
+                    (false, false) => quote! { readonly },
+                };
+                quote! {
+                    anchor_lang_v2::pinocchio::instruction::InstructionAccount::#ctor(
+                        self.#n.address(),
+                    )
+                }
+            })
+            .collect();
+        let cpi_handle_entries: Vec<_> = fields
+            .iter()
+            .map(|f| {
+                let n = &f.name;
+                quote! { self.#n }
+            })
+            .collect();
+        // An empty Accounts struct would otherwise emit `pub struct Foo<'a> {}`,
+        // which fails E0392 because nothing on `Self` references `'a`. Anchor
+        // the lifetime via a `PhantomData<&'a ()>` field — kept hidden — and
+        // expose a no-arg `new()` / `Default` so callers don't need to spell
+        // out the marker. Non-empty structs already bind `'a` through their
+        // `CpiHandle<'a>` fields and skip the extra field entirely.
+        let (extra_field, ctor_impl) = if fields.is_empty() {
+            (
+                quote! {
+                    #[doc(hidden)]
+                    pub _phantom: ::core::marker::PhantomData<&'a ()>,
+                },
+                quote! {
+                    impl<'a> #name<'a> {
+                        #[inline]
+                        pub const fn new() -> Self {
+                            Self { _phantom: ::core::marker::PhantomData }
+                        }
+                    }
+                    impl<'a> ::core::default::Default for #name<'a> {
+                        #[inline]
+                        fn default() -> Self { Self::new() }
+                    }
+                },
+            )
+        } else {
+            (quote! {}, quote! {})
+        };
+        quote! {
+            pub mod #cpi_mod_name {
+                extern crate alloc;
+                use super::*;
+                pub struct #name<'a> {
+                    #(#cpi_field_decls,)*
+                    #extra_field
+                }
+                #ctor_impl
+                impl<'a> anchor_lang_v2::ToCpiAccounts<'a> for #name<'a> {
+                    fn to_instruction_accounts(
+                        &self,
+                    ) -> alloc::vec::Vec<
+                        anchor_lang_v2::pinocchio::instruction::InstructionAccount<'a>,
+                    > {
+                        alloc::vec![#(#cpi_meta_entries),*]
+                    }
+                    fn to_cpi_handles(
+                        &self,
+                    ) -> alloc::vec::Vec<anchor_lang_v2::CpiHandle<'a>> {
+                        alloc::vec![#(#cpi_handle_entries),*]
+                    }
+                }
+            }
+        }
+    };
+
     let resolved_struct = quote! {
         pub struct #resolved_name {
             #(#client_fields,)*
@@ -845,6 +968,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             }
         }
 
+        #cpi_accounts_mod
+
         #bumps_def
 
         impl anchor_lang_v2::Bumps for #name {
@@ -855,20 +980,22 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
             const HEADER_SIZE: usize = #header_size_expr;
             const MUT_MASK: [u64; 4] = #mut_mask_expr;
 
+            #ix_args_assoc
+
             #[inline]
-            fn try_accounts(
+            fn try_accounts<'ix>(
                 __program_id: &anchor_lang_v2::Address,
                 __views: &[anchor_lang_v2::AccountView],
                 __duplicates: ::core::option::Option<&anchor_lang_v2::AccountBitvec>,
                 __base_offset: usize,
-                __ix_data: &[u8],
-            ) -> anchor_lang_v2::Result<(Self, #bumps_name)> {
+                __ix_data: &'ix [u8],
+            ) -> anchor_lang_v2::Result<(Self, #bumps_name, Self::IxArgs<'ix>)> {
                 #ix_deser
                 #bumps_init
                 #(#loads)*
                 #dup_check_block
                 #(#constraints)*
-                Ok((Self { #(#field_names),* }, __bumps))
+                Ok((Self { #(#field_names),* }, __bumps, #ix_args_return))
             }
 
             //
@@ -1263,6 +1390,13 @@ struct HandlerCodegen {
     wrapper: TokenStream2,
     instruction_struct: TokenStream2,
     accounts_reexport: TokenStream2,
+    /// Per-handler CPI wrapper function — `pub fn name(ctx, args...)` in the
+    /// emitted `cpi` module. References `cpi::accounts::<Accounts>` and
+    /// `instruction::<Camel>` from the same crate.
+    cpi_wrapper: TokenStream2,
+    /// Re-export of the auto-generated CPI accounts struct under
+    /// `cpi::accounts::<Accounts>`. Deduped against `accounts_type_name`.
+    cpi_accounts_reexport: TokenStream2,
     /// Name of the Accounts struct (e.g. `MutateItemList`). Used to dedupe
     /// `accounts::*` re-exports when multiple handlers share the same Accounts.
     accounts_type_name: String,
@@ -1296,6 +1430,8 @@ impl HandlerCodegen {
             },
             instruction_struct: quote! {},
             accounts_reexport: quote! {},
+            cpi_wrapper: quote! {},
+            cpi_accounts_reexport: quote! {},
             accounts_type_name: String::new(),
             idl_name: fn_name.to_string(),
             idl_disc: "[]".to_string(),
@@ -1367,9 +1503,8 @@ fn process_handler(
         .collect();
 
     let extra_arg_names: Vec<_> = extra_args.iter().map(|(n, _)| *n).collect();
-    let args_deser = emit_args_deser(&extra_args, "__Args", true);
-    let deser_args = &args_deser.deser;
-    let extra_arg_types = &args_deser.arg_types;
+    let (extra_arg_types, has_ref_args) = args_meta(&extra_args);
+    let extra_arg_types = &extra_arg_types;
 
     // Dispatch arm.
     let dispatch_arm = quote! {
@@ -1377,33 +1512,84 @@ fn process_handler(
     };
 
     // Handler wrapper.
-    let wrapper = quote! {
-        #[inline(always)]
-        pub fn #fn_name<'a>(
-            __program_id: &'a anchor_lang_v2::Address,
-            __cursor: &'a mut anchor_lang_v2::AccountCursor,
-            __ix_data: &[u8],
-            __num_accounts: usize,
-        ) -> u64 {
-            #[cfg(not(feature = "no-log-ix-name"))]
-            anchor_lang_v2::msg!(#fn_name_log);
-            #deser_args
-            match anchor_lang_v2::run_handler::<#accounts_type>(
-                __program_id,
-                __cursor,
-                __ix_data,
-                __num_accounts,
-                |__ctx| #mod_name::#fn_name(__ctx, #(#extra_arg_names),*),
-            ) {
-                Ok(()) => 0,
-                Err(__e) => __e.into(),
+    let wrapper = if extra_arg_names.is_empty() {
+        quote! {
+            #[inline(always)]
+            pub fn #fn_name<'a>(
+                __program_id: &'a anchor_lang_v2::Address,
+                __cursor: &'a mut anchor_lang_v2::AccountCursor,
+                __ix_data: &'a [u8],
+                __num_accounts: usize,
+            ) -> u64 {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang_v2::msg!(#fn_name_log);
+                match anchor_lang_v2::run_handler::<#accounts_type>(
+                    __program_id,
+                    __cursor,
+                    __ix_data,
+                    __num_accounts,
+                    |__ctx, _ix_args| #mod_name::#fn_name(__ctx),
+                ) {
+                    Ok(()) => 0,
+                    Err(__e) => __e.into(),
+                }
+            }
+        }
+    } else {
+        let tuple_ty = quote! { (#(#extra_arg_types,)*) };
+        let args_deser = emit_args_deser(&extra_args, "__Args", false);
+        let deser_args = args_deser.deser;
+        quote! {
+            #[inline(always)]
+            pub fn #fn_name<'a>(
+                __program_id: &'a anchor_lang_v2::Address,
+                __cursor: &'a mut anchor_lang_v2::AccountCursor,
+                __ix_data: &'a [u8],
+                __num_accounts: usize,
+            ) -> u64 {
+                #[cfg(not(feature = "no-log-ix-name"))]
+                anchor_lang_v2::msg!(#fn_name_log);
+
+                trait __AnchorIxArgCoerce<'ix> {
+                    fn __coerce(self, __ix_data: &'ix [u8]) -> anchor_lang_v2::Result<#tuple_ty>;
+                }
+
+                impl<'ix> __AnchorIxArgCoerce<'ix> for () {
+                    #[inline(always)]
+                    fn __coerce(self, __ix_data: &'ix [u8]) -> anchor_lang_v2::Result<#tuple_ty> {
+                        #deser_args
+                        Ok((#(#extra_arg_names,)*))
+                    }
+                }
+
+                impl<'ix> __AnchorIxArgCoerce<'ix> for #tuple_ty {
+                    #[inline(always)]
+                    fn __coerce(self, _ix_data: &'ix [u8]) -> anchor_lang_v2::Result<#tuple_ty> {
+                        Ok(self)
+                    }
+                }
+
+                match anchor_lang_v2::run_handler::<#accounts_type>(
+                    __program_id,
+                    __cursor,
+                    __ix_data,
+                    __num_accounts,
+                    |__ctx, __ix_args| {
+                        let (#(#extra_arg_names,)*) =
+                            <_ as __AnchorIxArgCoerce<'a>>::__coerce(__ix_args, __ix_data)?;
+                        #mod_name::#fn_name(__ctx, #(#extra_arg_names),*)
+                    },
+                ) {
+                    Ok(()) => 0,
+                    Err(__e) => __e.into(),
+                }
             }
         }
     };
 
     // Client-side instruction struct.
     let ix_struct_name = syn::Ident::new(&to_camel_case(&fn_name_str), fn_name.span());
-    let (ix_lt_decl, ix_lt_use) = if args_deser.has_refs {
+    let (ix_lt_decl, ix_lt_use) = if has_ref_args {
         (quote! { <'ix> }, quote! { <'ix> })
     } else {
         (quote! {}, quote! {})
@@ -1457,6 +1643,47 @@ fn process_handler(
         pub use super::#client_mod::#resolved_type;
     };
 
+    // CPI accounts re-export — `__cpi_accounts_<lowercase>` is emitted by
+    // `#[derive(Accounts)]` at the same scope as the program's outputs.
+    let cpi_mod = syn::Ident::new(
+        &format!(
+            "__cpi_accounts_{}",
+            accounts_type.to_string().to_lowercase()
+        ),
+        fn_name.span(),
+    );
+    let cpi_accounts_reexport = quote! {
+        pub use super::super::#cpi_mod::#accounts_type;
+    };
+
+    // CPI wrapper function — mirrors the handler's argument list (sans
+    // `ctx: &mut Context<_>`), packs them into the client-side
+    // `instruction::<Camel>` struct, and forwards to `CpiContext::invoke`.
+    // Lifetime story: `'a` is the CPI handle lifetime; `'ix` matches the
+    // instruction struct's optional ref-args lifetime.
+    let cpi_wrapper = {
+        let (lt_decl, ix_lt_use_local) = if has_ref_args {
+            (quote! { <'a, 'ix> }, quote! { <'ix> })
+        } else {
+            (quote! { <'a> }, quote! {})
+        };
+        quote! {
+            pub fn #fn_name #lt_decl(
+                __ctx: anchor_lang_v2::CpiContext<'a, accounts::#accounts_type<'a>>,
+                #(#extra_arg_names: #extra_arg_types,)*
+            ) -> anchor_lang_v2::Result<()> {
+                let __ix = super::instruction::#ix_struct_name #ix_lt_use_local {
+                    #(#extra_arg_names,)*
+                };
+                let __data = <
+                    super::instruction::#ix_struct_name #ix_lt_use_local
+                    as anchor_lang_v2::InstructionData
+                >::data(&__ix);
+                __ctx.invoke(&__data)
+            }
+        }
+    };
+
     // Instruction-level docs come from `///` comments on the handler fn.
     // Leading-comma format so the IDL instruction JSON splice site can
     // hold a fixed `"{name}"{docs_or_empty},"discriminator":...` shape.
@@ -1472,6 +1699,8 @@ fn process_handler(
         wrapper,
         instruction_struct,
         accounts_reexport,
+        cpi_wrapper,
+        cpi_accounts_reexport,
         accounts_type_name: accounts_type.to_string(),
         idl_name: fn_name_str,
         idl_disc: idl::disc_json(&disc_bytes_for_idl),
@@ -1577,6 +1806,15 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
             .map(|c| &c.accounts_reexport)
             .collect()
     };
+    let cpi_accounts_reexports: Vec<_> = {
+        let mut seen = std::collections::HashSet::new();
+        codegen
+            .iter()
+            .filter(|c| seen.insert(c.accounts_type_name.clone()))
+            .map(|c| &c.cpi_accounts_reexport)
+            .collect()
+    };
+    let cpi_wrappers: Vec<_> = codegen.iter().map(|c| &c.cpi_wrapper).collect();
     let idl_ix_names: Vec<_> = codegen.iter().map(|c| &c.idl_name).collect();
     let idl_ix_discs: Vec<_> = codegen.iter().map(|c| &c.idl_disc).collect();
     let idl_ix_args: Vec<_> = codegen.iter().map(|c| &c.idl_args).collect();
@@ -1752,11 +1990,7 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
 
             // Parse the discriminator.
             #disc_parse
-
             let __num = *(__input as *const u64) as usize;
-            if let Err(__e) = anchor_lang_v2::check_max_accounts(__num, __ANCHOR_MAX_ACCOUNTS) {
-                return __e.into();
-            }
 
             let mut __lookup: [::core::mem::MaybeUninit<anchor_lang_v2::AccountView>;
                 __ANCHOR_MAX_ACCOUNTS] =
@@ -1792,6 +2026,27 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
         /// Client-side accounts structs (re-exports) for off-chain use.
         pub mod accounts {
             #(#accounts_reexports)*
+        }
+
+        /// CPI module — gated on the `cpi` feature, on by convention when a
+        /// caller crate depends on this program for cross-program invocation.
+        /// `accounts::*` re-exports the auto-generated CPI accounts structs
+        /// (one per `#[derive(Accounts)]` Accounts struct, emitted as
+        /// `__cpi_accounts_<lowercase>` at this same scope). The free
+        /// functions wrap each instruction handler: pack args into the
+        /// matching `instruction::<Camel>` struct, serialize, and dispatch
+        /// through `CpiContext::invoke`.
+        #[cfg(feature = "cpi")]
+        pub mod cpi {
+            extern crate alloc;
+            use super::*;
+            use anchor_lang_v2::InstructionData as _;
+
+            pub mod accounts {
+                #(#cpi_accounts_reexports)*
+            }
+
+            #(#cpi_wrappers)*
         }
 
         // IDL generation: prints structured output consumed by `anchor idl build`.
@@ -2682,6 +2937,31 @@ mod tests {
         assert!(
             err.to_string().contains("expected `:`"),
             "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn process_handler_emits_ixarg_fallback_for_missing_instruction_attr() {
+        let handler: syn::ItemFn = syn::parse_quote! {
+            pub fn do_it(ctx: &mut Context<MyAccounts>, amount: u64, step: u8) -> Result<()> {
+                let _ = ctx;
+                let _ = amount;
+                let _ = step;
+                Ok(())
+            }
+        };
+        let mod_name: syn::Ident = syn::parse_quote!(my_program);
+
+        let generated = process_handler(&handler, &mod_name, false, None);
+        let wrapper = generated.wrapper.to_string();
+
+        assert!(
+            wrapper.contains("__AnchorIxArgCoerce"),
+            "expected fallback coercion trait in wrapper: {wrapper}"
+        );
+        assert!(
+            wrapper.contains("impl < 'ix > __AnchorIxArgCoerce < 'ix > for ()"),
+            "expected missing-#[instruction] fallback impl in wrapper: {wrapper}"
         );
     }
 }

@@ -9,10 +9,14 @@
 //! without the Solana toolchain don't get a spurious failure, and CI
 //! jobs that pin the toolchain pick it up automatically.
 
-use anchor_cli::debugger::source::SourceResolver;
-use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use {
+    anchor_cli::debugger::source::SourceResolver,
+    std::{
+        collections::BTreeSet,
+        path::{Path, PathBuf},
+        process::Command,
+    },
+};
 
 const FIXTURE_CRATE_REL: &str = "tests/fixtures/debugger_program";
 const FIXTURE_SO_NAME: &str = "debugger_fixture.so";
@@ -70,8 +74,8 @@ fn build_fixture() -> Option<PathBuf> {
 /// test doesn't hard-code line numbers — editing the fixture to add or
 /// reorder markers doesn't break the assertions.
 fn marker_lines() -> Vec<(String, u32)> {
-    let src = std::fs::read_to_string(fixture_dir().join("src/lib.rs"))
-        .expect("read fixture lib.rs");
+    let src =
+        std::fs::read_to_string(fixture_dir().join("src/lib.rs")).expect("read fixture lib.rs");
     src.lines()
         .enumerate()
         .filter_map(|(i, line)| {
@@ -130,8 +134,8 @@ fn source_resolver_maps_pcs_to_fixture_markers() {
 
     assert!(
         !fixture_lines.is_empty(),
-        "no PCs resolved to the fixture's src/lib.rs — DWARF file table or \
-         text_addr arithmetic is likely broken"
+        "no PCs resolved to the fixture's src/lib.rs — DWARF file table or text_addr arithmetic \
+         is likely broken"
     );
 
     let markers = marker_lines();
@@ -146,8 +150,8 @@ fn source_resolver_maps_pcs_to_fixture_markers() {
         let hit = fixture_lines.range(lo..=hi).next().is_some();
         assert!(
             hit,
-            "marker `{name}` at line {expected_line} has no PC resolving \
-             within ±{MARKER_LINE_WINDOW} lines. Resolved fixture lines: {:?}",
+            "marker `{name}` at line {expected_line} has no PC resolving within \
+             ±{MARKER_LINE_WINDOW} lines. Resolved fixture lines: {:?}",
             fixture_lines
         );
     }

@@ -32,15 +32,14 @@ const ERR_BAD_CONSTRAINT: u32 = 6003;
 const CONSTRAINT_RAW: u32 = 2001;
 /// `ErrorCode::ConstraintExecutable` maps to `Custom(2002)`.
 const CONSTRAINT_EXECUTABLE: u32 = 2002;
-/// `ErrorCode::ConstraintRentExempt` maps to `Custom(2003)`.
-#[allow(dead_code)]
-const CONSTRAINT_RENT_EXEMPT: u32 = 2003;
 /// `ErrorCode::ConstraintZero` maps to `Custom(2004)`.
 const CONSTRAINT_ZERO: u32 = 2004;
 
 // Matching the pinned address baked into the program.
 fn pinned_address() -> Pubkey {
-    "Pin1111111111111111111111111111111111111111".parse().unwrap()
+    "Pin1111111111111111111111111111111111111111"
+        .parse()
+        .unwrap()
 }
 
 fn other_program() -> Pubkey {
@@ -458,22 +457,7 @@ fn executable_rejected_on_non_executable() {
     assert_custom(&result, CONSTRAINT_EXECUTABLE);
 }
 
-// ---- 10. rent_exempt = enforce  -------------------------------------------
-//
-// The compile-only `CheckRentExempt` struct in the program exercises the
-// derive codegen for this constraint. A runtime-violation test is parked
-// here: triggering the check requires an account that clears
-// `AnchorAccount::load` but has `lamports < required`. For
-// `UncheckedAccount` that means forcing a specific lamport balance via
-// `LiteSVM::set_account`, but pinocchio's account-view serialization on
-// SBF does not expose a way to present "allocated data + zero lamports"
-// in the same shape the runtime produces for real accounts — every
-// runtime-exec path in LiteSVM also fixes lamports to the rent floor
-// during account creation. Documented as a known gap; the pass path is
-// implicitly exercised by every other test that uses an `Account<Data>`
-// (each is rent-exempt by construction).
-
-// ---- 11. close = receiver --------------------------------------------------
+// ---- 10. close = receiver --------------------------------------------------
 
 /// `Data` layout on-disk: disc(8) + authority([u8; 32]) + value(u64).
 /// `value` lives at bytes 40..48.
@@ -545,10 +529,7 @@ fn close_self_close_rejected() {
         &mut svm,
         &payer,
         10,
-        vec![
-            AccountMeta::new(data, false),
-            AccountMeta::new(data, false),
-        ],
+        vec![AccountMeta::new(data, false), AccountMeta::new(data, false)],
         &[],
     );
     let rendered = format!("{:?}", result.as_ref().err().expect("should fail").err);
@@ -558,7 +539,7 @@ fn close_self_close_rejected() {
     );
 }
 
-// ---- 12. seeds::program = OTHER_PROGRAM -----------------------------------
+// ---- 11. seeds::program = OTHER_PROGRAM -----------------------------------
 
 #[test]
 fn seeds_program_override_ok() {
@@ -590,7 +571,7 @@ fn seeds_program_override_wrong_pda_rejected() {
     assert_err_contains(&result, "InvalidSeeds");
 }
 
-// ---- 13. init_if_needed ---------------------------------------------------
+// ---- 12. init_if_needed ---------------------------------------------------
 
 #[test]
 fn init_if_needed_creates_then_reuses() {
@@ -598,7 +579,10 @@ fn init_if_needed_creates_then_reuses() {
     let pda = maybe_pda();
 
     // Account must not yet exist.
-    assert!(svm.get_account(&pda).map(|a| a.data.is_empty()).unwrap_or(true));
+    assert!(svm
+        .get_account(&pda)
+        .map(|a| a.data.is_empty())
+        .unwrap_or(true));
 
     // First call: init path.
     call(
@@ -639,7 +623,7 @@ fn init_if_needed_creates_then_reuses() {
     );
 }
 
-// ---- 14. zeroed -----------------------------------------------------------
+// ---- 13. zeroed -----------------------------------------------------------
 
 #[test]
 fn zeroed_ok_when_disc_is_zero() {
@@ -699,7 +683,7 @@ fn zeroed_rejected_when_disc_non_zero() {
     assert_custom(&result, CONSTRAINT_ZERO);
 }
 
-// ---- 15. signer on UncheckedAccount ---------------------------------------
+// ---- 14. signer on UncheckedAccount ---------------------------------------
 
 #[test]
 fn signer_on_unchecked_ok_when_signed() {

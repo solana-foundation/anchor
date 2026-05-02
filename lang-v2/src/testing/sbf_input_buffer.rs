@@ -115,14 +115,14 @@ impl SbfInputBuffer {
         let num_u64s = len.div_ceil(8);
         let mut backing: Vec<u64> = vec![0u64; num_u64s];
         unsafe {
-            core::ptr::copy_nonoverlapping(
-                bytes.as_ptr(),
-                backing.as_mut_ptr() as *mut u8,
-                len,
-            );
+            core::ptr::copy_nonoverlapping(bytes.as_ptr(), backing.as_mut_ptr() as *mut u8, len);
         }
 
-        Self { backing, len, record_offsets }
+        Self {
+            backing,
+            len,
+            record_offsets,
+        }
     }
 
     /// Pointer to the start of the buffer (the `num_accounts` prefix).
@@ -133,8 +133,6 @@ impl SbfInputBuffer {
 
     /// Access the raw bytes as a mutable slice.
     pub fn bytes_mut(&mut self) -> &mut [u8] {
-        unsafe {
-            core::slice::from_raw_parts_mut(self.backing.as_mut_ptr() as *mut u8, self.len)
-        }
+        unsafe { core::slice::from_raw_parts_mut(self.backing.as_mut_ptr() as *mut u8, self.len) }
     }
 }

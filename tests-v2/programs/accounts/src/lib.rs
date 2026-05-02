@@ -35,9 +35,30 @@ pub mod accounts_test {
         Ok(())
     }
 
+    /// Loads the counter immutably inside a `Box` and only reads through
+    /// `Deref`. Hits `AnchorAccount::load` for `Box<T>`.
+    #[discrim = 2]
+    pub fn read_boxed(ctx: &mut Context<ReadBoxed>) -> Result<()> {
+        let _ = ctx.accounts.counter.value;
+        Ok(())
+    }
+
+    /// Initializes a boxed counter via `AccountInitialize for Box<T>`.
+    #[discrim = 3]
+    pub fn initialize_boxed(ctx: &mut Context<InitializeBoxed>) -> Result<()> {
+        ctx.accounts.counter.value = 7;
+        Ok(())
+    }
+
+    /// Closes a boxed counter, forwarding through `AnchorAccount::close`.
+    #[discrim = 4]
+    pub fn close_boxed(_ctx: &mut Context<CloseBoxed>) -> Result<()> {
+        Ok(())
+    }
+
     /// Reads the Clock sysvar. Exercises `Sysvar<Clock>::load` and `Deref`
     /// forwarding to the inner pinocchio type.
-    #[discrim = 2]
+    #[discrim = 5]
     pub fn read_clock(ctx: &mut Context<ReadClock>) -> Result<()> {
         // Touch several Clock fields so the register trace covers the
         // deref/getter path.
@@ -49,7 +70,7 @@ pub mod accounts_test {
     }
 
     /// Reads the Rent sysvar. Same rationale as `read_clock`.
-    #[discrim = 3]
+    #[discrim = 6]
     pub fn read_rent(ctx: &mut Context<ReadRent>) -> Result<()> {
         let rent = &*ctx.accounts.rent;
         let _ = rent.try_minimum_balance(100);
@@ -58,7 +79,7 @@ pub mod accounts_test {
 
     /// Take a `SystemAccount` — validates the passed account is owned by
     /// the System program. Exercises `accounts/system_account.rs`.
-    #[discrim = 4]
+    #[discrim = 7]
     pub fn check_system(ctx: &mut Context<CheckSystem>) -> Result<()> {
         let _ = ctx.accounts.wallet.address();
         Ok(())
@@ -66,7 +87,7 @@ pub mod accounts_test {
 
     /// Read-only UncheckedAccount — exercises load + accessor paths on
     /// `accounts/unchecked_account.rs`.
-    #[discrim = 5]
+    #[discrim = 8]
     pub fn touch_unchecked(ctx: &mut Context<TouchUnchecked>) -> Result<()> {
         let _ = ctx.accounts.any_account.address();
         Ok(())
@@ -88,6 +109,29 @@ pub struct Initialize {
 pub struct BumpBoxed {
     #[account(mut)]
     pub counter: Box<Account<Counter>>,
+}
+
+#[derive(Accounts)]
+pub struct ReadBoxed {
+    #[account(seeds = [b"boxed-counter"], bump)]
+    pub counter: Box<Account<Counter>>,
+}
+
+#[derive(Accounts)]
+pub struct InitializeBoxed {
+    #[account(mut)]
+    pub payer: Signer,
+    #[account(init, payer = payer, seeds = [b"boxed-counter"], bump)]
+    pub counter: Box<Account<Counter>>,
+    pub system_program: Program<System>,
+}
+
+#[derive(Accounts)]
+pub struct CloseBoxed {
+    #[account(mut, close = receiver, seeds = [b"boxed-counter"], bump)]
+    pub counter: Box<Account<Counter>>,
+    #[account(mut)]
+    pub receiver: SystemAccount,
 }
 
 #[derive(Accounts)]

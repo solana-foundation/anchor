@@ -284,7 +284,6 @@ jobs:
       - run: surfpool start --ci --offline &
         name: start surfpool
       - run: cd tests/bpf-upgradeable-state && yarn --frozen-lockfile
-      - run: cd tests/bpf-upgradeable-state
       - run: cd tests/bpf-upgradeable-state && anchor build --skip-lint --ignore-keys
       - run: cd tests/bpf-upgradeable-state && solana program deploy --program-id program_with_different_programdata.json --use-rpc target/deploy/bpf_upgradeable_state.so
       - run: cd tests/bpf-upgradeable-state && cp bpf_upgradeable_state-keypair.json target/deploy/bpf_upgradeable_state-keypair.json && anchor test --skip-local-validator --skip-build --skip-lint

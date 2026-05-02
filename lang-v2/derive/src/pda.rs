@@ -80,22 +80,21 @@ pub(crate) fn seed_as_const_bytes(expr: &syn::Expr) -> Option<Vec<u8>> {
             syn::Lit::Byte(b) => Some(vec![b.value()]),
             _ => None,
         },
-        syn::Expr::Array(arr) => {
-            arr.elems
-                .iter()
-                .map(|e| {
-                    if let syn::Expr::Lit(syn::ExprLit {
-                        lit: syn::Lit::Int(i),
-                        ..
-                    }) = e
-                    {
-                        i.base10_parse::<u8>().ok()
-                    } else {
-                        None
-                    }
-                })
-                .collect()
-        }
+        syn::Expr::Array(arr) => arr
+            .elems
+            .iter()
+            .map(|e| {
+                if let syn::Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Int(i),
+                    ..
+                }) = e
+                {
+                    i.base10_parse::<u8>().ok()
+                } else {
+                    None
+                }
+            })
+            .collect(),
         syn::Expr::MethodCall(mc) if mc.method == "as_bytes" && mc.args.is_empty() => {
             if let syn::Expr::Lit(syn::ExprLit {
                 lit: syn::Lit::Str(s),

@@ -80,8 +80,7 @@ fn send_raw(
     let blockhash = svm.latest_blockhash();
     let message = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
     let signers: Vec<&dyn solana_signer::Signer> = vec![payer];
-    let tx =
-        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &signers).unwrap();
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(message), &signers).unwrap();
     svm.send_transaction(tx)
 }
 

@@ -6,10 +6,7 @@ use {
         marker::PhantomData,
         ops::{Deref, DerefMut, Index, IndexMut},
     },
-    pinocchio::{
-        account::AccountView,
-        address::Address,
-    },
+    pinocchio::{account::AccountView, address::Address},
     solana_program_error::ProgramError,
 };
 
@@ -868,4 +865,3 @@ mod kani_proofs {
         assert!(clamped_len <= capacity);
     }
 }
-

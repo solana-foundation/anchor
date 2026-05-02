@@ -41,7 +41,6 @@ fn all_labeled_variants() -> Vec<(&'static str, ErrorCode)> {
             | ErrorCode::ConstraintOwner
             | ErrorCode::ConstraintRaw
             | ErrorCode::ConstraintExecutable
-            | ErrorCode::ConstraintRentExempt
             | ErrorCode::ConstraintZero
             | ErrorCode::InstructionDidNotDeserialize
             | ErrorCode::DeclaredProgramIdMismatch
@@ -69,7 +68,6 @@ fn all_labeled_variants() -> Vec<(&'static str, ErrorCode)> {
         ("ConstraintOwner", ErrorCode::ConstraintOwner),
         ("ConstraintRaw", ErrorCode::ConstraintRaw),
         ("ConstraintExecutable", ErrorCode::ConstraintExecutable),
-        ("ConstraintRentExempt", ErrorCode::ConstraintRentExempt),
         ("ConstraintZero", ErrorCode::ConstraintZero),
         ("InstructionDidNotDeserialize", ErrorCode::InstructionDidNotDeserialize),
         ("DeclaredProgramIdMismatch", ErrorCode::DeclaredProgramIdMismatch),
@@ -105,7 +103,7 @@ fn no_two_variants_share_a_custom_code() {
     }
     // Snapshot — adding a new Custom variant forces a review of this number.
     assert_eq!(
-        custom_count, 13,
+        custom_count, 12,
         "Number of Custom error codes changed; update this snapshot after review"
     );
 }

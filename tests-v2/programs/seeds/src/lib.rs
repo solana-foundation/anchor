@@ -47,9 +47,7 @@ pub mod seeds {
     }
 
     #[discrim = 2]
-    pub fn check_literal_explicit_bump(
-        _ctx: &mut Context<CheckLiteralExplicitBump>,
-    ) -> Result<()> {
+    pub fn check_literal_explicit_bump(_ctx: &mut Context<CheckLiteralExplicitBump>) -> Result<()> {
         Ok(())
     }
 

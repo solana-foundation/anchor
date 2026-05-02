@@ -37,8 +37,8 @@ fn primitives_sum_to_expected_byte_count() {
 
 #[derive(InitSpace)]
 struct WithArray {
-    _vals: [u64; 4],       // 4 * 8 = 32
-    _bytes: [u8; 16],      // 16 * 1 = 16
+    _vals: [u64; 4],  // 4 * 8 = 32
+    _bytes: [u8; 16], // 16 * 1 = 16
 }
 
 #[test]
@@ -48,7 +48,7 @@ fn array_length_multiplies_element_size() {
 
 #[derive(InitSpace)]
 struct WithAddress {
-    _owner: Address,  // 32
+    _owner: Address, // 32
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn address_counts_as_32_bytes() {
 
 #[derive(InitSpace)]
 struct WithOption {
-    _maybe: Option<u64>,  // 1 + 8
+    _maybe: Option<u64>, // 1 + 8
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn option_adds_one_byte_discriminator() {
 #[derive(InitSpace)]
 struct WithString {
     #[max_len(32)]
-    _name: String,  // 4 + 32
+    _name: String, // 4 + 32
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn string_reserves_max_len_plus_length_prefix() {
 #[derive(InitSpace)]
 struct WithVec {
     #[max_len(10)]
-    _xs: Vec<u64>,  // 4 + 8 * 10
+    _xs: Vec<u64>, // 4 + 8 * 10
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn vec_reserves_max_len_times_element_plus_prefix() {
 #[derive(InitSpace)]
 struct WithVecOfStrings {
     #[max_len(4, 16)]
-    _xs: Vec<String>,  // 4 + (4 + 16) * 4 = 84
+    _xs: Vec<String>, // 4 + (4 + 16) * 4 = 84
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn nested_max_len_args_flow_left_to_right() {
 
 #[derive(InitSpace)]
 struct WithTuple {
-    _pair: (u64, Address),  // 8 + 32 = 40
+    _pair: (u64, Address), // 8 + 32 = 40
 }
 
 #[test]
@@ -116,8 +116,8 @@ struct Inner {
 
 #[derive(InitSpace)]
 struct Outer {
-    _inner: Inner,      // uses Inner::INIT_SPACE = 8
-    _arr: [Inner; 3],   // 3 * 8 = 24
+    _inner: Inner,    // uses Inner::INIT_SPACE = 8
+    _arr: [Inner; 3], // 3 * 8 = 24
 }
 
 #[test]
@@ -128,10 +128,10 @@ fn nested_struct_uses_inner_init_space() {
 
 #[derive(InitSpace)]
 enum Variant {
-    A,              // 0
-    B(u8),          // 1
-    C(u64, u64),    // 16
-    D { _x: u32 },  // 4
+    A,             // 0
+    B(u8),         // 1
+    C(u64, u64),   // 16
+    D { _x: u32 }, // 4
 }
 // Enum size = 1 (disc) + max variant size = 1 + 16 = 17.
 

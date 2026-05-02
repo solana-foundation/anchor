@@ -7,8 +7,6 @@ use {
 
 /// Trait that connects a pinocchio sysvar type to its well-known address.
 ///
-/// Implemented for Clock, Rent, etc.
-///
 /// `IDL_ADDRESS` is the base58 string surfaced through
 /// `IdlAccountType::__IDL_ADDRESS` at IDL emission time. Defaults to an
 /// empty string — sysvars without a well-known address (or ones whose
@@ -28,13 +26,27 @@ impl SysvarId for pinocchio::sysvars::clock::Clock {
     const IDL_ADDRESS: &'static str = "SysvarC1ock11111111111111111111111111111111";
 }
 
+impl<T: Deref<Target = [u8]>> SysvarId for pinocchio::sysvars::instructions::Instructions<T> {
+    const SYSVAR_ID: Address = pinocchio::sysvars::instructions::INSTRUCTIONS_ID;
+    #[cfg(feature = "idl-build")]
+    const IDL_ADDRESS: &'static str = "SysvarC1ock11111111111111111111111111111111";
+}
+
 impl SysvarId for pinocchio::sysvars::rent::Rent {
     const SYSVAR_ID: Address = pinocchio::sysvars::rent::RENT_ID;
     #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "SysvarRent111111111111111111111111111111111";
 }
 
-/// Account wrapper for sysvars (Clock, Rent, etc.).
+impl<T: Deref<Target = [u8]>> SysvarId for pinocchio::sysvars::slot_hashes::SlotHashes<T> {
+    const SYSVAR_ID: Address = pinocchio::sysvars::slot_hashes::SLOTHASHES_ID;
+    #[cfg(feature = "idl-build")]
+    const IDL_ADDRESS: &'static str = "SysvarS1otHashes111111111111111111111111111";
+}
+
+// FIXME: Add `EpochSchedule`: https://github.com/anza-xyz/pinocchio/pull/411
+
+/// Account wrapper for sysvars.
 ///
 /// Validates that the passed account address matches `T::SYSVAR_ID`,
 /// then reads the sysvar directly from the runtime via pinocchio's

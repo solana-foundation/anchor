@@ -15,7 +15,7 @@ idl-build = ["dep:serde_json"]
 # because the heap allocation + fmt trait dispatch is meaningfully more
 # expensive than v2's native `msg!`; users who explicitly want v1-parity
 # logging opt in by enabling the feature.
-compat = []
+compat = ["dep:solana-program-log"]
 # Runtime safety nets that catch caller bugs the Rust borrow checker
 # can't see statically. Default-on. Disabling saves CU at the cost of
 # diagnostic panics for misuse — see lib.rs / Account<T> docs.
@@ -42,9 +42,11 @@ account-resize = ["pinocchio/account-resize"]
 const-rent = []
 # Enables the `anchor_lang_v2::testing` module: stack-backed mock pinocchio
 # types (`AccountView`, SBF input buffer) used by the `tests/` integration
-# tests + Miri witnesses. Off by default so production BPF binaries never
-# ship the scaffold. `cargo test -p anchor-lang-v2 --features testing`.
-testing = []
+# tests + Miri witnesses. Also enables `const-rent` so host-side tests can
+# exercise rent-dependent helpers without SVM sysvar support.
+# Off by default so production BPF binaries never ship the scaffold.
+# `cargo test -p anchor-lang-v2 --features testing`.
+testing = ["const-rent"]
 
 [dependencies]
 anchor-derive-accounts-v2 = { path = "./derive", version = "2.0.0" }
@@ -54,7 +56,8 @@ pinocchio-system = "0.6"
 solana-address = { version = "2.0", features = ["bytemuck", "borsh", "syscalls", "curve25519", "wincode"] }
 solana-instruction = { version = "3", default-features = false }
 solana-program-error = { version = "3.0", features = ["borsh"] }
-solana-program-log = { version = "1.1", features = ["macro"] }
+solana-msg = { version = "3.1", default-features = false, features = ["alloc"] }
+solana-program-log = { version = "1.1", features = ["macro"], optional = true }
 borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 wincode = { version = "0.5", features = ["derive"] }

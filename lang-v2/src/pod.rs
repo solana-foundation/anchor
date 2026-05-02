@@ -598,8 +598,8 @@ impl<T: bytemuck::Pod, const MAX: usize> PodVec<T, MAX> {
     // monomorphization so `PodVec<T, N>` with `N > 65_535` fails to compile.
     const _MAX_FITS_U16: () = assert!(
         MAX <= u16::MAX as usize,
-        "PodVec<T, MAX>: MAX must be <= 65_535 (u16::MAX). Use a larger \
-         length-prefix wrapper for capacities beyond this."
+        "PodVec<T, MAX>: MAX must be <= 65_535 (u16::MAX). Use a larger length-prefix wrapper for \
+         capacities beyond this."
     );
 
     // --- Length / capacity ---
@@ -951,6 +951,13 @@ impl<T: bytemuck::Pod, const MAX: usize> Default for PodVec<T, MAX> {
     fn default() -> Self {
         // Safety: PodVec is Pod, so all-zeros is a valid representation.
         unsafe { core::mem::zeroed() }
+    }
+}
+
+impl From<CapacityError> for solana_program_error::ProgramError {
+    fn from(_: CapacityError) -> Self {
+        // CapacityOverflow in lang/src/error.rs
+        solana_program_error::ProgramError::Custom(4103)
     }
 }
 

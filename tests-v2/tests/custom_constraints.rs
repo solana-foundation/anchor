@@ -26,11 +26,18 @@ fn counter_pda() -> Pubkey {
     Pubkey::find_program_address(&[b"counter"], &program_id()).0
 }
 
+fn boxed_counter_pda() -> Pubkey {
+    Pubkey::find_program_address(&[b"boxed-counter"], &program_id()).0
+}
+
 fn setup() -> (LiteSVM, Keypair) {
     let test_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let deploy_dir = test_dir.join("target/deploy");
     build_program(
-        test_dir.join("programs/custom-constraints").to_str().unwrap(),
+        test_dir
+            .join("programs/custom-constraints")
+            .to_str()
+            .unwrap(),
         deploy_dir.to_str().unwrap(),
     );
 
@@ -62,6 +69,17 @@ fn init_counter(svm: &mut LiteSVM, payer: &Keypair) {
         .expect("handle_init should succeed");
 }
 
+fn init_boxed_counter(svm: &mut LiteSVM, payer: &Keypair) {
+    let data = custom_constraints::instruction::HandleBoxedInit {}.data();
+    let metas = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(boxed_counter_pda(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::system_program::ID, false),
+    ];
+    send_instruction(svm, program_id(), data, metas, payer, &[])
+        .expect("handle_boxed_init should succeed");
+}
+
 // ---- `init` method ---------------------------------------------------------
 
 #[test]
@@ -73,6 +91,14 @@ fn init_hook_stamps_value_on_creation() {
     // zero-filled account. A bare init without the constraint would leave
     // `value == 0`.
     assert_eq!(read_counter_value(&svm, &counter_pda()), 5);
+}
+
+#[test]
+fn boxed_init_hook_stamps_value_on_creation() {
+    let (mut svm, payer) = setup();
+    init_boxed_counter(&mut svm, &payer);
+
+    assert_eq!(read_counter_value(&svm, &boxed_counter_pda()), 9);
 }
 
 // ---- `check` method --------------------------------------------------------
@@ -99,8 +125,15 @@ fn check_hook_accepts_at_or_above_minimum() {
     // Bump the counter above the minimum via the update hook first.
     let update_data = custom_constraints::instruction::HandleUpdate {}.data();
     let update_metas = vec![AccountMeta::new(counter_pda(), false)];
-    send_instruction(&mut svm, program_id(), update_data, update_metas, &payer, &[])
-        .expect("handle_update should succeed");
+    send_instruction(
+        &mut svm,
+        program_id(),
+        update_data,
+        update_metas,
+        &payer,
+        &[],
+    )
+    .expect("handle_update should succeed");
     assert_eq!(read_counter_value(&svm, &counter_pda()), 42);
 
     // Now check: 42 >= 10 → should pass.
@@ -155,6 +188,55 @@ fn exit_hook_mutates_on_successful_instruction() {
     assert_eq!(read_counter_value(&svm, &counter_pda()), 7);
 }
 
+#[test]
+fn boxed_exit_hook_mutates_on_successful_instruction() {
+    let (mut svm, payer) = setup();
+    init_boxed_counter(&mut svm, &payer);
+    assert_eq!(read_counter_value(&svm, &boxed_counter_pda()), 9);
+
+    let data = custom_constraints::instruction::HandleBoxedExitBump {}.data();
+    let metas = vec![AccountMeta::new(boxed_counter_pda(), false)];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("handle_boxed_exit_bump should succeed");
+
+    assert_eq!(read_counter_value(&svm, &boxed_counter_pda()), 11);
+}
+
+#[test]
+fn boxed_close_transfers_lamports_and_removes_account() {
+    let (mut svm, payer) = setup();
+    init_boxed_counter(&mut svm, &payer);
+
+    let receiver = keypair_for("boxed-custom-close-receiver");
+    svm.airdrop(&receiver.pubkey(), 10_000_000).unwrap();
+
+    let receiver_before = svm.get_account(&receiver.pubkey()).unwrap().lamports;
+    let counter_before = svm
+        .get_account(&boxed_counter_pda())
+        .expect("boxed counter exists")
+        .lamports;
+    assert!(
+        counter_before > 0,
+        "boxed counter must hold lamports before close"
+    );
+
+    let data = custom_constraints::instruction::HandleBoxedClose {}.data();
+    let metas = vec![
+        AccountMeta::new(boxed_counter_pda(), false),
+        AccountMeta::new(receiver.pubkey(), false),
+    ];
+    send_instruction(&mut svm, program_id(), data, metas, &payer, &[])
+        .expect("handle_boxed_close should succeed");
+
+    let receiver_after = svm.get_account(&receiver.pubkey()).unwrap().lamports;
+    assert_eq!(receiver_after, receiver_before + counter_before);
+
+    match svm.get_account(&boxed_counter_pda()) {
+        None => {}
+        Some(account) => assert_eq!(account.lamports, 0, "closed boxed counter should be empty"),
+    }
+}
+
 // ---- `init_if_needed` (both `init` and `check` on the create branch) ------
 
 #[test]
@@ -185,8 +267,15 @@ fn init_if_needed_exist_branch_runs_check() {
     // fires against the LIVE value, not against the init-time default.
     let update_data = custom_constraints::instruction::HandleUpdate {}.data();
     let update_metas = vec![AccountMeta::new(counter_pda(), false)];
-    send_instruction(&mut svm, program_id(), update_data, update_metas, &payer, &[])
-        .expect("handle_update");
+    send_instruction(
+        &mut svm,
+        program_id(),
+        update_data,
+        update_metas,
+        &payer,
+        &[],
+    )
+    .expect("handle_update");
     assert_eq!(read_counter_value(&svm, &counter_pda()), 42);
 
     // Now init_if_needed should take the exist branch: value is 42,

@@ -159,9 +159,8 @@ fn len_from_type(ty: Type, attrs: &mut Option<VecDeque<TokenStream2>>) -> TokenS
         // `&[T]` — call those out explicitly in the message.
         _ => syn::Error::new_spanned(
             &ty,
-            "#[derive(InitSpace)] can't compute size for this type — \
-             use a fixed-size alternative (e.g. `[u8; N]`), or `String` / \
-             `Vec<T>` with `#[max_len(N)]` for dynamic fields",
+            "#[derive(InitSpace)] can't compute size for this type — use a fixed-size alternative \
+             (e.g. `[u8; N]`), or `String` / `Vec<T>` with `#[max_len(N)]` for dynamic fields",
         )
         .to_compile_error(),
     }

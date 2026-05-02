@@ -277,6 +277,9 @@ pub enum ErrorCode {
     /// 4102 - Invalid numeric conversion error
     #[msg("Error during numeric conversion")]
     InvalidNumericConversion = 4102,
+    /// 4103 - Capacity overflow when pushing to a PodVec
+    #[msg("PodVec capacity overflow")]
+    CapacityOverflow = 4103,
 
     // Deprecated
     /// 5000 - The API being used is deprecated and should no longer be used
