@@ -19,7 +19,7 @@ const UPDATE_CHECK_INTERVAL_SECS: i64 = 60 * 60;
 /// Shorter HTTP timeout so a slow or unreachable GitHub does not stall the CLI for long.
 const HTTP_CLIENT_TIMEOUT_SECS: u64 = 5;
 /// Longer timeout for release asset downloads, which can take longer than metadata requests.
-const DOWNLOAD_CLIENT_TIMEOUT_SECS: u64 = 5 * 60;
+const DOWNLOAD_CLIENT_TIMEOUT_SECS: u64 = 60;
 
 /// Shared HTTP client with a short timeout, used for metadata/API requests.
 static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
