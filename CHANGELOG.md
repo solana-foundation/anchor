@@ -14,6 +14,14 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+### Breaking
+
+## [1.0.2] - 2026-05-02
+
+### Features
+
+### Fixes
+
 - client: Replace `solana-program` with `solana-hash` ([#4468](https://github.com/solana-foundation/anchor/pull/4468)).
 - lang: Make idl build time way faster by caching `CrateContext` ([#4325](https://github.com/solana-foundation/anchor/pull/4325)).
 - cli: Bind `localnet` to `127.0.0.1` by default to fix a panic in `solana-test-validator` version `3.1.10` ([#4397](https://github.com/solana-foundation/anchor/pull/4397)).
