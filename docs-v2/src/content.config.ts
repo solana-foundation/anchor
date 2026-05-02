@@ -40,6 +40,9 @@ const docs = defineCollection({
           }),
         ])
         .optional(),
+      banner: z.string().optional(),
+      wide: z.boolean().default(false),
+      pageHeader: z.boolean().default(true),
       autoCards: z.boolean().default(true),
       draft: z.boolean().default(false),
     }),

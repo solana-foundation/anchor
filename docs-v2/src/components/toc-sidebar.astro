@@ -9,20 +9,20 @@ interface Props {
   minDepth?: number
   maxDepth?: number
   title?: string
+  class?: string
 }
 
-const { headings, minDepth = 2, maxDepth = 4, title } = Astro.props
+const { headings, minDepth = 2, maxDepth = 4, title, class: className } = Astro.props
 const renderedTitle = title ? await renderDescription(title) : null
-const visible = headings.filter(
-  (h) => h.depth >= minDepth && h.depth <= maxDepth,
-)
+const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDepth)
 ---
 
 {
   visible.length > 0 && (
     <aside
       id="toc-sidebar-container"
-      class="sticky top-16 hidden h-[calc(100vh-8rem)] max-w-xs flex-col xl:flex"
+      data-toc-sidebar-root
+      class={cn('sticky top-16 hidden h-[calc(100vh-8rem)] max-w-xs flex-col xl:flex', className)}
     >
       {renderedTitle && (
         <div
@@ -50,10 +50,7 @@ const visible = headings.filter(
           {visible.map((heading) => (
             <li
               data-toc-item={heading.slug}
-              class={cn(
-                'text-sm text-foreground/60',
-                getHeadingMargin(heading.depth),
-              )}
+              class={cn('text-sm text-foreground/60', getHeadingMargin(heading.depth))}
             >
               <a
                 href={`#${heading.slug}`}
@@ -70,6 +67,15 @@ const visible = headings.filter(
   )
 }
 
+<style is:global>
+  [data-toc-sidebar-root][data-toc-settling='true'],
+  [data-toc-sidebar-root][data-toc-settling='true'] * {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+    transition-property: none !important;
+  }
+</style>
+
 <script>
   const HEADER_OFFSET = 120
 
@@ -84,22 +90,38 @@ const visible = headings.filter(
     tocScrollArea: HTMLElement | null = null
 
     reset() {
-      this.links = document.querySelectorAll(
-        '#toc-sidebar-container [data-heading-link]',
-      )
+      this.links = document.querySelectorAll('#toc-sidebar-container [data-heading-link]')
       this.activeIds = []
       this.headings = []
       this.regions = []
       const tocContainer = document.getElementById('toc-sidebar-container')
-      this.scrollArea =
-        tocContainer?.querySelector('[data-radix-scroll-area-viewport]') ||
-        null
-      this.tocScrollArea =
-        tocContainer?.querySelector('[data-toc-scroll-area]') || null
+      this.scrollArea = tocContainer?.querySelector('[data-radix-scroll-area-viewport]') || null
+      this.tocScrollArea = tocContainer?.querySelector('[data-toc-scroll-area]') || null
     }
   }
 
   const state = new TOCState()
+
+  class TOCTransitionGuard {
+    static run(callback: () => void) {
+      const roots = Array.from(document.querySelectorAll<HTMLElement>('[data-toc-sidebar-root]'))
+      roots.forEach((root) => {
+        root.dataset.tocSettling = 'true'
+      })
+
+      try {
+        callback()
+      } finally {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            roots.forEach((root) => {
+              delete root.dataset.tocSettling
+            })
+          })
+        })
+      }
+    }
+  }
 
   class HeadingRegions {
     static build() {
@@ -119,9 +141,7 @@ const visible = headings.filter(
         return {
           id: heading.id,
           start: heading.offsetTop,
-          end: nextHeading
-            ? nextHeading.offsetTop
-            : document.body.scrollHeight,
+          end: nextHeading ? nextHeading.offsetTop : document.body.scrollHeight,
         }
       })
     }
@@ -171,8 +191,7 @@ const visible = headings.filter(
       const { scrollTop, scrollHeight, clientHeight } = state.scrollArea
       const threshold = 5
       const isAtTop = scrollTop <= threshold
-      const isAtBottom =
-        scrollTop >= scrollHeight - clientHeight - threshold
+      const isAtBottom = scrollTop >= scrollHeight - clientHeight - threshold
 
       state.tocScrollArea.classList.toggle('mask-t-from-90%', !isAtTop)
       state.tocScrollArea.classList.toggle('mask-b-from-90%', !isAtBottom)
@@ -206,10 +225,8 @@ const visible = headings.filter(
       )
       if (!activeLink) return
 
-      const { top: areaTop, height: areaHeight } =
-        state.scrollArea.getBoundingClientRect()
-      const { top: linkTop, height: linkHeight } =
-        activeLink.getBoundingClientRect()
+      const { top: areaTop, height: areaHeight } = state.scrollArea.getBoundingClientRect()
+      const { top: linkTop, height: linkHeight } = activeLink.getBoundingClientRect()
 
       const currentLinkTop = linkTop - areaTop + state.scrollArea.scrollTop
       const targetScroll = Math.max(
@@ -230,9 +247,7 @@ const visible = headings.filter(
     static sync(visibleHeadings: HTMLElement[]) {
       const visibleIds = new Set(visibleHeadings.map((h) => h.id))
       document
-        .querySelectorAll<HTMLElement>(
-          '#toc-sidebar-container [data-toc-item]',
-        )
+        .querySelectorAll<HTMLElement>('#toc-sidebar-container [data-toc-item]')
         .forEach((item) => {
           const slug = item.dataset.tocItem
           item.hidden = !slug || !visibleIds.has(slug)
@@ -311,8 +326,7 @@ const visible = headings.filter(
       this.visibilityObserver = new MutationObserver((mutations) => {
         const relevant = mutations.some(
           (m) =>
-            m.type === 'attributes' &&
-            (m.attributeName === 'hidden' || m.attributeName === 'open'),
+            m.type === 'attributes' && (m.attributeName === 'hidden' || m.attributeName === 'open'),
         )
         if (relevant) this.handleResize()
       })
@@ -326,28 +340,32 @@ const visible = headings.filter(
 
     static init() {
       state.reset()
-      TOCHeadingSync.run()
-      HeadingRegions.build()
-      TOCTitleVisibility.init()
+      let hasHeadings = false
 
-      if (state.headings.length === 0) {
-        TOCLinks.update([])
-        TOCItemVisibility.sync([])
-        return
-      }
+      TOCTransitionGuard.run(() => {
+        TOCHeadingSync.run()
+        HeadingRegions.build()
+        TOCTitleVisibility.init()
+        hasHeadings = state.headings.length > 0
 
-      this.handleScroll()
-      TOCItemVisibility.sync(state.headings)
+        if (!hasHeadings) {
+          TOCLinks.update([])
+          TOCItemVisibility.sync([])
+          return
+        }
+
+        this.handleScroll()
+        TOCItemVisibility.sync(state.headings)
+      })
+
+      if (!hasHeadings) return
+
       setTimeout(TOCScrollMask.update, 100)
 
       const options = { passive: true }
       window.addEventListener('scroll', this.handleScroll, options)
       window.addEventListener('resize', this.handleResize, options)
-      state.scrollArea?.addEventListener(
-        'scroll',
-        this.handleTOCScroll,
-        options,
-      )
+      state.scrollArea?.addEventListener('scroll', this.handleTOCScroll, options)
       this.observeVisibilityChanges()
     }
 
@@ -383,7 +401,8 @@ const visible = headings.filter(
         (entries) => {
           const entry = entries[0]
           if (!entry) return
-          wrapper.dataset.open = entry.isIntersecting ? 'false' : 'true'
+          wrapper.dataset.open =
+            !entry.isIntersecting && entry.boundingClientRect.bottom <= 0 ? 'true' : 'false'
         },
         { rootMargin: '0px', threshold: 0 },
       )

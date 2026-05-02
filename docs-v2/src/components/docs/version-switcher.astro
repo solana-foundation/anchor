@@ -40,13 +40,19 @@ const currentPath = trimTrailingSlash(Astro.url.pathname)
   const SIDEBAR_PENDING_SCROLL_KEY = 'anchor-docs-sidebar-pending-scroll'
   const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '')
 
+  function isDocsHomePath(path: string): boolean {
+    return path.replace(/\/+$/, '') === BASE_PATH
+  }
+
   function versionFromPath(path: string): DocsVersion | null {
     if (path === `${BASE_PATH}/v1` || path.startsWith(`${BASE_PATH}/v1/`)) return 'v1'
     if (path === `${BASE_PATH}/v2` || path.startsWith(`${BASE_PATH}/v2/`)) return 'v2'
     return null
   }
 
-  function versionFromUrl(): DocsVersion {
+  function versionFromUrl(): DocsVersion | null {
+    if (isDocsHomePath(window.location.pathname)) return null
+
     const pathVersion = versionFromPath(window.location.pathname)
     if (pathVersion) return pathVersion
 
@@ -60,14 +66,14 @@ const currentPath = trimTrailingSlash(Astro.url.pathname)
 
   function applyVersionFocus() {
     const version = versionFromUrl()
-    localStorage.setItem(STORAGE_KEY, version)
+    if (version) localStorage.setItem(STORAGE_KEY, version)
 
     document.querySelectorAll<HTMLElement>('[data-version-sidebar]').forEach((sidebar) => {
-      sidebar.hidden = sidebar.dataset.versionSidebar !== version
+      sidebar.hidden = version ? sidebar.dataset.versionSidebar !== version : false
     })
 
     document.querySelectorAll<HTMLAnchorElement>('[data-version-option]').forEach((option) => {
-      const active = option.dataset.versionOption === version
+      const active = version !== null && option.dataset.versionOption === version
       if (active) option.dataset.active = 'true'
       else option.removeAttribute('data-active')
 
@@ -87,7 +93,9 @@ const currentPath = trimTrailingSlash(Astro.url.pathname)
 
   function savePendingSidebarScroll() {
     const viewport = Array.from(
-      document.querySelectorAll<HTMLElement>('nav[aria-label="Documentation"] [data-slot="scroll-area-viewport"]'),
+      document.querySelectorAll<HTMLElement>(
+        'nav[aria-label="Documentation"] [data-slot="scroll-area-viewport"]',
+      ),
     ).find((candidate) => !isHidden(candidate))
 
     if (!viewport) return

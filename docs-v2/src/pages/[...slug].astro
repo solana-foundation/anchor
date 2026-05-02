@@ -38,7 +38,9 @@ const versionSidebars = isUpdatesDoc
       v2: await getSidebarTree(`${href}?version=v2`),
     }
   : undefined
-const { prev, next } = await getPrevNext(href)
+let { prev, next } = await getPrevNext(href)
+if (doc.data.prev === false) prev = null
+if (doc.data.next === false) next = null
 const editUrl = getEditUrl(doc)
 
 const frontmatterLastUpdated = resolveLastUpdated(doc)

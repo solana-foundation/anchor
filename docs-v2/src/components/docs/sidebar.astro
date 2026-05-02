@@ -11,7 +11,7 @@ interface Props {
 const { tree, class: className } = Astro.props
 ---
 
-<nav aria-label="Documentation" class={className}>
+<nav aria-label="Documentation" class={className} data-sidebar-root>
   <ScrollArea client:load className="h-full" type="hover">
     <ul class="flex flex-col gap-0.5">
       {
@@ -24,6 +24,15 @@ const { tree, class: className } = Astro.props
     </ul>
   </ScrollArea>
 </nav>
+
+<style is:global>
+  [data-sidebar-root][data-sidebar-settling='true'],
+  [data-sidebar-root][data-sidebar-settling='true'] * {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+    transition-property: none !important;
+  }
+</style>
 
 <script>
   const SIDEBAR_GROUP_STATE_KEY = 'anchor-docs-sidebar-groups'
@@ -67,6 +76,27 @@ const { tree, class: className } = Astro.props
   }
 
   let syncingSidebarGroups = false
+  const sidebarGroupsWithPersistence = new WeakSet<HTMLDetailsElement>()
+  const sidebarViewportsWithPersistence = new WeakSet<HTMLElement>()
+
+  function withSidebarTransitionsSuppressed(callback: () => void) {
+    const roots = Array.from(document.querySelectorAll<HTMLElement>('[data-sidebar-root]'))
+    roots.forEach((root) => {
+      root.dataset.sidebarSettling = 'true'
+    })
+
+    try {
+      callback()
+    } finally {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          roots.forEach((root) => {
+            delete root.dataset.sidebarSettling
+          })
+        })
+      })
+    }
+  }
 
   function setMatchingSidebarGroups(key: string, open: boolean, source: HTMLDetailsElement) {
     syncingSidebarGroups = true
@@ -95,8 +125,8 @@ const { tree, class: className } = Astro.props
     document
       .querySelectorAll<HTMLDetailsElement>('details[data-sidebar-group][data-group-path]')
       .forEach((group) => {
-        if (group.dataset.sidebarPersistenceBound === 'true') return
-        group.dataset.sidebarPersistenceBound = 'true'
+        if (sidebarGroupsWithPersistence.has(group)) return
+        sidebarGroupsWithPersistence.add(group)
 
         group.addEventListener('toggle', () => {
           if (syncingSidebarGroups) return
@@ -167,8 +197,8 @@ const { tree, class: className } = Astro.props
     restoreSidebarScrolls()
 
     getSidebarViewports().forEach((viewport) => {
-      if (viewport.dataset.sidebarScrollBound === 'true') return
-      viewport.dataset.sidebarScrollBound = 'true'
+      if (sidebarViewportsWithPersistence.has(viewport)) return
+      sidebarViewportsWithPersistence.add(viewport)
 
       viewport.addEventListener('scroll', () => saveSidebarViewportScroll(viewport), {
         passive: true,
@@ -196,9 +226,11 @@ const { tree, class: className } = Astro.props
   }
 
   function setupSidebar() {
-    setupPersistentSidebarGroups()
-    updateActiveSidebarLink()
-    setupPersistentSidebarScrolls()
+    withSidebarTransitionsSuppressed(() => {
+      setupPersistentSidebarGroups()
+      updateActiveSidebarLink()
+      setupPersistentSidebarScrolls()
+    })
   }
 
   setupSidebar()

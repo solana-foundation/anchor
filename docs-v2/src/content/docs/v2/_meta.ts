@@ -1,7 +1,8 @@
 import type { MetaFile } from '@/types'
 
 export default {
-  label: 'Anchor v2 (alpha)',
+  label: 'Anchor v2',
+  badge: { text: 'Alpha', variant: 'note' },
   items: {
     index: { label: 'Overview', order: 0 },
     'get-started': { order: 1 },

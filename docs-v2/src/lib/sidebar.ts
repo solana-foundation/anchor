@@ -142,7 +142,7 @@ function resolveGroup(
     group: {
       type: 'group',
       label,
-      collapsed: forceOpen ? false : (own.collapsed ?? !hasActiveDescendant),
+      collapsed: forceOpen ? false : (override.collapsed ?? own.collapsed ?? !hasActiveDescendant),
       forceOpen,
       badge,
       hasActiveDescendant,
@@ -430,14 +430,14 @@ export async function getDocsVersionSwitchOptions(
   const docs = await getAllDocs()
   const relative = pathnameWithinBase(pathname)
   const parts = relative.split('/').filter(Boolean)
-  const active = getFocusedDocsVersion(pathname) ?? 'v2'
+  const active = getFocusedDocsVersion(pathname)
   const isUpdatesPath = parts[0] === 'updates'
   const sameVersionPath = parts[0] === 'v1' || parts[0] === 'v2' ? parts.slice(1).join('/') : ''
 
   return [
     {
       version: 'v2',
-      label: '2.0 alpha',
+      label: '2.0-alpha',
       href: isUpdatesPath
         ? hrefWithVersionSearch(pathname, 'v2')
         : matchingVersionHref(docs, 'v2', sameVersionPath),

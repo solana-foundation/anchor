@@ -8,9 +8,8 @@ import { SITE, SOCIAL_LINKS } from '@/consts'
 import { BASE_URL } from '@/lib/docs'
 import type { SidebarNode } from '@/types'
 import Icon from '@/components/icon.astro'
-import { Image } from 'astro:assets'
-import wordmarkDark from '@/assets/wordmark-dark.svg'
-import wordmarkLight from '@/assets/wordmark-light.svg'
+import wordmarkDark from '@/assets/wordmark-dark.svg?raw'
+import wordmarkLight from '@/assets/wordmark-light.svg?raw'
 
 interface Props {
   tree: SidebarNode[]
@@ -25,10 +24,20 @@ const gitHubLink = SOCIAL_LINKS.find((link) => link.label === 'GitHub')
 ---
 
 <aside class="hidden xl:block" aria-label="Site navigation">
-  <div class="sticky top-0 flex h-screen flex-col gap-4 pt-16 pr-4 pb-6 pl-6">
+  <div
+    class="sticky top-[var(--docs-announcement-offset,0px)] flex h-[calc(100dvh-var(--docs-announcement-offset,0px))] flex-col gap-4 pt-16 pr-2 pb-6 pl-6"
+  >
     <Link href={BASE_URL} class="flex items-center no-underline" aria-label={SITE.title}>
-      <Image src={wordmarkLight} alt={SITE.title} class="block h-6 w-auto dark:hidden" />
-      <Image src={wordmarkDark} alt={SITE.title} class="hidden h-6 w-auto dark:block" />
+      <span
+        class="block h-6 w-auto dark:hidden [&_svg]:h-full [&_svg]:w-auto"
+        aria-hidden="true"
+        set:html={wordmarkLight}
+      />
+      <span
+        class="hidden h-6 w-auto dark:block [&_svg]:h-full [&_svg]:w-auto"
+        aria-hidden="true"
+        set:html={wordmarkDark}
+      />
     </Link>
 
     <VersionSwitcher />

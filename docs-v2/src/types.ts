@@ -31,6 +31,7 @@ export type MetaItemOverride = {
   order?: number
   badge?: SidebarBadge
   hidden?: boolean
+  collapsed?: boolean
   forceOpen?: boolean
 }
 

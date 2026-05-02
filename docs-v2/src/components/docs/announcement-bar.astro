@@ -8,52 +8,88 @@ const announcement = DOCS.announcement
 
 {
   announcement && (
-    <div
-      id={`announcement-${announcement.id}`}
-      data-announcement-id={announcement.id}
-      class="bg-foreground text-background relative flex items-center justify-center gap-3 px-4 py-2 text-center text-sm"
-    >
-      {announcement.href ? (
-        <Link
-          href={announcement.href}
-          class="text-background hover:text-background decoration-background/50 hover:decoration-background inline-flex items-center gap-1.5 font-medium"
-          external={announcement.href.startsWith('http')}
-        >
-          <span>{announcement.message}</span>
-          <Icon name="arrow-right" class="size-3.5" />
-        </Link>
-      ) : (
-        <span>{announcement.message}</span>
-      )}
-      <button
-        type="button"
-        class="text-background/70 hover:text-background absolute right-2 inline-flex size-6 items-center justify-center"
-        aria-label="Dismiss announcement"
-        data-announcement-dismiss
+    <>
+      <script is:inline data-astro-rerun define:vars={{ announcementId: announcement.id }}>
+        ;(() => {
+          try {
+            const dismissed =
+              localStorage.getItem(`announcement-dismissed:${announcementId}`) === '1'
+            document.documentElement.toggleAttribute('data-docs-announcement-dismissed', dismissed)
+            if (dismissed) {
+              document.documentElement.style.setProperty('--docs-announcement-offset', '0px')
+            }
+          } catch {}
+        })()
+      </script>
+      <style is:inline>
+        html[data-docs-announcement-dismissed] [data-announcement-id] {
+          display: none !important;
+        }
+      </style>
+      <div
+        id={`announcement-${announcement.id}`}
+        data-announcement-id={announcement.id}
+        class="bg-foreground text-background relative flex items-center justify-center gap-3 px-4 py-2 text-center text-sm"
       >
-        <Icon name="x" class="size-4" />
-      </button>
-    </div>
+        {announcement.href ? (
+          <Link
+            href={announcement.href}
+            class="text-background hover:text-background decoration-background/50 hover:decoration-background inline-flex items-center gap-1.5 font-medium"
+            external={announcement.href.startsWith('http')}
+          >
+            <span>{announcement.message}</span>
+            <Icon name="arrow-right" class="size-3.5" />
+          </Link>
+        ) : (
+          <span>{announcement.message}</span>
+        )}
+        <button
+          type="button"
+          class="text-background/70 hover:text-background absolute right-2 inline-flex size-6 items-center justify-center"
+          aria-label="Dismiss announcement"
+          data-announcement-dismiss
+        >
+          <Icon name="x" class="size-4" />
+        </button>
+      </div>
+    </>
   )
 }
 
 <script>
+  const updateAnnouncementOffset = () => {
+    const bar = document.querySelector<HTMLElement>('[data-announcement-id]')
+    const offset = bar
+      ? Math.max(0, Math.min(bar.offsetHeight, bar.getBoundingClientRect().bottom))
+      : 0
+    document.documentElement.style.setProperty('--docs-announcement-offset', `${offset}px`)
+  }
+
   function setupAnnouncement() {
     document.querySelectorAll<HTMLElement>('[data-announcement-id]').forEach((el) => {
       const id = el.dataset.announcementId
       if (!id) return
       const storageKey = `announcement-dismissed:${id}`
       if (localStorage.getItem(storageKey) === '1') {
+        document.documentElement.setAttribute('data-docs-announcement-dismissed', '')
         el.remove()
+        updateAnnouncementOffset()
         return
       }
+      document.documentElement.removeAttribute('data-docs-announcement-dismissed')
       el.querySelector('[data-announcement-dismiss]')?.addEventListener('click', () => {
         localStorage.setItem(storageKey, '1')
+        document.documentElement.setAttribute('data-docs-announcement-dismissed', '')
         el.remove()
+        updateAnnouncementOffset()
       })
     })
+
+    updateAnnouncementOffset()
   }
 
   setupAnnouncement()
+  window.addEventListener('scroll', updateAnnouncementOffset, { passive: true })
+  window.addEventListener('resize', updateAnnouncementOffset, { passive: true })
   document.addEventListener('astro:after-swap', setupAnnouncement)
 </script>
