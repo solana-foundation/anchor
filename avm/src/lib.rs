@@ -668,20 +668,22 @@ fn fetch_versions_with_client(
             .collect();
         Ok(versions)
     } else {
-        let reset_time_header = response
-            .headers()
-            .get("X-RateLimit-Reset")
-            .map_or("unknown", |v| v.to_str().unwrap());
-        let t = Utc.timestamp_opt(reset_time_header.parse::<i64>().unwrap(), 0);
-        let reset_time = t
-            .single()
-            .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
-            .unwrap_or_else(|| "unknown".to_string());
+        let reset_time = github_rate_limit_reset_time(response.headers());
         Err(anyhow!(
             "GitHub API rate limit exceeded. Try again after {} UTC.",
             reset_time
         ))
     }
+}
+
+fn github_rate_limit_reset_time(headers: &reqwest::header::HeaderMap) -> String {
+    headers
+        .get("X-RateLimit-Reset")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse::<i64>().ok())
+        .and_then(|timestamp| Utc.timestamp_opt(timestamp, 0).single())
+        .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 /// Print available versions and flags indicating installed, current and latest
@@ -971,6 +973,32 @@ mod tests {
         // Should ignore this file because it's not anchor- prefixed
         fs::File::create(AVM_HOME.join("bin").join("garbage").as_path()).unwrap();
         assert_eq!(read_installed_versions().unwrap(), expected);
+    }
+
+    #[test]
+    fn test_github_rate_limit_reset_time() {
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("X-RateLimit-Reset", "1715706000".parse().unwrap());
+        assert_eq!(
+            github_rate_limit_reset_time(&headers),
+            "2024-05-14 17:00:00"
+        );
+
+        assert_eq!(
+            github_rate_limit_reset_time(&reqwest::header::HeaderMap::new()),
+            "unknown"
+        );
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("X-RateLimit-Reset", "unknown".parse().unwrap());
+        assert_eq!(github_rate_limit_reset_time(&headers), "unknown");
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            "X-RateLimit-Reset",
+            reqwest::header::HeaderValue::from_bytes(b"\xff").unwrap(),
+        );
+        assert_eq!(github_rate_limit_reset_time(&headers), "unknown");
     }
 
     #[test]
