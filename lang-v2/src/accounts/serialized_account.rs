@@ -210,6 +210,7 @@ where
     S: AnchorAccountSerialize<T>,
 {
     type Data = T;
+    type RequiredConstraints = ();
     const MIN_DATA_LEN: usize = 8;
 
     fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {

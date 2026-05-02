@@ -68,6 +68,18 @@ pub trait ToCpiAccounts<'a> {
 pub trait AnchorAccount: Deref<Target = Self::Data> + Sized {
     type Data;
 
+    /// Type-level list of `AccountConstraint` markers that every
+    /// `#[account(...)]` usage of this type must apply. Defaults to
+    /// `()` (no requirements) for built-in wrappers; custom types
+    /// declare via `required_constraints![C1, C2, …]`.
+    ///
+    /// If a user omits a required constraint, the derive macro emits
+    /// a compile error of the form
+    /// `the trait bound (…): IsSuperset<(MissingConstraint, …), _> is
+    /// not satisfied`, spanned at the field type. The fix is to add
+    /// the missing `namespace::key = …` to the field's `#[account(...)]`.
+    type RequiredConstraints: ConstraintList;
+
     /// Minimum account data length for this type. When > 0, PDA
     /// verification can skip `sol_curve_validate_point`: a non-empty
     /// account was created via CreateAccount/Allocate (which requires
@@ -460,6 +472,75 @@ pub trait AccountConstraint<A> {
     fn exit(_account: &mut A, _value: &Self::Value) -> core::result::Result<(), ProgramError> {
         Ok(())
     }
+}
+
+// ---------------------------------------------------------------------------
+// Required-constraints machinery
+// ---------------------------------------------------------------------------
+//
+// Type-level cons-list of constraint marker types. An `AnchorAccount` impl
+// declares a `RequiredConstraints` list; the `#[derive(Accounts)]` macro
+// builds an analogous "Provided" list from the parsed `#[account(...)]`
+// attributes and emits a `const _: fn() = || { … };` assertion that
+// `Provided` is a superset of `Required`. A missing required marker fails
+// the trait obligation at typeck time → compile error spanned to the field.
+//
+// The encoding is `(Head, Tail)` recursively, terminated by `()`:
+// `(C1, (C2, (C3, ())))`. The `required_constraints![C1, C2, C3]` macro
+// expands to that shape; users should prefer the macro to hand-rolling.
+//
+// Two `Find<C, Idx>` impls (head match via `Here`, recurse via `There<I>`)
+// are disambiguated by the `Idx` parameter — this is the standard frunk
+// `hlist::Selector` trick and works on stable Rust without specialization.
+
+mod constraint_list_sealed {
+    pub trait Sealed {}
+    impl Sealed for () {}
+    impl<H, T: super::ConstraintList> Sealed for (H, T) {}
+}
+
+/// Sealed marker trait for type-level cons-lists of constraint markers.
+/// The only inhabitants are `()` (nil) and `(H, T)` where `T: ConstraintList`.
+pub trait ConstraintList: constraint_list_sealed::Sealed {}
+impl ConstraintList for () {}
+impl<H, T: ConstraintList> ConstraintList for (H, T) {}
+
+/// Index marker: the constraint matches the head of the list.
+pub struct Here;
+
+/// Index marker: skip the head, look in the tail at index `T`.
+pub struct There<T>(core::marker::PhantomData<T>);
+
+/// `Self` is a cons-list whose somewhere-element is `C`. The `Idx`
+/// parameter records the path (`Here` / `There<…>`) so the two impls
+/// don't overlap.
+pub trait Find<C, Idx> {}
+impl<C, T> Find<C, Here> for (C, T) {}
+impl<C, H, T, Idx> Find<C, There<Idx>> for (H, T) where T: Find<C, Idx> {}
+
+/// `Self` (the provided cons-list) contains every element of `Required`.
+/// `Indices` records the path-into-`Self` for each `Required` element.
+pub trait IsSuperset<Required, Indices> {}
+impl<P> IsSuperset<(), ()> for P {}
+impl<P, H, T, Idx, Rest> IsSuperset<(H, T), (Idx, Rest)> for P where
+    P: Find<H, Idx> + IsSuperset<T, Rest>
+{
+}
+
+/// Build a `ConstraintList` (cons-list of marker types) from a comma-
+/// separated list of types.
+///
+/// `required_constraints![]` → `()` (nil)
+/// `required_constraints![A, B, C]` → `(A, (B, (C, ())))`
+///
+/// Used in `AnchorAccount` impls to declare which constraints every
+/// `#[account(...)]` usage of the type must apply.
+#[macro_export]
+macro_rules! required_constraints {
+    () => { () };
+    ($head:ty $(, $rest:ty)* $(,)?) => {
+        ($head, $crate::required_constraints!($($rest),*))
+    };
 }
 
 pub struct Nested<T>(pub T);

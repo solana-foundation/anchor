@@ -692,6 +692,13 @@ pub struct AccountField {
     /// can't appear as accounts (defensive — this path shouldn't trigger in
     /// practice).
     pub idl_field_ty: Option<syn::Type>,
+    /// Compile-time assertion that every constraint declared by the
+    /// field type's `AnchorAccount::RequiredConstraints` is present in
+    /// the field's `#[account(...)]` attrs. Emitted as a `const _: fn()
+    /// = || { … };` sibling of the `impl TryAccounts` block. `None` for
+    /// `Nested<T>` (the inner struct's own derive enforces requirements
+    /// per-field).
+    pub required_check: Option<TokenStream2>,
 }
 
 /// Turn the RHS of `#[account(address = <expr>)]` into the string form the
@@ -1264,6 +1271,7 @@ pub fn parse_field(
             idl_docs: vec![],
             idl_pda: None,
             idl_field_ty: None,
+            required_check: None,
         });
     }
 
@@ -2002,6 +2010,55 @@ pub fn parse_field(
         .then(|| attrs.payer.as_ref().map(ToString::to_string))
         .flatten();
 
+    // Compile-time required-constraint check: build a cons-list of provided
+    // markers from `attrs.namespaced` and assert it's a superset of the
+    // field type's `RequiredConstraints` via the `IsSuperset` trait. For
+    // `Option<T>` fields, look up `RequiredConstraints` on the inner `T`
+    // since `Option` itself isn't an `AnchorAccount`.
+    let required_check = {
+        let target_ty: &Type = option_inner.unwrap_or(field_ty);
+        // Init-param namespaces (`token`, `mint`, `associated_token`) are
+        // dispatched via `AccountInitialize::Params` rather than through
+        // `AccountConstraint`, so their keys do not always have a public
+        // marker type to point at (e.g. `associated_token::token_program`
+        // has no `TokenProgramConstraint` marker). Filter them out —
+        // required-list authors targeting these constraints should expose
+        // their own runtime-only namespace markers.
+        let provided = attrs
+            .namespaced
+            .iter()
+            .filter(|nc| is_runtime_only_constraint_ns(&nc.namespace))
+            .rev()
+            .fold(quote! { () }, |tail, nc| {
+                let ns = syn::Ident::new(&nc.namespace, proc_macro2::Span::call_site());
+                let key = syn::Ident::new(&nc.key, proc_macro2::Span::call_site());
+                quote! { (#ns::#key, #tail) }
+            });
+        let span = match target_ty {
+            Type::Path(tp) => tp
+                .path
+                .segments
+                .last()
+                .map(|s| s.ident.span())
+                .unwrap_or_else(proc_macro2::Span::call_site),
+            _ => proc_macro2::Span::call_site(),
+        };
+        Some(quote_spanned!(span =>
+            const _: fn() = || {
+                fn __check<P, R, I>()
+                where
+                    R: anchor_lang_v2::ConstraintList,
+                    P: anchor_lang_v2::IsSuperset<R, I>,
+                {}
+                __check::<
+                    #provided,
+                    <#target_ty as anchor_lang_v2::AnchorAccount>::RequiredConstraints,
+                    _,
+                >();
+            };
+        ))
+    };
+
     Ok(AccountField {
         name: field_name.clone(),
         ty: field.ty.clone(),
@@ -2023,6 +2080,7 @@ pub fn parse_field(
         idl_docs,
         idl_pda,
         idl_field_ty,
+        required_check,
     })
 }
 

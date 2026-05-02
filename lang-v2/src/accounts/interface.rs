@@ -21,6 +21,7 @@ impl<T: Ids> Interface<'_, T> {
 
 impl<T: Ids> AnchorAccount for Interface<'_, T> {
     type Data = AccountView;
+    type RequiredConstraints = ();
 
     #[inline(always)]
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {

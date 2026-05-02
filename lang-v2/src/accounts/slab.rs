@@ -630,6 +630,7 @@ where
     H: Pod + Zeroable + SlabSchema,
 {
     type Data = H;
+    type RequiredConstraints = ();
     const MIN_DATA_LEN: usize = 8;
 
     #[inline(always)]

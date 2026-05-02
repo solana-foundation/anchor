@@ -9,6 +9,7 @@ use {
 
 impl<T: AnchorAccount> AnchorAccount for Box<T> {
     type Data = T;
+    type RequiredConstraints = T::RequiredConstraints;
     const MIN_DATA_LEN: usize = T::MIN_DATA_LEN;
 
     fn load(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {

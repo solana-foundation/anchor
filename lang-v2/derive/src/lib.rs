@@ -324,6 +324,14 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         .collect();
     let constraints: Vec<_> = fields.iter().flat_map(|f| &f.constraints).collect();
     let exits: Vec<_> = fields.iter().filter_map(|f| f.exit.as_ref()).collect();
+    // Per-field compile-time `RequiredConstraints` superset assertions.
+    // Spliced as siblings of the `impl TryAccounts` block so the trait
+    // obligation resolves at definition time rather than only when
+    // `try_accounts` is monomorphized.
+    let required_checks: Vec<_> = fields
+        .iter()
+        .filter_map(|f| f.required_check.as_ref())
+        .collect();
     // Collect per-field dup checks under a single outer `if let Some(__dups)`
     // gate so non-dup txs pay one Option-tag branch for the whole struct,
     // not one per mut field.
@@ -1094,6 +1102,8 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         impl anchor_lang_v2::Bumps for #name {
             type Bumps = #bumps_name;
         }
+
+        #(#required_checks)*
 
         impl anchor_lang_v2::TryAccounts for #name {
             const HEADER_SIZE: usize = #header_size_expr;
