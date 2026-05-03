@@ -18,6 +18,7 @@ import { rehypeInlinePathIcon } from './src/lib/rehype-inline-path-icon'
 import { rehypeWrapTables } from './src/lib/rehype-wrap-tables'
 import { ecOptions } from './src/lib/ec-config'
 import { latte, mocha } from './src/lib/shiki-themes'
+import { resolveSiteUrl } from './src/lib/site-url'
 
 import tailwindcss from '@tailwindcss/vite'
 import { extname, isAbsolute, relative, resolve } from 'node:path'
@@ -96,7 +97,7 @@ function resolvePagefindAsset(url: string): string | null {
 }
 
 export default defineConfig({
-  site: 'https://www.anchor-lang.com',
+  site: resolveSiteUrl(),
   base: DOCS_BASE,
   trailingSlash: 'always',
   outDir: './dist/docs',

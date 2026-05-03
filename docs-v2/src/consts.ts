@@ -1,9 +1,10 @@
 import type { DocsConfig, IconMap, Site, SocialLink } from '@/types'
+import { resolveSiteUrl } from '@/lib/site-url'
 
 export const SITE: Site = {
   title: 'Anchor Docs',
   description: 'Anchor is the leading development framework for building Solana programs.',
-  href: 'https://www.anchor-lang.com',
+  href: resolveSiteUrl(),
   author: 'solana-foundation',
   locale: 'en-US',
 }
