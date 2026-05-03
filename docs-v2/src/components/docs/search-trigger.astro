@@ -28,17 +28,7 @@ const { mac, windows } = DOCS.search.hotkey
 </Button>
 
 <script>
-  function applyOsHotkey() {
-    const nav = navigator as Navigator & { userAgentData?: { platform?: string } }
-    const platform = nav.userAgentData?.platform ?? ''
-    const isMac = /Mac|iPhone|iPad|iPod/i.test(`${navigator.userAgent} ${platform}`)
+  import { mountHotkeyLabels } from '@/lib/client/hotkey-labels'
 
-    document.querySelectorAll<HTMLElement>('[data-hotkey]').forEach((el) => {
-      const label = isMac ? (el.dataset.hotkeyMac ?? '') : (el.dataset.hotkeyOther ?? '')
-      if (label) el.textContent = label
-    })
-  }
-
-  applyOsHotkey()
-  document.addEventListener('astro:after-swap', applyOsHotkey)
+  mountHotkeyLabels()
 </script>

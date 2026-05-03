@@ -14,7 +14,7 @@ import CardGrid from '@/components/mdx/card-grid.astro'
 import Base from '@/layouts/base.astro'
 import { type Doc } from '@/lib/docs'
 import { renderDescription } from '@/lib/render-description'
-import type { IndexChild } from '@/lib/sidebar'
+import type { DocsVersionSwitchOption, IndexChild } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
 import type { MarkdownHeading } from 'astro'
 import type { FlatDoc, SidebarNode } from '@/types'
@@ -27,6 +27,7 @@ interface Props {
     v1: SidebarNode[]
     v2: SidebarNode[]
   }
+  versionOptions: DocsVersionSwitchOption[]
   prev: FlatDoc | null
   next: FlatDoc | null
   editUrl: string | null
@@ -42,6 +43,7 @@ const {
   headings,
   sidebar,
   versionSidebars,
+  versionOptions,
   prev,
   next,
   editUrl,
@@ -81,8 +83,8 @@ const renderedIndexChildren = await Promise.all(
   {editUrl && <meta slot="head" name="docs-edit-url" content={editUrl} />}
 
   <div class="grid flex-1 grid-cols-1 xl:grid-cols-[16rem_minmax(0,1fr)]">
-    <DocsAside tree={sidebar} versionTrees={versionSidebars} />
-    <MobileSidebar tree={sidebar} versionTrees={versionSidebars} />
+    <DocsAside tree={sidebar} versionTrees={versionSidebars} versionOptions={versionOptions} />
+    <MobileSidebar tree={sidebar} versionTrees={versionSidebars} versionOptions={versionOptions} />
 
     <div class={cn('flex flex-col overflow-x-clip xl:pb-6', hasBanner ? 'xl:pt-0' : 'xl:pt-16')}>
       <header class="bg-background/80 sticky top-0 z-40 border-b backdrop-blur-sm xl:hidden">
@@ -196,16 +198,7 @@ const renderedIndexChildren = await Promise.all(
 </Base>
 
 <script>
-  const ensureKatexStyles = () => {
-    if (!document.querySelector('.katex')) return
-    if (document.querySelector('link[href*="katex.min.css"]')) return
+  import { mountKatexStyles } from '@/lib/client/katex-styles'
 
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css'
-    document.head.appendChild(link)
-  }
-
-  document.addEventListener('astro:page-load', ensureKatexStyles)
-  document.addEventListener('astro:after-swap', ensureKatexStyles)
+  mountKatexStyles()
 </script>

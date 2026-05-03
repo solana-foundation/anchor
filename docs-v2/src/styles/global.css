@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: 'DM Sans';
-  src: url('/docs/fonts/DMSansVF-latin.woff2') format('woff2-variations');
+  src: url('../assets/fonts/DMSansVF-latin.woff2') format('woff2-variations');
   font-weight: 100 1000;
   font-style: normal;
   font-display: swap;
@@ -39,7 +39,7 @@
 
 @font-face {
   font-family: 'Cascadia Code';
-  src: url('/docs/fonts/CascadiaCodeVF.woff2') format('woff2-variations');
+  src: url('../assets/fonts/CascadiaCodeVF.woff2') format('woff2-variations');
   font-weight: 200 700;
   font-style: normal;
   font-display: swap;

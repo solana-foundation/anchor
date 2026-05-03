@@ -8,7 +8,6 @@ import Dir from '@/components/mdx/file-tree-dir.astro'
 import File from '@/components/mdx/file-tree-file.astro'
 import Step from '@/components/mdx/step.astro'
 import Steps from '@/components/mdx/steps.astro'
-import Swatch from '@/components/mdx/swatch'
 import Tab from '@/components/mdx/tab.astro'
 import Tabs from '@/components/mdx/tabs.astro'
 import Callout from '@/components/callout.astro'
@@ -25,7 +24,6 @@ export const mdxComponents = {
   FileTree,
   Step,
   Steps,
-  Swatch,
   Tab,
   Tabs,
 }

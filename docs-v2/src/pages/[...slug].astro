@@ -11,7 +11,13 @@ import {
 } from '@/lib/docs'
 import { gitLastUpdated } from '@/lib/git-lastmod'
 import { mdxComponents } from '@/lib/mdx-components'
-import { getIndexChildren, getPrevNext, getSidebarTree } from '@/lib/sidebar'
+import {
+  createSidebarContext,
+  getDocsVersionSwitchOptionsFromContext,
+  getIndexChildrenFromContext,
+  getPrevNextFromContext,
+  getSidebarTreeFromContext,
+} from '@/lib/sidebar'
 import { render } from 'astro:content'
 
 export async function getStaticPaths() {
@@ -27,18 +33,27 @@ interface Props {
 }
 
 const { doc } = Astro.props
-const { Content, headings } = await render(doc)
+const [renderedDoc, docs] = await Promise.all([render(doc), getAllDocs()])
+const { Content, headings } = renderedDoc
+const sidebarContext = createSidebarContext(docs)
 
 const href = docHref(doc.id)
-const sidebar = await getSidebarTree(href)
 const isUpdatesDoc = doc.id.startsWith('updates/')
+const isIndex = doc.id === 'index' || /\/index\.mdx?$/.test(doc.filePath ?? '')
+
+const sidebar = getSidebarTreeFromContext(sidebarContext, href)
 const versionSidebars = isUpdatesDoc
   ? {
-      v1: await getSidebarTree(`${href}?version=v1`),
-      v2: await getSidebarTree(`${href}?version=v2`),
+      v1: getSidebarTreeFromContext(sidebarContext, `${href}?version=v1`),
+      v2: getSidebarTreeFromContext(sidebarContext, `${href}?version=v2`),
     }
   : undefined
-let { prev, next } = await getPrevNext(href)
+const prevNext = getPrevNextFromContext(sidebarContext, href)
+const indexChildren =
+  isIndex && doc.data.autoCards !== false ? getIndexChildrenFromContext(sidebarContext, href) : []
+const versionOptions = getDocsVersionSwitchOptionsFromContext(sidebarContext, href)
+
+let { prev, next } = prevNext
 if (doc.data.prev === false) prev = null
 if (doc.data.next === false) next = null
 const editUrl = getEditUrl(doc)
@@ -49,9 +64,6 @@ const lastUpdated =
   (doc.data.lastUpdated === false ? null : doc.filePath ? gitLastUpdated(doc.filePath) : null)
 
 const toc = resolveTOC(doc)
-
-const isIndex = doc.id === 'index' || /\/index\.mdx?$/.test(doc.filePath ?? '')
-const indexChildren = isIndex && doc.data.autoCards !== false ? await getIndexChildren(href) : []
 ---
 
 <DocLayout
@@ -59,6 +71,7 @@ const indexChildren = isIndex && doc.data.autoCards !== false ? await getIndexCh
   headings={headings}
   sidebar={sidebar}
   versionSidebars={versionSidebars}
+  versionOptions={versionOptions}
   prev={prev}
   next={next}
   editUrl={editUrl}

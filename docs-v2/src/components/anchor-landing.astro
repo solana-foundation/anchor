@@ -1,5 +1,4 @@
 ---
-import BentoScrollMask from './bento-scroll-mask.astro'
 import Icon from './icon.astro'
 import LandingProofChart from './landing-proof-chart'
 import Link from './link.astro'
@@ -196,8 +195,6 @@ const landingAsset = (file: string) => withBase(`/landing/${file}`)
   </section>
 </div>
 
-<BentoScrollMask />
-
 <LandingProofChart client:load />
 
 <section
@@ -292,23 +289,7 @@ const landingAsset = (file: string) => withBase(`/landing/${file}`)
 </section>
 
 <script>
-  const w = window as Window & { __anchorLandingScrollCueReady?: boolean }
+  import { mountLandingPage } from '@/lib/client/landing'
 
-  function updateAnchorLandingScrollCue() {
-    const cue = document.querySelector<HTMLElement>('[data-scroll-cue]')
-    if (!cue) return
-
-    const hidden = window.scrollY > 24
-    cue.classList.toggle('pointer-events-none', hidden)
-    cue.classList.toggle('translate-y-2', hidden)
-    cue.classList.toggle('opacity-0', hidden)
-  }
-
-  if (!w.__anchorLandingScrollCueReady) {
-    w.__anchorLandingScrollCueReady = true
-    window.addEventListener('scroll', updateAnchorLandingScrollCue, { passive: true })
-    document.addEventListener('astro:after-swap', updateAnchorLandingScrollCue)
-  }
-
-  updateAnchorLandingScrollCue()
+  mountLandingPage()
 </script>

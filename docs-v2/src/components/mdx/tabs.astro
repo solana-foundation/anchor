@@ -9,7 +9,6 @@ interface Props {
 }
 
 const { items, defaultIndex = 0 } = Astro.props
-const uid = `tabs-${Math.random().toString(36).slice(2, 9)}`
 
 const ANNOT_RE = /\{:([a-z0-9]+)\}\s*$/i
 const renderedItems = await Promise.all(
@@ -28,8 +27,11 @@ const renderedItems = await Promise.all(
 )
 ---
 
-<div class="my-6 rounded-lg border-2" data-tabs={uid}>
-  <div role="tablist" class="border-border bg-muted/30 flex gap-1 overflow-x-auto rounded-t-[6px] border-b-2 px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+<div class="my-6 rounded-lg border-2" data-tabs>
+  <div
+    role="tablist"
+    class="border-border bg-muted/30 flex gap-1 overflow-x-auto rounded-t-[6px] border-b-2 px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+  >
     {
       renderedItems.map((item, i) => (
         <button
@@ -52,62 +54,7 @@ const renderedItems = await Promise.all(
 </div>
 
 <script>
-  function setupTabs() {
-    document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((root) => {
-      if (root.dataset.tabsInit === '1') return
-      root.dataset.tabsInit = '1'
+  import { mountTabs } from '@/lib/client/tabs'
 
-      // `:scope >` keeps the queries from matching nested <Tabs> descendants —
-      // otherwise a click on an inner tab triggers the outer handler with an
-      // out-of-range index, which hides every outer panel.
-      const tabs = root.querySelectorAll<HTMLButtonElement>(
-        ':scope > [role="tablist"] > [data-tab-index]',
-      )
-      const panelsWrapper = root.querySelector<HTMLElement>(
-        ':scope > [data-tabs-panels]',
-      )
-      if (!panelsWrapper) return
-      const panels = Array.from(panelsWrapper.children) as HTMLElement[]
-      const defaultIndex = Number(panelsWrapper.dataset.defaultIndex ?? 0)
-
-      const select = (index: number) => {
-        tabs.forEach((tab, i) => {
-          const active = i === index
-          tab.setAttribute('aria-selected', String(active))
-          tab.dataset.selected = String(active)
-          tab.tabIndex = active ? 0 : -1
-        })
-        panels.forEach((panel, i) => {
-          panel.hidden = i !== index
-        })
-      }
-
-      select(defaultIndex)
-
-      tabs.forEach((tab, i) => {
-        tab.addEventListener('click', () => select(i))
-        tab.addEventListener('keydown', (event) => {
-          if (event.key === 'ArrowRight') {
-            event.preventDefault()
-            const next = (i + 1) % tabs.length
-            ;(tabs[next] as HTMLButtonElement).focus()
-            select(next)
-          } else if (event.key === 'ArrowLeft') {
-            event.preventDefault()
-            const prev = (i - 1 + tabs.length) % tabs.length
-            ;(tabs[prev] as HTMLButtonElement).focus()
-            select(prev)
-          }
-        })
-      })
-    })
-  }
-
-  setupTabs()
-  document.addEventListener('astro:after-swap', () => {
-    document
-      .querySelectorAll<HTMLElement>('[data-tabs]')
-      .forEach((el) => delete el.dataset.tabsInit)
-    setupTabs()
-  })
+  mountTabs()
 </script>

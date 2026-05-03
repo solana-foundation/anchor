@@ -17,55 +17,28 @@ import Icon from '@/components/icon.astro'
 
 <script is:inline data-astro-rerun>
   ;(() => {
+    const storedTheme = (() => {
+      try {
+        return window.localStorage.getItem('theme') ?? ''
+      } catch {
+        return ''
+      }
+    })()
+
     const theme = (() => {
-      const stored = localStorage?.getItem('theme') ?? ''
-      if (['dark', 'light'].includes(stored)) return stored
+      if (['dark', 'light'].includes(storedTheme)) return storedTheme
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     })()
 
     document.documentElement.setAttribute('data-theme', theme)
-    window.localStorage.setItem('theme', theme)
+    try {
+      window.localStorage.setItem('theme', theme)
+    } catch {}
   })()
 </script>
 
 <script>
-  let themeToggleController: AbortController | null = null
+  import { mountThemeToggle } from '@/lib/client/theme-toggle'
 
-  function handleToggleClick() {
-    const element = document.documentElement
-    const currentTheme = element.getAttribute('data-theme')
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
-
-    element.classList.add('[&_*]:transition-none')
-    element.setAttribute('data-theme', newTheme)
-    window.getComputedStyle(element).getPropertyValue('opacity')
-
-    requestAnimationFrame(() => {
-      element.classList.remove('[&_*]:transition-none')
-    })
-
-    localStorage.setItem('theme', newTheme)
-  }
-
-  function initThemeToggle() {
-    themeToggleController?.abort()
-    const controller = new AbortController()
-    themeToggleController = controller
-
-    document
-      .querySelectorAll<HTMLButtonElement>('[data-theme-toggle]')
-      .forEach((btn) =>
-        btn.addEventListener('click', handleToggleClick, { signal: controller.signal }),
-      )
-  }
-
-  initThemeToggle()
-
-  document.addEventListener('astro:before-swap', (event) => {
-    themeToggleController?.abort()
-    const storedTheme = localStorage.getItem('theme') || 'light'
-    event.newDocument.documentElement.setAttribute('data-theme', storedTheme)
-  })
-
-  document.addEventListener('astro:after-swap', initThemeToggle)
+  mountThemeToggle()
 </script>

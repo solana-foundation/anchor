@@ -8,9 +8,12 @@ import type {
   SidebarNode,
 } from '@/types'
 import { BASE_URL, docHref, docLabel, getAllDocs, type Doc } from '@/lib/docs'
+import {
+  candidateDocIdsForVersion,
+  DOCS_VERSION_LABELS,
+  type DocsVersion,
+} from '@/lib/docs-versions'
 import { isCurrentPath, titleCase, trimTrailingSlash } from '@/lib/utils'
-
-export type DocsVersion = 'v1' | 'v2'
 
 const metaModules = {
   ...(import.meta.glob('/src/content/docs/_meta.ts', {
@@ -31,6 +34,14 @@ type TreeNode = {
   fullPath: string
   doc?: Doc
   children: TreeNode[]
+}
+
+type DocTreeNode = TreeNode & {
+  doc: Doc
+}
+
+function hasDoc(node: TreeNode): node is DocTreeNode {
+  return Boolean(node.doc)
 }
 
 function ensureNode(parent: TreeNode, name: string, fullPath: string): TreeNode {
@@ -60,6 +71,26 @@ function buildTree(docs: Doc[]): TreeNode {
   return root
 }
 
+export type SidebarContext = {
+  docs: Doc[]
+  tree: TreeNode
+  docByHref: Map<string, Doc>
+  rootMeta: MetaFile
+}
+
+export function createSidebarContext(docs: Doc[]): SidebarContext {
+  return {
+    docs,
+    tree: buildTree(docs),
+    docByHref: new Map(docs.map((doc) => [docHref(doc.id), doc])),
+    rootMeta: metaFor(''),
+  }
+}
+
+async function loadSidebarContext(): Promise<SidebarContext> {
+  return createSidebarContext(await getAllDocs())
+}
+
 type OrderKey = {
   order: number
   label: string
@@ -71,11 +102,11 @@ function compareByOrder(a: OrderKey, b: OrderKey): number {
 }
 
 function resolveDocLink(
-  node: TreeNode,
+  node: DocTreeNode,
   parentMeta: MetaFile,
   pathname: string,
 ): { link: SidebarLink; sortKey: OrderKey } | null {
-  const doc = node.doc!
+  const { doc } = node
   if (doc.data.sidebar?.hidden) return null
 
   const override: MetaItemOverride = parentMeta.items?.[node.name] ?? {}
@@ -162,7 +193,7 @@ function buildNodes(parent: TreeNode, parentMeta: MetaFile, pathname: string): S
     if (child.children.length > 0) {
       const result = resolveGroup(child, parentMeta, pathname)
       if (result) resolved.push({ node: result.group, sortKey: result.sortKey })
-    } else if (child.doc) {
+    } else if (hasDoc(child)) {
       const result = resolveDocLink(child, parentMeta, pathname)
       if (result) resolved.push({ node: result.link, sortKey: result.sortKey })
     }
@@ -231,13 +262,17 @@ function getVersionScopedNodes(
   return updatesGroup ? [...versionItems, updatesGroup] : versionItems
 }
 
-export async function getSidebarTree(pathname: string = '/'): Promise<SidebarNode[]> {
-  const docs = await getAllDocs()
-  const tree = buildTree(docs)
-  const rootMeta = metaFor('')
+export function getSidebarTreeFromContext(
+  context: SidebarContext,
+  pathname: string = '/',
+): SidebarNode[] {
   const version = getFocusedDocsVersion(pathname)
-  if (version) return getVersionScopedNodes(tree, version, rootMeta, pathname)
-  return buildNodes(tree, rootMeta, pathname)
+  if (version) return getVersionScopedNodes(context.tree, version, context.rootMeta, pathname)
+  return buildNodes(context.tree, context.rootMeta, pathname)
+}
+
+export async function getSidebarTree(pathname: string = '/'): Promise<SidebarNode[]> {
+  return getSidebarTreeFromContext(await loadSidebarContext(), pathname)
 }
 
 function flattenTree(nodes: SidebarNode[], acc: FlatDoc[] = []): FlatDoc[] {
@@ -257,9 +292,15 @@ function flattenTree(nodes: SidebarNode[], acc: FlatDoc[] = []): FlatDoc[] {
   return acc
 }
 
+export function getFlatDocOrderFromContext(
+  context: SidebarContext,
+  pathname: string = '/',
+): FlatDoc[] {
+  return flattenTree(getSidebarTreeFromContext(context, pathname))
+}
+
 export async function getFlatDocOrder(pathname: string = '/'): Promise<FlatDoc[]> {
-  const tree = await getSidebarTree(pathname)
-  return flattenTree(tree)
+  return getFlatDocOrderFromContext(await loadSidebarContext(), pathname)
 }
 
 export type IndexChild = {
@@ -286,35 +327,37 @@ function findGroupChildren(nodes: SidebarNode[], href: string): SidebarNode[] | 
   return null
 }
 
-export async function getIndexChildren(href: string): Promise<IndexChild[]> {
-  const docs = await getAllDocs()
-  const docMap = new Map(docs.map((d) => [docHref(d.id), d]))
-
-  const tree = await getSidebarTree(href)
+export function getIndexChildrenFromContext(context: SidebarContext, href: string): IndexChild[] {
+  const tree = getSidebarTreeFromContext(context, href)
   const nodes = href === BASE_URL ? tree : (findGroupChildren(tree, href) ?? [])
 
   return nodes.flatMap((node): IndexChild[] => {
     if (node.type === 'link') {
-      const doc = docMap.get(node.href)
+      const doc = context.docByHref.get(node.href)
       return [{ label: node.label, href: node.href, description: doc?.data.description }]
     }
     const first = node.items[0]
     if (first?.type === 'link') {
-      const doc = docMap.get(first.href)
+      const doc = context.docByHref.get(first.href)
       return [{ label: node.label, href: first.href, description: doc?.data.description }]
     }
     return []
   })
 }
 
-export async function getPrevNext(
+export async function getIndexChildren(href: string): Promise<IndexChild[]> {
+  return getIndexChildrenFromContext(await loadSidebarContext(), href)
+}
+
+export function getPrevNextFromContext(
+  context: SidebarContext,
   currentHref: string,
-): Promise<{ prev: FlatDoc | null; next: FlatDoc | null }> {
-  const flat = await getFlatDocOrder(currentHref)
+): { prev: FlatDoc | null; next: FlatDoc | null } {
+  const flat = getFlatDocOrderFromContext(context, currentHref)
   const normalized = trimTrailingSlash(currentHref)
   const index = flat.findIndex((d) => trimTrailingSlash(d.href) === normalized)
   if (index === -1) {
-    if (normalized === '/') {
+    if (normalized === trimTrailingSlash(BASE_URL)) {
       return { prev: null, next: flat[0] ?? null }
     }
     return { prev: null, next: null }
@@ -325,6 +368,12 @@ export async function getPrevNext(
   }
 }
 
+export async function getPrevNext(
+  currentHref: string,
+): Promise<{ prev: FlatDoc | null; next: FlatDoc | null }> {
+  return getPrevNextFromContext(await loadSidebarContext(), currentHref)
+}
+
 export type DocsVersionSwitchOption = {
   version: DocsVersion
   label: string
@@ -333,87 +382,13 @@ export type DocsVersionSwitchOption = {
   badge?: SidebarBadge
 }
 
-function idFromVersionPath(version: DocsVersion, relativePath: string): string {
-  return relativePath ? `${version}/${relativePath}` : `${version}/index`
-}
-
 function fallbackVersionHref(version: DocsVersion): string {
   return docHref(`${version}/index`)
 }
 
-const VERSION_ROUTE_ALIASES: Record<DocsVersion, Record<string, string>> = {
-  v1: {
-    'get-started/first-program': 'get-started/local-development',
-    'get-started/migrating-from-v1': 'get-started/local-development',
-    'fundamentals/accounts-and-context': 'programs/account-types',
-    'fundamentals/account-validation': 'reference/account-constraints',
-    'fundamentals/pdas-and-resolution': 'fundamentals/pdas',
-    'programs/account-data-model': 'programs/account-types',
-    'programs/pod-types': 'programs/zero-copy',
-    'programs/borsh-accounts-and-realloc': 'programs/account-space-and-realloc',
-    'programs/errors-and-require': 'programs/errors',
-    'programs/extensibility': 'programs/account-types',
-    'reference/macros-and-attributes': 'reference/account-constraints',
-    'reference/account-types': 'programs/account-types',
-    'reference/feature-flags': 'reference/anchor-toml',
-    'reference/examples-and-benchmarks': 'reference/examples',
-    'reference/alpha-limitations': 'reference/index',
-    'security/secure-by-default': 'security/footguns',
-    'security/production-builds': 'security/verifiable-builds',
-    'security/performance-and-optimizations': 'security/verifiable-builds',
-    'testing/profiling-and-debugger': 'testing/index',
-    'testing/coverage': 'testing/index',
-  },
-  v2: {
-    'get-started/solana-playground': 'get-started/first-program',
-    'get-started/local-development': 'get-started/first-program',
-    'fundamentals/pdas': 'fundamentals/pdas-and-resolution',
-    'programs/account-space-and-realloc': 'programs/borsh-accounts-and-realloc',
-    'programs/errors': 'programs/errors-and-require',
-    'programs/zero-copy': 'programs/account-data-model',
-    'reference/avm': 'reference/cli',
-    'reference/rust-to-js-types': 'clients/typescript',
-    'reference/examples': 'reference/examples-and-benchmarks',
-    'security/sealevel-attacks': 'security/secure-by-default',
-    'security/footguns': 'security/secure-by-default',
-    'security/verifiable-builds': 'security/production-builds',
-    'testing/mollusk': 'testing/litesvm',
-  },
-}
-
-function sectionFallback(version: DocsVersion, relativePath: string): string {
-  const [section] = relativePath.split('/')
-  if (!section) return ''
-  if (section === 'get-started') {
-    return version === 'v2' ? 'get-started/first-program' : 'get-started/local-development'
-  }
-  return `${section}/index`
-}
-
-function versionPathCandidates(version: DocsVersion, relativePath: string): string[] {
-  const alias = VERSION_ROUTE_ALIASES[version][relativePath]
-  const fallback = sectionFallback(version, relativePath)
-  return [relativePath, alias, fallback].filter(
-    (candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0,
-  )
-}
-
-function versionDocIdCandidates(version: DocsVersion, relativePath: string): string[] {
-  const baseId = idFromVersionPath(version, relativePath)
-  if (!relativePath) return [baseId]
-
-  const ids = [baseId, `${baseId}/index`]
-  if (relativePath.endsWith('/index')) {
-    ids.push(idFromVersionPath(version, relativePath.slice(0, -'/index'.length)))
-  }
-  return ids
-}
-
 function matchingVersionHref(docs: Doc[], version: DocsVersion, relativePath: string): string {
   const ids = new Set(docs.map((doc) => doc.id))
-  const candidates = versionPathCandidates(version, relativePath).flatMap((path) =>
-    versionDocIdCandidates(version, path),
-  )
+  const candidates = candidateDocIdsForVersion(version, relativePath)
   const match = candidates.find((id) => ids.has(id))
   return match ? docHref(match) : fallbackVersionHref(version)
 }
@@ -424,10 +399,10 @@ function hrefWithVersionSearch(pathname: string, version: DocsVersion): string {
   return `${url.pathname}${url.search}`
 }
 
-export async function getDocsVersionSwitchOptions(
+export function getDocsVersionSwitchOptionsFromContext(
+  context: SidebarContext,
   pathname: string,
-): Promise<DocsVersionSwitchOption[]> {
-  const docs = await getAllDocs()
+): DocsVersionSwitchOption[] {
   const relative = pathnameWithinBase(pathname)
   const parts = relative.split('/').filter(Boolean)
   const active = getFocusedDocsVersion(pathname)
@@ -437,19 +412,25 @@ export async function getDocsVersionSwitchOptions(
   return [
     {
       version: 'v2',
-      label: '2.0-alpha',
+      label: DOCS_VERSION_LABELS.v2,
       href: isUpdatesPath
         ? hrefWithVersionSearch(pathname, 'v2')
-        : matchingVersionHref(docs, 'v2', sameVersionPath),
+        : matchingVersionHref(context.docs, 'v2', sameVersionPath),
       active: active === 'v2',
     },
     {
       version: 'v1',
-      label: '1.0.1',
+      label: DOCS_VERSION_LABELS.v1,
       href: isUpdatesPath
         ? hrefWithVersionSearch(pathname, 'v1')
-        : matchingVersionHref(docs, 'v1', sameVersionPath),
+        : matchingVersionHref(context.docs, 'v1', sameVersionPath),
       active: active === 'v1',
     },
   ]
+}
+
+export async function getDocsVersionSwitchOptions(
+  pathname: string,
+): Promise<DocsVersionSwitchOption[]> {
+  return getDocsVersionSwitchOptionsFromContext(await loadSidebarContext(), pathname)
 }

@@ -10,11 +10,14 @@ interface Props {
 }
 
 const { href, external, class: className, underline, ...rest } = Astro.props
+const target = external ? '_blank' : undefined
+const rel = external ? 'noreferrer noopener' : undefined
 ---
 
 <a
   href={href}
-  target={external ? '_blank' : '_self'}
+  target={target}
+  rel={rel}
   class={cn(
     underline &&
       'underline decoration-muted-foreground underline-offset-[3px] hover:decoration-foreground',

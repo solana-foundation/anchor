@@ -5,6 +5,7 @@ import Link from '@/components/link.astro'
 import { Button } from '@/components/ui/button'
 import { SITE } from '@/consts'
 import { BASE_URL } from '@/lib/docs'
+import type { DocsVersionSwitchOption } from '@/lib/sidebar'
 import type { SidebarNode } from '@/types'
 import Icon from '@/components/icon.astro'
 import { Image } from 'astro:assets'
@@ -17,9 +18,10 @@ interface Props {
     v1: SidebarNode[]
     v2: SidebarNode[]
   }
+  versionOptions?: DocsVersionSwitchOption[]
 }
 
-const { tree, versionTrees } = Astro.props
+const { tree, versionTrees, versionOptions } = Astro.props
 ---
 
 <dialog
@@ -43,7 +45,7 @@ const { tree, versionTrees } = Astro.props
       <Icon name="x" class="size-4" />
     </Button>
   </header>
-  <VersionSwitcher />
+  <VersionSwitcher options={versionOptions} />
   <div class="min-h-0 flex-1">
     {
       versionTrees ? (
@@ -63,52 +65,7 @@ const { tree, versionTrees } = Astro.props
 </dialog>
 
 <script>
-  let mobileSidebarController: AbortController | null = null
+  import { mountMobileSidebar } from '@/lib/client/mobile-sidebar'
 
-  function setupMobileSidebar() {
-    const dialog = document.getElementById('mobile-sidebar') as HTMLDialogElement | null
-    const trigger = document.getElementById('mobile-sidebar-trigger') as HTMLButtonElement | null
-    const closeBtn = document.getElementById('mobile-sidebar-close') as HTMLButtonElement | null
-
-    if (!dialog) return
-    mobileSidebarController?.abort()
-    mobileSidebarController = new AbortController()
-    const { signal } = mobileSidebarController
-
-    const open = () => {
-      dialog.showModal()
-      trigger?.setAttribute('aria-expanded', 'true')
-    }
-    const close = () => {
-      if (dialog.open) dialog.close()
-      trigger?.setAttribute('aria-expanded', 'false')
-    }
-
-    trigger?.addEventListener('click', open, { signal })
-    closeBtn?.addEventListener('click', close, { signal })
-
-    dialog.addEventListener(
-      'click',
-      (event) => {
-        if (event.target === dialog) close()
-      },
-      { signal },
-    )
-
-    dialog.addEventListener(
-      'close',
-      () => {
-        trigger?.setAttribute('aria-expanded', 'false')
-      },
-      { signal },
-    )
-
-    dialog
-      .querySelectorAll<HTMLAnchorElement>('a[href]')
-      .forEach((link) => link.addEventListener('click', close, { signal }))
-  }
-
-  setupMobileSidebar()
-  document.addEventListener('astro:before-swap', () => mobileSidebarController?.abort())
-  document.addEventListener('astro:after-swap', setupMobileSidebar)
+  mountMobileSidebar()
 </script>

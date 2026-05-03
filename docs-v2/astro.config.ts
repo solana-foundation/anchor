@@ -20,7 +20,7 @@ import { ecOptions } from './src/lib/ec-config'
 import { latte, mocha } from './src/lib/shiki-themes'
 
 import tailwindcss from '@tailwindcss/vite'
-import { extname, resolve } from 'node:path'
+import { extname, isAbsolute, relative, resolve } from 'node:path'
 import { readFile } from 'node:fs/promises'
 
 type DevMiddleware = (
@@ -37,6 +37,7 @@ type DevServer = {
 
 const DOCS_BASE = '/docs'
 const PAGEFIND_DEV_PATH = `${DOCS_BASE}/pagefind`
+const PAGEFIND_DIST_DIR = resolve(process.cwd(), 'dist', 'docs', 'pagefind')
 
 /**
  * Dev-only: serve `/docs/pagefind/*` from `./dist/docs/pagefind/*`.
@@ -59,12 +60,13 @@ function pagefindDevServer() {
     apply: 'serve' as const,
     configureServer(server: DevServer) {
       server.middlewares.use(PAGEFIND_DEV_PATH, async (req, res, next) => {
-        const url = (req.url ?? '/').split('?')[0]
-        if (url === '' || url === '/') return next()
+        const url = req.url ?? '/'
+        const filePath = resolvePagefindAsset(url)
+        if (!filePath) return next()
+
         try {
-          const filePath = resolve(process.cwd(), 'dist', 'docs', 'pagefind' + url)
           const data = await readFile(filePath)
-          const ext = extname(url).slice(1)
+          const ext = extname(filePath).slice(1)
           if (mime[ext]) res.setHeader('Content-Type', mime[ext])
           res.end(data)
         } catch {
@@ -73,6 +75,24 @@ function pagefindDevServer() {
       })
     },
   }
+}
+
+function resolvePagefindAsset(url: string): string | null {
+  let pathname: string
+  try {
+    pathname = decodeURIComponent(url.split('?')[0] ?? '/')
+  } catch {
+    return null
+  }
+
+  if (!pathname || pathname === '/') return null
+
+  const filePath = resolve(PAGEFIND_DIST_DIR, `.${pathname}`)
+  const relativePath = relative(PAGEFIND_DIST_DIR, filePath)
+
+  if (relativePath.startsWith('..') || isAbsolute(relativePath)) return null
+
+  return filePath
 }
 
 export default defineConfig({

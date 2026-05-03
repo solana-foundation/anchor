@@ -1,5 +1,6 @@
 ---
 import { SITE } from '@/consts'
+import { withBase } from '@/lib/docs'
 
 interface Props {
   title?: string
@@ -8,12 +9,14 @@ interface Props {
 }
 
 const { title = SITE.title, description = SITE.description, noindex = false } = Astro.props
-const image = new URL('/static/1200x630.png', Astro.site)
+const pageTitle = title === SITE.title ? SITE.title : `${title} | ${SITE.title}`
+const canonical = new URL(Astro.url.pathname, Astro.site)
+const image = new URL(withBase('/static/1200x630.png'), Astro.site)
 ---
 
-<title>{`${title} | ${SITE.title}`}</title>
+<title>{pageTitle}</title>
 <meta name="description" content={description} />
-<link rel="canonical" href={SITE.href} />
+<link rel="canonical" href={canonical} />
 {noindex && <meta name="robots" content="noindex, nofollow" />}
 
 <meta property="og:title" content={title} />
@@ -23,7 +26,7 @@ const image = new URL('/static/1200x630.png', Astro.site)
 <meta property="og:type" content="website" />
 <meta property="og:locale" content={SITE.locale} />
 <meta property="og:site_name" content={SITE.title} />
-<meta property="og:url" content={Astro.url} />
+<meta property="og:url" content={canonical} />
 
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />

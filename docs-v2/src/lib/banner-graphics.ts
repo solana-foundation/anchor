@@ -126,7 +126,9 @@ export const BANNER_GRAPHICS = [
     weight: 1,
     objectPosition: '50% 50%',
   },
-] satisfies BannerGraphic[]
+] satisfies [BannerGraphic, ...BannerGraphic[]]
+
+export const DEFAULT_BANNER_GRAPHIC = BANNER_GRAPHICS[0]
 
 export function getBannerGraphic(src: string): BannerGraphic {
   return (

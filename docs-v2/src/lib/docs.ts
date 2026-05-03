@@ -46,7 +46,11 @@ export function getEditUrl(doc: Doc): string | null {
   if (!DOCS.editUrlBase) return null
   const filePath = doc.filePath
   if (!filePath) return null
-  const rel = filePath.replace(/^.*\/src\/content\/docs\//, '')
+  const normalizedPath = filePath.replaceAll('\\', '/')
+  const marker = 'src/content/docs/'
+  const markerIndex = normalizedPath.indexOf(marker)
+  const rel =
+    markerIndex === -1 ? normalizedPath : normalizedPath.slice(markerIndex + marker.length)
   return DOCS.editUrlBase.replace(/\/+$/, '') + '/' + rel
 }
 
@@ -55,8 +59,8 @@ export function resolveLastUpdated(doc: Doc): Date | null {
   if (value === false) return null
   if (value instanceof Date) return value
   if (!DOCS.defaultLastUpdated && value !== true) return null
-  const injected = (doc.data as unknown as { _lastUpdated?: Date })._lastUpdated
-  return injected ?? null
+  const injected = (doc.data as { _lastUpdated?: unknown })._lastUpdated
+  return injected instanceof Date ? injected : null
 }
 
 export function resolveTOC(doc: Doc): {

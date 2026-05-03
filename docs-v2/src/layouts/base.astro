@@ -22,53 +22,9 @@ import { DOCS, SITE } from '@/consts'
     {DOCS.search.enabled && <Search />}
 
     <script>
-      const w = window as Window & { __inlineShellCmdBound?: boolean }
-      if (!w.__inlineShellCmdBound) {
-        w.__inlineShellCmdBound = true
+      import { mountInlineShellCopy } from '@/lib/client/inline-shell-copy'
 
-        const copy = async (button: HTMLElement) => {
-          if (button.dataset.copying === '1') return
-
-          const cmd = button.getAttribute('data-copy')
-          if (!cmd) return
-
-          try {
-            await navigator.clipboard.writeText(cmd)
-          } catch {
-            return
-          }
-
-          button.dataset.copying = '1'
-          const prompt = button.querySelector<HTMLSpanElement>('.shell-prompt')
-          const original = prompt?.textContent ?? '$'
-          if (prompt) prompt.textContent = '✓'
-          button.classList.add('copied')
-
-          window.setTimeout(() => {
-            if (prompt) prompt.textContent = original
-            button.classList.remove('copied')
-            delete button.dataset.copying
-          }, 1200)
-        }
-
-        document.addEventListener('click', (event) => {
-          const target = event.target as HTMLElement | null
-          const button = target?.closest<HTMLElement>('.inline-shell-cmd')
-          if (!button) return
-          copy(button)
-        })
-
-        // `<span role="button">` doesn't get the implicit Enter/Space
-        // activation that a real `<button>` would, so wire it up here.
-        document.addEventListener('keydown', (event) => {
-          if (event.key !== 'Enter' && event.key !== ' ') return
-          const target = event.target as HTMLElement | null
-          const button = target?.closest<HTMLElement>('.inline-shell-cmd')
-          if (!button) return
-          event.preventDefault()
-          copy(button)
-        })
-      }
+      mountInlineShellCopy()
     </script>
   </body>
 </html>

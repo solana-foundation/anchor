@@ -2,9 +2,14 @@
 import SidebarBadge from '@/components/docs/sidebar-badge.astro'
 import Link from '@/components/link.astro'
 import { cn, trimTrailingSlash } from '@/lib/utils'
-import { getDocsVersionSwitchOptions } from '@/lib/sidebar'
+import { getDocsVersionSwitchOptions, type DocsVersionSwitchOption } from '@/lib/sidebar'
 
-const options = await getDocsVersionSwitchOptions(Astro.url.pathname)
+interface Props {
+  options?: DocsVersionSwitchOption[]
+}
+
+const { options: providedOptions } = Astro.props
+const options = providedOptions ?? (await getDocsVersionSwitchOptions(Astro.url.pathname))
 const currentPath = trimTrailingSlash(Astro.url.pathname)
 ---
 
@@ -34,97 +39,7 @@ const currentPath = trimTrailingSlash(Astro.url.pathname)
 </nav>
 
 <script>
-  type DocsVersion = 'v1' | 'v2'
+  import { mountVersionSwitcher } from '@/lib/client/version-switcher'
 
-  const STORAGE_KEY = 'anchor-docs-version'
-  const SIDEBAR_PENDING_SCROLL_KEY = 'anchor-docs-sidebar-pending-scroll'
-  const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '')
-  let versionSwitcherController: AbortController | null = null
-
-  function isDocsHomePath(path: string): boolean {
-    return path.replace(/\/+$/, '') === BASE_PATH
-  }
-
-  function versionFromPath(path: string): DocsVersion | null {
-    if (path === `${BASE_PATH}/v1` || path.startsWith(`${BASE_PATH}/v1/`)) return 'v1'
-    if (path === `${BASE_PATH}/v2` || path.startsWith(`${BASE_PATH}/v2/`)) return 'v2'
-    return null
-  }
-
-  function versionFromUrl(): DocsVersion | null {
-    if (isDocsHomePath(window.location.pathname)) return null
-
-    const pathVersion = versionFromPath(window.location.pathname)
-    if (pathVersion) return pathVersion
-
-    const params = new URLSearchParams(window.location.search)
-    const queryVersion = params.get('version')
-    if (queryVersion === 'v1' || queryVersion === 'v2') return queryVersion
-
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return stored === 'v1' || stored === 'v2' ? stored : 'v2'
-  }
-
-  function applyVersionFocus() {
-    const version = versionFromUrl()
-    if (version) localStorage.setItem(STORAGE_KEY, version)
-
-    document.querySelectorAll<HTMLElement>('[data-version-sidebar]').forEach((sidebar) => {
-      sidebar.hidden = version ? sidebar.dataset.versionSidebar !== version : false
-    })
-
-    document.querySelectorAll<HTMLAnchorElement>('[data-version-option]').forEach((option) => {
-      const active = version !== null && option.dataset.versionOption === version
-      if (active) option.dataset.active = 'true'
-      else option.removeAttribute('data-active')
-
-      const optionUrl = new URL(option.href)
-      const samePath =
-        optionUrl.pathname.replace(/\/+$/, '') === window.location.pathname.replace(/\/+$/, '')
-      if (active && samePath) option.setAttribute('aria-current', 'page')
-      else option.removeAttribute('aria-current')
-    })
-
-    window.dispatchEvent(new CustomEvent('anchor-docs:version-focus'))
-  }
-
-  function isHidden(element: HTMLElement): boolean {
-    return Boolean(element.closest('[hidden]')) || element.getClientRects().length === 0
-  }
-
-  function savePendingSidebarScroll() {
-    const viewport = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        'nav[aria-label="Documentation"] [data-slot="scroll-area-viewport"]',
-      ),
-    ).find((candidate) => !isHidden(candidate))
-
-    if (!viewport) return
-    sessionStorage.setItem(SIDEBAR_PENDING_SCROLL_KEY, String(viewport.scrollTop))
-  }
-
-  function setupVersionSwitcher() {
-    versionSwitcherController?.abort()
-    const controller = new AbortController()
-    versionSwitcherController = controller
-
-    applyVersionFocus()
-
-    document.querySelectorAll<HTMLAnchorElement>('[data-version-option]').forEach((option) => {
-      option.addEventListener(
-        'click',
-        () => {
-          savePendingSidebarScroll()
-
-          const version = option.dataset.versionOption
-          if (version === 'v1' || version === 'v2') localStorage.setItem(STORAGE_KEY, version)
-        },
-        { signal: controller.signal },
-      )
-    })
-  }
-
-  setupVersionSwitcher()
-  document.addEventListener('astro:before-swap', () => versionSwitcherController?.abort())
-  document.addEventListener('astro:after-swap', setupVersionSwitcher)
+  mountVersionSwitcher()
 </script>

@@ -1,206 +1,16 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-
-type BenchmarkMetric = {
-  label: string
-  detail: string
-  olderLabel: string
-  v2Label: string
-  reductionLabel: string
-  changeLabel: string
-  v2Share: number
-}
-
-type InstructionMetric = BenchmarkMetric & {
-  older: number
-  v2: number
-  reduction: number
-}
-
-type ProgramBenchmark = {
-  id: string
-  label: string
-  detail: string
-  binary: BenchmarkMetric
-  compute: BenchmarkMetric
-}
-
-type ActiveTab = 'binary' | 'compute'
-
-const programs: ProgramBenchmark[] = [
-  programBenchmark({
-    id: 'helloworld',
-    label: 'helloworld',
-    detail: 'Single-instruction counter',
-    binary: [124_624, 6_440],
-    instructions: [{ label: 'init', detail: 'Counter initialization', older: 5_855, v2: 1_381 }],
-  }),
-  programBenchmark({
-    id: 'prop-amm',
-    label: 'prop-amm',
-    detail: 'Oracle feed with asm fast-path',
-    binary: [140_280, 8_592],
-    instructions: [
-      { label: 'initialize', detail: 'Oracle setup', older: 4_314, v2: 1_375 },
-      { label: 'rotate_authority', detail: 'Authority rotation', older: 1_340, v2: 84 },
-      { label: 'update', detail: 'Asm fast path', older: 1_310, v2: 26 },
-    ],
-  }),
-  programBenchmark({
-    id: 'vault',
-    label: 'vault',
-    detail: 'Single-depositor SOL vault',
-    binary: [107_368, 5_384],
-    instructions: [
-      { label: 'deposit', detail: 'System transfer CPI', older: 5_707, v2: 1_899 },
-      { label: 'withdraw', detail: 'Lamport withdrawal', older: 2_478, v2: 389 },
-    ],
-  }),
-  programBenchmark({
-    id: 'nested',
-    label: 'nested',
-    detail: 'Shared validation via Nested<T>',
-    binary: [157_160, 12_424],
-    instructions: [
-      { label: 'initialize', detail: 'Shared validation setup', older: 19_842, v2: 2_716 },
-      { label: 'increment', detail: 'Nested validation path', older: 4_751, v2: 474 },
-      { label: 'reset', detail: 'Nested reset path', older: 4_752, v2: 473 },
-    ],
-  }),
-  programBenchmark({
-    id: 'multisig',
-    label: 'multisig',
-    detail: 'Four-instruction SOL multisig',
-    binary: [169_920, 30_976],
-    instructions: [
-      { label: 'create', detail: 'Config creation', older: 12_031, v2: 3_016 },
-      { label: 'deposit', detail: 'Vault funding', older: 4_872, v2: 1_613 },
-      { label: 'set_label', detail: 'Inline PodVec update', older: 4_324, v2: 469 },
-      { label: 'execute_transfer', detail: 'Threshold transfer', older: 7_446, v2: 2_170 },
-    ],
-  }),
-]
-
-const tabs = [
-  { value: 'binary', label: 'Binary size' },
-  { value: 'compute', label: 'Compute units' },
-] satisfies Array<{ value: ActiveTab; label: string }>
+import { bindHorizontalScrollFade } from '@/lib/client/horizontal-scroll-fade'
+import {
+  benchmarkTabs,
+  programs,
+  type ActiveBenchmarkTab,
+  type BenchmarkMetric,
+  type ProgramBenchmark,
+} from '@/lib/landing-benchmarks'
 
 const proofOldColor = 'bg-[color-mix(in_oklch,var(--ctp-overlay-0)_76%,transparent)]'
 const proofOldColorDark = 'dark:bg-[color-mix(in_oklch,var(--ctp-overlay-0)_68%,transparent)]'
 const tabularNums = '[font-feature-settings:"tnum"_1] [font-variant-numeric:tabular-nums]'
-
-function programBenchmark({
-  id,
-  label,
-  detail,
-  binary,
-  instructions,
-}: {
-  id: string
-  label: string
-  detail: string
-  binary: [older: number, v2: number]
-  instructions: Array<{ label: string; detail: string; older: number; v2: number }>
-}): ProgramBenchmark {
-  const instructionMetrics = instructions.map((instruction) =>
-    instructionMetric(instruction.label, instruction.detail, instruction.older, instruction.v2),
-  )
-  const leastImproved = instructionMetrics.reduce((current, next) =>
-    next.v2Share > current.v2Share ? next : current,
-  )
-
-  return {
-    id,
-    label,
-    detail,
-    binary: singleMetric(label, detail, binary[0], binary[1], 'bytes', 'smaller'),
-    compute: {
-      label,
-      detail,
-      olderLabel: formatCuRange(instructionMetrics.map((instruction) => instruction.older)),
-      v2Label: formatCuRange(instructionMetrics.map((instruction) => instruction.v2)),
-      reductionLabel: formatReductionRange(
-        instructionMetrics.map((instruction) => instruction.reduction),
-      ),
-      changeLabel: 'lower CU',
-      v2Share: leastImproved.v2Share,
-    },
-  }
-}
-
-function singleMetric(
-  label: string,
-  detail: string,
-  older: number,
-  v2: number,
-  unit: 'bytes' | 'cu',
-  changeLabel: string,
-): BenchmarkMetric {
-  const reduction = older / v2
-
-  return {
-    label,
-    detail,
-    olderLabel: unit === 'bytes' ? formatKb(older) : `${formatNumber(older)} CU`,
-    v2Label: unit === 'bytes' ? formatKb(v2) : `${formatNumber(v2)} CU`,
-    reductionLabel: `${formatReduction(reduction)}x`,
-    changeLabel,
-    v2Share: (v2 / older) * 100,
-  }
-}
-
-function instructionMetric(
-  label: string,
-  detail: string,
-  older: number,
-  v2: number,
-): InstructionMetric {
-  const reduction = older / v2
-
-  return {
-    label,
-    detail,
-    older,
-    v2,
-    olderLabel: `${formatNumber(older)} CU`,
-    v2Label: `${formatNumber(v2)} CU`,
-    reduction,
-    reductionLabel: `${formatReduction(reduction)}x`,
-    changeLabel: 'lower CU',
-    v2Share: (v2 / older) * 100,
-  }
-}
-
-function formatKb(bytes: number) {
-  const kb = bytes / 1000
-  return `${kb >= 10 ? kb.toFixed(1).replace('.0', '') : kb.toFixed(1)} KB`
-}
-
-function formatNumber(value: number) {
-  return new Intl.NumberFormat('en-US').format(value)
-}
-
-function formatReduction(value: number) {
-  return value >= 10 ? value.toFixed(1).replace('.0', '') : value.toFixed(1)
-}
-
-function formatCuRange(values: number[]) {
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-
-  if (min === max) return `${formatNumber(min)} CU`
-
-  return `${formatNumber(min)}-${formatNumber(max)} CU`
-}
-
-function formatReductionRange(values: number[]) {
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-
-  if (min === max) return `${formatReduction(min)}x`
-
-  return `${formatReduction(min)}-${formatReduction(max)}x`
-}
 
 function BenchmarkMeter({ row }: { row: BenchmarkMetric }) {
   return (
@@ -264,7 +74,13 @@ function ProgramSummary({ row }: { row: BenchmarkMetric }) {
   )
 }
 
-function ProgramRow({ program, activeTab }: { program: ProgramBenchmark; activeTab: ActiveTab }) {
+function ProgramRow({
+  program,
+  activeTab,
+}: {
+  program: ProgramBenchmark
+  activeTab: ActiveBenchmarkTab
+}) {
   const row = activeTab === 'binary' ? program.binary : program.compute
 
   return (
@@ -281,7 +97,7 @@ function BenchmarkPanel({
   activeTab,
   scrollRef,
 }: {
-  activeTab: ActiveTab
+  activeTab: ActiveBenchmarkTab
   scrollRef: RefObject<HTMLDivElement | null>
 }) {
   return (
@@ -322,56 +138,18 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 export default function LandingProofChart() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('binary')
+  const [activeTab, setActiveTab] = useState<ActiveBenchmarkTab>('binary')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const scrollArea = scrollRef.current
     if (!scrollArea) return
-    const scrollFrame = scrollArea.closest<HTMLElement>('[data-proof-scroll-frame]')
-    if (!scrollFrame) return
-
-    let animationFrame = 0
-
-    const updateFade = () => {
-      animationFrame = 0
-      const { scrollLeft, scrollWidth, clientWidth } = scrollArea
-      const threshold = 2
-      const overflow = scrollWidth - clientWidth
-      const isAtStart = scrollLeft <= threshold
-      const isAtEnd = overflow <= threshold || scrollLeft >= overflow - threshold
-      const scrollAreaStyles = window.getComputedStyle(scrollArea)
-      const scrollAreaRect = scrollArea.getBoundingClientRect()
-      const leftEdge = scrollAreaRect.left + Number.parseFloat(scrollAreaStyles.paddingLeft)
-      const rightEdge = scrollAreaRect.right - Number.parseFloat(scrollAreaStyles.paddingRight)
-      const snapThreshold = 3
-      const rows = Array.from(scrollArea.querySelectorAll<HTMLElement>('[data-proof-row]'))
-      const hasSnappedLeftRow = rows.some(
-        (row) => Math.abs(row.getBoundingClientRect().left - leftEdge) <= snapThreshold,
-      )
-      const hasSnappedRightRow = rows.some(
-        (row) => Math.abs(row.getBoundingClientRect().right - rightEdge) <= snapThreshold,
-      )
-
-      scrollFrame.dataset.leftFade = !isAtStart && !hasSnappedLeftRow ? 'true' : 'false'
-      scrollFrame.dataset.rightFade = !isAtEnd && !hasSnappedRightRow ? 'true' : 'false'
-    }
-
-    const scheduleFadeUpdate = () => {
-      if (animationFrame) return
-      animationFrame = window.requestAnimationFrame(updateFade)
-    }
 
     scrollArea.scrollLeft = 0
-    updateFade()
-    scrollArea.addEventListener('scroll', scheduleFadeUpdate, { passive: true })
-    window.addEventListener('resize', scheduleFadeUpdate)
-
-    return () => {
-      if (animationFrame) window.cancelAnimationFrame(animationFrame)
-      scrollArea.removeEventListener('scroll', scheduleFadeUpdate)
-      window.removeEventListener('resize', scheduleFadeUpdate)
-    }
+    return bindHorizontalScrollFade(scrollArea, {
+      frameSelector: '[data-proof-scroll-frame]',
+      itemSelector: '[data-proof-row]',
+    })
   }, [activeTab])
 
   return (
@@ -408,7 +186,7 @@ export default function LandingProofChart() {
             aria-label="Benchmark metric"
             className="border-border/80 bg-muted/30 inline-flex h-[2.875rem] max-w-full items-center gap-1 overflow-x-auto rounded-md border-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {tabs.map((tab) => (
+            {benchmarkTabs.map((tab) => (
               <button
                 key={tab.value}
                 id={`proof-${tab.value}-tab`}

@@ -1,16 +1,6 @@
 import { definePlugin, type ExpressiveCodePlugin } from '@expressive-code/core'
 import { select, selectAll, type Element, type ElementContent } from '@expressive-code/core/hast'
-
-const TERMINAL_LANGS = new Set([
-  'ansi',
-  'bash',
-  'sh',
-  'shell',
-  'shellscript',
-  'shellsession',
-  'zsh',
-  'console',
-])
+import { isTerminalLanguage } from './terminal-languages'
 
 function hasClass(node: Element, className: string): boolean {
   const classes = node.properties?.className
@@ -52,7 +42,7 @@ export function pluginOutputSeparator(): ExpressiveCodePlugin {
     `,
     hooks: {
       postprocessRenderedBlock: ({ codeBlock, renderData }) => {
-        if (!TERMINAL_LANGS.has(codeBlock.language)) return
+        if (!isTerminalLanguage(codeBlock.language)) return
 
         const lines = selectAll('div.ec-line', renderData.blockAst)
         if (lines.length === 0) return

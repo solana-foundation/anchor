@@ -6,6 +6,7 @@ import Link from '@/components/link.astro'
 import ThemeToggle from '@/components/theme-toggle.astro'
 import { SITE, SOCIAL_LINKS } from '@/consts'
 import { BASE_URL } from '@/lib/docs'
+import type { DocsVersionSwitchOption } from '@/lib/sidebar'
 import type { SidebarNode } from '@/types'
 import Icon from '@/components/icon.astro'
 import wordmarkDark from '@/assets/wordmark-dark.svg?raw'
@@ -17,9 +18,10 @@ interface Props {
     v1: SidebarNode[]
     v2: SidebarNode[]
   }
+  versionOptions?: DocsVersionSwitchOption[]
 }
 
-const { tree, versionTrees } = Astro.props
+const { tree, versionTrees, versionOptions } = Astro.props
 const gitHubLink = SOCIAL_LINKS.find((link) => link.label === 'GitHub')
 ---
 
@@ -40,7 +42,7 @@ const gitHubLink = SOCIAL_LINKS.find((link) => link.label === 'GitHub')
       />
     </Link>
 
-    <VersionSwitcher />
+    <VersionSwitcher options={versionOptions} />
 
     <SearchTrigger />
 
@@ -94,60 +96,7 @@ const gitHubLink = SOCIAL_LINKS.find((link) => link.label === 'GitHub')
 </aside>
 
 <script>
-  let cleanupScrollFades: (() => void) | null = null
+  import { mountDocsAside } from '@/lib/client/docs-aside'
 
-  function setupScrollFades() {
-    cleanupScrollFades?.()
-    cleanupScrollFades = null
-
-    const nav = document.querySelector<HTMLElement>('[data-sidebar-nav]')
-    const viewport = nav?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
-    if (!nav || !viewport) return
-
-    function update() {
-      const atTop = viewport!.scrollTop <= 1
-      const atBottom = viewport!.scrollTop + viewport!.clientHeight >= viewport!.scrollHeight - 1
-
-      nav!.style.maskImage =
-        atTop && atBottom
-          ? 'none'
-          : atTop
-            ? 'linear-gradient(to bottom, black calc(100% - 2rem), transparent)'
-            : atBottom
-              ? 'linear-gradient(to bottom, transparent, black 2rem)'
-              : 'linear-gradient(to bottom, transparent, black 2rem, black calc(100% - 2rem), transparent)'
-    }
-
-    update()
-    viewport.addEventListener('scroll', update, { passive: true })
-    const observer = new ResizeObserver(update)
-    observer.observe(viewport)
-
-    cleanupScrollFades = () => {
-      viewport.removeEventListener('scroll', update)
-      observer.disconnect()
-      nav.style.maskImage = ''
-    }
-  }
-
-  setupScrollFades()
-  document.addEventListener('astro:before-swap', () => cleanupScrollFades?.())
-  document.addEventListener('astro:after-swap', setupScrollFades)
-
-  function updateEditLink() {
-    const link = document.getElementById('docs-edit-link')
-    if (!link) return
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="docs-edit-url"]')
-    const url = meta?.content ?? ''
-    if (url) {
-      link.setAttribute('href', url)
-      link.removeAttribute('hidden')
-    } else {
-      link.setAttribute('href', '#')
-      link.setAttribute('hidden', '')
-    }
-  }
-
-  updateEditLink()
-  document.addEventListener('astro:after-swap', updateEditLink)
+  mountDocsAside()
 </script>

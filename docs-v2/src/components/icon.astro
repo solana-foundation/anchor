@@ -20,7 +20,8 @@ if (!raw) {
 
 const stripped = raw.replace(/<!--[\s\S]*?-->\s*/g, '').trim()
 
-const escape = (value: unknown) => String(value).replace(/"/g, '&quot;')
+const escape = (value: unknown) =>
+  String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
 const isEmptyAttribute = (value: unknown) =>
   value === undefined || value === null || value === false
 const serializeAttributeValue = (value: unknown) =>

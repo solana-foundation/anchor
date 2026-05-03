@@ -1,5 +1,5 @@
 ---
-import { BANNER_GRAPHICS, getBannerGraphic, type BannerGraphic } from '@/lib/banner-graphics'
+import { BANNER_GRAPHICS, DEFAULT_BANNER_GRAPHIC, getBannerGraphic } from '@/lib/banner-graphics'
 import { withBase } from '@/lib/docs'
 import { cn } from '@/lib/utils'
 
@@ -10,13 +10,12 @@ interface Props {
 
 const { banner, size = 'full' } = Astro.props
 const isRandom = banner === 'random'
-const fallback = isRandom ? BANNER_GRAPHICS[0] : getBannerGraphic(banner)
+const fallback = isRandom ? DEFAULT_BANNER_GRAPHIC : getBannerGraphic(banner)
 const graphics = (isRandom ? BANNER_GRAPHICS : [fallback]).map((graphic) => ({
   ...graphic,
   src: withBase(graphic.src),
 }))
-const initialGraphic = graphics[0] as BannerGraphic
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
+const initialGraphic = graphics[0] ?? { ...fallback, src: withBase(fallback.src) }
 ---
 
 <figure
@@ -47,93 +46,8 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
   </figcaption>
 </figure>
 
-<script is:inline data-astro-rerun define:vars={{ basePath }}>
-  ;(() => {
-    function pickWeightedBanner(options) {
-      const totalWeight = options.reduce((sum, option) => {
-        const weight = Number(option.weight)
-        return sum + (Number.isFinite(weight) && weight > 0 ? weight : 0)
-      }, 0)
+<script>
+  import { mountRandomDocBanners } from '@/lib/client/random-banner'
 
-      if (totalWeight <= 0) return options[0]
-
-      const random = Math.random() * totalWeight
-      let cursor = 0
-
-      return (
-        options.find((option) => {
-          const weight = Number(option.weight)
-          cursor += Number.isFinite(weight) && weight > 0 ? weight : 0
-          return random <= cursor
-        }) || options[0]
-      )
-    }
-
-    function applyBanner(banner, selected) {
-      const image = banner.querySelector('[data-banner-image]')
-      const title = banner.querySelector('[data-banner-title]')
-      const artist = banner.querySelector('[data-banner-artist]')
-
-      banner.dataset.bannerGraphicId = selected.id
-
-      if (image instanceof HTMLImageElement) {
-        image.src = selected.src
-        image.alt = selected.description
-        image.title = `${selected.title} by ${selected.artist}`
-        image.style.objectPosition = selected.objectPosition
-      }
-
-      if (title) title.textContent = selected.title
-      if (artist) artist.textContent = selected.artist
-    }
-
-    function setupRandomDocBanner(root = document, preferredGraphicId = '') {
-      const banners = root.querySelectorAll('[data-doc-banner][data-random-banner="true"]')
-
-      banners.forEach((banner) => {
-        let options = []
-        try {
-          options = JSON.parse(banner.getAttribute('data-banner-options') || '[]')
-        } catch {}
-
-        if (!Array.isArray(options) || options.length === 0) return
-
-        const selected =
-          options.find((option) => option.id === preferredGraphicId) ||
-          options.find((option) => option.id === banner.dataset.bannerGraphicId) ||
-          pickWeightedBanner(options)
-
-        applyBanner(banner, selected)
-      })
-    }
-
-    function isDocsHomeUrl(url) {
-      const pathname = new URL(url, window.location.href).pathname.replace(/\/+$/, '')
-      return pathname === basePath
-    }
-
-    function isHomeDocsTransition(fromUrl, toUrl) {
-      const fromHome = isDocsHomeUrl(fromUrl)
-      const toHome = isDocsHomeUrl(toUrl)
-
-      return fromHome !== toHome
-    }
-
-    setupRandomDocBanner()
-
-    if (!window.__anchorRandomDocBannerReady) {
-      window.__anchorRandomDocBannerReady = true
-      document.addEventListener('astro:before-swap', (event) => {
-        const currentBanner = document.querySelector('[data-doc-banner]')
-        const preferredGraphicId = isHomeDocsTransition(event.from, event.to)
-          ? currentBanner?.dataset.bannerGraphicId || ''
-          : ''
-
-        setupRandomDocBanner(event.newDocument, preferredGraphicId)
-      })
-      document.addEventListener('astro:after-swap', () => {
-        setupRandomDocBanner()
-      })
-    }
-  })()
+  mountRandomDocBanners()
 </script>

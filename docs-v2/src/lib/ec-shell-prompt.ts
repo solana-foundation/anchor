@@ -1,16 +1,6 @@
 import { AttachedPluginData, definePlugin, type ExpressiveCodePlugin } from '@expressive-code/core'
 import { h, select } from '@expressive-code/core/hast'
-
-const TERMINAL_LANGS = new Set([
-  'ansi',
-  'bash',
-  'sh',
-  'shell',
-  'shellscript',
-  'shellsession',
-  'zsh',
-  'console',
-])
+import { isTerminalLanguage } from './terminal-languages'
 
 interface ShellPromptData {
   promptLines: Set<number>
@@ -34,7 +24,7 @@ export function pluginShellPrompt(): ExpressiveCodePlugin {
     `,
     hooks: {
       preprocessCode: ({ codeBlock }) => {
-        if (!TERMINAL_LANGS.has(codeBlock.language)) return
+        if (!isTerminalLanguage(codeBlock.language)) return
 
         const data = shellPromptData.getOrCreateFor(codeBlock)
         codeBlock.getLines().forEach((line, idx) => {
