@@ -29,6 +29,11 @@ export function docHref(id: string): string {
   return BASE_URL + id + '/'
 }
 
+export function docOgImageHref(id: string): string {
+  const slug = docSlugFromId(id) ?? 'index'
+  return `${BASE_URL}og/${slug}.png`
+}
+
 export function docSlugFromId(id: string): string | undefined {
   if (id === 'index') return undefined
   if (id.endsWith('/index')) return id.slice(0, -'/index'.length)

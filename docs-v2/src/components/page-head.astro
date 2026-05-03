@@ -5,13 +5,19 @@ import { withBase } from '@/lib/docs'
 interface Props {
   title?: string
   description?: string
+  image?: string | URL
   noindex?: boolean
 }
 
-const { title = SITE.title, description = SITE.description, noindex = false } = Astro.props
+const {
+  title = SITE.title,
+  description = SITE.description,
+  image: imageProp,
+  noindex = false,
+} = Astro.props
 const pageTitle = title === SITE.title ? SITE.title : `${title} | ${SITE.title}`
 const canonical = new URL(Astro.url.pathname, Astro.site)
-const image = new URL(withBase('/static/1200x630.png'), Astro.site)
+const image = new URL(imageProp ?? withBase('/static/1200x630.png'), Astro.site)
 ---
 
 <title>{pageTitle}</title>
@@ -23,6 +29,9 @@ const image = new URL(withBase('/static/1200x630.png'), Astro.site)
 <meta property="og:description" content={description} />
 <meta property="og:image" content={image} />
 <meta property="og:image:alt" content={title} />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 <meta property="og:type" content="website" />
 <meta property="og:locale" content={SITE.locale} />
 <meta property="og:site_name" content={SITE.title} />

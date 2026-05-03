@@ -11,7 +11,7 @@ import TOCSidebar from '@/components/toc-sidebar.astro'
 import Card from '@/components/mdx/card.astro'
 import CardGrid from '@/components/mdx/card-grid.astro'
 import Base from '@/layouts/base.astro'
-import { type Doc } from '@/lib/docs'
+import { docOgImageHref, type Doc } from '@/lib/docs'
 import { renderDescription } from '@/lib/render-description'
 import type { DocsVersionSwitchOption, IndexChild } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
@@ -77,7 +77,12 @@ const renderedIndexChildren = await Promise.all(
 ---
 
 <Base>
-  <PageHead slot="head" title={renderedTitle.plain} description={renderedDescription?.plain} />
+  <PageHead
+    slot="head"
+    title={renderedTitle.plain}
+    description={renderedDescription?.plain}
+    image={docOgImageHref(doc.id)}
+  />
   {editUrl && <meta slot="head" name="docs-edit-url" content={editUrl} />}
 
   <div class="grid flex-1 grid-cols-1 xl:grid-cols-[16rem_minmax(0,1fr)]">
