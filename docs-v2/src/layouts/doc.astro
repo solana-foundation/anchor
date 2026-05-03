@@ -2,7 +2,6 @@
 import DocsAside from '@/components/docs/docs-aside.astro'
 import DocBanner from '@/components/docs/banner.astro'
 import DocNavigation from '@/components/docs/doc-navigation.astro'
-import EditLink from '@/components/docs/edit-link.astro'
 import LastUpdated from '@/components/docs/last-updated.astro'
 import MobileSidebar from '@/components/docs/mobile-sidebar.astro'
 import Header from '@/components/header.astro'
@@ -55,8 +54,7 @@ const {
 } = Astro.props
 
 const isDocsHome = doc.id === 'index'
-const showArticleMeta = Boolean(lastUpdated || editUrl || isDocsHome)
-const showArticleFooter = Boolean(prev || next || showArticleMeta)
+const hasArticleNavigation = Boolean(prev || next)
 const currentYear = new Date().getFullYear()
 const banner = doc.data.banner === false ? null : (doc.data.banner ?? 'random')
 const hasBanner = Boolean(banner)
@@ -157,25 +155,21 @@ const renderedIndexChildren = await Promise.all(
               )
             }
 
-            {
-              showArticleFooter && (
-                <footer
-                  class="border-border/70 mt-16 flex flex-col gap-6 border-t pt-6 pb-4"
-                  data-pagefind-ignore
-                >
-                  {(prev || next) && <DocNavigation prev={prev} next={next} />}
-                  {showArticleMeta && (
-                    <div class="text-muted-foreground flex flex-wrap items-center justify-between gap-3 text-sm">
-                      {lastUpdated && <LastUpdated date={lastUpdated} />}
-                      {editUrl && <EditLink href={editUrl} />}
-                      {isDocsHome && !lastUpdated && !editUrl && (
-                        <span>&copy; {currentYear} Anchor Docs</span>
-                      )}
-                    </div>
-                  )}
-                </footer>
-              )
-            }
+            <footer class="border-border/70 mt-16 border-t" data-pagefind-ignore>
+              {
+                hasArticleNavigation && (
+                  <div class="py-6">
+                    <DocNavigation prev={prev} next={next} />
+                  </div>
+                )
+              }
+              <div
+                class="text-muted-foreground flex h-[3.75rem] w-full flex-wrap items-center justify-between gap-3 text-sm leading-none"
+              >
+                <span class="leading-none">&copy; {currentYear} Anchor Docs</span>
+                {lastUpdated && <LastUpdated date={lastUpdated} />}
+              </div>
+            </footer>
           </article>
 
           {

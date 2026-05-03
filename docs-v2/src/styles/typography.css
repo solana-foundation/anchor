@@ -34,7 +34,7 @@
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground scroll-mt-32 font-medium xl:scroll-mt-20;
+      @apply text-foreground scroll-mt-32 font-medium xl:scroll-mt-[calc(var(--docs-announcement-offset,0)+4rem-4px)];
     }
 
     /* Don't use an <h1> in your posts, one is already generated in blog/[...id].astro */
@@ -210,9 +210,7 @@
       @apply text-foreground/80 small px-4 py-2 align-top wrap-break-word *:first:mt-0! *:last:mb-0! max-xl:whitespace-nowrap text-left [[align=center]]:text-center [[align=right]]:text-right;
     }
 
-    :where(img, video, figure, .expressive-code):not(
-        :where(.not-prose, .not-prose *)
-      ) {
+    :where(img, video, figure, .expressive-code):not(:where(.not-prose, .not-prose *)) {
       @apply mx-auto my-6 max-w-full;
     }
 
