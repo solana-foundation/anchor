@@ -133,7 +133,7 @@ function Stat({ value, label }: { value: string; label: string }) {
       >
         {value}
       </div>
-      <div className="text-muted-foreground mt-2 text-[0.8125rem] leading-[1.3]">{label}</div>
+      <div className="text-muted-foreground mt-2 text-[0.8125rem] leading-[100%]">{label}</div>
     </div>
   )
 }

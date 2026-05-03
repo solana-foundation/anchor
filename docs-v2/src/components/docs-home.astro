@@ -9,14 +9,14 @@ const landingAsset = (file: string) => withBase(`/landing/${file}`)
 ---
 
 <div
-  class="not-prose relative min-h-[min(calc(100svh-var(--docs-announcement-offset,0px)-18rem-3.5rem),30rem)] w-full max-w-[calc(100vw-2rem)] pt-6 pb-20 sm:min-h-[min(calc(100svh-var(--docs-announcement-offset,0px)-22rem-3.5rem),32rem)] sm:max-w-2xl xl:min-h-[min(calc(100svh-var(--docs-announcement-offset,0px)-25rem),34rem)]"
+  class="not-prose relative min-h-[min(calc(100svh-var(--docs-announcement-offset,0px)-18rem-3.5rem),30rem)] w-full max-w-[calc(100vw-2rem)] pt-8 pb-20 sm:min-h-[min(calc(100svh-var(--docs-announcement-offset,0px)-22rem-3.5rem),32rem)] sm:max-w-2xl xl:min-h-[min(calc(100svh-var(--docs-announcement-offset,0px)-25rem),34rem)]"
 >
   <h1 class="mt-0 text-3xl leading-tighter font-medium text-balance sm:text-4xl">
-    Build Solana programs without rebuilding the whole stack.
+    Anchor v2 is the new foundation for Solana programs.
   </h1>
   <p class="text-muted-foreground mt-3 text-lg text-pretty">
-    Anchor brings a Rust eDSL, typed account validation, IDLs, generated clients, testing tools, and
-    workspace commands into one loop.
+    Anchor v2 gives you a Rust framework for writing Solana programs, checking accounts safely,
+    generating IDLs and client code, and testing everything from one workspace.
   </p>
   <div class="mt-6 flex flex-wrap gap-3">
     <Link
@@ -52,8 +52,8 @@ const landingAsset = (file: string) => withBase(`/landing/${file}`)
     One framework, one program loop
   </h2>
   <p class="text-muted-foreground mt-2 mb-0 text-base leading-[1.45] text-pretty">
-    Write the Rust program once, then let Anchor keep validation, IDL metadata, generated clients,
-    tests, and CPI surfaces aligned.
+    Write programs with the workflow you know, backed by a leaner runtime, clearer account types,
+    generated IDLs, and first-class tests.
   </p>
 </div>
 
@@ -133,8 +133,8 @@ const landingAsset = (file: string) => withBase(`/landing/${file}`)
         <h2 class="text-foreground m-0 text-2xl leading-[1.1] font-medium text-balance">
           A complete workspace loop
         </h2>
-        <p class="text-muted-foreground mt-2 mb-0 text-base leading-[1.35] text-pretty">
-          Scaffold, build, test, deploy, and run scripts from one CLI.
+          <p class="text-muted-foreground mt-2 mb-0 text-base leading-[1.35] text-pretty">
+          Scaffold programs, build artifacts, run tests, and deploy from one CLI.
         </p>
         <img
           src={landingAsset('workspace-loop.svg')}
