@@ -20,7 +20,7 @@ type AstroBeforePreparationEvent = AstroBeforeSwapEvent & {
 }
 
 type RotationAction = 'preserve' | 'next' | 'previous'
-type BannerImageMode = 'direct' | 'fade' | 'preload'
+type BannerImageMode = 'direct' | 'preload'
 
 type ApplyBannerOptions = {
   imageMode?: BannerImageMode
@@ -31,7 +31,6 @@ const BANNER_STORAGE_KEY = 'anchor-docs:banner-graphic-id'
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
 const BANNER_SELECTOR = '[data-doc-banner][data-rotating-banner="true"]'
 const CONTROL_SELECTOR = '[data-banner-control]'
-const IMAGE_FADE_DURATION_MS = 180
 
 let listenersReady = false
 let nextImageSwapToken = 0
@@ -220,100 +219,6 @@ async function replaceBannerImage(banner: Element, selected: BannerOption): Prom
   currentImage.replaceWith(replacement)
 }
 
-function transitionImageOpacity(image: HTMLImageElement, opacity: number): Promise<void> {
-  return new Promise((resolve) => {
-    const finish = () => {
-      window.clearTimeout(timeout)
-      image.removeEventListener('transitionend', onTransitionEnd)
-      resolve()
-    }
-    const onTransitionEnd = (event: TransitionEvent) => {
-      if (event.target === image && event.propertyName === 'opacity') finish()
-    }
-    const timeout = window.setTimeout(finish, IMAGE_FADE_DURATION_MS + 60)
-
-    image.addEventListener('transitionend', onTransitionEnd)
-    image.style.transition = `opacity ${IMAGE_FADE_DURATION_MS}ms ease`
-    image.style.opacity = String(opacity)
-  })
-}
-
-function removeBannerImageOverlays(banner: Element): void {
-  banner.querySelectorAll('[data-banner-image-overlay]').forEach((overlay) => overlay.remove())
-}
-
-function shouldReduceMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-async function crossfadeBannerImage(banner: Element, selected: BannerOption): Promise<void> {
-  const currentImage = banner.querySelector('[data-banner-image]')
-  if (!(currentImage instanceof HTMLImageElement)) return
-
-  if (currentImage.getAttribute('src') === selected.src) {
-    updateImageAttributes(currentImage, selected)
-    return
-  }
-
-  const imageSwapToken = ++nextImageSwapToken
-  pendingImageSwaps.set(banner, imageSwapToken)
-  removeBannerImageOverlays(banner)
-  currentImage.style.opacity = ''
-  currentImage.style.transition = ''
-
-  try {
-    await preloadImage(selected.src)
-  } catch {
-    return
-  }
-
-  if (pendingImageSwaps.get(banner) !== imageSwapToken) return
-
-  if (shouldReduceMotion()) {
-    updateImageAttributes(currentImage, selected)
-    currentImage.src = selected.src
-    return
-  }
-
-  const overlay = currentImage.ownerDocument.createElement('img')
-
-  overlay.className = currentImage.className
-  overlay.dataset.bannerImageOverlay = ''
-  overlay.decoding = 'async'
-  overlay.alt = ''
-  overlay.setAttribute('aria-hidden', 'true')
-  overlay.style.position = 'absolute'
-  overlay.style.inset = '0'
-  overlay.style.objectPosition = selected.objectPosition
-  overlay.style.opacity = '0'
-  overlay.style.pointerEvents = 'none'
-  overlay.src = selected.src
-  currentImage.after(overlay)
-
-  await new Promise((resolve) => requestAnimationFrame(resolve))
-  if (pendingImageSwaps.get(banner) !== imageSwapToken) {
-    overlay.remove()
-    return
-  }
-
-  await transitionImageOpacity(overlay, 1)
-  if (pendingImageSwaps.get(banner) !== imageSwapToken) {
-    overlay.remove()
-    return
-  }
-
-  updateImageAttributes(currentImage, selected)
-  currentImage.src = selected.src
-
-  try {
-    await currentImage.decode()
-  } catch {
-    // The overlay already shows the decoded image; removing it is still safe.
-  }
-
-  if (pendingImageSwaps.get(banner) === imageSwapToken) overlay.remove()
-}
-
 function updateBannerCaption(banner: Element, selected: BannerOption): void {
   const caption = banner.querySelector('[data-banner-caption]')
 
@@ -339,8 +244,6 @@ function applyBanner(
 
   if (imageMode === 'direct') {
     updateBannerImage(banner, selected)
-  } else if (imageMode === 'fade') {
-    void crossfadeBannerImage(banner, selected)
   } else {
     void replaceBannerImage(banner, selected)
   }
@@ -432,7 +335,6 @@ function updateBannerFromControl(control: HTMLElement): void {
       currentGraphicId || readStoredGraphicId() || defaultGraphicId,
       action,
     ),
-    { imageMode: 'fade' },
   )
 }
 
