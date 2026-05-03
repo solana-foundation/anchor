@@ -1,6 +1,6 @@
 # anchor-lang-v2
 
-v2 is a drop-in speedup for Anchor v1, but up to **94% smaller** and **3–6× faster** per instruction (see the [Examples](#examples) table).
+v2 is a drop-in speedup for Anchor v1, but up to **95% smaller** and **3–50× faster** per instruction (see the [Examples](#examples) table).
 
 **Compatibility is a priority.** Most v1 programs port with the renames in [Migrating from v1](#migrating-from-v1). A `compat` feature restores v1-shaped helpers to ease migrations for larger programs. v2 also comes with first-class tooling like `anchor debugger` to help give you full visibility into your program.
 
@@ -17,11 +17,11 @@ Worked programs live under [`bench/programs/`](../bench/programs/), paired with 
 
 | Program | Description | Binary | CU range | Bin ↓ | CU ↓ |
 |---|---|---|---|---|---|
-| [helloworld](../bench/programs/helloworld/anchor-v2) | Single-instruction counter | 6.9 KB | 1,383 | 18× | 4.2× |
-| [prop-amm](../bench/programs/prop-amm/anchor-v2) | Oracle feed with asm fast-path | 9.2 KB | 26–1,383 | 15× | 3.1–50× |
-| [vault](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault | 5.9 KB | 403–1,910 | 18× | 3.0–6.1× |
-| [nested](../bench/programs/nested/anchor-v2) | Shared-validation via `Nested<T>` | 13 KB | 476–2,748 | 12× | 7.2–10× |
-| [multisig](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig | 31 KB | 477–2,363 | 5.3× | 3.0–9.1× |
+| [helloworld](../bench/programs/helloworld/anchor-v2) | Single-instruction counter | 6.4 KB | 1,381 | 19× | 4.2× |
+| [prop-amm](../bench/programs/prop-amm/anchor-v2) | Oracle feed with asm fast-path | 8.6 KB | 26–1,375 | 16× | 3.1–50× |
+| [vault](../bench/programs/vault/anchor-v2) | Single-depositor SOL vault | 5.4 KB | 389–1,899 | 20× | 3.0–6.4× |
+| [nested](../bench/programs/nested/anchor-v2) | Shared-validation via `Nested<T>` | 12.4 KB | 473–2,716 | 13× | 7.3–10× |
+| [multisig](../bench/programs/multisig/anchor-v2) | Four-instruction SOL multisig | 31 KB | 469–3,016 | 5.5× | 3.0–9.2× |
 
 ## Getting started
 

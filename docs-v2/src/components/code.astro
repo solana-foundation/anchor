@@ -22,7 +22,7 @@ const { renderedGroupAst } = await engine.render({
   language: lang,
   meta: fullMeta,
 })
-const html = toHtml(renderedGroupAst as any)
+const html = toHtml(renderedGroupAst as Parameters<typeof toHtml>[0])
 
 const locals = Astro.locals as { __ecStylesEmitted?: boolean }
 const emitStyles = !locals.__ecStylesEmitted

@@ -12,11 +12,11 @@
 
 @theme inline {
   --font-sans:
-    'DM Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    'DM Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
   --font-mono:
-    'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    'Liberation Mono', 'Courier New', monospace;
+    'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -51,13 +51,13 @@
   --ctp-pink: oklch(73% 0.17 336);
   --ctp-mauve: oklch(54% 0.29 302);
   --ctp-red: oklch(55% 0.24 10);
-  --ctp-maroon: oklch(63% 0.20 14);
+  --ctp-maroon: oklch(63% 0.2 14);
   --ctp-peach: oklch(70% 0.19 41);
   --ctp-yellow: oklch(70% 0.14 61);
   --ctp-green: oklch(61% 0.17 140);
-  --ctp-teal: oklch(59% 0.10 194);
+  --ctp-teal: oklch(59% 0.1 194);
   --ctp-sky: oklch(69% 0.14 232);
-  --ctp-sapphire: oklch(65% 0.10 217);
+  --ctp-sapphire: oklch(65% 0.1 217);
   --ctp-blue: oklch(55% 0.22 262);
   --ctp-lavender: oklch(65% 0.18 272);
   --ctp-text: oklch(44% 0.04 274);
@@ -93,12 +93,12 @@
   --ctp-mauve: oklch(79% 0.12 305);
   --ctp-red: oklch(76% 0.13 3);
   --ctp-maroon: oklch(78% 0.09 9);
-  --ctp-peach: oklch(82% 0.10 53);
+  --ctp-peach: oklch(82% 0.1 53);
   --ctp-yellow: oklch(92% 0.07 87);
   --ctp-green: oklch(86% 0.11 143);
   --ctp-teal: oklch(86% 0.08 183);
   --ctp-sky: oklch(85% 0.08 210);
-  --ctp-sapphire: oklch(79% 0.10 229);
+  --ctp-sapphire: oklch(79% 0.1 229);
   --ctp-blue: oklch(77% 0.11 260);
   --ctp-lavender: oklch(82% 0.09 277);
   --ctp-text: oklch(88% 0.04 272);
@@ -125,4 +125,3 @@
     @apply border-border outline-ring/50 tracking-tight;
   }
 }
-

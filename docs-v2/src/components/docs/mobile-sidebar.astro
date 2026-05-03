@@ -63,12 +63,17 @@ const { tree, versionTrees } = Astro.props
 </dialog>
 
 <script>
+  let mobileSidebarController: AbortController | null = null
+
   function setupMobileSidebar() {
     const dialog = document.getElementById('mobile-sidebar') as HTMLDialogElement | null
     const trigger = document.getElementById('mobile-sidebar-trigger') as HTMLButtonElement | null
     const closeBtn = document.getElementById('mobile-sidebar-close') as HTMLButtonElement | null
 
     if (!dialog) return
+    mobileSidebarController?.abort()
+    mobileSidebarController = new AbortController()
+    const { signal } = mobileSidebarController
 
     const open = () => {
       dialog.showModal()
@@ -79,22 +84,31 @@ const { tree, versionTrees } = Astro.props
       trigger?.setAttribute('aria-expanded', 'false')
     }
 
-    trigger?.addEventListener('click', open)
-    closeBtn?.addEventListener('click', close)
+    trigger?.addEventListener('click', open, { signal })
+    closeBtn?.addEventListener('click', close, { signal })
 
-    dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) close()
-    })
+    dialog.addEventListener(
+      'click',
+      (event) => {
+        if (event.target === dialog) close()
+      },
+      { signal },
+    )
 
-    dialog.addEventListener('close', () => {
-      trigger?.setAttribute('aria-expanded', 'false')
-    })
+    dialog.addEventListener(
+      'close',
+      () => {
+        trigger?.setAttribute('aria-expanded', 'false')
+      },
+      { signal },
+    )
 
     dialog
       .querySelectorAll<HTMLAnchorElement>('a[href]')
-      .forEach((link) => link.addEventListener('click', close))
+      .forEach((link) => link.addEventListener('click', close, { signal }))
   }
 
   setupMobileSidebar()
+  document.addEventListener('astro:before-swap', () => mobileSidebarController?.abort())
   document.addEventListener('astro:after-swap', setupMobileSidebar)
 </script>

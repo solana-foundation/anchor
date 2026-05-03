@@ -90,8 +90,19 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
 }
 
 <script>
+  import {
+    buildHeadingRegions,
+    centerElementInScrollContainer,
+    dataAttributeSelector,
+    getContentHeadings,
+    getVisibleHeadingIds,
+    headingHtml,
+    sameStringArray,
+    setVerticalScrollMask,
+    type HeadingRegion,
+  } from '@/lib/client/toc'
+
   const INITIAL_OVERVIEW_TEXT = 'Overview'
-  const HEADER_OFFSET = 120
   const PROGRESS_CIRCLE_RADIUS = 10
   const PROGRESS_CIRCLE_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_CIRCLE_RADIUS
 
@@ -102,7 +113,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
     listElement: HTMLElement | null = null
     scrollArea: HTMLElement | null = null
     headings: HTMLElement[] = []
-    regions: { id: string; start: number; end: number }[] = []
+    regions: HeadingRegion[] = []
     activeIds: string[] = []
 
     reset() {
@@ -127,76 +138,22 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
 
   class HeadingRegions {
     static build() {
-      state.headings = Array.from(
-        document.querySelectorAll<HTMLElement>(
-          '.prose h2, .prose h3, .prose h4, .prose h5, .prose h6',
-        ),
-      ).filter((h) => h.id)
-
-      if (state.headings.length === 0) {
-        state.regions = []
-        return
-      }
-
-      state.regions = state.headings.map((heading, index) => {
-        const nextHeading = state.headings[index + 1]
-        return {
-          id: heading.id,
-          start: heading.offsetTop,
-          end: nextHeading ? nextHeading.offsetTop : document.body.scrollHeight,
-        }
-      })
+      state.headings = getContentHeadings()
+      state.regions = buildHeadingRegions(state.headings)
     }
 
     static getVisibleIds(): string[] {
-      if (state.headings.length === 0) return []
-
-      const viewportTop = window.scrollY + HEADER_OFFSET
-      const viewportBottom = window.scrollY + window.innerHeight
-      const visibleIds = new Set<string>()
-
-      const isInViewport = (top: number, bottom: number) =>
-        (top >= viewportTop && top <= viewportBottom) ||
-        (bottom >= viewportTop && bottom <= viewportBottom) ||
-        (top <= viewportTop && bottom >= viewportBottom)
-
-      state.headings.forEach((heading) => {
-        const headingBottom = heading.offsetTop + heading.offsetHeight
-        if (isInViewport(heading.offsetTop, headingBottom)) {
-          visibleIds.add(heading.id)
-        }
-      })
-
-      state.regions.forEach((region) => {
-        if (region.start <= viewportBottom && region.end >= viewportTop) {
-          const heading = document.getElementById(region.id)
-          if (heading) {
-            const headingBottom = heading.offsetTop + heading.offsetHeight
-            if (
-              region.end > headingBottom &&
-              (headingBottom < viewportBottom || viewportTop < region.end)
-            ) {
-              visibleIds.add(region.id)
-            }
-          }
-        }
-      })
-
-      return Array.from(visibleIds)
+      return getVisibleHeadingIds(state.headings, state.regions)
     }
   }
 
   class TOCHeaderScrollMask {
     static update() {
       if (!state.scrollArea) return
-
-      const { scrollTop, scrollHeight, clientHeight } = state.scrollArea
-      const threshold = 5
-      const isAtTop = scrollTop <= threshold
-      const isAtBottom = scrollTop >= scrollHeight - clientHeight - threshold
-
-      state.scrollArea.classList.toggle('mask-t-from-80%', !isAtTop)
-      state.scrollArea.classList.toggle('mask-b-from-80%', !isAtBottom)
+      setVerticalScrollMask(state.scrollArea, state.scrollArea, {
+        top: 'mask-t-from-80%',
+        bottom: 'mask-b-from-80%',
+      })
     }
   }
 
@@ -231,14 +188,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
 
       const activeHtml = state.headings
         .filter((heading) => headingIds.includes(heading.id))
-        .map((heading) => {
-          const clone = heading.cloneNode(true) as HTMLElement
-          clone.querySelectorAll('.heading-anchor').forEach((el) => el.remove())
-          clone.querySelectorAll<HTMLElement>('.shiki').forEach((el) => {
-            el.removeAttribute('style')
-          })
-          return clone.innerHTML.trim()
-        })
+        .map((heading) => headingHtml(heading))
         .filter(Boolean)
         .join(', ')
 
@@ -252,27 +202,15 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
     static scrollToActive(activeHeadingId: string) {
       if (!state.listElement) return
 
-      const activeItem = state.listElement.querySelector(`[data-heading-id="${activeHeadingId}"]`)
+      const activeItem = state.listElement.querySelector<HTMLElement>(
+        dataAttributeSelector('data-heading-id', activeHeadingId),
+      )
       if (!activeItem) return
 
       const scrollContainer = state.scrollArea
       if (!scrollContainer) return
 
-      const { top: containerTop, height: containerHeight } = scrollContainer.getBoundingClientRect()
-      const { top: itemTop, height: itemHeight } = activeItem.getBoundingClientRect()
-
-      const currentItemTop = itemTop - containerTop + scrollContainer.scrollTop
-      const targetScroll = Math.max(
-        0,
-        Math.min(
-          currentItemTop - (containerHeight - itemHeight) / 2,
-          scrollContainer.scrollHeight - scrollContainer.clientHeight,
-        ),
-      )
-
-      if (Math.abs(targetScroll - scrollContainer.scrollTop) > 5) {
-        scrollContainer.scrollTop = targetScroll
-      }
+      centerElementInScrollContainer(scrollContainer, activeItem)
     }
 
     static setupInteraction() {
@@ -325,12 +263,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
         if (!heading) return
         const target = link.querySelector<HTMLElement>('[data-toc-text]')
         if (!target) return
-        const clone = heading.cloneNode(true) as HTMLElement
-        clone.querySelectorAll('.heading-anchor').forEach((el) => el.remove())
-        clone.querySelectorAll<HTMLElement>('.shiki').forEach((el) => {
-          el.removeAttribute('style')
-        })
-        target.innerHTML = clone.innerHTML
+        target.innerHTML = headingHtml(heading)
       })
     }
   }
@@ -339,7 +272,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
     static handleScroll() {
       const newActiveIds = HeadingRegions.getVisibleIds()
 
-      if (JSON.stringify(newActiveIds) !== JSON.stringify(state.activeIds)) {
+      if (!sameStringArray(newActiveIds, state.activeIds)) {
         state.activeIds = newActiveIds
         MobileTOCLinks.update(state.activeIds)
       }
@@ -351,7 +284,7 @@ const visible = headings.filter((h) => h.depth >= minDepth && h.depth <= maxDept
       HeadingRegions.build()
 
       const newActiveIds = HeadingRegions.getVisibleIds()
-      if (JSON.stringify(newActiveIds) !== JSON.stringify(state.activeIds)) {
+      if (!sameStringArray(newActiveIds, state.activeIds)) {
         state.activeIds = newActiveIds
         MobileTOCLinks.update(state.activeIds)
       }

@@ -2,7 +2,7 @@
 interface Props {
   name: string
   class?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 const { name, class: className, ...rest } = Astro.props
@@ -20,12 +20,18 @@ if (!raw) {
 
 const stripped = raw.replace(/<!--[\s\S]*?-->\s*/g, '').trim()
 
-const escape = (v: unknown) => String(v).replace(/"/g, '&quot;')
-const attrs = Object.entries({
+const escape = (value: unknown) => String(value).replace(/"/g, '&quot;')
+const isEmptyAttribute = (value: unknown) =>
+  value === undefined || value === null || value === false
+const serializeAttributeValue = (value: unknown) =>
+  Array.isArray(value) ? value.filter(Boolean).join(' ') : value
+const attributes: Record<string, unknown> = {
   ...(className ? { class: className } : {}),
   ...rest,
-})
-  .map(([k, v]) => `${k}="${escape(v)}"`)
+}
+const attrs = Object.entries(attributes)
+  .filter(([, v]) => !isEmptyAttribute(v))
+  .map(([k, v]) => (v === true ? k : `${k}="${escape(serializeAttributeValue(v))}"`))
   .join(' ')
 
 const svg = attrs ? stripped.replace(/^<svg\s+/, `<svg ${attrs} `) : stripped

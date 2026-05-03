@@ -29,6 +29,8 @@ import Icon from '@/components/icon.astro'
 </script>
 
 <script>
+  let themeToggleController: AbortController | null = null
+
   function handleToggleClick() {
     const element = document.documentElement
     const currentTheme = element.getAttribute('data-theme')
@@ -46,14 +48,21 @@ import Icon from '@/components/icon.astro'
   }
 
   function initThemeToggle() {
+    themeToggleController?.abort()
+    const controller = new AbortController()
+    themeToggleController = controller
+
     document
       .querySelectorAll<HTMLButtonElement>('[data-theme-toggle]')
-      .forEach((btn) => btn.addEventListener('click', handleToggleClick))
+      .forEach((btn) =>
+        btn.addEventListener('click', handleToggleClick, { signal: controller.signal }),
+      )
   }
 
   initThemeToggle()
 
   document.addEventListener('astro:before-swap', (event) => {
+    themeToggleController?.abort()
     const storedTheme = localStorage.getItem('theme') || 'light'
     event.newDocument.documentElement.setAttribute('data-theme', storedTheme)
   })

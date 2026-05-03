@@ -4,61 +4,88 @@ import Icon from '@/components/icon.astro'
 import Link from '@/components/link.astro'
 
 const announcement = DOCS.announcement
+const announcementId = announcement?.id ?? ''
 ---
+
+<script is:inline data-astro-rerun define:vars={{ announcementId }}>
+  if (announcementId) {
+    try {
+      const dismissed = localStorage.getItem(`announcement-dismissed:${announcementId}`) === '1'
+      document.documentElement.toggleAttribute('data-docs-announcement-dismissed', dismissed)
+      if (dismissed) {
+        document.documentElement.style.setProperty('--docs-announcement-offset', '0px')
+      }
+    } catch {}
+  }
+</script>
+
+<style is:inline>
+  html[data-docs-announcement-dismissed] [data-announcement-id] {
+    display: none !important;
+  }
+</style>
 
 {
   announcement && (
-    <>
-      <script is:inline data-astro-rerun define:vars={{ announcementId: announcement.id }}>
-        ;(() => {
-          try {
-            const dismissed =
-              localStorage.getItem(`announcement-dismissed:${announcementId}`) === '1'
-            document.documentElement.toggleAttribute('data-docs-announcement-dismissed', dismissed)
-            if (dismissed) {
-              document.documentElement.style.setProperty('--docs-announcement-offset', '0px')
-            }
-          } catch {}
-        })()
-      </script>
-      <style is:inline>
-        html[data-docs-announcement-dismissed] [data-announcement-id] {
-          display: none !important;
-        }
-      </style>
-      <div
-        id={`announcement-${announcement.id}`}
-        data-announcement-id={announcement.id}
-        class="bg-foreground text-background relative flex items-center justify-center gap-3 px-4 py-2 text-center text-sm"
-      >
-        {announcement.href ? (
-          <Link
-            href={announcement.href}
-            class="text-background hover:text-background decoration-background/50 hover:decoration-background inline-flex items-center gap-1.5 font-medium"
-            external={announcement.href.startsWith('http')}
-          >
-            <span>{announcement.message}</span>
-            <Icon name="arrow-right" class="size-3.5" />
-          </Link>
-        ) : (
-          <span>{announcement.message}</span>
-        )}
-        <button
-          type="button"
-          class="text-background/70 hover:text-background absolute right-2 inline-flex size-6 items-center justify-center"
-          aria-label="Dismiss announcement"
-          data-announcement-dismiss
+    <div
+      id={`announcement-${announcement.id}`}
+      data-announcement-id={announcement.id}
+      class="bg-foreground text-background grid min-h-8 grid-cols-[minmax(0,1fr)_1.5rem] items-center gap-2 px-3 py-1.5 text-center text-sm"
+    >
+      {announcement.href ? (
+        <Link
+          href={announcement.href}
+          class="text-background hover:text-background decoration-background/50 hover:decoration-background inline-flex min-w-0 items-center justify-center gap-1.5 font-medium leading-tight"
+          external={announcement.href.startsWith('http')}
         >
-          <Icon name="x" class="size-4" />
-        </button>
-      </div>
-    </>
+          <span class="min-w-0 text-balance">{announcement.message}</span>
+          <Icon name="arrow-right" class="hidden size-3.5 shrink-0 sm:block" />
+        </Link>
+      ) : (
+        <span>{announcement.message}</span>
+      )}
+      <button
+        type="button"
+        class="text-background/70 hover:text-background inline-flex size-6 shrink-0 items-center justify-center"
+        aria-label="Dismiss announcement"
+        data-announcement-dismiss
+      >
+        <Icon name="x" class="size-4" />
+      </button>
+    </div>
   )
 }
 
 <script>
-  const updateAnnouncementOffset = () => {
-    const bar = document.querySelector<HTMLElement>('[data-announcement-id]')
+  const w = window as Window & { __anchorAnnouncementReady?: boolean }
+
+  function getAnnouncementStorageKey(bar: HTMLElement): string | null {
+    const id = bar.dataset.announcementId
+    return id ? `announcement-dismissed:${id}` : null
+  }
+
+  function isAnnouncementDismissed(bar: HTMLElement): boolean {
+    const storageKey = getAnnouncementStorageKey(bar)
+    if (!storageKey) return false
+
+    try {
+      return localStorage.getItem(storageKey) === '1'
+    } catch {
+      return false
+    }
+  }
+
+  function dismissAnnouncement(bar: HTMLElement) {
+    const storageKey = getAnnouncementStorageKey(bar)
+    if (!storageKey) return
+
+    try {
+      localStorage.setItem(storageKey, '1')
+    } catch {}
+  }
+
+  function updateAnnouncementOffset() {
+    const bar = document.querySelector<HTMLElement>('[data-announcement-id]:not([hidden])')
     const offset = bar
       ? Math.max(0, Math.min(bar.offsetHeight, bar.getBoundingClientRect().bottom))
       : 0
@@ -66,30 +93,44 @@ const announcement = DOCS.announcement
   }
 
   function setupAnnouncement() {
-    document.querySelectorAll<HTMLElement>('[data-announcement-id]').forEach((el) => {
-      const id = el.dataset.announcementId
-      if (!id) return
-      const storageKey = `announcement-dismissed:${id}`
-      if (localStorage.getItem(storageKey) === '1') {
-        document.documentElement.setAttribute('data-docs-announcement-dismissed', '')
-        el.remove()
-        updateAnnouncementOffset()
-        return
+    const bars = Array.from(document.querySelectorAll<HTMLElement>('[data-announcement-id]'))
+    let hasDismissedAnnouncement = false
+
+    bars.forEach((bar) => {
+      if (isAnnouncementDismissed(bar)) {
+        hasDismissedAnnouncement = true
+        bar.remove()
       }
-      document.documentElement.removeAttribute('data-docs-announcement-dismissed')
-      el.querySelector('[data-announcement-dismiss]')?.addEventListener('click', () => {
-        localStorage.setItem(storageKey, '1')
-        document.documentElement.setAttribute('data-docs-announcement-dismissed', '')
-        el.remove()
-        updateAnnouncementOffset()
-      })
     })
+
+    if (hasDismissedAnnouncement) {
+      document.documentElement.setAttribute('data-docs-announcement-dismissed', '')
+    } else {
+      document.documentElement.removeAttribute('data-docs-announcement-dismissed')
+    }
 
     updateAnnouncementOffset()
   }
 
+  if (!w.__anchorAnnouncementReady) {
+    w.__anchorAnnouncementReady = true
+
+    document.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement | null
+      const button = target?.closest<HTMLElement>('[data-announcement-dismiss]')
+      const bar = button?.closest<HTMLElement>('[data-announcement-id]')
+      if (!bar) return
+
+      dismissAnnouncement(bar)
+      document.documentElement.setAttribute('data-docs-announcement-dismissed', '')
+      bar.remove()
+      updateAnnouncementOffset()
+    })
+
+    window.addEventListener('scroll', updateAnnouncementOffset, { passive: true })
+    window.addEventListener('resize', updateAnnouncementOffset, { passive: true })
+    document.addEventListener('astro:after-swap', setupAnnouncement)
+  }
+
   setupAnnouncement()
-  window.addEventListener('scroll', updateAnnouncementOffset, { passive: true })
-  window.addEventListener('resize', updateAnnouncementOffset, { passive: true })
-  document.addEventListener('astro:after-swap', setupAnnouncement)
 </script>

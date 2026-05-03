@@ -1,4 +1,5 @@
 import type { Element, ElementContent, Root } from 'hast'
+import { findElementChild, getNodeText, hasClass, isElement, visitHast } from './hast-utils'
 
 // Tabler icon paths (viewBox 0 0 24 24, stroke currentColor).
 const FILE_PATHS = [
@@ -10,31 +11,51 @@ const FOLDER_PATHS = [
 ]
 
 const EXTENSIONS = [
-  'toml', 'rs', 'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs',
-  'json', 'jsonc', 'json5', 'md', 'mdx', 'yaml', 'yml',
-  'lock', 'txt', 'sh', 'bash', 'zsh', 'fish', 'css',
-  'scss', 'html', 'svg', 'png', 'jpg', 'jpeg', 'webp',
-  'gif', 'env', 'sol', 'graphql', 'gql', 'sql', 'xml',
-  'astro', 'vue', 'svelte', 'ini', 'cfg',
+  'toml',
+  'rs',
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'mjs',
+  'cjs',
+  'json',
+  'jsonc',
+  'json5',
+  'md',
+  'mdx',
+  'yaml',
+  'yml',
+  'lock',
+  'txt',
+  'sh',
+  'bash',
+  'zsh',
+  'fish',
+  'css',
+  'scss',
+  'html',
+  'svg',
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'gif',
+  'env',
+  'sol',
+  'graphql',
+  'gql',
+  'sql',
+  'xml',
+  'astro',
+  'vue',
+  'svelte',
+  'ini',
+  'cfg',
 ]
 const EXT_RE = new RegExp(`\\.(${EXTENSIONS.join('|')})$`, 'i')
 const DOTFILE_RE =
   /^\.(gitignore|env|prettierrc|eslintrc|npmrc|yarnrc|nvmrc|editorconfig|gitkeep|gitattributes)/i
-
-function hasClass(node: Element, className: string): boolean {
-  const props = node.properties
-  if (!props) return false
-  const c = (props as any).className ?? (props as any).class
-  if (Array.isArray(c)) return c.includes(className)
-  if (typeof c === 'string') return c.split(/\s+/).includes(className)
-  return false
-}
-
-function getText(node: ElementContent): string {
-  if (node.type === 'text') return node.value
-  if (node.type !== 'element' || !node.children) return ''
-  return node.children.map(getText).join('')
-}
 
 function classify(text: string): 'file' | 'folder' | null {
   if (!text || text.length > 200) return null
@@ -80,11 +101,7 @@ function svgIcon(paths: string[], kind: 'file' | 'folder'): Element {
 
 function alreadyDecorated(node: Element): boolean {
   const first = node.children?.[0]
-  return (
-    first?.type === 'element' &&
-    first.tagName === 'svg' &&
-    hasClass(first, 'inline-path-icon')
-  )
+  return first?.type === 'element' && first.tagName === 'svg' && hasClass(first, 'inline-path-icon')
 }
 
 function decorate(codeNode: Element, kind: 'file' | 'folder'): void {
@@ -133,50 +150,37 @@ function dimPlaceholders(node: Element): void {
   }
 }
 
-function findCodeChild(node: Element): Element | null {
-  for (const child of node.children) {
-    if (child.type === 'element' && child.tagName === 'code') return child
-  }
-  return null
-}
-
 export function rehypeInlinePathIcon() {
   return (tree: Root) => {
-    const visit = (node: any) => {
-      if (node.type !== 'element') {
-        if (node.children) for (const c of node.children) visit(c)
-        return
-      }
+    visitHast(tree, (node) => {
+      if (!isElement(node)) return
 
       // Skip block code and our own command pills.
-      if (node.tagName === 'pre') return
-      if (hasClass(node, 'inline-shell-cmd')) return
+      if (node.tagName === 'pre') return 'skip'
+      if (hasClass(node, 'inline-shell-cmd')) return 'skip'
 
       // Shiki-wrapped inline code: decorate the inner <code>, don't recurse in.
       if (node.tagName === 'span' && hasClass(node, 'shiki')) {
-        const codeChild = findCodeChild(node)
+        const codeChild = findElementChild(node, 'code')
         if (codeChild) {
-          const kind = classify(getText(codeChild))
+          const kind = classify(getNodeText(codeChild))
           if (kind) {
             dimPlaceholders(codeChild)
             decorate(codeChild, kind)
           }
         }
-        return
+        return 'skip'
       }
 
       // Plain inline <code>.
       if (node.tagName === 'code') {
-        const kind = classify(getText(node))
+        const kind = classify(getNodeText(node))
         if (kind) {
           dimPlaceholders(node)
           decorate(node, kind)
         }
-        return
+        return 'skip'
       }
-
-      if (node.children) for (const c of node.children) visit(c)
-    }
-    visit(tree as any)
+    })
   }
 }

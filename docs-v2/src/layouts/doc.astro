@@ -1,5 +1,6 @@
 ---
 import DocsAside from '@/components/docs/docs-aside.astro'
+import DocBanner from '@/components/docs/banner.astro'
 import DocNavigation from '@/components/docs/doc-navigation.astro'
 import EditLink from '@/components/docs/edit-link.astro'
 import LastUpdated from '@/components/docs/last-updated.astro'
@@ -11,7 +12,7 @@ import TOCSidebar from '@/components/toc-sidebar.astro'
 import Card from '@/components/mdx/card.astro'
 import CardGrid from '@/components/mdx/card-grid.astro'
 import Base from '@/layouts/base.astro'
-import { type Doc, withBase } from '@/lib/docs'
+import { type Doc } from '@/lib/docs'
 import { renderDescription } from '@/lib/render-description'
 import type { IndexChild } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
@@ -51,6 +52,14 @@ const {
   indexChildren,
 } = Astro.props
 
+const isDocsHome = doc.id === 'index'
+const showArticleMeta = Boolean(lastUpdated || editUrl || isDocsHome)
+const showArticleFooter = Boolean(prev || next || showArticleMeta)
+const currentYear = new Date().getFullYear()
+const banner = doc.data.banner === false ? null : (doc.data.banner ?? 'random')
+const hasBanner = Boolean(banner)
+const bannerSize = isDocsHome ? 'full' : 'compact'
+
 const offsetClass = 'xl:ml-[max(0px,calc((100vw-16rem-96rem)/2))]'
 
 const renderedTitle = await renderDescription(doc.data.title)
@@ -75,24 +84,12 @@ const renderedIndexChildren = await Promise.all(
     <DocsAside tree={sidebar} versionTrees={versionSidebars} />
     <MobileSidebar tree={sidebar} versionTrees={versionSidebars} />
 
-    <div
-      class={cn('flex flex-col overflow-x-clip xl:pb-6', doc.data.banner ? 'xl:pt-0' : 'xl:pt-16')}
-    >
+    <div class={cn('flex flex-col overflow-x-clip xl:pb-6', hasBanner ? 'xl:pt-0' : 'xl:pt-16')}>
       <header class="bg-background/80 sticky top-0 z-40 border-b backdrop-blur-sm xl:hidden">
         <Header />
       </header>
 
-      {
-        doc.data.banner && (
-          <div class="not-prose xl:ml-4 bg-muted" data-pagefind-ignore>
-            <img
-              src={withBase(doc.data.banner)}
-              alt=""
-              class="h-72 w-full object-cover sm:h-[22rem] xl:h-[25rem]"
-            />
-          </div>
-        )
-      }
+      {banner && <DocBanner banner={banner} size={bannerSize} />}
 
       {
         tocEnabled && (
@@ -117,7 +114,7 @@ const renderedIndexChildren = await Promise.all(
           >
             {
               doc.data.pageHeader && (
-                <header class={cn('mt-6 mb-8 flex flex-col gap-3', !doc.data.banner && 'xl:-mt-3')}>
+                <header class={cn('mt-6 mb-8 flex flex-col gap-3', !hasBanner && 'xl:-mt-3')}>
                   <h1
                     id="post-title"
                     class="text-3xl leading-tight font-medium sm:text-4xl"
@@ -159,16 +156,21 @@ const renderedIndexChildren = await Promise.all(
             }
 
             {
-              (prev || next || editUrl || lastUpdated) && (
+              showArticleFooter && (
                 <footer
                   class="border-border/70 mt-16 flex flex-col gap-6 border-t pt-6 pb-4"
                   data-pagefind-ignore
                 >
-                  <DocNavigation prev={prev} next={next} />
-                  <div class="text-muted-foreground flex flex-wrap items-center justify-between gap-3 text-sm">
-                    {lastUpdated && <LastUpdated date={lastUpdated} />}
-                    {editUrl && <EditLink href={editUrl} />}
-                  </div>
+                  {(prev || next) && <DocNavigation prev={prev} next={next} />}
+                  {showArticleMeta && (
+                    <div class="text-muted-foreground flex flex-wrap items-center justify-between gap-3 text-sm">
+                      {lastUpdated && <LastUpdated date={lastUpdated} />}
+                      {editUrl && <EditLink href={editUrl} />}
+                      {isDocsHome && !lastUpdated && !editUrl && (
+                        <span>&copy; {currentYear} Anchor Docs</span>
+                      )}
+                    </div>
+                  )}
                 </footer>
               )
             }
@@ -181,7 +183,7 @@ const renderedIndexChildren = await Promise.all(
                 minDepth={tocMinDepth}
                 maxDepth={tocMaxDepth}
                 title={doc.data.title}
-                class={doc.data.banner ? 'mt-36' : undefined}
+                class={hasBanner ? (bannerSize === 'full' ? 'mt-36' : 'mt-12') : undefined}
               />
             ) : !doc.data.wide ? (
               <div class="hidden xl:block" aria-hidden="true" />

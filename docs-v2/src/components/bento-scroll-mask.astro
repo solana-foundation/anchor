@@ -1,0 +1,112 @@
+---
+
+---
+
+<script>
+  type BentoScrollFadeState = {
+    listenersReady: boolean
+    cleanups: WeakMap<HTMLElement, () => void>
+    activeCleanups: Set<() => void>
+  }
+
+  declare global {
+    interface Window {
+      __anchorBentoScrollFadeState?: BentoScrollFadeState
+    }
+  }
+
+  function getBentoScrollFadeState() {
+    window.__anchorBentoScrollFadeState ??= {
+      listenersReady: false,
+      cleanups: new WeakMap(),
+      activeCleanups: new Set(),
+    }
+
+    return window.__anchorBentoScrollFadeState
+  }
+
+  function px(value: string) {
+    const number = Number.parseFloat(value)
+    return Number.isFinite(number) ? number : 0
+  }
+
+  function cleanupBentoScrollFades() {
+    const state = getBentoScrollFadeState()
+    state.activeCleanups.forEach((cleanup) => cleanup())
+    state.activeCleanups.clear()
+  }
+
+  function setupBentoScrollFades() {
+    const state = getBentoScrollFadeState()
+    const sections = document.querySelectorAll<HTMLElement>('[data-bento-scroll]')
+
+    sections.forEach((section) => {
+      state.cleanups.get(section)?.()
+
+      const frame = section.closest<HTMLElement>('[data-bento-scroll-frame]')
+      if (!frame) return
+
+      let animationFrame = 0
+
+      const update = () => {
+        animationFrame = 0
+
+        const { scrollLeft, scrollWidth, clientWidth } = section
+        const threshold = 2
+        const overflow = scrollWidth - clientWidth
+        const isAtStart = scrollLeft <= threshold
+        const isAtEnd = overflow <= threshold || scrollLeft >= overflow - threshold
+        const sectionStyles = window.getComputedStyle(section)
+        const sectionRect = section.getBoundingClientRect()
+        const leftEdge =
+          sectionRect.left + px(sectionStyles.paddingLeft) + px(sectionStyles.scrollPaddingLeft)
+        const rightEdge =
+          sectionRect.right - px(sectionStyles.paddingRight) - px(sectionStyles.scrollPaddingRight)
+        const snapThreshold = 3
+        const items = Array.from(section.children).filter(
+          (child): child is HTMLElement => child instanceof HTMLElement,
+        )
+        const hasSnappedLeftItem = items.some(
+          (item) => Math.abs(item.getBoundingClientRect().left - leftEdge) <= snapThreshold,
+        )
+        const hasSnappedRightItem = items.some(
+          (item) => Math.abs(item.getBoundingClientRect().right - rightEdge) <= snapThreshold,
+        )
+
+        frame.dataset.leftFade = !isAtStart && !hasSnappedLeftItem ? 'true' : 'false'
+        frame.dataset.rightFade = !isAtEnd && !hasSnappedRightItem ? 'true' : 'false'
+      }
+
+      const scheduleUpdate = () => {
+        if (animationFrame) return
+        animationFrame = window.requestAnimationFrame(update)
+      }
+
+      update()
+      section.addEventListener('scroll', scheduleUpdate, { passive: true })
+      window.addEventListener('resize', scheduleUpdate)
+
+      const cleanup = () => {
+        if (animationFrame) window.cancelAnimationFrame(animationFrame)
+        section.removeEventListener('scroll', scheduleUpdate)
+        window.removeEventListener('resize', scheduleUpdate)
+        frame.dataset.leftFade = 'false'
+        frame.dataset.rightFade = 'false'
+        state.activeCleanups.delete(cleanup)
+      }
+
+      state.cleanups.set(section, cleanup)
+      state.activeCleanups.add(cleanup)
+    })
+  }
+
+  const bentoScrollFadeState = getBentoScrollFadeState()
+
+  if (!bentoScrollFadeState.listenersReady) {
+    document.addEventListener('astro:before-swap', cleanupBentoScrollFades)
+    document.addEventListener('astro:after-swap', setupBentoScrollFades)
+    bentoScrollFadeState.listenersReady = true
+  }
+
+  setupBentoScrollFades()
+</script>
