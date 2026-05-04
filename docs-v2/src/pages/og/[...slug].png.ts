@@ -120,7 +120,7 @@ export async function GET({ props }: { props: Props }) {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            padding: 42,
+            padding: 64,
           },
         },
         React.createElement('img', {
