@@ -45,13 +45,8 @@ function updateEditLink(): void {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="docs-edit-url"]')
   const url = meta?.content ?? ''
 
-  if (url) {
-    link.setAttribute('href', url)
-    link.removeAttribute('hidden')
-  } else {
-    link.setAttribute('href', '#')
-    link.setAttribute('hidden', '')
-  }
+  link.setAttribute('href', url || '#')
+  link.toggleAttribute('hidden', !url)
 }
 
 export function mountDocsAside(): void {

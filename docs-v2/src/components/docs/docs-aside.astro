@@ -1,5 +1,6 @@
 ---
 import SearchTrigger from '@/components/docs/search-trigger.astro'
+import EditLink from '@/components/docs/edit-link.astro'
 import Sidebar from '@/components/docs/sidebar.astro'
 import VersionSwitcher from '@/components/docs/version-switcher.astro'
 import Link from '@/components/link.astro'
@@ -78,18 +79,7 @@ const gitHubLink = SOCIAL_LINKS.find((link) => link.label === 'GitHub')
             </Link>
           )
         }
-        <a
-          id="docs-edit-link"
-          href="#"
-          target="_blank"
-          rel="noreferrer noopener nofollow"
-          hidden
-          aria-label="Edit this page"
-          title="Edit this page"
-          class="text-muted-foreground hover:bg-muted/50 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md no-underline transition-colors"
-        >
-          <Icon name="pencil" class="size-4" />
-        </a>
+        <EditLink id="docs-edit-link" href="#" hidden />
       </div>
     </div>
   </div>

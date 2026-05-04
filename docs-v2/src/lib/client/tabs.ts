@@ -44,17 +44,14 @@ function setupTabRoot(root: HTMLElement): void {
   tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => select(index))
     tab.addEventListener('keydown', (event) => {
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        const next = (index + 1) % tabs.length
-        tabs[next]?.focus()
-        select(next)
-      } else if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        const prev = (index - 1 + tabs.length) % tabs.length
-        tabs[prev]?.focus()
-        select(prev)
-      }
+      const isRight = event.key === 'ArrowRight'
+      const isLeft = event.key === 'ArrowLeft'
+      if (!isRight && !isLeft) return
+
+      event.preventDefault()
+      const tabId = (isRight ? index + 1 : index - 1 + tabs.length) % tabs.length
+      tabs[tabId]?.focus()
+      select(tabId)
     })
   })
 }

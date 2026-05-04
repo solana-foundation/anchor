@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config'
 import mdx from '@astrojs/mdx'
 import react from '@astrojs/react'
 import sitemap from '@astrojs/sitemap'
+import pagefind from 'astro-pagefind'
 
 import { rehypeHeadingIds } from '@astrojs/markdown-remark'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
@@ -37,17 +38,8 @@ type DevServer = {
 }
 
 const DOCS_BASE = '/docs'
-const PAGEFIND_DEV_PATH = `${DOCS_BASE}/pagefind`
 const PAGEFIND_DIST_DIR = resolve(process.cwd(), 'dist', 'docs', 'pagefind')
 
-/**
- * Dev-only: serve `/docs/pagefind/*` from `./dist/docs/pagefind/*`.
- *
- * Pagefind writes its index into the built `dist/` folder, but Astro's
- * dev server only serves `public/` and source. Without this plugin the
- * search dialog 404s on pagefind.js during `bun run dev`, even after a
- * successful `bun run build`.
- */
 function pagefindDevServer() {
   const mime: Record<string, string> = {
     js: 'application/javascript',
@@ -56,13 +48,14 @@ function pagefindDevServer() {
     json: 'application/json',
     wasm: 'application/wasm',
   }
+
   return {
     name: 'pagefind-dev-server',
+    enforce: 'pre' as const,
     apply: 'serve' as const,
     configureServer(server: DevServer) {
-      server.middlewares.use(PAGEFIND_DEV_PATH, async (req, res, next) => {
-        const url = req.url ?? '/'
-        const filePath = resolvePagefindAsset(url)
+      server.middlewares.use('/pagefind', async (req, res, next) => {
+        const filePath = resolvePagefindAsset(req.url ?? '/')
         if (!filePath) return next()
 
         try {
@@ -101,7 +94,7 @@ export default defineConfig({
   base: DOCS_BASE,
   trailingSlash: 'always',
   outDir: './dist/docs',
-  integrations: [mdx(), react(), sitemap()],
+  integrations: [mdx(), react(), sitemap(), pagefind()],
   vite: {
     plugins: [tailwindcss(), pagefindDevServer()],
   },

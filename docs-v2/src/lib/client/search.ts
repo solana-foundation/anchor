@@ -36,7 +36,9 @@ async function loadPagefind(): Promise<Pagefind | null> {
 
   pagefindPromise = (async () => {
     try {
-      const mod = await import(/* @vite-ignore */ `${window.location.origin}${PAGEFIND_URL}`)
+      // Pagefind writes this module into dist/docs/pagefind after Astro builds,
+      // so Vite cannot resolve it as a static source import.
+      const mod = await import(/* @vite-ignore */ PAGEFIND_URL)
       if (mod.init) await mod.init()
       return mod as Pagefind
     } catch {
@@ -58,10 +60,29 @@ function debounce<Args extends unknown[]>(
   }
 }
 
-function highlight(excerpt: string): string {
-  return excerpt
-    .replace(/<mark>/g, '<mark class="bg-foreground/10 text-foreground rounded px-0.5">')
-    .replace(/<\/mark>/g, '</mark>')
+function appendHighlightedExcerpt(container: HTMLElement, excerpt: string): void {
+  const markRe = /<\/?mark>/gi
+  let cursor = 0
+  let mark: HTMLElement | null = null
+
+  for (const match of excerpt.matchAll(markRe)) {
+    const matchIndex = match.index ?? 0
+    const text = excerpt.slice(cursor, matchIndex)
+    if (text) (mark ?? container).append(document.createTextNode(text))
+
+    if (match[0].toLowerCase() === '<mark>') {
+      mark = document.createElement('mark')
+      mark.className = 'bg-foreground/10 text-foreground rounded px-0.5'
+      container.append(mark)
+    } else {
+      mark = null
+    }
+
+    cursor = matchIndex + match[0].length
+  }
+
+  const text = excerpt.slice(cursor)
+  if (text) (mark ?? container).append(document.createTextNode(text))
 }
 
 function searchScopePrefixes(): string[] {
@@ -121,7 +142,7 @@ function resultItem(data: PagefindData, index: number): HTMLLIElement {
 
   const excerpt = document.createElement('span')
   excerpt.className = 'text-muted-foreground text-xs leading-relaxed'
-  excerpt.innerHTML = highlight(data.excerpt)
+  appendHighlightedExcerpt(excerpt, data.excerpt)
 
   a.append(title, excerpt)
   li.append(a)
@@ -203,7 +224,7 @@ function setupSearch(): void {
   document.addEventListener(
     'keydown',
     (event) => {
-      const isHotkey = (event.key === 'k' || event.key === 'K') && (event.metaKey || event.ctrlKey)
+      const isHotkey = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)
 
       if (isHotkey) {
         event.preventDefault()

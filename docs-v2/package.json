@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro check && astro build && pagefind --site dist/docs",
+    "build": "astro check && astro build",
     "preview": "astro preview",
     "typecheck": "astro check",
     "astro": "astro",
@@ -67,7 +67,7 @@
   },
   "devDependencies": {
     "@types/hast": "^3.0.4",
-    "pagefind": "^1.5.2",
+    "astro-pagefind": "^1.8.6",
     "prettier": "^3.8.3",
     "prettier-plugin-astro": "^0.14.1"
   }

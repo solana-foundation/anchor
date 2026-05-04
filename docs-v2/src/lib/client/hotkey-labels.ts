@@ -8,9 +8,10 @@ let lifecycleReady = false
 
 function isMacPlatform(): boolean {
   const nav = navigator as NavigatorWithUserAgentData
-  const platform = nav.userAgentData?.platform ?? ''
+  const uaPlatform = nav.userAgentData?.platform
+  if (uaPlatform) return uaPlatform === 'macOS'
 
-  return /Mac|iPhone|iPad|iPod/i.test(`${navigator.userAgent} ${platform}`)
+  return /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent)
 }
 
 function applyOsHotkey(): void {
