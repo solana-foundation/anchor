@@ -270,9 +270,7 @@ mod tests {
         let mut data = [];
         let info = account_info(&wrong_key, &owner, &mut lamports, &mut data, true);
 
-        let err = Program::<System>::try_from(&info)
-            .err()
-            .expect("non-system key must be rejected");
+        let err = Program::<System>::try_from(&info).expect_err("non-system key must be rejected");
         match err {
             Error::AnchorError(e) => {
                 assert_eq!(e.error_code_number, ErrorCode::InvalidProgramId as u32)
@@ -301,8 +299,7 @@ mod tests {
         let info = account_info(&key, &owner, &mut lamports, &mut data, false);
 
         let err = Program::<System>::try_from(&info)
-            .err()
-            .expect("non-executable account must be rejected");
+            .expect_err("non-executable account must be rejected");
         match err {
             Error::AnchorError(e) => assert_eq!(
                 e.error_code_number,
