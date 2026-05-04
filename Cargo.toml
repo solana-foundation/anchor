@@ -16,7 +16,7 @@ exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
 
 [workspace.package]
-version = "1.0.1"
+version = "1.0.2"
 
 [workspace.dependencies]
 solana-account = "3.2.0"
