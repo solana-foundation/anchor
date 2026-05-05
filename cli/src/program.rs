@@ -217,6 +217,12 @@ pub fn process_deploy(
                  deploy a specific program."
             ));
         }
+        if program_keypair.is_some() {
+            return Err(anyhow!(
+                "Cannot specify --program-keypair when deploying multiple programs. Use \
+                 --program-name to deploy a specific program."
+            ));
+        }
 
         // Delegate to deploy_workspace
         return deploy_workspace(
