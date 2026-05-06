@@ -23,6 +23,10 @@ Regardless, if you think you have an issue, we'd like to hear about it.
 
 For bugs that affect production code, we will pay up to X SOL tokens according to the following guidelines. This is exclusive to any bounties claimed from the protocol. In other words, reports can't double-dip.
 
+## Anchor v2
+
+Anchor v2 (the `anchor-next` branch) is currently in early prototyping and is not production code. Any issues, including security relevant issues, that are exclusive to Anchor v2 should be filed as regular issues/pull requests.
+
 ---
 
 If you do not receive a response in the advisory, send an email to anchor-security@solana.org with the full URL of the advisory you have created. DO NOT include attachments or provide detail sufficient for exploitation regarding the security issue in this email. **Only provide such details in the advisory**.
