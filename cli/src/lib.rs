@@ -1478,21 +1478,15 @@ fn init(
 
     if !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
-
-        match classify_install_result(
-            package_manager_result.status.success(),
-            &package_manager_cmd,
-        ) {
-            InstallOutcome::Done => {}
-            InstallOutcome::FallbackToNpm => {
+        if !package_manager_result.status.success() {
+            if package_manager_cmd == "npm" {
+                eprintln!("Failed to install node modules");
+            } else {
                 println!("Failed {package_manager_cmd} install will attempt to npm install");
                 let npm_result = install_node_modules("npm")?;
                 if !npm_result.status.success() {
                     eprintln!("Failed to install node modules");
                 }
-            }
-            InstallOutcome::Failed => {
-                eprintln!("Failed to install node modules");
             }
         }
     }
@@ -1564,23 +1558,6 @@ fn install_solana_skill() {
                  skills add {SKILL_REPO}"
             );
         }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum InstallOutcome {
-    Done,
-    FallbackToNpm,
-    Failed,
-}
-
-fn classify_install_result(success: bool, cmd: &str) -> InstallOutcome {
-    if success {
-        InstallOutcome::Done
-    } else if cmd != "npm" {
-        InstallOutcome::FallbackToNpm
-    } else {
-        InstallOutcome::Failed
     }
 }
 
@@ -5540,31 +5517,5 @@ mod tests {
         assert!(ts.contains(r#""generic": "itemType""#));
         assert!(ts.contains(r#""name": "seedPrefix""#));
         assert!(ts.contains(r#""value": "SEED_PREFIX""#));
-    fn install_outcome_yarn_success_is_done() {
-        assert_eq!(
-            classify_install_result(true, "yarn"),
-            InstallOutcome::Done
-        );
-    }
-
-    #[test]
-    fn install_outcome_npm_success_is_done() {
-        assert_eq!(classify_install_result(true, "npm"), InstallOutcome::Done);
-    }
-
-    #[test]
-    fn install_outcome_yarn_failure_falls_back_to_npm() {
-        assert_eq!(
-            classify_install_result(false, "yarn"),
-            InstallOutcome::FallbackToNpm
-        );
-    }
-
-    #[test]
-    fn install_outcome_npm_failure_is_failed() {
-        assert_eq!(
-            classify_install_result(false, "npm"),
-            InstallOutcome::Failed
-        );
     }
 }
