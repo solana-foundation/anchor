@@ -12,7 +12,6 @@ impl Id for System {
         const ADDR: Address = Address::from_str_const("11111111111111111111111111111111");
         ADDR
     }
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "11111111111111111111111111111111";
 }
 
@@ -23,7 +22,6 @@ impl Id for Token {
             Address::from_str_const("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
         ADDR
     }
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 }
 
@@ -34,7 +32,6 @@ impl Id for Token2022 {
             Address::from_str_const("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
         ADDR
     }
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 }
 
@@ -45,7 +42,6 @@ impl Id for AssociatedToken {
             Address::from_str_const("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
         ADDR
     }
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 }
 
@@ -56,6 +52,5 @@ impl Id for Memo {
             Address::from_str_const("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
         ADDR
     }
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 }

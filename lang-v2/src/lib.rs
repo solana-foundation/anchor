@@ -14,7 +14,6 @@ pub mod cursor;
 mod dispatch;
 pub mod event;
 pub mod hash;
-#[cfg(feature = "idl-build")]
 #[doc(hidden)]
 pub mod idl_build;
 pub mod loader;
@@ -113,10 +112,20 @@ pub const BORSH_CONFIG: wincode::config::Configuration<
 > = wincode::config::Configuration::new();
 
 /// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
-/// array. Always exported; the emitted impl body is itself
-/// `#[cfg(feature = "idl-build")]`, so non-IDL builds pay nothing.
+/// array.
+///
+/// **Opaque / unstable.** Apply this derive on user types you want to
+/// surface in the generated IDL; do not call any of the emitted associated
+/// items directly — they are implementation details of the `anchor idl
+/// build` pipeline and will change without notice. The emitted impl body
+/// is gated on the **end-user crate's** local `idl-build` feature, so
+/// non-IDL builds pay nothing.
 pub use anchor_derive_accounts_v2::IdlType;
-#[cfg(feature = "idl-build")]
+/// **Opaque / unstable.** Re-exported so derive-emitted code in user
+/// crates can name the trait. Do not implement this trait by hand or call
+/// its associated items — they are implementation details of the IDL
+/// build pipeline and will change without notice. See [`idl_build`] for
+/// the trait definition.
 pub use idl_build::IdlAccountType;
 // ---------------------------------------------------------------------------
 // Client-side types — for building instructions off-chain (tests, CPI, SDK)

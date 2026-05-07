@@ -289,7 +289,6 @@ impl<T: BorshDeserialize + BorshSerialize + Owner + Discriminator> Discriminator
     const DISCRIMINATOR: &'static [u8] = T::DISCRIMINATOR;
 }
 
-#[cfg(feature = "idl-build")]
 impl<T> crate::IdlAccountType for BorshAccount<T>
 where
     T: BorshDeserialize + BorshSerialize + Owner + Discriminator + crate::IdlAccountType,

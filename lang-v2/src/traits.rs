@@ -196,7 +196,6 @@ pub trait Id {
     /// signals "no address to advertise in the IDL" — consumed by
     /// `IdlAccountType::__IDL_ADDRESS` on `Program<T>` and converted to
     /// `None` there.
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "";
 }
 
@@ -363,7 +362,6 @@ impl<T> core::ops::DerefMut for Nested<T> {
     }
 }
 
-#[cfg(feature = "idl-build")]
 impl<T: crate::IdlAccountType> crate::IdlAccountType for Nested<T> {
     const __IDL_ACCOUNT_ENTRY: Option<&'static str> = T::__IDL_ACCOUNT_ENTRY;
     const __IDL_TYPE_DEF: Option<&'static str> = T::__IDL_TYPE_DEF;

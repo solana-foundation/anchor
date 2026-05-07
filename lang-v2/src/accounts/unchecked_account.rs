@@ -30,5 +30,4 @@ impl AnchorAccount for UncheckedAccount {
 
 view_wrapper_traits!(UncheckedAccount);
 
-#[cfg(feature = "idl-build")]
 impl crate::IdlAccountType for UncheckedAccount {}

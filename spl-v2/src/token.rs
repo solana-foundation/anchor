@@ -61,7 +61,6 @@ unsafe impl Zeroable for TokenAccount {}
 // — its layout is known to any SPL-aware client. Default `__IDL_TYPE = None`
 // keeps it out of the user's IDL `types[]` array (matches v1's
 // `impl_idl_build!` behavior for this type).
-#[cfg(feature = "idl-build")]
 impl anchor_lang_v2::IdlAccountType for TokenAccount {}
 
 // On-chain size — SPL Token program requires 165 bytes. Used by

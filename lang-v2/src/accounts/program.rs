@@ -70,7 +70,6 @@ impl<T: Id> AsRef<Address> for Program<T> {
     }
 }
 
-#[cfg(feature = "idl-build")]
 impl<T: Id> crate::IdlAccountType for Program<T> {
     // `Id::IDL_ADDRESS` defaults to `""`; convert empty → None so unknown
     // program markers elide the `address` field instead of emitting a bogus
