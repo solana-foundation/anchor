@@ -97,6 +97,7 @@ impl<T: PinocchioSysvar + SysvarId + Copy> AsRef<AccountView> for Sysvar<T> {
     }
 }
 
+#[doc(hidden)]
 impl<T: PinocchioSysvar + SysvarId + Copy> crate::IdlAccountType for Sysvar<T> {
     const __IDL_ADDRESS: Option<&'static str> = if T::IDL_ADDRESS.is_empty() {
         None

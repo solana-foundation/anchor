@@ -1,8 +1,8 @@
 //! Well-known program marker types for use with `Program<T>`.
 //!
 //! IDs are const-evaluated via `from_str_const` (base58 decoded at compile
-//! time). Each marker exposes `IDL_ADDRESS` (gated behind `idl-build`)
-//! forwarded through `IdlAccountType::__IDL_ADDRESS` at emission time.
+//! time). Each marker exposes `IDL_ADDRESS`, forwarded through `IdlAccountType::__IDL_ADDRESS`
+//! at emission time.
 
 use {crate::Id, pinocchio::address::Address};
 

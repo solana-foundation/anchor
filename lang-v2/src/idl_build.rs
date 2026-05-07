@@ -74,6 +74,7 @@ pub trait IdlAccountType {
 macro_rules! impl_idl_account_type_noop {
     ($($t:ty),* $(,)?) => {
         $(
+            #[doc(hidden)]
             impl IdlAccountType for $t {}
         )*
     };
@@ -113,6 +114,7 @@ impl_idl_account_type_noop!(
     crate::pod::PodI128,
 );
 
+#[doc(hidden)]
 impl<T: IdlAccountType> IdlAccountType for alloc::vec::Vec<T> {
     fn __register_idl_deps(
         accounts: &mut alloc::vec::Vec<&'static str>,
@@ -125,6 +127,7 @@ impl<T: IdlAccountType> IdlAccountType for alloc::vec::Vec<T> {
 // Borrowed slice `&[T]` — surfaces on `#[derive(IdlType)]` structs that
 // carry borrowed slice fields (e.g. `MixedArgs<'a> { values: &'a [u64] }`),
 // which wincode supports as a zero-copy ix arg.
+#[doc(hidden)]
 impl<T: IdlAccountType> IdlAccountType for [T] {
     fn __register_idl_deps(
         accounts: &mut alloc::vec::Vec<&'static str>,
@@ -136,6 +139,7 @@ impl<T: IdlAccountType> IdlAccountType for [T] {
 
 // `&T` — forward to `T` so a field typed as `&'a Inner` pulls `Inner`'s
 // type def into the IDL's `types[]`.
+#[doc(hidden)]
 impl<T: IdlAccountType + ?Sized> IdlAccountType for &T {
     fn __register_idl_deps(
         accounts: &mut alloc::vec::Vec<&'static str>,
@@ -145,6 +149,7 @@ impl<T: IdlAccountType + ?Sized> IdlAccountType for &T {
     }
 }
 
+#[doc(hidden)]
 impl<T: IdlAccountType> IdlAccountType for Option<T> {
     fn __register_idl_deps(
         accounts: &mut alloc::vec::Vec<&'static str>,
@@ -154,6 +159,7 @@ impl<T: IdlAccountType> IdlAccountType for Option<T> {
     }
 }
 
+#[doc(hidden)]
 impl<T: IdlAccountType, const N: usize> IdlAccountType for [T; N] {
     fn __register_idl_deps(
         accounts: &mut alloc::vec::Vec<&'static str>,
@@ -166,6 +172,7 @@ impl<T: IdlAccountType, const N: usize> IdlAccountType for [T; N] {
 // `PodVec<T, MAX>` — the zero-copy bounded-capacity analog of `Vec<T>`.
 // Forward `__register_idl_deps` so a `#[account]` zero-copy type holding
 // a `PodVec<Inner, 16>` still pulls `Inner` into the IDL's `types[]`.
+#[doc(hidden)]
 impl<T, const MAX: usize> IdlAccountType for crate::pod::PodVec<T, MAX>
 where
     T: bytemuck::Pod + IdlAccountType,

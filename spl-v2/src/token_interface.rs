@@ -125,8 +125,10 @@ impl anchor_lang_v2::Space for Interface<crate::Mint> {
 // IDL — keep interface types out of the user's types[] array
 // ---------------------------------------------------------------------------
 
+#[doc(hidden)]
 impl anchor_lang_v2::IdlAccountType for Interface<crate::TokenAccount> {}
 
+#[doc(hidden)]
 impl anchor_lang_v2::IdlAccountType for Interface<crate::Mint> {}
 
 // ---------------------------------------------------------------------------

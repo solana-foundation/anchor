@@ -332,6 +332,10 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
         .collect();
 
     quote! {
+        /// **Opaque / unstable.** Returns the IDL JSON for this Accounts
+        /// struct's account list. Implementation detail of the IDL build
+        /// pipeline; do not rely on the shape or call this directly.
+        #[doc(hidden)]
         pub fn __idl_accounts() -> anchor_lang_v2::__alloc::string::String {
             let __parts: anchor_lang_v2::__alloc::vec::Vec<
                 anchor_lang_v2::__alloc::string::String

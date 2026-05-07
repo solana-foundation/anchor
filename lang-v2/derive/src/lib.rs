@@ -1007,20 +1007,19 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
 
         #[cfg(feature = "idl-build")]
+        #[doc(hidden)]
         impl #name {
             // Runtime-assembled accounts JSON: reads per-wrapper signer /
             // address trait consts, splices in compile-time flags.
             #idl_accounts_fn
 
-            /// Walks each account field's `IdlAccountType::__register_idl_deps`
-            /// so nested user-defined types (plain `#[derive(IdlType)]`
-            /// structs, `#[account]` data types, `#[event]` payload types,
-            /// etc.) transitively register into the IDL's program-level
-            /// `accounts[]` and `types[]` arrays. The walker pushes
-            /// `__IDL_ACCOUNT_ENTRY` and `__IDL_TYPE_DEF` strings into the
-            /// caller-provided buffers; the program-level print test joins
-            /// each with commas to assemble the final IDL JSON without
-            /// invoking a JSON parser at runtime.
+            /// **Opaque / unstable.** Walks each account field's
+            /// [`IdlAccountType::__register_idl_deps`] so nested
+            /// user-defined types (plain `#[derive(IdlType)]` structs,
+            /// `#[account]` data types, `#[event]` payload types, etc.)
+            /// transitively register into the IDL's program-level
+            /// `accounts[]` and `types[]` arrays.
+            #[doc(hidden)]
             pub fn __idl_register_deps(
                 accounts: &mut anchor_lang_v2::__alloc::vec::Vec<&'static str>,
                 types: &mut anchor_lang_v2::__alloc::vec::Vec<&'static str>,
@@ -1233,6 +1232,7 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
         #account_deserialize_impl
         #[cfg(feature = "idl-build")]
+        #[doc(hidden)]
         impl anchor_lang_v2::IdlAccountType for #name {
             const __IDL_ACCOUNT_ENTRY: Option<&'static str> = #idl_account_entry;
             const __IDL_TYPE_DEF: Option<&'static str> = Some(#idl_type_def);
@@ -1396,6 +1396,7 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
 
     TokenStream::from(quote! {
         #[cfg(feature = "idl-build")]
+        #[doc(hidden)]
         impl #impl_generics anchor_lang_v2::IdlAccountType for #name #ty_generics #where_clause {
             const __IDL_TYPE_DEF: Option<&'static str> = Some(#idl_type_def);
             fn __register_idl_deps(
@@ -2416,6 +2417,7 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
     // `--- IDL begin event ---` payload prefix), not in `__IDL_TYPE_DEF`.
     let idl_account_type_impl = quote! {
         #[cfg(feature = "idl-build")]
+        #[doc(hidden)]
         impl anchor_lang_v2::IdlAccountType for #name {
             const __IDL_TYPE_DEF: Option<&'static str> = Some(#event_type_def);
             fn __register_idl_deps(

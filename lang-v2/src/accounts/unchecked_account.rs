@@ -30,4 +30,5 @@ impl AnchorAccount for UncheckedAccount {
 
 view_wrapper_traits!(UncheckedAccount);
 
+#[doc(hidden)]
 impl crate::IdlAccountType for UncheckedAccount {}

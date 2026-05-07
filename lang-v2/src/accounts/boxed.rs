@@ -47,6 +47,7 @@ impl<T: AnchorAccount> AnchorAccount for Box<T> {
     }
 }
 
+#[doc(hidden)]
 impl<T: crate::IdlAccountType> crate::IdlAccountType for Box<T> {
     const __IDL_ACCOUNT_ENTRY: Option<&'static str> = T::__IDL_ACCOUNT_ENTRY;
     const __IDL_TYPE_DEF: Option<&'static str> = T::__IDL_TYPE_DEF;

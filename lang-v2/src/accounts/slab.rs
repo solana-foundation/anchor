@@ -784,6 +784,7 @@ where
     }
 }
 
+#[doc(hidden)]
 impl<H, T> crate::IdlAccountType for Slab<H, T>
 where
     H: Pod + Zeroable + SlabSchema + crate::IdlAccountType,

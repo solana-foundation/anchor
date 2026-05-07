@@ -33,4 +33,5 @@ impl AnchorAccount for SystemAccount {
 
 view_wrapper_traits!(SystemAccount);
 
+#[doc(hidden)]
 impl crate::IdlAccountType for SystemAccount {}
