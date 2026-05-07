@@ -112,20 +112,12 @@ pub const BORSH_CONFIG: wincode::config::Configuration<
     u8,
 > = wincode::config::Configuration::new();
 
-/// Internal: only used by `#[cfg(feature = "idl-build")]` codegen from the
-/// derive macros to split type-def JSON in `__anchor_private_print_idl_program`.
-/// Not part of the stable API — hence the `__` prefix.
-#[cfg(feature = "idl-build")]
-#[doc(hidden)]
-pub use serde_json as __serde_json;
-
 /// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
 /// array. Always exported; the emitted impl body is itself
 /// `#[cfg(feature = "idl-build")]`, so non-IDL builds pay nothing.
 pub use anchor_derive_accounts_v2::IdlType;
 #[cfg(feature = "idl-build")]
 pub use idl_build::IdlAccountType;
-
 // ---------------------------------------------------------------------------
 // Client-side types — for building instructions off-chain (tests, CPI, SDK)
 // ---------------------------------------------------------------------------

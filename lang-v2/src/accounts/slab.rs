@@ -789,9 +789,13 @@ impl<H, T> crate::IdlAccountType for Slab<H, T>
 where
     H: Pod + Zeroable + SlabSchema + crate::IdlAccountType,
 {
-    const __IDL_TYPE: Option<&'static str> = H::__IDL_TYPE;
-    fn __register_idl_deps(types: &mut ::alloc::vec::Vec<&'static str>) {
-        H::__register_idl_deps(types);
+    const __IDL_ACCOUNT_ENTRY: Option<&'static str> = H::__IDL_ACCOUNT_ENTRY;
+    const __IDL_TYPE_DEF: Option<&'static str> = H::__IDL_TYPE_DEF;
+    fn __register_idl_deps(
+        accounts: &mut ::alloc::vec::Vec<&'static str>,
+        types: &mut ::alloc::vec::Vec<&'static str>,
+    ) {
+        H::__register_idl_deps(accounts, types);
     }
 }
 
