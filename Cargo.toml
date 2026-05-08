@@ -8,6 +8,7 @@ members = [
     "lang",
     "lang/attribute/*",
     "lang/derive/*",
+    "lang/error",
     "lang/syn",
     "spl",
 ]
@@ -15,7 +16,7 @@ exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
 
 [workspace.package]
-version = "1.0.1"
+version = "1.0.2"
 
 [workspace.dependencies]
 solana-account = "3.2.0"
@@ -30,6 +31,7 @@ solana-cpi = "3.0.0"
 solana-define-syscall = "3.0.0"
 solana-faucet = "3.0.14"
 solana-feature-gate-interface = "3.0.0"
+solana-hash = "3.1.0"
 solana-instruction = "3.0.0"
 solana-instructions-sysvar = "3.0.0"
 solana-invoke = "0.5.0"

@@ -220,7 +220,7 @@ fn keygen_pubkey(keypair_path: Option<PathBuf>) -> Result<()> {
 fn keygen_recover(
     outfile: Option<PathBuf>,
     force: bool,
-    _skip_seed_phrase_validation: bool,
+    skip_seed_phrase_validation: bool,
     no_passphrase: bool,
 ) -> Result<()> {
     println!("\n🔓 Recover keypair from seed phrase");
@@ -253,11 +253,6 @@ fn keygen_recover(
     println!("\n🌱 Enter Recovery Seed Phrase");
     let seed_phrase = secure_input("Seed phrase: ", true)?;
 
-    // Parse mnemonic from seed phrase
-    let mnemonic = Mnemonic::from_phrase(&seed_phrase, Language::English)
-        .map_err(|e| anyhow!("Invalid seed phrase: {:?}", e))?;
-    print_step("Seed phrase validated");
-
     // Get passphrase
     let passphrase = if no_passphrase {
         print_step("No passphrase required");
@@ -271,12 +266,33 @@ fn keygen_recover(
         pass
     };
 
-    // Generate seed from mnemonic and passphrase
+    // Derive 64-byte PBKDF2 seed. Two paths:
+    //  1. default — run the phrase through BIP-39 (`Mnemonic::from_phrase`)
+    //     first to verify the checksum, then derive via `Seed::new` which
+    //     internally does PBKDF2-HMAC-SHA512 with `mnemonic{passphrase}` salt.
+    //  2. `--skip-seed-phrase-validation` — mirror `solana-keygen`: skip the
+    //     checksum entirely and run PBKDF2 directly on the raw phrase bytes.
+    //     Needed for phrases produced outside the BIP-39 spec (e.g. some
+    //     Ledger recovery words) and for test fixtures.
     print_step("Deriving keypair from seed");
-    let seed = Seed::new(&mnemonic, &passphrase);
+    let mut seed_bytes = [0u8; 64];
+    if skip_seed_phrase_validation {
+        let salt = format!("mnemonic{passphrase}");
+        pbkdf2::pbkdf2_hmac::<sha2::Sha512>(
+            seed_phrase.as_bytes(),
+            salt.as_bytes(),
+            2048,
+            &mut seed_bytes,
+        );
+    } else {
+        let mnemonic = Mnemonic::from_phrase(&seed_phrase, Language::English)
+            .map_err(|e| anyhow!("Invalid seed phrase: {:?}", e))?;
+        print_step("Seed phrase validated");
+        seed_bytes.copy_from_slice(Seed::new(&mnemonic, &passphrase).as_bytes());
+    }
 
-    // Create keypair from seed (use first 32 bytes as secret key)
-    let secret_key_bytes: [u8; 32] = seed.as_bytes()[0..32].try_into().unwrap();
+    // First 32 bytes of the PBKDF2 output become the ed25519 secret key.
+    let secret_key_bytes: [u8; 32] = seed_bytes[..32].try_into().unwrap();
     let keypair = Keypair::new_from_array(secret_key_bytes);
 
     // Write keypair to file

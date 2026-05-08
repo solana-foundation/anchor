@@ -528,10 +528,12 @@ pub fn gen_idl_type(
                                 .map(|s| s.ident.to_string())
                                 .chain(ctx.enums().map(|e| e.ident.to_string()))
                                 .collect();
-                            let type_aliases: HashMap<String, String> = ctx
-                                .type_aliases()
-                                .map(|ty| (ty.ident.to_string(), ty.to_token_stream().to_string()))
-                                .collect();
+                            let mut type_aliases: HashMap<String, String> = HashMap::new();
+                            for ty in ctx.type_aliases() {
+                                type_aliases
+                                    .entry(ty.ident.to_string())
+                                    .or_insert_with(|| ty.to_token_stream().to_string());
+                            }
                             CachedCrateData {
                                 defined_names,
                                 type_aliases,

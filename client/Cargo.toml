@@ -18,7 +18,7 @@ debug = []
 mock = []
 
 [dependencies]
-anchor-lang = { path = "../lang", version = "1.0.1" }
+anchor-lang = { path = "../lang", version = "1.0.2" }
 anyhow = "1"
 futures = "0.3"
 regex = "1"
@@ -26,9 +26,9 @@ serde = { version = "1", features = ["derive"] }
 solana-account.workspace = true
 solana-account-decoder.workspace = true
 solana-commitment-config.workspace = true
+solana-hash = { workspace = true, features = ["bytemuck", "serde", "std"] }
 solana-instruction.workspace = true
 solana-message.workspace = true
-solana-program.workspace = true
 solana-pubsub-client.workspace = true
 solana-rpc-client.workspace = true
 solana-rpc-client-api.workspace = true
