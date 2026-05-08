@@ -1,7 +1,7 @@
 use {
-    crate::solana_program::{program_error::ProgramError, pubkey::Pubkey},
-    anchor_lang::error_code,
-    borsh::io::Error as BorshIoError,
+    anchor_attribute_error::error_code,
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
     std::{
         fmt::{Debug, Display},
         num::TryFromIntError,
@@ -10,6 +10,14 @@ use {
 
 /// The starting point for user defined error codes.
 pub const ERROR_CODE_OFFSET: u32 = 6000;
+
+// `#[error_code]` macro below accesses `anchor_lang::error::...` so set up
+// a fake module for it.
+mod anchor_lang {
+    pub(crate) mod error {
+        pub(crate) use crate::{AnchorError, Error};
+    }
+}
 
 /// Error codes that can be returned by internal framework code.
 ///
@@ -184,6 +192,13 @@ pub enum ErrorCode {
     #[msg("Account must be migrated before exiting")]
     AccountNotMigrated,
 
+    /// 2043 - A pausable extension constraint was violated
+    #[msg("A pausable extension constraint was violated")]
+    ConstraintMintPausableExtension,
+    /// 2044 - A pausable extension authority constraint was violated
+    #[msg("A pausable extension authority constraint was violated")]
+    ConstraintMintPausableAuthority,
+
     // Require
     /// 2500 - A require expression was violated
     #[msg("A require expression was violated")]
@@ -308,8 +323,10 @@ impl From<ProgramError> for Error {
         Self::ProgramError(Box::new(program_error.into()))
     }
 }
-impl From<BorshIoError> for Error {
-    fn from(error: BorshIoError) -> Self {
+
+#[cfg(feature = "borsh")]
+impl From<borsh::io::Error> for Error {
+    fn from(error: borsh::io::Error) -> Self {
         Error::ProgramError(Box::new(ProgramError::from(error).into()))
     }
 }
@@ -423,7 +440,7 @@ impl ProgramErrorWithOrigin {
     pub fn log(&self) {
         match &self.error_origin {
             None => {
-                anchor_lang::solana_program::msg!(
+                solana_msg::msg!(
                     "ProgramError occurred. Error Code: {:?}. Error Number: {}. Error Message: {}.",
                     self.program_error,
                     u64::from(self.program_error.clone()),
@@ -431,7 +448,7 @@ impl ProgramErrorWithOrigin {
                 );
             }
             Some(ErrorOrigin::Source(source)) => {
-                anchor_lang::solana_program::msg!(
+                solana_msg::msg!(
                     "ProgramError thrown in {}:{}. Error Code: {:?}. Error Number: {}. Error \
                      Message: {}.",
                     source.filename,
@@ -443,7 +460,7 @@ impl ProgramErrorWithOrigin {
             }
             Some(ErrorOrigin::AccountName(account_name)) => {
                 // using sol_log because msg! wrongly interprets 5 inputs as u64
-                anchor_lang::solana_program::log::sol_log(&format!(
+                solana_msg::msg!(&format!(
                     "ProgramError caused by account: {}. Error Code: {:?}. Error Number: {}. \
                      Error Message: {}.",
                     account_name,
@@ -455,14 +472,14 @@ impl ProgramErrorWithOrigin {
         }
         match &self.compared_values {
             Some(ComparedValues::Pubkeys((left, right))) => {
-                anchor_lang::solana_program::msg!("Left:");
+                solana_msg::msg!("Left:");
                 left.log();
-                anchor_lang::solana_program::msg!("Right:");
+                solana_msg::msg!("Right:");
                 right.log();
             }
             Some(ComparedValues::Values((left, right))) => {
-                anchor_lang::solana_program::msg!("Left: {}", left);
-                anchor_lang::solana_program::msg!("Right: {}", right);
+                solana_msg::msg!("Left: {}", left);
+                solana_msg::msg!("Right: {}", right);
             }
             None => (),
         }
@@ -514,13 +531,15 @@ impl AnchorError {
     pub fn log(&self) {
         match &self.error_origin {
             None => {
-                anchor_lang::solana_program::log::sol_log(&format!(
+                solana_msg::msg!(
                     "AnchorError occurred. Error Code: {}. Error Number: {}. Error Message: {}.",
-                    self.error_name, self.error_code_number, self.error_msg
-                ));
+                    self.error_name,
+                    self.error_code_number,
+                    self.error_msg
+                );
             }
             Some(ErrorOrigin::Source(source)) => {
-                anchor_lang::solana_program::msg!(
+                solana_msg::msg!(
                     "AnchorError thrown in {}:{}. Error Code: {}. Error Number: {}. Error \
                      Message: {}.",
                     source.filename,
@@ -531,23 +550,26 @@ impl AnchorError {
                 );
             }
             Some(ErrorOrigin::AccountName(account_name)) => {
-                anchor_lang::solana_program::log::sol_log(&format!(
+                solana_msg::msg!(
                     "AnchorError caused by account: {}. Error Code: {}. Error Number: {}. Error \
                      Message: {}.",
-                    account_name, self.error_name, self.error_code_number, self.error_msg
-                ));
+                    account_name,
+                    self.error_name,
+                    self.error_code_number,
+                    self.error_msg
+                );
             }
         }
         match &self.compared_values {
             Some(ComparedValues::Pubkeys((left, right))) => {
-                anchor_lang::solana_program::msg!("Left:");
+                solana_msg::msg!("Left:");
                 left.log();
-                anchor_lang::solana_program::msg!("Right:");
+                solana_msg::msg!("Right:");
                 right.log();
             }
             Some(ComparedValues::Values((left, right))) => {
-                anchor_lang::solana_program::msg!("Left: {}", left);
-                anchor_lang::solana_program::msg!("Right: {}", right);
+                solana_msg::msg!("Left: {}", left);
+                solana_msg::msg!("Right: {}", right);
             }
             None => (),
         }
@@ -579,14 +601,10 @@ impl PartialEq for AnchorError {
 
 impl Eq for AnchorError {}
 
-impl std::convert::From<Error> for anchor_lang::solana_program::program_error::ProgramError {
-    fn from(e: Error) -> anchor_lang::solana_program::program_error::ProgramError {
+impl std::convert::From<Error> for ProgramError {
+    fn from(e: Error) -> ProgramError {
         match e {
-            Error::AnchorError(error) => {
-                anchor_lang::solana_program::program_error::ProgramError::Custom(
-                    error.error_code_number,
-                )
-            }
+            Error::AnchorError(error) => ProgramError::Custom(error.error_code_number),
             Error::ProgramError(program_error) => program_error.program_error,
         }
     }
