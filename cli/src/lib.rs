@@ -2903,25 +2903,9 @@ fn idl_write_buffer_metadata(
 fn idl_ts(idl: &Idl) -> Result<String> {
     let idl_name = &idl.metadata.name;
     let type_name = idl_name.to_pascal_case();
-    let idl = serde_json::to_string(idl)?;
-
-    // Convert every field of the IDL to camelCase
-    let camel_idl = Regex::new(r#""\w+":"([\w\d]+)""#)?
-        .captures_iter(&idl)
-        .fold(idl.clone(), |acc, cur| {
-            let name = cur.get(1).unwrap().as_str();
-
-            // Do not modify pubkeys
-            if Pubkey::try_from(name).is_ok() {
-                return acc;
-            }
-
-            let camel_name = name.to_lower_camel_case();
-            acc.replace(&format!(r#""{name}""#), &format!(r#""{camel_name}""#))
-        });
-
-    // Pretty format
-    let camel_idl = serde_json::to_string_pretty(&serde_json::from_str::<Idl>(&camel_idl)?)?;
+    let mut camel_idl = serde_json::to_value(idl)?;
+    camel_case_idl_identifiers(&mut camel_idl);
+    let camel_idl = serde_json::to_string_pretty(&serde_json::from_value::<Idl>(camel_idl)?)?;
 
     Ok(format!(
         r#"/**
@@ -2933,6 +2917,50 @@ fn idl_ts(idl: &Idl) -> Result<String> {
 export type {type_name} = {camel_idl};
 "#
     ))
+}
+
+fn camel_case_idl_identifiers(value: &mut JsonValue) {
+    match value {
+        JsonValue::Array(values) => {
+            for value in values {
+                camel_case_idl_identifiers(value);
+            }
+        }
+        JsonValue::Object(map) => {
+            for (key, value) in map {
+                if is_idl_identifier_key(key) {
+                    camel_case_idl_identifier(value);
+                } else {
+                    camel_case_idl_identifiers(value);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn camel_case_idl_identifier(value: &mut JsonValue) {
+    match value {
+        JsonValue::String(s) => {
+            if Pubkey::try_from(s.as_str()).is_err() {
+                *s = s
+                    .split('.')
+                    .map(ToLowerCamelCase::to_lower_camel_case)
+                    .collect::<Vec<_>>()
+                    .join(".");
+            }
+        }
+        JsonValue::Array(values) => {
+            for value in values {
+                camel_case_idl_identifier(value);
+            }
+        }
+        _ => camel_case_idl_identifiers(value),
+    }
+}
+
+fn is_idl_identifier_key(key: &str) -> bool {
+    matches!(key, "name" | "path" | "account" | "relations" | "generic")
 }
 
 fn write_idl(idl: &Idl, out: OutFile) -> Result<()> {
@@ -5312,7 +5340,13 @@ fn logs_subscribe(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use {
+        super::*,
+        anchor_lang_idl::types::{
+            IdlGenericArg, IdlInstructionAccount, IdlInstructionAccountItem, IdlPda, IdlSeed,
+            IdlSeedAccount, IdlTypeDef, IdlTypeDefGeneric,
+        },
+    };
 
     #[test]
     #[should_panic(expected = "Anchor workspace name must be a valid Rust identifier.")]
@@ -5378,5 +5412,106 @@ mod tests {
             true,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn idl_ts_preserves_literal_values() {
+        let idl = Idl {
+            address: "11111111111111111111111111111111".to_string(),
+            metadata: anchor_lang_idl::types::IdlMetadata {
+                name: "test_program".to_string(),
+                version: "0.1.0".to_string(),
+                spec: "0.1.0".to_string(),
+                description: None,
+                repository: None,
+                dependencies: Vec::new(),
+                contact: None,
+                deployments: None,
+            },
+            docs: Vec::new(),
+            instructions: vec![anchor_lang_idl::types::IdlInstruction {
+                name: "do_thing".to_string(),
+                docs: Vec::new(),
+                discriminator: vec![0, 1, 2, 3, 4, 5, 6, 7],
+                accounts: vec![IdlInstructionAccountItem::Single(IdlInstructionAccount {
+                    name: "target_account".to_string(),
+                    docs: Vec::new(),
+                    writable: false,
+                    signer: false,
+                    optional: false,
+                    address: None,
+                    pda: Some(IdlPda {
+                        seeds: vec![IdlSeed::Account(IdlSeedAccount {
+                            path: "source_account.authority".to_string(),
+                            account: Some("source_account".to_string()),
+                        })],
+                        program: None,
+                    }),
+                    relations: vec!["source_account".to_string()],
+                })],
+                args: vec![anchor_lang_idl::types::IdlField {
+                    name: "some_arg".to_string(),
+                    docs: Vec::new(),
+                    ty: IdlType::U8,
+                }],
+                returns: None,
+            }],
+            accounts: vec![anchor_lang_idl::types::IdlAccount {
+                name: "source_account".to_string(),
+                discriminator: vec![8, 7, 6, 5, 4, 3, 2, 1],
+            }],
+            events: Vec::new(),
+            errors: vec![anchor_lang_idl::types::IdlErrorCode {
+                code: 6000,
+                name: "Unauthorized".to_string(),
+                msg: Some("Unauthorized".to_string()),
+            }],
+            types: vec![IdlTypeDef {
+                name: "wrapper_type".to_string(),
+                docs: Vec::new(),
+                serialization: Default::default(),
+                repr: None,
+                generics: vec![IdlTypeDefGeneric::Type {
+                    name: "item_type".to_string(),
+                }],
+                ty: IdlTypeDefTy::Type {
+                    alias: IdlType::Defined {
+                        name: "generic_holder".to_string(),
+                        generics: vec![
+                            IdlGenericArg::Type {
+                                ty: IdlType::Generic("item_type".to_string()),
+                            },
+                            IdlGenericArg::Const {
+                                value: "SEED_PREFIX".to_string(),
+                            },
+                        ],
+                    },
+                },
+            }],
+            constants: vec![anchor_lang_idl::types::IdlConst {
+                name: "seed_prefix".to_string(),
+                docs: Vec::new(),
+                ty: IdlType::String,
+                value: "SEED_PREFIX".to_string(),
+            }],
+        };
+
+        let ts = idl_ts(&idl).unwrap();
+
+        assert!(ts.contains(r#""name": "doThing""#));
+        assert!(ts.contains(r#""name": "targetAccount""#));
+        assert!(ts.contains(r#""path": "sourceAccount.authority""#));
+        assert!(ts.contains(r#""account": "sourceAccount""#));
+        assert!(ts.contains(r#""sourceAccount""#));
+        assert!(ts.contains(r#""name": "someArg""#));
+        assert!(ts.contains(r#""name": "sourceAccount""#));
+        assert!(ts.contains(r#""name": "unauthorized""#));
+        assert!(ts.contains(r#""msg": "Unauthorized""#));
+        assert!(ts.contains(r#""name": "wrapperType""#));
+        assert!(ts.contains(r#""name": "itemType""#));
+        assert!(ts.contains(r#""name": "genericHolder""#));
+        assert!(ts.contains(r#""generic": "itemType""#));
+        assert!(ts.contains(r#""name": "seedPrefix""#));
+        assert!(ts.contains(r#""value": "SEED_PREFIX""#));
     }
 }

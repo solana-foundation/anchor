@@ -18,13 +18,23 @@ use {
 const UPDATE_CHECK_INTERVAL_SECS: i64 = 60 * 60;
 /// Shorter HTTP timeout so a slow or unreachable GitHub does not stall the CLI for long.
 const HTTP_CLIENT_TIMEOUT_SECS: u64 = 5;
+/// Longer timeout for release asset downloads, which can take longer than metadata requests.
+const DOWNLOAD_CLIENT_TIMEOUT_SECS: u64 = 60;
 
-/// Shared HTTP client with a short timeout, used for all outbound requests.
+/// Shared HTTP client with a short timeout, used for metadata/API requests.
 static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(HTTP_CLIENT_TIMEOUT_SECS))
         .build()
         .expect("Failed to build HTTP client")
+});
+
+/// Shared HTTP client with a longer timeout, used for release asset downloads.
+static DOWNLOAD_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
+    reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(DOWNLOAD_CLIENT_TIMEOUT_SECS))
+        .build()
+        .expect("Failed to build download HTTP client")
 });
 
 /// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
@@ -478,9 +488,11 @@ pub fn install_version(
         } else {
             ""
         };
-        let res = reqwest::blocking::get(format!(
-            "https://github.com/solana-foundation/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
-        ))?;
+        let res = DOWNLOAD_CLIENT
+            .get(format!(
+                "https://github.com/solana-foundation/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
+            ))
+            .send()?;
         if !res.status().is_success() {
             return Err(anyhow!(
                 "Failed to download the binary for version `{version}` (status code: {})",
@@ -559,7 +571,7 @@ fn install_solana_verify() -> Result<()> {
     let url = format!(
         "https://github.com/Ellipsis-Labs/solana-verifiable-build/releases/download/v{SOLANA_VERIFY_VERSION}/solana-verify-{os}"
     );
-    let res = reqwest::blocking::get(url)?;
+    let res = DOWNLOAD_CLIENT.get(url).send()?;
     if !res.status().is_success() {
         bail!(
             "Failed to download `solana-verify-{os} v{SOLANA_VERIFY_VERSION} (status code: {})",

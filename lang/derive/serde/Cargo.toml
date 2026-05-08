@@ -23,7 +23,7 @@ idl-build = ["anchor-syn/idl-build"]
 lazy-account = ["anchor-lang/lazy-account"]
 
 [dependencies]
-anchor-syn = { path = "../../syn", version = "1.0.1" }
+anchor-syn = { path = "../../syn", version = "1.0.2" }
 proc-macro-crate = "3.4.0"
 proc-macro2 = "1"
 quote = "1"
