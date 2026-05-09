@@ -63,7 +63,7 @@ impl_nop! {
     String,
 
     // First-party types
-    anchor_client::Cluster,
+    anchor_cluster::Cluster,
 
     // Third-party types
     clap_complete::Shell,

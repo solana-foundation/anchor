@@ -193,7 +193,7 @@ name = "anchor-cli"
 version = "1.0.2"
 dependencies = [
  "anchor-cli-macros",
- "anchor-client",
+ "anchor-cluster",
  "anchor-lang",
  "anchor-lang-idl",
  "anyhow",
@@ -258,11 +258,10 @@ dependencies = [
 name = "anchor-client"
 version = "1.0.2"
 dependencies = [
+ "anchor-cluster",
  "anchor-lang",
- "anyhow",
  "futures",
  "regex",
- "serde",
  "solana-account",
  "solana-account-decoder",
  "solana-commitment-config",
@@ -279,6 +278,14 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tokio-tungstenite",
+]
+
+[[package]]
+name = "anchor-cluster"
+version = "1.0.2"
+dependencies = [
+ "anyhow",
+ "serde",
  "url",
 ]
 
