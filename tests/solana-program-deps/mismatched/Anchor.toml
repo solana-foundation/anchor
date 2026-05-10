@@ -1,0 +1,12 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+mismatched_solana_program = "5vHp6xYFQ4pc6D95P7h3CngkzyP4iMfsMghvYDn8ApXK"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"

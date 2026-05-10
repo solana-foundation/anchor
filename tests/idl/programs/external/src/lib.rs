@@ -6,10 +6,18 @@ declare_id!("Externa1111111111111111111111111111111111111");
 pub mod external {
     use super::*;
 
-    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
+    pub fn test_compilation(_ctx: Context<TestCompilation>) -> Result<()> {
         Ok(())
     }
 }
+
+#[derive(Accounts)]
+pub struct TestCompilation<'info> {
+    account: Account<'info, MyAccount>,
+}
+
+#[account]
+pub struct MyAccount {}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct MyStruct {
@@ -22,10 +30,3 @@ pub enum MyEnum {
     Named { name: String },
     Tuple(String),
 }
-
-pub struct NonBorshStruct {
-    pub data: i32,
-}
-
-#[derive(Accounts)]
-pub struct Initialize {}

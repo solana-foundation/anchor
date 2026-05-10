@@ -1,16 +1,17 @@
-use anyhow::{anyhow, Result};
-use heck::CamelCase;
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-use syn::spanned::Spanned;
-
-use super::{
-    common::{gen_print_section, get_idl_module_path, get_no_docs, get_program_path},
-    defined::gen_idl_type,
-};
-use crate::{
-    parser::{context::CrateContext, docs},
-    Program,
+use {
+    super::{
+        common::{gen_print_section, get_idl_module_path, get_no_docs, get_program_path},
+        defined::gen_idl_type,
+    },
+    crate::{
+        parser::{context::CrateContext, docs},
+        Program,
+    },
+    anyhow::{anyhow, Result},
+    heck::CamelCase,
+    proc_macro2::TokenStream,
+    quote::{format_ident, quote},
+    syn::spanned::Spanned,
 };
 
 /// Generate the IDL build print function for the program module.
@@ -165,7 +166,7 @@ fn check_safety_comments() -> Result<()> {
         //
         // - Anchor CLI version is incompatible with the current version
         // - The error is coming from Rust Analyzer when the user has `idl-build` feature enabled,
-        // likely due to enabling all features (https://github.com/coral-xyz/anchor/issues/3042)
+        // likely due to enabling all features (https://github.com/solana-foundation/anchor/issues/3042)
         //
         // For the first case, we have a warning when the user is using different versions of the
         // lang and CLI crate. For the second case, users would either have to disable the

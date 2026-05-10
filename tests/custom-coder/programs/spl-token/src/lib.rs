@@ -1,4 +1,4 @@
-// See https://github.com/coral-xyz/anchor/blob/master/ts/packages/spl-token/program/lib.rs
+// See https://github.com/solana-foundation/anchor/blob/master/ts/packages/spl-token/program/lib.rs
 
 use anchor_lang::prelude::*;
 

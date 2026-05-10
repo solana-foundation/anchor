@@ -1,11 +1,11 @@
-use std::{fs, path::Path};
-
-use anyhow::{anyhow, Result};
-use semver::{Version, VersionReq};
-
-use crate::{
-    config::{Config, Manifest, PackageManager, WithPath},
-    VERSION,
+use {
+    crate::{
+        config::{Config, Manifest, PackageManager, WithPath},
+        VERSION,
+    },
+    anyhow::{anyhow, Result},
+    semver::{Version, VersionReq},
+    std::{fs, path::Path},
 };
 
 /// Check whether `overflow-checks` codegen option is enabled.
@@ -18,17 +18,15 @@ pub fn check_overflow(cargo_toml_path: impl AsRef<Path>) -> Result<bool> {
         .as_ref()
         .and_then(|profile| profile.overflow_checks)
         .ok_or(anyhow!(
-            "`overflow-checks` is not enabled. To enable, add:\n\n\
-    [profile.release]\n\
-    overflow-checks = true\n\n\
-    in workspace root Cargo.toml",
+            "`overflow-checks` is not enabled. To enable, \
+             add:\n\n[profile.release]\noverflow-checks = true\n\nin workspace root Cargo.toml",
         ))
 }
 
 /// Check whether there is a mismatch between the current CLI version and:
 ///
 /// - `anchor-lang` crate version
-/// - `@coral-xyz/anchor` package version
+/// - `@anchor-lang/core` package version
 ///
 /// This function logs warnings in the case of a mismatch.
 pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
@@ -48,11 +46,8 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
     if let Some(ver) = mismatched_lang_version {
         eprintln!(
             "WARNING: `anchor-lang` version({ver}) and the current CLI version({cli_version}) \
-                 don't match.\n\n\t\
-                 This can lead to unwanted behavior. To use the same CLI version, add:\n\n\t\
-                 [toolchain]\n\t\
-                 anchor_version = \"{ver}\"\n\n\t\
-                 to Anchor.toml\n"
+             don't match.\n\n\tThis can lead to unwanted behavior. To use the same CLI version, \
+             add:\n\n\t[toolchain]\n\tanchor_version = \"{ver}\"\n\n\tto Anchor.toml\n"
         );
     }
 
@@ -64,7 +59,7 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
     };
     let mismatched_ts_version = package_json
         .get("dependencies")
-        .and_then(|deps| deps.get("@coral-xyz/anchor"))
+        .and_then(|deps| deps.get("@anchor-lang/core"))
         .and_then(|ver| ver.as_str())
         .and_then(|ver| VersionReq::parse(ver).ok())
         .filter(|ver| !ver.matches(&cli_version));
@@ -78,10 +73,9 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
         };
 
         eprintln!(
-            "WARNING: `@coral-xyz/anchor` version({ver}) and the current CLI version\
-                ({cli_version}) don't match.\n\n\t\
-                This can lead to unwanted behavior. To fix, upgrade the package by running:\n\n\t\
-                {update_cmd} @coral-xyz/anchor@{cli_version}\n"
+            "WARNING: `@anchor-lang/core` version({ver}) and the current CLI \
+             version({cli_version}) don't match.\n\n\tThis can lead to unwanted behavior. To fix, \
+             upgrade the package by running:\n\n\t{update_cmd} @anchor-lang/core@{cli_version}\n"
         );
     }
 
@@ -90,12 +84,23 @@ pub fn check_anchor_version(cfg: &WithPath<Config>) -> Result<()> {
 
 /// Check for potential dependency improvements.
 ///
-/// The main problem people will run into with Solana v2 is that the `solana-program` version
+/// The main problem people will run into with Solana version bumps is that the `solana-program` version
 /// specified in users' `Cargo.toml` might be incompatible with `anchor-lang`'s dependency.
 /// To fix this and similar problems, users should use the crates exported from `anchor-lang` or
 /// `anchor-spl` when possible.
 pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
     // Check `solana-program`
+    /// Check if this version requirement matches the one listed in our workspace
+    fn compatible_solana_program(version_req: &str) -> bool {
+        let Ok(req) = VersionReq::parse(version_req) else {
+            // Assume incompatible if parsing fails
+            return false;
+        };
+        let version = include_str!("../solana-program-version").trim();
+        let workspace_solana_prog_version = semver::Version::parse(version).unwrap();
+        req.matches(&workspace_solana_prog_version)
+    }
+
     cfg.get_rust_program_list()?
         .into_iter()
         .map(|path| path.join("Cargo.toml"))
@@ -103,14 +108,29 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
         .map(|man| man.map_err(|e| anyhow!("Failed to read manifest: {e}")))
         .collect::<Result<Vec<_>>>()?
         .into_iter()
-        .filter(|man| man.dependencies.contains_key("solana-program"))
+        .filter(|man| {
+            man.dependencies
+                .get("solana-program")
+                .is_some_and(|dep| match dep {
+                    cargo_toml::Dependency::Simple(version) => !compatible_solana_program(version),
+                    cargo_toml::Dependency::Detailed(detail) => {
+                        if let Some(version) = &detail.version {
+                            !compatible_solana_program(version)
+                        } else {
+                            // Conservatively warn on non-version dependencies
+                            true
+                        }
+                    }
+                    // Conservatively warn on inherited dependencies
+                    _ => true,
+                })
+        })
         .for_each(|man| {
             eprintln!(
-                "WARNING: Adding `solana-program` as a separate dependency might cause conflicts.\n\
-                To solve, remove the `solana-program` dependency and use the exported crate from \
-                `anchor-lang`.\n\
-                `use solana_program` becomes `use anchor_lang::solana_program`.\n\
-                Program name: `{}`\n",
+                "WARNING: Adding `solana-program` as a separate dependency might cause \
+                 conflicts.\nTo solve, remove the `solana-program` dependency and use the \
+                 exported crate from `anchor-lang`.\n`use solana_program` becomes `use \
+                 anchor_lang::solana_program`.\nProgram name: `{}`\n",
                 man.package().name()
             )
         });
@@ -158,12 +178,10 @@ in `{manifest_path:?}`."#
         .filter(|(_, dep)| dep.req_features().contains(&"idl-build".into()))
         .for_each(|(name, _)| {
             eprintln!(
-                "WARNING: `idl-build` feature of crate `{name}` is enabled by default. \
-                    This is not the intended usage.\n\n\t\
-                    To solve, do not enable the `idl-build` feature and include crates that have \
-                    `idl-build` feature in the `idl-build` feature list:\n\n\t\
-                    [features]\n\t\
-                    idl-build = [\"{name}/idl-build\", ...]\n"
+                "WARNING: `idl-build` feature of crate `{name}` is enabled by default. This is \
+                 not the intended usage.\n\n\tTo solve, do not enable the `idl-build` feature and \
+                 include crates that have `idl-build` feature in the `idl-build` feature \
+                 list:\n\n\t[features]\n\tidl-build = [\"{name}/idl-build\", ...]\n"
             )
         });
 
@@ -176,11 +194,10 @@ in `{manifest_path:?}`."#
         .unwrap_or_default()
         .then(|| {
             eprintln!(
-                "WARNING: `idl-build` feature of `anchor-spl` is not enabled. \
-                This is likely to result in cryptic compile errors.\n\n\t\
-                To solve, add `anchor-spl/idl-build` to the `idl-build` feature list:\n\n\t\
-                [features]\n\t\
-                idl-build = [\"anchor-spl/idl-build\", ...]\n"
+                "WARNING: `idl-build` feature of `anchor-spl` is not enabled. This is likely to \
+                 result in cryptic compile errors.\n\n\tTo solve, add `anchor-spl/idl-build` to \
+                 the `idl-build` feature list:\n\n\t[features]\n\tidl-build = \
+                 [\"anchor-spl/idl-build\", ...]\n"
             )
         });
 

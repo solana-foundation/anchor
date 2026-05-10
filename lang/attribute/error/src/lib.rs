@@ -1,12 +1,15 @@
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
-use quote::quote;
-
-use anchor_syn::codegen;
-use anchor_syn::parser::error::{self as error_parser, ErrorInput};
-use anchor_syn::ErrorArgs;
-use syn::{parse_macro_input, Expr};
+use {
+    anchor_syn::{
+        codegen,
+        parser::error::{self as error_parser, ErrorInput},
+        ErrorArgs,
+    },
+    proc_macro::TokenStream,
+    quote::quote,
+    syn::{parse_macro_input, Expr},
+};
 
 /// Generates `Error` and `type Result<T> = Result<T, Error>` types to be
 /// used as return types from Anchor instruction handlers. Importantly, the
@@ -59,14 +62,19 @@ pub fn error_code(
         false => Some(parse_macro_input!(args as ErrorArgs)),
     };
     let mut error_enum = parse_macro_input!(input as syn::ItemEnum);
-    let error = codegen::error::generate(error_parser::parse(&mut error_enum, args));
+    let error = match error_parser::parse(&mut error_enum, args) {
+        Ok(e) => codegen::error::generate(e),
+        Err(e) => e.into_compile_error(),
+    };
     proc_macro::TokenStream::from(error)
 }
 
 /// Generates an [`Error::AnchorError`](../../anchor_lang/error/enum.Error.html) that includes file and line information.
 ///
 /// # Example
-/// ```rust,ignore
+/// ```ignore
+/// use anchor_lang::prelude::*;
+///
 /// #[program]
 /// mod errors {
 ///     use super::*;
@@ -74,6 +82,9 @@ pub fn error_code(
 ///         Err(error!(MyError::Hello))
 ///     }
 /// }
+///
+/// #[derive(Accounts)]
+/// pub struct Example {}
 ///
 /// #[error_code]
 /// pub enum MyError {

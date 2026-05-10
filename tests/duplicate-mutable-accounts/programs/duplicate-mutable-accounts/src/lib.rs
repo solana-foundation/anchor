@@ -33,11 +33,17 @@ pub mod duplicate_mutable_accounts {
         Ok(())
     }
 
-    // Test nested account structures
+    // Should FAIL if same mutable account is passed to both composite fields.
     pub fn nested_duplicate(ctx: Context<NestedDuplicate>) -> Result<()> {
-        // Both wrappers contain mutable counters
         ctx.accounts.wrapper1.counter.count += 1;
         ctx.accounts.wrapper2.counter.count += 1;
+        Ok(())
+    }
+
+    // Should FAIL if same mutable account is used as a direct field AND inside a composite field.
+    pub fn mixed_duplicate(ctx: Context<MixedDuplicate>) -> Result<()> {
+        ctx.accounts.account1.count += 1;
+        ctx.accounts.wrapper.counter.count += 1;
         Ok(())
     }
 
@@ -65,6 +71,16 @@ pub mod duplicate_mutable_accounts {
     ) -> Result<()> {
         ctx.accounts.data_account1.count = initial1;
         ctx.accounts.data_account2.count = initial2;
+        Ok(())
+    }
+
+    // Should FAIL if an already-initialized init_if_needed account duplicates
+    // another mutable account (double-write on exit).
+    pub fn init_if_needed_duplicate_mutable(
+        ctx: Context<InitIfNeededDuplicateMutable>,
+    ) -> Result<()> {
+        ctx.accounts.account_init.count += 1;
+        ctx.accounts.account_mut.count += 1;
         Ok(())
     }
 }
@@ -107,17 +123,26 @@ pub struct AllowsDuplicateReadonly<'info> {
     pub account2: Account<'info, Counter>,
 }
 
-// Nested account structures
+// A nested (composite) account struct with a mutable account inside.
 #[derive(Accounts)]
 pub struct CounterWrapper<'info> {
     #[account(mut)]
     pub counter: Account<'info, Counter>,
 }
 
+// Two composite fields
 #[derive(Accounts)]
 pub struct NestedDuplicate<'info> {
     pub wrapper1: CounterWrapper<'info>,
     pub wrapper2: CounterWrapper<'info>,
+}
+
+// Direct field + composite field
+#[derive(Accounts)]
+pub struct MixedDuplicate<'info> {
+    #[account(mut)]
+    pub account1: Account<'info, Counter>,
+    pub wrapper: CounterWrapper<'info>,
 }
 
 // Test using remaining_accounts
@@ -136,5 +161,18 @@ pub struct InitMultipleWithSamePayer<'info> {
     pub data_account2: Account<'info, Counter>,
     #[account(mut)]
     pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+// init_if_needed + a separate mut field pointing at the same account should FAIL
+// when the account is already initialized (double-write on exit).
+#[derive(Accounts)]
+pub struct InitIfNeededDuplicateMutable<'info> {
+    #[account(init_if_needed, payer = payer, space = 8 + 8)]
+    pub account_init: Account<'info, Counter>,
+    #[account(mut)]
+    pub account_mut: Account<'info, Counter>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }

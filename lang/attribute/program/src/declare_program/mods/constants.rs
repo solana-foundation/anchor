@@ -1,26 +1,34 @@
-use anchor_lang_idl::types::{Idl, IdlType};
-use quote::{format_ident, quote, ToTokens};
-
-use super::common::{convert_idl_type_to_syn_type, gen_docs};
+use {
+    super::common::{convert_idl_type_to_str, gen_docs},
+    anchor_lang_idl::types::{Idl, IdlType},
+    quote::{format_ident, quote, ToTokens},
+};
 
 pub fn gen_constants_mod(idl: &Idl) -> proc_macro2::TokenStream {
     let constants = idl.constants.iter().map(|c| {
         let name = format_ident!("{}", c.name);
         let docs = gen_docs(&c.docs);
+        #[allow(
+            clippy::unwrap_used,
+            reason = "compile_error! token stream is always valid syn::Type syntax"
+        )]
+        let ty = convert_idl_type_to_str(&c.ty, true)
+            .and_then(|s| {
+                syn::parse_str::<syn::Type>(&s)
+                    .map_err(|err| syn::Error::new(proc_macro2::Span::call_site(), err.to_string()))
+            })
+            .unwrap_or_else(|err| syn::parse2(err.into_compile_error()).unwrap());
+        #[allow(
+            clippy::unwrap_used,
+            reason = "IDL constant values are valid Rust expressions by construction"
+        )]
         let val = syn::parse_str::<syn::Expr>(&c.value)
             .unwrap()
             .to_token_stream();
-        let (ty, val) = match &c.ty {
-            IdlType::Bytes => (quote!(&[u8]), quote! { &#val }),
-            IdlType::String => (quote!(&str), val),
-            IdlType::Pubkey => {
-                let pubkey_str = c.value.to_string();
-                (
-                    quote!(anchor_lang::prelude::Pubkey),
-                    quote!(anchor_lang::prelude::Pubkey::from_str_const(#pubkey_str)),
-                )
-            }
-            _ => (convert_idl_type_to_syn_type(&c.ty).to_token_stream(), val),
+        let val = match &c.ty {
+            IdlType::Bytes => quote! { &#val },
+            IdlType::Pubkey => quote!(Pubkey::from_str_const(stringify!(#val))),
+            _ => val,
         };
 
         quote! {
@@ -32,6 +40,8 @@ pub fn gen_constants_mod(idl: &Idl) -> proc_macro2::TokenStream {
     quote! {
         /// Program constants.
         pub mod constants {
+            use super::*;
+
             #(#constants)*
         }
     }

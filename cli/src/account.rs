@@ -1,15 +1,17 @@
-use anyhow::{anyhow, Result};
-use clap::Parser;
-use solana_commitment_config::CommitmentConfig;
-use solana_pubkey::Pubkey;
-use solana_rpc_client::rpc_client::RpcClient;
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
+use {
+    crate::{
+        config::{Config, ConfigOverride},
+        AbsolutePath,
+    },
+    anyhow::{anyhow, Result},
+    clap::Parser,
+    solana_commitment_config::CommitmentConfig,
+    solana_pubkey::Pubkey,
+    solana_rpc_client::rpc_client::RpcClient,
+    std::{fs::File, io::Write, path::PathBuf},
+};
 
-use crate::config::{Config, ConfigOverride};
-
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub struct ShowAccountCommand {
     /// Account address to show
     pub account_address: Pubkey,

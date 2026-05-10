@@ -1,5 +1,4 @@
-use crate::Program;
-use quote::quote;
+use {crate::Program, quote::quote};
 
 mod accounts;
 pub mod common;

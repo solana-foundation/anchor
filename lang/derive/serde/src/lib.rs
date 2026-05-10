@@ -1,122 +1,76 @@
+//! Defines the [`AnchorSerialize`] and [`AnchorDeserialize`] derive macros
+//! These emit a `BorshSerialize`/`BorshDeserialize` implementation for the given type,
+//! as well as emitting IDL type information when the `idl-build` feature is enabled.
+
 extern crate proc_macro;
 
 #[cfg(feature = "lazy-account")]
 mod lazy;
 
-use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::quote;
-use syn::{Fields, Ident, Item};
+#[cfg(feature = "lazy-account")]
+use syn::spanned::Spanned;
+use {
+    proc_macro::TokenStream,
+    proc_macro2::{Span, TokenStream as TokenStream2},
+    proc_macro_crate::FoundCrate,
+    quote::quote,
+    syn::{parse_macro_input, DeriveInput, Ident, Meta, NestedMeta},
+};
 
-fn gen_borsh_serialize(input: TokenStream) -> TokenStream2 {
-    let item: Item = syn::parse(input).unwrap();
-    match item {
-        Item::Struct(item) => generate_struct_serialize(&item),
-        Item::Enum(item) => generate_enum_serialize(&item),
-        Item::Union(item) => generate_union_serialize(&item),
-        // Derive macros can only be defined on structs, enums, and unions.
-        _ => unreachable!(),
+/// Only one item-level `#[borsh]` attribute may be present, and we apply our own borsh attribute.
+/// Remove any user-provided `#[borsh]` attributes to apply in our generated derive.
+fn extract_borsh_attrs(input: &mut DeriveInput) -> Vec<NestedMeta> {
+    input
+        .attrs
+        .extract_if(.., |attr| attr.path.is_ident("borsh"))
+        .filter_map(|attr| {
+            if let Ok(Meta::List(list)) = attr.parse_meta() {
+                Some(list)
+            } else {
+                None
+            }
+        })
+        .flat_map(|list| list.nested)
+        .collect()
+}
+
+/// Locate any `#[borsh]` attributes on struct/enum fields,
+/// which are currently unsupported with `lazy-account`.
+#[cfg(feature = "lazy-account")]
+fn find_field_borsh_attr(input: &DeriveInput) -> Option<&syn::Attribute> {
+    match &input.data {
+        syn::Data::Struct(data) => data
+            .fields
+            .iter()
+            .flat_map(|field| field.attrs.iter())
+            .find(|attr| attr.path.is_ident("borsh")),
+        syn::Data::Enum(data) => data
+            .variants
+            .iter()
+            .flat_map(|variant| variant.fields.iter())
+            .flat_map(|field| field.attrs.iter())
+            .find(|attr| attr.path.is_ident("borsh")),
+        syn::Data::Union(data) => data
+            .fields
+            .named
+            .iter()
+            .flat_map(|field| field.attrs.iter())
+            .find(|attr| attr.path.is_ident("borsh")),
     }
 }
 
-fn generate_struct_serialize(item: &syn::ItemStruct) -> TokenStream2 {
-    let struct_name = &item.ident;
-    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
-
-    let serialize_fields = match &item.fields {
-        Fields::Named(fields) => {
-            let field_names = fields.named.iter().map(|f| &f.ident);
-            quote! {
-                #(
-                    borsh::BorshSerialize::serialize(&self.#field_names, writer)?;
-                )*
-            }
-        }
-        Fields::Unnamed(fields) => {
-            let indices = (0..fields.unnamed.len()).map(syn::Index::from);
-            quote! {
-                #(
-                    borsh::BorshSerialize::serialize(&self.#indices, writer)?;
-                )*
-            }
-        }
-        Fields::Unit => quote! {},
-    };
-
+fn gen_borsh_serialize(input: TokenStream) -> TokenStream {
+    let mut item = parse_macro_input!(input as DeriveInput);
+    let borsh_attrs = extract_borsh_attrs(&mut item);
+    let attrs = helper_attrs("BorshSerialize", borsh_attrs);
     quote! {
-        impl #impl_generics borsh::BorshSerialize for #struct_name #ty_generics #where_clause {
-            fn serialize<W: borsh::io::Write>(&self, writer: &mut W) -> borsh::io::Result<()> {
-                #serialize_fields
-                Ok(())
-            }
-        }
+        #attrs
+        #item
     }
+    .into()
 }
 
-fn generate_enum_serialize(item: &syn::ItemEnum) -> TokenStream2 {
-    let enum_name = &item.ident;
-    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
-
-    let serialize_variants = item.variants.iter().enumerate().map(|(idx, variant)| {
-        let variant_name = &variant.ident;
-        let idx_u8 = idx as u8;
-
-        match &variant.fields {
-            Fields::Named(fields) => {
-                let field_names: Vec<_> = fields
-                    .named
-                    .iter()
-                    .map(|f| f.ident.as_ref().unwrap())
-                    .collect();
-                quote! {
-                    #enum_name::#variant_name { #(#field_names),* } => {
-                        writer.write_all(&[#idx_u8])?;
-                        #(
-                            borsh::BorshSerialize::serialize(#field_names, writer)?;
-                        )*
-                    }
-                }
-            }
-            Fields::Unnamed(fields) => {
-                let field_names: Vec<_> = (0..fields.unnamed.len())
-                    .map(|i| Ident::new(&format!("field{}", i), Span::call_site()))
-                    .collect();
-                quote! {
-                    #enum_name::#variant_name(#(#field_names),*) => {
-                        writer.write_all(&[#idx_u8])?;
-                        #(
-                            borsh::BorshSerialize::serialize(#field_names, writer)?;
-                        )*
-                    }
-                }
-            }
-            Fields::Unit => {
-                quote! {
-                    #enum_name::#variant_name => {
-                        writer.write_all(&[#idx_u8])?;
-                    }
-                }
-            }
-        }
-    });
-
-    quote! {
-        impl #impl_generics borsh::BorshSerialize for #enum_name #ty_generics #where_clause {
-            fn serialize<W: borsh::io::Write>(&self, writer: &mut W) -> borsh::io::Result<()> {
-                match self {
-                    #(#serialize_variants)*
-                }
-                Ok(())
-            }
-        }
-    }
-}
-
-fn generate_union_serialize(item: &syn::ItemUnion) -> TokenStream2 {
-    syn::Error::new_spanned(item, "Unions are not supported by borsh").to_compile_error()
-}
-
-#[proc_macro_derive(AnchorSerialize, attributes(borsh_skip))]
+#[proc_macro_derive(AnchorSerialize, attributes(borsh))]
 pub fn anchor_serialize(input: TokenStream) -> TokenStream {
     #[cfg(not(feature = "idl-build"))]
     let ret = gen_borsh_serialize(input);
@@ -125,163 +79,168 @@ pub fn anchor_serialize(input: TokenStream) -> TokenStream {
 
     #[cfg(feature = "idl-build")]
     {
-        use anchor_syn::idl::*;
-        use quote::quote;
+        use {anchor_syn::idl::*, quote::quote, syn::Item};
 
-        let idl_build_impl = match syn::parse(input).unwrap() {
-            Item::Struct(item) => impl_idl_build_struct(&item),
-            Item::Enum(item) => impl_idl_build_enum(&item),
-            Item::Union(item) => impl_idl_build_union(&item),
-            // Derive macros can only be defined on structs, enums, and unions.
-            _ => unreachable!(),
+        #[allow(clippy::disallowed_macros)]
+        let idl_build_impl = match syn::parse(input) {
+            Err(e) => return e.to_compile_error().into(),
+            Ok(item) => match item {
+                Item::Struct(item) => impl_idl_build_struct(&item),
+                Item::Enum(item) => impl_idl_build_enum(&item),
+                Item::Union(item) => impl_idl_build_union(&item),
+                _ => syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    "AnchorSerialize can only be derived on structs, enums, and unions",
+                )
+                .to_compile_error(),
+            },
         };
 
-        return TokenStream::from(quote! {
+        let ret = TokenStream2::from(ret);
+        return quote! {
             #ret
             #idl_build_impl
-        });
+        }
+        .into();
     };
 
-    #[allow(unreachable_code)]
-    TokenStream::from(ret)
+    #[cfg(not(feature = "idl-build"))]
+    ret
 }
 
-fn gen_borsh_deserialize(input: TokenStream) -> TokenStream2 {
-    let item: Item = syn::parse(input).unwrap();
-    match item {
-        Item::Struct(item) => generate_struct_deserialize(&item),
-        Item::Enum(item) => generate_enum_deserialize(&item),
-        Item::Union(item) => generate_union_deserialize(&item),
-        // Derive macros can only be defined on structs, enums, and unions.
-        _ => unreachable!(),
+fn gen_borsh_deserialize(input: TokenStream) -> TokenStream {
+    let mut item = parse_macro_input!(input as DeriveInput);
+    #[cfg(feature = "lazy-account")]
+    if let Some(attr) = find_field_borsh_attr(&item) {
+        return syn::Error::new(
+            attr.span(),
+            "`borsh` attributes are not currently supported with `lazy-account`",
+        )
+        .into_compile_error()
+        .into();
     }
-}
 
-fn generate_struct_deserialize(item: &syn::ItemStruct) -> TokenStream2 {
-    let struct_name = &item.ident;
-    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
-
-    let deserialize_fields = match &item.fields {
-        Fields::Named(fields) => {
-            let field_names: Vec<_> = fields
-                .named
-                .iter()
-                .map(|f| f.ident.as_ref().unwrap())
-                .collect();
-            quote! {
-                Ok(Self {
-                    #(
-                        #field_names: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                    )*
-                })
-            }
-        }
-        Fields::Unnamed(fields) => {
-            let field_deserializations = (0..fields.unnamed.len()).map(|_| {
-                quote! { borsh::BorshDeserialize::deserialize_reader(reader)? }
-            });
-            quote! {
-                Ok(Self(
-                    #(#field_deserializations),*
-                ))
-            }
-        }
-        Fields::Unit => {
-            quote! {
-                Ok(Self)
-            }
-        }
-    };
-
-    quote! {
-        impl #impl_generics borsh::BorshDeserialize for #struct_name #ty_generics #where_clause {
-            fn deserialize_reader<R: borsh::io::Read>(reader: &mut R) -> borsh::io::Result<Self> {
-                #deserialize_fields
-            }
-        }
-    }
-}
-
-fn generate_enum_deserialize(item: &syn::ItemEnum) -> TokenStream2 {
-    let enum_name = &item.ident;
-    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
-
-    let deserialize_variants = item.variants.iter().enumerate().map(|(idx, variant)| {
-        let variant_name = &variant.ident;
-        let idx_u8 = idx as u8;
-
-        let construct = match &variant.fields {
-            Fields::Named(fields) => {
-                let field_names: Vec<_> = fields
-                    .named
-                    .iter()
-                    .map(|f| f.ident.as_ref().unwrap())
-                    .collect();
-                quote! {
-                    #enum_name::#variant_name {
-                        #(
-                            #field_names: borsh::BorshDeserialize::deserialize_reader(reader)?,
-                        )*
-                    }
-                }
-            }
-            Fields::Unnamed(fields) => {
-                let field_deserializations = (0..fields.unnamed.len()).map(|_| {
-                    quote! { borsh::BorshDeserialize::deserialize_reader(reader)? }
-                });
-                quote! {
-                    #enum_name::#variant_name(
-                        #(#field_deserializations),*
-                    )
-                }
-            }
-            Fields::Unit => {
-                quote! {
-                    #enum_name::#variant_name
-                }
-            }
-        };
-
-        quote! {
-            #idx_u8 => Ok(#construct),
-        }
-    });
-
-    quote! {
-        impl #impl_generics borsh::BorshDeserialize for #enum_name #ty_generics #where_clause {
-            fn deserialize_reader<R: borsh::io::Read>(reader: &mut R) -> borsh::io::Result<Self> {
-                let mut variant_idx = [0u8; 1];
-                reader.read_exact(&mut variant_idx)?;
-                match variant_idx[0] {
-                    #(#deserialize_variants)*
-                    _ => Err(borsh::io::Error::new(
-                        borsh::io::ErrorKind::InvalidData,
-                        format!("Invalid enum variant index: {}", variant_idx[0]),
-                    )),
-                }
-            }
-        }
-    }
-}
-
-fn generate_union_deserialize(item: &syn::ItemUnion) -> TokenStream2 {
-    syn::Error::new_spanned(item, "Unions are not supported by borsh").to_compile_error()
-}
-
-#[proc_macro_derive(AnchorDeserialize, attributes(borsh_skip, borsh_init))]
-pub fn borsh_deserialize(input: TokenStream) -> TokenStream {
+    let borsh_attrs = extract_borsh_attrs(&mut item);
     #[cfg(feature = "lazy-account")]
     {
-        let deser = gen_borsh_deserialize(input.clone());
+        // `use_discriminant = false` is safe with `lazy-account` because it preserves
+        // borsh's default sequential tag encoding (0, 1, 2, ...) which Lazy's
+        // `size_of` relies on. `use_discriminant = true` would encode explicit
+        // discriminant values as the tag byte, breaking the Lazy match arms.
+        // Other item-level borsh attrs are not yet supported.
+        let unsupported = borsh_attrs.iter().find(|attr| {
+            !matches!(
+                attr,
+                NestedMeta::Meta(Meta::NameValue(nv))
+                    if nv.path.is_ident("use_discriminant")
+                        && matches!(&nv.lit, syn::Lit::Bool(b) if !b.value)
+            )
+        });
+        if let Some(attr) = unsupported {
+            return syn::Error::new(
+                attr.span(),
+                "only `#[borsh(use_discriminant = false)]` is supported with `lazy-account`; \
+                 `use_discriminant = true` and other `borsh` attributes are not yet supported",
+            )
+            .into_compile_error()
+            .into();
+        }
+    }
+    let attrs = helper_attrs("BorshDeserialize", borsh_attrs);
+    quote! {
+        #attrs
+        #item
+    }
+    .into()
+}
+
+/// Implements `borsh` deserialization for this structure, as well as implementing lazy
+/// deserialization if the `lazy-account` feature is enabled.
+/// `#[borsh(use_discriminant = false)]` is supported with `lazy-account`;
+/// `use_discriminant = true` and other `#[borsh]` attributes (e.g. `skip`) are not yet
+/// supported in conjunction with `lazy-account`.
+///
+/// ```
+/// # use anchor_derive_serde::AnchorDeserialize;
+/// #[derive(AnchorDeserialize)]
+/// #[borsh(use_discriminant = false)]
+/// pub enum Example {
+///     Foo = 1,
+///     Bar = 2,
+/// }
+/// ```
+///
+#[cfg_attr(feature = "lazy-account", doc = "```compile_fail")]
+#[cfg_attr(
+    feature = "lazy-account",
+    doc = "// Will not compile with `lazy-account`"
+)]
+#[cfg_attr(not(feature = "lazy-account"), doc = "```")]
+/// # use anchor_derive_serde::AnchorDeserialize;
+/// #[derive(AnchorDeserialize)]
+/// pub struct Example {
+///     #[borsh(skip)]
+///     x: u8,
+/// }
+/// ```
+#[proc_macro_derive(AnchorDeserialize, attributes(borsh))]
+pub fn anchor_deserialize(input: TokenStream) -> TokenStream {
+    #[cfg(feature = "lazy-account")]
+    {
+        let deser = TokenStream2::from(gen_borsh_deserialize(input.clone()));
         let lazy = lazy::gen_lazy(input).unwrap_or_else(|e| e.to_compile_error());
-        quote::quote! {
+        quote! {
             #deser
             #lazy
         }
         .into()
     }
+
     #[cfg(not(feature = "lazy-account"))]
-    gen_borsh_deserialize(input).into()
+    gen_borsh_deserialize(input)
+}
+
+fn helper_attrs(mac: &str, borsh_attrs: Vec<NestedMeta>) -> TokenStream2 {
+    // We need to emit the original borsh deserialization macros on our type,
+    // but derive macros can't emit other derives. To get around this, we use a hack:
+    // 1. Define an `__erase` attribute macro which deletes the item it is applied to
+    // 2. Emit a call to the derive, followed by a copy of the input struct with #[__erase] applied
+    // 3. This results in the trait implementations being produced, but the duplicate type definition being deleted
+
+    let mac_path = Ident::new(mac, Span::call_site());
+    let anchor = match proc_macro_crate::crate_name("anchor-lang") {
+        Ok(found) => found,
+        Err(_) => {
+            return syn::Error::new(
+                Span::call_site(),
+                "`anchor-derive-serde` must be used via `anchor-lang`",
+            )
+            .into_compile_error()
+        }
+    };
+
+    let anchor_path = Ident::new(
+        match &anchor {
+            FoundCrate::Itself => "crate",
+            FoundCrate::Name(cr) => cr.as_str(),
+        },
+        Span::call_site(),
+    );
+    let borsh_path = quote! { #anchor_path::prelude::borsh };
+    let borsh_path_str = borsh_path.to_string();
+    quote! {
+        #[derive(#borsh_path::#mac_path)]
+        // Borsh derives used in a re-export require providing the path to `borsh`
+        #[borsh(crate = #borsh_path_str, #(#borsh_attrs),*)]
+        #[#anchor_path::__erase]
+    }
+}
+
+/// Deletes the item it is applied to. Implementation detail and not part of public API.
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn __erase(_: TokenStream, _: TokenStream) -> TokenStream {
+    TokenStream::new()
 }
 
 #[cfg(feature = "lazy-account")]

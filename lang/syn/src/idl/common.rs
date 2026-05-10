@@ -1,8 +1,9 @@
-use std::path::{Path, PathBuf};
-
-use anyhow::{anyhow, Result};
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use {
+    anyhow::{anyhow, Result},
+    proc_macro2::TokenStream,
+    quote::{quote, ToTokens},
+    std::path::{Path, PathBuf},
+};
 
 pub fn find_path(name: &str, path: impl AsRef<Path>) -> Result<PathBuf> {
     let path = path.as_ref();

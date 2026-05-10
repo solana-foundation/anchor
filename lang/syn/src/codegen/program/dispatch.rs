@@ -1,11 +1,13 @@
-use crate::Program;
-use heck::CamelCase;
-use quote::quote;
+use {crate::Program, heck::CamelCase, quote::quote};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     // Dispatch all global instructions.
     let global_ixs = program.ixs.iter().map(|ix| {
         let ix_method_name = &ix.raw_method.sig.ident;
+        #[allow(
+            clippy::expect_used,
+            reason = "camelCase of a valid Rust identifier is always a valid TokenStream"
+        )]
         let ix_name_camel: proc_macro2::TokenStream = ix_method_name
             .to_string()
             .to_camel_case()
@@ -72,9 +74,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
         /// If no match is found, the fallback function is executed if it exists, or an error is
         /// returned if it doesn't exist.
         fn dispatch<'info>(
-            program_id: &Pubkey,
+            program_id: &'info Pubkey,
             accounts: &'info [AccountInfo<'info>],
-            data: &[u8],
+            data: &'info [u8],
         ) -> anchor_lang::Result<()> {
             #(#global_ixs)*
 

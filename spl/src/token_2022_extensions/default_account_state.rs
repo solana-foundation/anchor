@@ -1,8 +1,14 @@
-use anchor_lang::context::CpiContext;
-use anchor_lang::prelude::AccountInfo;
-use anchor_lang::{Result, ToAccountInfos, ToAccountMetas};
-use spl_token_2022::state::AccountState;
-use spl_token_2022_interface as spl_token_2022;
+// Avoiding AccountInfo deprecated msg in anchor context
+#![allow(deprecated)]
+use {
+    anchor_lang::{
+        context::CpiContext,
+        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
+        Accounts, Result,
+    },
+    spl_token_2022::state::AccountState,
+    spl_token_2022_interface as spl_token_2022,
+};
 
 pub fn default_account_state_initialize<'info>(
     ctx: CpiContext<'_, '_, '_, 'info, DefaultAccountStateInitialize<'info>>,

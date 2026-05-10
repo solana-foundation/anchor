@@ -1,5 +1,4 @@
 use anchor_lang::declare_id;
-
 pub use srm::ID as SRM;
 mod srm {
     use super::*;

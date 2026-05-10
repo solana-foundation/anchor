@@ -1,10 +1,13 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(dead_code, deprecated)]
+// Generic accounts are not supported with `Lazy`
+#![cfg(not(feature = "lazy-account"))]
 
-use anchor_lang::prelude::borsh::io::Write;
-use anchor_lang::prelude::*;
-use borsh::{BorshDeserialize, BorshSerialize};
-use solana_pubkey::Pubkey;
+use {
+    anchor_lang::prelude::{borsh::io::Write, *},
+    borsh::{BorshDeserialize, BorshSerialize},
+    solana_pubkey::Pubkey,
+};
 
 // Needed to declare accounts.
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -37,7 +40,7 @@ pub struct FooAccount<const N: usize> {
 #[derive(Default)]
 pub struct Associated<T>
 where
-    T: BorshDeserialize + BorshSerialize + Default,
+    T: BorshDeserialize + BorshSerialize + Clone + Default,
 {
     pub data: T,
 }

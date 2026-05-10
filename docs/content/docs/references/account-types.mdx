@@ -7,7 +7,7 @@ Minimal reference examples for Anchor
 [account types](https://docs.rs/anchor-lang/latest/anchor_lang/accounts/index.html).
 
 See the account types
-[source code](https://github.com/coral-xyz/anchor/tree/0e5285aecdf410fa0779b7cd09a47f235882c156/lang/src/accounts)
+[source code](https://github.com/solana-foundation/anchor/tree/62865c636aecc6974fc9cfebfc6cf08ca4f0bb72/lang/src/accounts)
 for implementation details.
 
 ## Account Types
@@ -229,4 +229,75 @@ pub struct InstructionAccounts<'info> {
     // [!code highlight]
     pub account: UncheckedAccount<'info>,
 }
+```
+
+### `Migration<'info, From, To>`
+
+Description: Account container that handles schema migrations from one account type (`From`) to another (`To`). During deserialization, the account must be in the `From` format. On instruction exit, the account must be migrated to the `To` format, which is then serialized. Typically used with the `realloc` constraint to resize accounts during migration.
+
+Checks:
+- `Account.info.owner == From::owner()`
+- Account is initialized (not owned by system program with 0 lamports)
+- Account deserializes as `From` type
+
+```rust title="snippet"
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct AccountV1 {
+    pub data: u64,
+}
+
+#[account]
+pub struct AccountV2 {
+    pub data: u64,
+    pub new_field: u64,
+}
+
+#[derive(Accounts)]
+pub struct MigrateAccount<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    // [!code word:Migration]
+    // [!code highlight:5]
+    #[account(
+        mut,
+        realloc = 8 + AccountV2::INIT_SPACE,
+        realloc::payer = payer,
+        realloc::zero = false
+    )]
+    pub my_account: Migration<'info, AccountV1, AccountV2>,
+    pub system_program: Program<'info, System>,
+}
+```
+
+Usage patterns:
+
+```rust title="migrate with explicit call"
+// Access old fields via Deref before migration
+let old_data = ctx.accounts.my_account.data;
+
+// Migrate to new schema
+ctx.accounts.my_account.migrate(AccountV2 {
+    data: old_data,
+    new_field: 42,
+})?;
+```
+
+```rust title="idempotent migration with into_inner"
+// Migrates if needed, returns reference to new data
+let migrated = ctx.accounts.my_account.into_inner(AccountV2 {
+    data: ctx.accounts.my_account.data,
+    new_field: ctx.accounts.my_account.data * 2,
+});
+msg!("New field: {}", migrated.new_field);
+```
+
+```rust title="idempotent migration with mutation"
+// Migrates if needed, returns mutable reference
+let migrated = ctx.accounts.my_account.into_inner_mut(AccountV2 {
+    data: ctx.accounts.my_account.data,
+    new_field: 0,
+});
+migrated.new_field = 42;
 ```

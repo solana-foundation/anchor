@@ -1,14 +1,18 @@
-use crate::AccountsStruct;
-use quote::quote;
-use std::iter;
-use syn::punctuated::Punctuated;
-use syn::{ConstParam, LifetimeDef, Token, TypeParam};
-use syn::{GenericParam, PredicateLifetime, WhereClause, WherePredicate};
+use {
+    crate::AccountsStruct,
+    quote::quote,
+    std::iter,
+    syn::{
+        punctuated::Punctuated, ConstParam, GenericParam, LifetimeDef, PredicateLifetime, Token,
+        TypeParam, WhereClause, WherePredicate,
+    },
+};
 
 pub mod __client_accounts;
 pub mod __cpi_client_accounts;
 mod bumps;
 mod constraints;
+mod duplicate_mutable_account_keys;
 mod exit;
 mod to_account_infos;
 mod to_account_metas;
@@ -19,16 +23,28 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_to_account_infos = to_account_infos::generate(accs);
     let impl_to_account_metas = to_account_metas::generate(accs);
     let impl_exit = exit::generate(accs);
+    let impl_dup_mutable_keys = duplicate_mutable_account_keys::generate(accs);
     let bumps_struct = bumps::generate(accs);
 
-    let __client_accounts_mod = __client_accounts::generate(accs, quote!(crate::ID));
-    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs, quote!(crate::ID));
+    let program_id = quote! {
+        // In a doctest the ID will be in the current scope, not the crate root
+        {
+            #[cfg(not(doctest))]
+            { crate::ID }
+            #[cfg(doctest)]
+            { ID }
+        }
+    };
+
+    let __client_accounts_mod = __client_accounts::generate(accs, program_id.clone());
+    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs, program_id);
 
     let ret = quote! {
         #impl_try_accounts
         #impl_to_account_infos
         #impl_to_account_metas
         #impl_exit
+        #impl_dup_mutable_keys
         #bumps_struct
 
         #__client_accounts_mod
@@ -49,6 +65,10 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 }
 
 fn generics(accs: &AccountsStruct) -> ParsedGenerics {
+    #[allow(
+        clippy::expect_used,
+        reason = "'info is a hardcoded valid lifetime string"
+    )]
     let trait_lifetime = accs
         .generics
         .lifetimes()

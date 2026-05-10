@@ -1,6 +1,4 @@
-use crate::Program;
-use heck::SnakeCase;
-use quote::quote;
+use {crate::Program, heck::SnakeCase, quote::quote};
 
 pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let mut accounts = std::collections::HashMap::new();
@@ -20,6 +18,10 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
     let account_structs: Vec<proc_macro2::TokenStream> = accounts
         .iter()
         .map(|(macro_name, cfgs)| {
+            #[allow(
+                clippy::unwrap_used,
+                reason = "computed from valid Rust identifier via snake_case"
+            )]
             let macro_name: proc_macro2::TokenStream = macro_name.parse().unwrap();
             quote! {
                 #(#cfgs)*

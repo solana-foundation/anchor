@@ -1,20 +1,19 @@
 //! Type validating that the account is one of a set of given Programs
 
-use crate::accounts::program::Program;
-use crate::error::{Error, ErrorCode};
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{
-    AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
-    ToAccountMetas,
+use {
+    crate::{
+        accounts::program::Program,
+        error::{Error, ErrorCode},
+        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        AccountDeserialize, Accounts, AccountsExit, CheckId, Key, Result, ToAccountInfos,
+        ToAccountMetas,
+    },
+    std::{collections::BTreeSet, ops::Deref},
 };
-use std::collections::BTreeSet;
-use std::ops::Deref;
 
 /// Type validating that the account is one of a set of given Programs
 ///
-/// The `Interface` wraps over the [`Program`](crate::Program), allowing for
+/// The `Interface` wraps over [`Program`], allowing for
 /// multiple possible program ids. Useful for any program that implements an
 /// instruction interface. For example, spl-token and spl-token-2022 both implement
 /// the spl-token interface.

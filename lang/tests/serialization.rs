@@ -34,3 +34,22 @@ fn test_instruction_data() {
         "the different methods produced different serialized representations"
     );
 }
+
+#[cfg(not(feature = "lazy-account"))]
+#[test]
+/// Test for <https://github.com/solana-foundation/anchor/issues/4377>;
+/// ensure that user-provided `borsh` attributes are applied.
+fn test_borsh_attributes() {
+    #[derive(AnchorSerialize, AnchorDeserialize)]
+    #[borsh(use_discriminant = true)]
+    #[repr(u8)]
+    pub enum Animal {
+        Cat = 0,
+        Dog = 1,
+        Mouse = 5,
+    }
+
+    assert_eq!(borsh::to_vec(&Animal::Cat).unwrap(), vec![0]);
+    assert_eq!(borsh::to_vec(&Animal::Dog).unwrap(), vec![1]);
+    assert_eq!(borsh::to_vec(&Animal::Mouse).unwrap(), vec![5]);
+}

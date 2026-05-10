@@ -1,7 +1,8 @@
-use quote::{format_ident, quote};
-use std::collections::HashSet;
-
-use crate::*;
+use {
+    crate::*,
+    quote::{format_ident, quote},
+    std::collections::HashSet,
+};
 
 pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let constraints = linearize(&f.constraints);
@@ -28,7 +29,12 @@ pub fn generate(f: &Field, accs: &AccountsStruct) -> proc_macro2::TokenStream {
     if f.is_optional && !constraints.is_empty() {
         let ident = &f.ident;
         let ty_decl = f.ty_decl(false);
-        all_checks = match &constraints[0] {
+        #[allow(
+            clippy::indexing_slicing,
+            reason = "guarded by !constraints.is_empty() above"
+        )]
+        let first_constraint = &constraints[0];
+        all_checks = match first_constraint {
             Constraint::Init(_) | Constraint::Zeroed(_) => {
                 quote! {
                     let #ident: #ty_decl = if let Some(#ident) = #ident {
@@ -60,6 +66,11 @@ pub fn generate_composite(f: &CompositeField) -> proc_macro2::TokenStream {
         .iter()
         .map(|c| match c {
             Constraint::Raw(_) => c,
+            #[allow(
+                clippy::panic,
+                reason = "invariant: linearize() only yields Raw for CompositeField; non-Raw is a \
+                          bug in constraint parsing"
+            )]
             _ => panic!("Invariant violation: composite constraints can only be raw or literals"),
         })
         .map(|c| generate_constraint_composite(f, c))
@@ -173,6 +184,11 @@ fn generate_constraint(
 fn generate_constraint_composite(f: &CompositeField, c: &Constraint) -> proc_macro2::TokenStream {
     match c {
         Constraint::Raw(c) => generate_constraint_raw(&f.ident, c),
+        #[allow(
+            clippy::panic,
+            reason = "invariant: only Raw constraints reach generate_constraint_composite; \
+                      non-Raw is a bug in codegen dispatch"
+        )]
         _ => panic!("Invariant violation"),
     }
 }
@@ -575,8 +591,9 @@ fn generate_constraint_init_group(
                         __bumps.#field = #bump_tok;
 
                         // Build signer seeds at runtime = seeds + bump
+                        let __bump_bytes: [u8; 1] = [__bump];
                         let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> = __seeds_slice.to_vec();
-                        __signer_seeds_vec.push(&[__bump][..]);
+                        __signer_seeds_vec.push(&__bump_bytes[..]);
                         let __signer_seeds = __signer_seeds_vec;
 
                         if #field.key() != __pda_address {
@@ -628,13 +645,14 @@ fn generate_constraint_init_group(
 
             let token_account_space = generate_get_token_account_space(mint);
 
-            let create_account = generate_create_account(
-                field,
-                quote! {#token_account_space},
-                quote! {&#token_program.key()},
-                quote! {#payer},
-                seeds_with_bump,
-            );
+            let create_account_or_fund_allocate_assign =
+                generate_create_account_or_fund_allocate_assign(
+                    field,
+                    quote! {#token_account_space},
+                    quote! {&#token_program.key()},
+                    quote! {#payer},
+                    seeds_with_bump,
+                );
 
             quote! {
                 // Define the bump and pda variable.
@@ -649,7 +667,7 @@ fn generate_constraint_init_group(
                         #payer_optional_check
 
                         // Create the account with the system program.
-                        #create_account
+                        #create_account_or_fund_allocate_assign
 
                         // Initialize the token account.
                         let cpi_program_id = #token_program.key();
@@ -768,6 +786,7 @@ fn generate_constraint_init_group(
             permanent_delegate,
             transfer_hook_authority,
             transfer_hook_program_id,
+            pausable_authority,
         } => {
             let token_program = match token_program {
                 Some(t) => t.to_token_stream(),
@@ -832,6 +851,11 @@ fn generate_constraint_init_group(
                 None => quote! {},
             };
 
+            let pausable_authority_check = match pausable_authority {
+                Some(pac) => check_scope.generate_check(pac),
+                None => quote! {},
+            };
+
             let system_program_optional_check = check_scope.generate_check(system_program);
             let token_program_optional_check = check_scope.generate_check(&token_program);
             let rent_optional_check = check_scope.generate_check(rent);
@@ -852,6 +876,7 @@ fn generate_constraint_init_group(
                 #transfer_hook_authority_check
                 #transfer_hook_program_id_check
                 #permanent_delegate_check
+                #pausable_authority_check
             };
 
             let payer_optional_check = check_scope.generate_check(payer);
@@ -881,6 +906,10 @@ fn generate_constraint_init_group(
 
             if permanent_delegate.is_some() {
                 extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::PermanentDelegate});
+            }
+
+            if pausable_authority.is_some() {
+                extensions.push(quote! {::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::Pausable})
             }
 
             let mint_space = if extensions.is_empty() {
@@ -954,13 +983,19 @@ fn generate_constraint_init_group(
                 None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
             };
 
-            let create_account = generate_create_account(
-                field,
-                mint_space,
-                quote! {&#token_program.key()},
-                quote! {#payer},
-                seeds_with_bump,
-            );
+            let pausable_authority = match pausable_authority {
+                Some(pa) => quote! { Option::<anchor_lang::prelude::Pubkey>::Some(#pa.key()) },
+                None => quote! { Option::<anchor_lang::prelude::Pubkey>::None },
+            };
+
+            let create_account_or_fund_allocate_assign =
+                generate_create_account_or_fund_allocate_assign(
+                    field,
+                    mint_space,
+                    quote! {&#token_program.key()},
+                    quote! {#payer},
+                    seeds_with_bump,
+                );
 
             quote! {
                 // Define the bump and pda variable.
@@ -976,7 +1011,7 @@ fn generate_constraint_init_group(
                         #payer_optional_check
 
                         // Create the account with the system program.
-                        #create_account
+                        #create_account_or_fund_allocate_assign
 
                         let cpi_program_id = #token_program.key();
 
@@ -1026,6 +1061,12 @@ fn generate_constraint_init_group(
                                             token_program_id: #token_program.to_account_info(),
                                             mint: #field.to_account_info(),
                                         }), #permanent_delegate.unwrap())?;
+                                    },
+                                    ::anchor_spl::token_interface::spl_token_2022::extension::ExtensionType::Pausable => {
+                                        ::anchor_spl::token_interface::pausable_initialize(anchor_lang::context::CpiContext::new(cpi_program_id, ::anchor_spl::token_interface::PausableInitialize {
+                                            token_program_id: #token_program.to_account_info(),
+                                            mint: #field.to_account_info(),
+                                        }), #pausable_authority.unwrap())?;
                                     },
                                     // All extensions specified by the user should be implemented.
                                     // If this line runs, it means there is a bug in the codegen.
@@ -1100,13 +1141,14 @@ fn generate_constraint_init_group(
             };
 
             // CPI to the system program to create the account.
-            let create_account = generate_create_account(
-                field,
-                quote! {space},
-                owner.clone(),
-                quote! {#payer},
-                seeds_with_bump,
-            );
+            let create_account_or_fund_allocate_assign =
+                generate_create_account_or_fund_allocate_assign(
+                    field,
+                    quote! {space},
+                    owner.clone(),
+                    quote! {#payer},
+                    seeds_with_bump,
+                );
 
             // Put it all together.
             quote! {
@@ -1129,7 +1171,7 @@ fn generate_constraint_init_group(
                         #payer_optional_check
 
                         // CPI to the system program to create.
-                        #create_account
+                        #create_account_or_fund_allocate_assign
 
                         // Convert from account info to account context wrapper type.
                         #from_account_info_unchecked
@@ -1587,6 +1629,24 @@ fn generate_constraint_mint(
         None => quote! {},
     };
 
+    let pausable_authority_check = match &c.pausable_authority {
+        Some(pausable_authority) => {
+            let pausable_authority_optional_check =
+                optional_check_scope.generate_check(pausable_authority);
+            quote! {
+                let pausable = ::anchor_spl::token_interface::get_mint_extension_data::<::anchor_spl::token_interface::spl_token_2022::extension::pausable::PausableConfig>(#account_ref);
+                if pausable.is_err() {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintPausableExtension.into());
+                }
+                #pausable_authority_optional_check
+                if pausable.unwrap().authority != ::anchor_spl::token_2022_extensions::spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(#pausable_authority.key()))? {
+                    return Err(anchor_lang::error::ErrorCode::ConstraintMintPausableAuthority.into());
+                }
+            }
+        }
+        None => quote! {},
+    };
+
     quote! {
         {
             #decimal_check
@@ -1603,6 +1663,7 @@ fn generate_constraint_mint(
             #permanent_delegate_check
             #transfer_hook_authority_check
             #transfer_hook_program_id_check
+            #pausable_authority_check
         }
     }
 }
@@ -1665,14 +1726,15 @@ fn generate_get_token_account_space(mint: &Expr) -> proc_macro2::TokenStream {
     }
 }
 
-// Generated code to create an account with system program with the
+// Generated code to create an account or fund, allocate, and
+// assign using the system program with the
 // given `space` amount of data, owned by `owner`.
 //
 // `seeds_with_nonce` should be given for creating PDAs. Otherwise it's an
 // empty stream.
 //
 // This should only be run within scopes where `system_program` is not Optional
-fn generate_create_account(
+fn generate_create_account_or_fund_allocate_assign(
     field: &Ident,
     space: proc_macro2::TokenStream,
     owner: proc_macro2::TokenStream,
@@ -1682,12 +1744,10 @@ fn generate_create_account(
     // Field, payer, and system program are already validated to not be an Option at this point
     quote! {
         // If the account being initialized already has lamports, then
-        // return them all back to the payer so that the account has
-        // zero lamports when the system program's create instruction
-        // is eventually called.
+        // fund the required lamports for rent exemption, allocate and assign
         let __current_lamports = #field.lamports();
         if __current_lamports == 0 {
-            // Create the token account with right amount of lamports and space, and the correct owner.
+            // Create the account with right amount of lamports and space, and the correct owner.
             let space = #space;
             let lamports = __anchor_rent.minimum_balance(space);
             let cpi_accounts = anchor_lang::system_program::CreateAccount {
@@ -1711,13 +1771,13 @@ fn generate_create_account(
                 let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
                 anchor_lang::system_program::transfer(cpi_context, required_lamports)?;
             }
-            // Allocate space.
+
             let cpi_accounts = anchor_lang::system_program::Allocate {
                 account_to_allocate: #field.to_account_info()
             };
             let cpi_context = anchor_lang::context::CpiContext::new(system_program.key(), cpi_accounts);
             anchor_lang::system_program::allocate(cpi_context.with_signer(&[#seeds_with_nonce]), #space as u64)?;
-            // Assign to the spl token program.
+
             let cpi_accounts = anchor_lang::system_program::Assign {
                 account_to_assign: #field.to_account_info()
             };

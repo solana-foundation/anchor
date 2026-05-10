@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorError, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorError, Program } from "@anchor-lang/core";
 import { CustomProgram } from "../target/types/custom_program";
 import { assert } from "chai";
 
@@ -56,6 +56,31 @@ describe("custom_program", () => {
       assert.strictEqual(
         err.error.errorMessage,
         "Program account is not executable"
+      );
+    }
+  });
+
+  it("Should reject a non-system executable account for Program<System>", async () => {
+    try {
+      await program.methods
+        .testProgramValidation()
+        .accounts({
+          genericProgram: new anchor.web3.PublicKey(CUSTOM_PROGRAM_ID),
+          systemProgram: new anchor.web3.PublicKey(CUSTOM_PROGRAM_ID),
+          customProgramInput: program.programId,
+          customProgramAddress: new anchor.web3.PublicKey(
+            CUSTOM_PROGRAM_ADDRESS
+          ),
+        })
+        .rpc();
+      assert.ok(false, "expected InvalidProgramId");
+    } catch (_err) {
+      assert.isTrue(_err instanceof AnchorError);
+      const err: AnchorError = _err;
+      assert.strictEqual(err.error.errorCode.number, 3008);
+      assert.strictEqual(
+        err.error.errorMessage,
+        "Program ID was not as expected"
       );
     }
   });

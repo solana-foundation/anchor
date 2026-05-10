@@ -11,25 +11,22 @@ pub mod hash;
 #[cfg(not(feature = "hash"))]
 pub(crate) mod hash;
 
-use codegen::accounts as accounts_codegen;
-use codegen::program as program_codegen;
-use parser::accounts as accounts_parser;
-use parser::program as program_parser;
-use proc_macro2::{Span, TokenStream};
-use quote::quote;
-use quote::ToTokens;
-use std::collections::HashMap;
-use std::ops::Deref;
-use syn::ext::IdentExt;
-use syn::parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult};
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::token::Comma;
-use syn::Attribute;
-use syn::Lit;
-use syn::{
-    Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, LitInt, PatType, Token, Type,
-    TypePath,
+use {
+    codegen::{accounts as accounts_codegen, program as program_codegen},
+    parser::{accounts as accounts_parser, program as program_parser},
+    proc_macro2::{Span, TokenStream},
+    quote::{quote, ToTokens},
+    std::{collections::HashMap, ops::Deref},
+    syn::{
+        ext::IdentExt,
+        parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult},
+        parse_quote,
+        punctuated::Punctuated,
+        spanned::Spanned,
+        token::Comma,
+        Attribute, Expr, ExprLit, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit,
+        LitInt, PatType, Token, Type, TypePath,
+    },
 };
 
 #[derive(Debug)]
@@ -70,9 +67,6 @@ pub struct Ix {
     pub returns: IxReturn,
     // The ident for the struct deriving Accounts.
     pub anchor_ident: Ident,
-    // The discriminator based on the `#[interface]` attribute.
-    // TODO: Remove and use `overrides`
-    pub interface_discriminator: Option<[u8; 8]>,
     /// Overrides coming from the `#[instruction]` attribute
     pub overrides: Option<Overrides>,
 }
@@ -81,7 +75,8 @@ pub struct Ix {
 #[derive(Debug, Default)]
 pub struct Overrides {
     /// Override the default 8-byte discriminator
-    pub discriminator: Option<TokenStream>,
+    // `Box` is used to avoid large memory use in the common case as `Expr` is a large type
+    pub discriminator: Option<Box<Expr>>,
 }
 
 impl Parse for Overrides {
@@ -91,16 +86,31 @@ impl Parse for Overrides {
         for arg in args {
             match arg.name.to_string().as_str() {
                 "discriminator" => {
-                    let value = match &arg.value {
+                    let value = match arg.value {
                         // Allow `discriminator = 42`
-                        Expr::Lit(lit) if matches!(lit.lit, Lit::Int(_)) => quote! { &[#lit] },
+                        Expr::Lit(ExprLit {
+                            lit: lit @ Lit::Int(_),
+                            ..
+                        }) => {
+                            parse_quote!(&[#lit])
+                        }
                         // Allow `discriminator = [0, 1, 2, 3]`
-                        Expr::Array(arr) => quote! { &#arr },
-                        expr => expr.to_token_stream(),
+                        Expr::Array(arr) => {
+                            parse_quote!(&#arr)
+                        }
+                        expr => expr,
                     };
-                    attr.discriminator.replace(value)
+                    attr.discriminator.replace(Box::new(value))
                 }
-                _ => return Err(ParseError::new(arg.name.span(), "Invalid argument")),
+                name => {
+                    return Err(ParseError::new(
+                        arg.name.span(),
+                        format!(
+                            "Invalid argument `{}`. Expected one of: `discriminator`",
+                            name
+                        ),
+                    ));
+                }
             };
         }
 
@@ -200,7 +210,12 @@ impl AccountsStruct {
                     let arg = parser::tts_to_string(expr);
                     let components: Vec<&str> = arg.split(" : ").collect();
                     assert!(components.len() == 2);
-                    (components[0].to_string(), components[1].to_string())
+                    #[allow(
+                        clippy::indexing_slicing,
+                        reason = "len == 2 asserted immediately above"
+                    )]
+                    let result = (components[0].to_string(), components[1].to_string());
+                    result
                 })
                 .collect()
         })
@@ -355,6 +370,13 @@ impl Field {
                     }
                 }
             }
+            Ty::Migration(ty) => {
+                let from = &ty.from_type_path;
+                let to = &ty.to_type_path;
+                quote! {
+                    #container_ty<'info, #from, #to>
+                }
+            }
             _ => quote! {
                 #container_ty<#account_ty>
             },
@@ -483,6 +505,9 @@ impl Field {
             Ty::AccountLoader(_) => quote! {
                 anchor_lang::accounts::account_loader::AccountLoader
             },
+            Ty::Migration(_) => quote! {
+                anchor_lang::accounts::migration::Migration
+            },
             Ty::Sysvar(_) => quote! { anchor_lang::accounts::sysvar::Sysvar },
             Ty::Program(_) => quote! { anchor_lang::accounts::program::Program },
             Ty::Interface(_) => quote! { anchor_lang::accounts::interface::Interface },
@@ -533,6 +558,13 @@ impl Field {
                 let ident = &ty.account_type_path;
                 quote! {
                     #ident
+                }
+            }
+            Ty::Migration(ty) => {
+                // Return just the From type for IDL and other uses
+                let from = &ty.from_type_path;
+                quote! {
+                    #from
                 }
             }
             Ty::Sysvar(ty) => match ty {
@@ -587,6 +619,7 @@ pub enum Ty {
     Sysvar(SysvarTy),
     Account(AccountTy),
     LazyAccount(LazyAccountTy),
+    Migration(MigrationTy),
     Program(ProgramTy),
     Interface(InterfaceTy),
     InterfaceAccount(InterfaceAccountTy),
@@ -627,6 +660,13 @@ pub struct AccountTy {
 pub struct LazyAccountTy {
     // The struct type of the account.
     pub account_type_path: TypePath,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct MigrationTy {
+    // Migration<'info, From, To> - we need both From and To types
+    pub from_type_path: TypePath,
+    pub to_type_path: TypePath,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -718,6 +758,12 @@ impl ConstraintGroup {
         self.dup.is_some()
     }
 
+    /// Returns `true` when the field has `#[account(init, ...)]` but **not**
+    /// `#[account(init_if_needed, ...)]`.
+    pub fn is_pure_init(&self) -> bool {
+        matches!(&self.init, Some(c) if !c.if_needed)
+    }
+
     pub fn is_signer(&self) -> bool {
         self.signer.is_some()
     }
@@ -801,6 +847,7 @@ pub enum ConstraintToken {
     ExtensionTokenHookAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
+    ExtensionPausableAuthority(Context<ConstraintExtensionAuthority>),
 }
 
 impl Parse for ConstraintToken {
@@ -1078,6 +1125,7 @@ pub enum InitKind {
         permanent_delegate: Option<Expr>,
         transfer_hook_authority: Option<Expr>,
         transfer_hook_program_id: Option<Expr>,
+        pausable_authority: Option<Expr>,
     },
 }
 
@@ -1196,6 +1244,7 @@ pub struct ConstraintTokenMintGroup {
     pub permanent_delegate: Option<Expr>,
     pub transfer_hook_authority: Option<Expr>,
     pub transfer_hook_program_id: Option<Expr>,
+    pub pausable_authority: Option<Expr>,
 }
 
 // Syntax context object for preserving metadata about the inner item.

@@ -1,10 +1,12 @@
 // Avoiding AccountInfo deprecated msg in anchor context
 #![allow(deprecated)]
-use crate::solana_program::account_info::AccountInfo;
-use crate::solana_program::instruction::AccountMeta;
-use crate::solana_program::pubkey::Pubkey;
-use crate::{Accounts, Result, ToAccountInfos, ToAccountMetas};
-use std::collections::BTreeSet;
+use {
+    crate::{
+        solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+        Accounts, Result, ToAccountInfos, ToAccountMetas,
+    },
+    std::collections::BTreeSet,
+};
 
 impl<'info, T: ToAccountInfos<'info>> ToAccountInfos<'info> for Vec<T> {
     fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
@@ -39,9 +41,10 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{prelude::UncheckedAccount, solana_program::pubkey::Pubkey};
-
-    use super::*;
+    use {
+        super::*,
+        crate::{accounts::unchecked_account::UncheckedAccount, solana_program::pubkey::Pubkey},
+    };
 
     #[derive(Accounts)]
     pub struct Test<'info> {

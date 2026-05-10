@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program, AnchorError } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Program, AnchorError } from "@anchor-lang/core";
 import { Keypair, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, Token } from "@solana/spl-token";
 import { assert, expect } from "chai";
@@ -171,8 +171,7 @@ describe("errors", () => {
     }
   });
 
-  // Skip until LiteSVM issue is resolved: https://github.com/LiteSVM/litesvm/issues/235
-  it.skip("Emits a mut error", async () => {
+  it("Emits a mut error", async () => {
     await withLogTest(async () => {
       try {
         const tx = await program.rpc.mutError({

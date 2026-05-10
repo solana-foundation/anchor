@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, Program } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 import { expect } from "chai";
 import { RelationsDerivation } from "../target/types/relations_derivation";
@@ -45,8 +45,11 @@ describe("typescript", () => {
     const ix = program.idl.instructions.find(
       (ix) => ix.name === "testAddress"
     )!;
+
     expect(ix.accounts.find((acc) => acc.name === "constant")!.address).to.not
       .be.undefined;
+    expect(ix.accounts.find((acc) => acc.name === "constWithNumber")!.address)
+      .to.not.be.undefined;
     expect(ix.accounts.find((acc) => acc.name === "constFn")!.address).to.not.be
       .undefined;
   });

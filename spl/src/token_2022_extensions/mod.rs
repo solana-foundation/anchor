@@ -10,27 +10,17 @@ pub mod memo_transfer;
 pub mod metadata_pointer;
 pub mod mint_close_authority;
 pub mod non_transferable;
+pub mod pausable;
 pub mod permanent_delegate;
 pub mod token_group;
 pub mod token_metadata;
 pub mod transfer_fee;
 pub mod transfer_hook;
 
-pub use cpi_guard::*;
-pub use default_account_state::*;
-pub use group_member_pointer::*;
-pub use group_pointer::*;
-pub use immutable_owner::*;
-pub use interest_bearing_mint::*;
-pub use memo_transfer::*;
-pub use metadata_pointer::*;
-pub use mint_close_authority::*;
-pub use non_transferable::*;
-pub use permanent_delegate::*;
-pub use token_group::*;
-pub use token_metadata::*;
-pub use transfer_fee::*;
-pub use transfer_hook::*;
-
-pub use spl_pod;
-pub use spl_token_metadata_interface;
+pub use {
+    cpi_guard::*, default_account_state::*, group_member_pointer::*, group_pointer::*,
+    immutable_owner::*, interest_bearing_mint::*, memo_transfer::*, metadata_pointer::*,
+    mint_close_authority::*, non_transferable::*, pausable::*, permanent_delegate::*, spl_pod,
+    spl_token_metadata_interface, token_group::*, token_metadata::*, transfer_fee::*,
+    transfer_hook::*,
+};

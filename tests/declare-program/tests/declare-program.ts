@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import assert from "assert";
 
 import type { DeclareProgram } from "../target/types/declare_program";
@@ -52,6 +52,8 @@ describe("declare-program", () => {
     // also shouldn't have the `errors` field.
     //
     // https://github.com/solana-foundation/anchor/pull/3757#discussion_r2424695717
+    //
+    // @ts-expect-error
     if (program.idl.errors) throw new Error("The IDL should not have `errors`");
   });
 });
