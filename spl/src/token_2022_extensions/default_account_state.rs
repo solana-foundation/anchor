@@ -2,9 +2,8 @@
 #![allow(deprecated)]
 use {
     anchor_lang::{
-        context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        Accounts, Result,
+        context::CpiContext, solana_program::account_info::AccountInfo, Result, ToAccountInfos,
+        ToAccountMetas,
     },
     spl_token_2022::state::AccountState,
     spl_token_2022_interface as spl_token_2022,

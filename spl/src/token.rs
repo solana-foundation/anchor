@@ -4,7 +4,7 @@ use {
     anchor_lang::{
         context::CpiContext,
         solana_program::{account_info::AccountInfo, program_pack::Pack, pubkey::Pubkey},
-        Accounts, Result,
+        Result, ToAccountInfos, ToAccountMetas,
     },
     std::ops::Deref,
 };

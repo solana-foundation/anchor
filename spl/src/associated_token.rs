@@ -8,7 +8,7 @@ pub use ::spl_associated_token_account_interface::{
 use anchor_lang::{
     context::CpiContext,
     solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-    Accounts, Result,
+    Result, ToAccountInfos, ToAccountMetas,
 };
 
 pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Result<()> {

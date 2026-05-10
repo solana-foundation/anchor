@@ -3,7 +3,7 @@
 use anchor_lang::{
     context::CpiContext,
     solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-    Accounts, Result,
+    Result, ToAccountInfos, ToAccountMetas,
 };
 pub use {spl_token_2022::ID, spl_token_2022_interface as spl_token_2022};
 
