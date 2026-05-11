@@ -65,7 +65,7 @@ fn test_load_valid_full_size() {
     let owner = crate::ID;
     let mut lamports = 0;
     let mut data = vec![0u8; 8 + std::mem::size_of::<ZcStruct>()];
-    data[..8].copy_from_slice(&ZcStruct::DISCRIMINATOR);
+    data[..8].copy_from_slice(ZcStruct::DISCRIMINATOR);
 
     let account_info = AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false);
     let loader: AccountLoader<ZcStruct> = AccountLoader::try_from(&account_info).unwrap();
