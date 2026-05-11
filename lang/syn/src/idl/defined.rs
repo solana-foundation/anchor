@@ -509,20 +509,21 @@ pub fn gen_idl_type(
                     type_aliases: HashMap<String, String>,
                 }
 
-                static CRATE_DATA_CACHE: OnceLock<
-                    std::result::Result<CachedCrateData, anyhow::Error>,
-                > = OnceLock::new();
+                static CRATE_DATA_CACHE: OnceLock<Option<CachedCrateData>> = OnceLock::new();
 
                 // If no path was found, just return an empty path and let the find_path function handle it
                 let source_path = proc_macro2::Span::call_site()
                     .local_file()
                     .unwrap_or_default();
 
-                if let Ok(lib_path) = find_path("lib.rs", &source_path) {
+                'cache: {
+                    let Ok(lib_path) = find_path("lib.rs", &source_path) else {
+                        break 'cache;
+                    };
                     let name = path.path.segments.last().unwrap().ident.to_string();
 
                     let cache = CRATE_DATA_CACHE.get_or_init(|| {
-                        CrateContext::parse(&lib_path).map(|ctx| {
+                        CrateContext::parse(&lib_path).ok().map(|ctx| {
                             let defined_names: HashSet<String> = ctx
                                 .structs()
                                 .map(|s| s.ident.to_string())
@@ -541,14 +542,12 @@ pub fn gen_idl_type(
                         })
                     });
 
-                    let cache = match cache {
-                        Ok(data) => data,
-                        Err(e) => {
-                            return Err(syn::Error::new(
-                                path.span(),
-                                format!("Failed to parse crate: {e}"),
-                            ));
-                        }
+                    // If CrateContext::parse failed (e.g. the crate uses Rust syntax that
+                    // syn v1 cannot parse), fall through to "Defined in crate" below.
+                    // This restores the pre-#4325 silent-fail behaviour and prevents a
+                    // single unparseable file from poisoning every type lookup in the crate.
+                    let Some(cache) = cache else {
+                        break 'cache;
                     };
 
                     let alias_src = cache.type_aliases.get(&name).cloned();

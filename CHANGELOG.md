@@ -23,6 +23,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- lang: Restore silent-fail behaviour for `CrateContext::parse` in IDL build so that crates using modern Rust syntax (e.g. precise-capturing `+ use<T>`, Rust 1.82+) no longer break `--features idl-build` ([#4513](https://github.com/solana-foundation/anchor/issues/4513)).
 - client: Avoid panic in `parse_logs_response` when a program-emitted log line ends with `invoke [1]` ([#4461](https://github.com/solana-foundation/anchor/issues/4461)).
 - cli: Correctly honor `--skip-seed-phrase-validation` in `keygen recover` ([#4417](https://github.com/solana-foundation/anchor/pull/4417)).
 - spl: Fix wrong owner pubkey in CPI Guard enable/disable ([#4322](https://github.com/solana-foundation/anchor/pull/4322)).
