@@ -800,8 +800,7 @@ impl anchor_lang::Id for Token {
 // Field parsers to save compute. All account validation is assumed to be done
 // outside of these methods.
 pub mod accessor {
-    use super::*;
-    use anchor_lang::prelude::UncheckedAccount;
+    use {super::*, anchor_lang::prelude::UncheckedAccount};
 
     pub fn amount(account: &UncheckedAccount) -> Result<u64> {
         let bytes = account.try_borrow_data()?;

@@ -4,7 +4,7 @@ use {
         context::CpiContext,
         error::ErrorCode,
         solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        system_program, Accounts, Result, ToAccountInfos,
+        system_program, Result, ToAccountInfos, ToAccountMetas,
     },
     std::ops::Deref,
 };
