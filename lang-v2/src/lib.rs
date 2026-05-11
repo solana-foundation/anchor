@@ -88,19 +88,31 @@ pub use wincode;
 /// `BorshAccount<T>`) so the on-chain wire format matches borsh exactly,
 /// while keeping wincode's faster encoding path.
 ///
-/// `ZERO_COPY_ALIGN_CHECK = false`: borsh's u32 length prefix puts payload
-/// data 4 bytes off natural alignment, so handler args like `amounts: &[u64]`
-/// would otherwise fail wincode's runtime alignment guard. The guard exists
-/// to prevent Rust-level UB on hosts where misaligned wide loads are
-/// undefined; SBPF's `ldxdw` has no alignment-specialized variants and the
-/// Solana program ecosystem already reads u64 from arbitrary `&[u8]` offsets,
-/// so disabling the check on SBPF is safe.
+/// # ⚠ Incompatibilities with the borsh crate
 ///
-/// Compatibility caveats:
-/// - `HashMap` / `HashSet` are NOT byte-identical (borsh sorts by key,
-///   wincode preserves insertion order). Use `Vec<(K, V)>` if you need
-///   canonical ordering.
-/// - `f32` / `f64` NaN: borsh rejects on deserialize, wincode accepts.
+/// Wincode with this config is byte-identical to borsh for the shapes Anchor
+/// programs commonly use (integers, fixed arrays, `Vec`, `String`, `Option`,
+/// tagged enums, nested structs). The following shapes are NOT byte-
+/// identical — if a program built on Anchor v1 (real borsh) used them, the
+/// on-chain bytes will NOT round-trip cleanly through v2:
+///
+/// - **`HashMap` / `HashSet`**: borsh sorts entries by key, wincode preserves
+///   insertion order. Use `BTreeMap` / `BTreeSet` or `Vec<(K, V)>` if you
+///   need canonical ordering.
+/// - **`f32` / `f64` NaN**: borsh rejects NaN on deserialize, wincode
+///   accepts it. v2 won't surface an error for a NaN-bearing account.
+///
+/// Programs that don't use these types are unaffected.
+///
+/// # `ZERO_COPY_ALIGN_CHECK = false`
+///
+/// Borsh's u32 length prefix puts payload data 4 bytes off natural alignment,
+/// so handler args like `amounts: &[u64]` would otherwise fail wincode's
+/// runtime alignment guard. The guard exists to prevent Rust-level UB on
+/// hosts where misaligned wide loads are undefined; SBPF's `ldxdw` has no
+/// alignment-specialized variants and the Solana program ecosystem already
+/// reads u64 from arbitrary `&[u8]` offsets, so disabling the check on SBPF
+/// is safe.
 pub const BORSH_CONFIG: BorshConfig = wincode::config::Configuration::new();
 
 /// Concrete type of [`BORSH_CONFIG`]. Spelled out so downstream callers can

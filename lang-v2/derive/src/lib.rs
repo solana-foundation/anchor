@@ -1127,10 +1127,16 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
                 fn try_deserialize_unchecked(
                     buf: &mut &[u8],
                 ) -> ::core::result::Result<Self, anchor_lang_v2::Error> {
-                    anchor_lang_v2::wincode::config::deserialize::<Self, _>(
-                        *buf,
-                        anchor_lang_v2::BORSH_CONFIG,
-                    )
+                    // Use `SchemaRead::get` (reads from a `&mut &[u8]` Reader
+                    // and advances it) rather than `config::deserialize`,
+                    // which takes the input by value and would leave `*buf`
+                    // unchanged — `AccountDeserialize`'s cursor contract
+                    // requires the post-disc slice to advance through the
+                    // payload so chained deserializations stay aligned.
+                    <Self as anchor_lang_v2::wincode::SchemaRead<
+                        '_,
+                        anchor_lang_v2::BorshConfig,
+                    >>::get(buf)
                         .map_err(|_| anchor_lang_v2::Error::InvalidAccountData)
                 }
             }

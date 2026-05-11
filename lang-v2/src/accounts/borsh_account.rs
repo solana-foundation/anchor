@@ -30,8 +30,10 @@ where
 
     #[inline(always)]
     fn deserialize(buf: &mut &[u8]) -> Result<T, ProgramError> {
-        wincode::config::deserialize::<T, _>(*buf, BORSH_CONFIG)
-            .map_err(|_| ProgramError::InvalidAccountData)
+        // `wincode::config::deserialize` takes the input by value and would
+        // leave `*buf` unchanged. Use `SchemaRead::get` directly so the
+        // `&mut &[u8]` reader advances in place per the trait contract.
+        <T as SchemaRead<'_, BorshConfig>>::get(buf).map_err(|_| ProgramError::InvalidAccountData)
     }
 }
 
