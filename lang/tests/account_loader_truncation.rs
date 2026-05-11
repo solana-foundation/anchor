@@ -1,3 +1,5 @@
+//! Regression tests proving AccountLoader accessors return structured errors instead of panicking on truncated accounts.
+
 use anchor_lang::{accounts::account_loader::AccountLoader, prelude::*};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
