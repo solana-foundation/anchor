@@ -509,6 +509,12 @@ pub fn gen_idl_type(
                     type_aliases: HashMap<String, String>,
                 }
 
+                // FIXME: migrate to syn 2.0. syn 1.x was last released in December 2022 and
+                // does not support Rust syntax stabilised after that date (e.g. precise-capturing
+                // `use<T>` syntax, C-string literals). Our MSRV has long since moved past what
+                // syn 1.x supports, so CrateContext::parse will silently fail on any project
+                // that uses modern Rust syntax. Upgrading to syn 2.0 would let us parse those
+                // files correctly and remove the None-on-failure workaround below.
                 static CRATE_DATA_CACHE: OnceLock<Option<CachedCrateData>> = OnceLock::new();
 
                 // If no path was found, just return an empty path and let the find_path function handle it
