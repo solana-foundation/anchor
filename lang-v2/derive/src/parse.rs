@@ -1166,7 +1166,7 @@ pub fn parse_field(
     // Writable check is now owned by `AnchorAccount::load_mut` (default
     // impl in `lang-v2/src/traits.rs`), so the derive no longer emits a
     // separate constraint block for `#[account(mut)]`. Types that
-    // override `load_mut` (Slab/Account, BorshAccount, Signer, Boxed,
+    // override `load_mut` (Slab/Account, WincodeAccount, Signer, Boxed,
     // Option) each validate is_writable themselves; types that inherit
     // the default (UncheckedAccount, SystemAccount, Program, Sysvar) get
     // it via the trait default.
@@ -1444,12 +1444,12 @@ pub fn parse_field(
             .as_ref()
             .expect("realloc requires realloc_payer");
         let zero_fill = attrs.realloc_zero;
-        // BorshAccount holds a pinocchio RefMut that (a) blocks the system
+        // WincodeAccount holds a pinocchio RefMut that (a) blocks the system
         // program Transfer CPI inside realloc_account and (b) captures a
         // stale slice length after resize. Release before, reacquire after.
         // Slab holds no pinocchio borrow so needs neither step.
         let base_ty = option_inner.unwrap_or(field_ty);
-        let is_borsh_account = field_ty_str(base_ty) == "BorshAccount";
+        let is_borsh_account = field_ty_str(base_ty) == "WincodeAccount";
         let pre_realloc = if is_borsh_account {
             quote! { #field_name.release_borrow()?; }
         } else {
@@ -1570,7 +1570,7 @@ pub fn parse_field(
     // unwrapped `&mut T` so `AnchorAccount::exit/close` get the right type.
     //
     // Mutable fields use `ref mut` so constraint bodies that need `&mut self`
-    // (e.g. BorshAccount::release_borrow in the realloc path) can work.
+    // (e.g. WincodeAccount::release_borrow in the realloc path) can work.
     // Read-only methods still resolve via auto-deref from `&mut T` to `&T`.
     let (constraints, exit) = if is_optional {
         let constraints = constraints

@@ -335,7 +335,6 @@ dependencies = [
  "anchor-lang-v2",
  "anyhow",
  "base64 0.22.1",
- "borsh 1.6.1",
  "futures",
  "regex",
  "serde",
@@ -355,6 +354,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "url",
+ "wincode 0.5.2",
 ]
 
 [[package]]
@@ -468,7 +468,6 @@ name = "anchor-lang-v2"
 version = "2.0.0"
 dependencies = [
  "anchor-derive-accounts-v2",
- "borsh 1.6.1",
  "bytemuck",
  "pinocchio",
  "pinocchio-system",
@@ -1238,7 +1237,6 @@ name = "borsh-realloc"
 version = "0.1.0"
 dependencies = [
  "anchor-lang-v2",
- "borsh 1.6.1",
  "pinocchio",
  "pinocchio-system",
  "solana-program-error 3.0.0",
@@ -1348,7 +1346,6 @@ name = "callee"
 version = "0.1.0"
 dependencies = [
  "anchor-lang-v2",
- "borsh 1.6.1",
  "bytemuck",
  "pinocchio",
  "pinocchio-system",
@@ -1361,7 +1358,6 @@ name = "caller"
 version = "0.1.0"
 dependencies = [
  "anchor-lang-v2",
- "borsh 1.6.1",
  "bytemuck",
  "callee",
  "pinocchio",
@@ -1900,7 +1896,6 @@ name = "custom-constraints"
 version = "0.1.0"
 dependencies = [
  "anchor-lang-v2",
- "borsh 1.6.1",
  "pinocchio",
  "pinocchio-system",
  "solana-program-error 3.0.0",
@@ -2056,7 +2051,6 @@ name = "derives-test"
 version = "0.1.0"
 dependencies = [
  "anchor-lang-v2",
- "borsh 1.6.1",
  "bytemuck",
  "pinocchio",
  "pinocchio-system",

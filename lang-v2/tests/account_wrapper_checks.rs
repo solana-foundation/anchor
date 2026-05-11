@@ -20,9 +20,9 @@ use {
         },
         programs::{System, Token},
         testing::AccountBuffer,
+        wincode::{SchemaRead, SchemaWrite},
         AnchorAccount, Discriminator, ErrorCode, Owner,
     },
-    borsh::{BorshDeserialize, BorshSerialize},
     bytemuck::{Pod, Zeroable},
     pinocchio::address::Address,
     solana_program_error::ProgramError,
@@ -35,7 +35,7 @@ fn program_id() -> Address {
     Address::new_from_array(PROGRAM_ID)
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Default)]
+#[derive(SchemaRead, SchemaWrite, Default)]
 struct Counter {
     value: u64,
 }

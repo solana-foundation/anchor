@@ -24,8 +24,7 @@ pub mod programs;
 pub mod testing;
 mod traits;
 
-// Re-export derive macros
-// Re-export borsh and bytemuck for generated code
+// Re-export derive macros and bytemuck for generated code
 #[cfg(feature = "account-resize")]
 pub use cpi::realloc_account;
 /// Chunked 4×u64 equality compare for `Address`. Preferred over `==`
@@ -102,14 +101,18 @@ pub use wincode;
 ///   wincode preserves insertion order). Use `Vec<(K, V)>` if you need
 ///   canonical ordering.
 /// - `f32` / `f64` NaN: borsh rejects on deserialize, wincode accepts.
-pub const BORSH_CONFIG: wincode::config::Configuration<
+pub const BORSH_CONFIG: BorshConfig = wincode::config::Configuration::new();
+
+/// Concrete type of [`BORSH_CONFIG`]. Spelled out so downstream callers can
+/// name it in trait bounds (e.g. `T: wincode::SchemaRead<'de, BorshConfig>`).
+pub type BorshConfig = wincode::config::Configuration<
     false,
     { wincode::config::DEFAULT_PREALLOCATION_SIZE_LIMIT },
     wincode::len::FixIntLen<u32>,
     wincode::int_encoding::LittleEndian,
     wincode::int_encoding::FixInt,
     u8,
-> = wincode::config::Configuration::new();
+>;
 
 /// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
 /// array.
@@ -142,7 +145,6 @@ pub use {
         access_control, account, constant, emit, error_code, event, pod_wrapper, program, Accounts,
         InitSpace,
     },
-    borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
     context::{Bumps, Context},
     context_cpi::CpiContext,
@@ -158,6 +160,7 @@ pub use {
     loader::AccountLoader,
     pinocchio::{self, account::AccountView, address::Address},
     traits::*,
+    wincode::{SchemaRead, SchemaWrite},
 };
 
 /// Re-export of the Solana SDK `Instruction` + `AccountMeta` types under a v1-

@@ -47,17 +47,19 @@
 
 use {
     anchor_lang_v2::{
-        accounts::Slab, prelude::BorshAccount, testing::AccountBuffer, AnchorAccount,
-        Discriminator, Owner,
+        accounts::Slab,
+        prelude::BorshAccount,
+        testing::AccountBuffer,
+        wincode::{SchemaRead, SchemaWrite},
+        AnchorAccount, Discriminator, Owner,
     },
-    borsh::{BorshDeserialize, BorshSerialize},
     bytemuck::{Pod, Zeroable},
     pinocchio::{account::RuntimeAccount, address::Address},
 };
 
 const PROGRAM_ID: [u8; 32] = [0x42; 32];
 
-#[derive(BorshDeserialize, BorshSerialize, Default, Clone)]
+#[derive(SchemaRead, SchemaWrite, Default, Clone)]
 struct Vault {
     authority: [u8; 32],
     balance: u64,

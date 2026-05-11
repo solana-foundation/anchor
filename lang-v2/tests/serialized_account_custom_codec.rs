@@ -144,7 +144,10 @@ fn le_codec_load_mut_exit_writes_back() {
 
     let bytes = read_data_bytes(&buf, 8, 8);
     assert_eq!(u32::from_le_bytes(bytes[..4].try_into().unwrap()), 42);
-    assert_eq!(u32::from_le_bytes(bytes[4..8].try_into().unwrap()), 0xDEAD_BEEF);
+    assert_eq!(
+        u32::from_le_bytes(bytes[4..8].try_into().unwrap()),
+        0xDEAD_BEEF
+    );
 }
 
 // -- 1.3 release_borrow commits in-memory state --------------------------

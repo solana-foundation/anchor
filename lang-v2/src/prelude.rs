@@ -49,9 +49,6 @@ pub use crate::{
     Accounts,
     // Core trait
     AnchorAccount,
-    AnchorDeserialize,
-    // Serialization
-    AnchorSerialize,
     Bumps,
     // Context
     Context,
@@ -73,6 +70,9 @@ pub use crate::{
     Owner,
     // Error
     Result,
+    // Serialization
+    SchemaRead,
+    SchemaWrite,
     Space,
     ToAccountMetas,
     ToCpiAccounts,

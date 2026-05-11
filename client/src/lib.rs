@@ -82,11 +82,11 @@ pub use {
 };
 use {
     anchor_lang_v2::{AccountDeserialize, Discriminator, InstructionData, ToAccountMetas},
-    solana_program::{program_error::ProgramError, pubkey::Pubkey},
     futures::{Future, StreamExt},
     regex::Regex,
     solana_account_decoder::{UiAccount, UiAccountEncoding},
     solana_instruction::AccountMeta,
+    solana_program::{program_error::ProgramError, pubkey::Pubkey},
     solana_pubsub_client::nonblocking::pubsub_client::PubsubClient,
     solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
     solana_rpc_client_api::{
@@ -293,7 +293,10 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         })
     }
 
-    async fn on_internal<T: anchor_lang_v2::Event + anchor_lang_v2::AnchorDeserialize>(
+    async fn on_internal<
+        T: anchor_lang_v2::Event
+            + for<'de> anchor_lang_v2::wincode::SchemaRead<'de, anchor_lang_v2::BorshConfig, Dst = T>,
+    >(
         &self,
         mut f: impl FnMut(&EventContext, T) + Send + 'static,
     ) -> Result<
@@ -368,7 +371,10 @@ impl<T> Iterator for ProgramAccountsIterator<T> {
     }
 }
 
-pub fn handle_program_log<T: anchor_lang_v2::Event + anchor_lang_v2::AnchorDeserialize>(
+pub fn handle_program_log<
+    T: anchor_lang_v2::Event
+        + for<'de> anchor_lang_v2::wincode::SchemaRead<'de, anchor_lang_v2::BorshConfig, Dst = T>,
+>(
     self_program_str: &str,
     l: &str,
 ) -> Result<(Option<T>, Option<String>, bool), ClientError> {
@@ -391,8 +397,12 @@ pub fn handle_program_log<T: anchor_lang_v2::Event + anchor_lang_v2::AnchorDeser
         let event = log_bytes
             .starts_with(T::DISCRIMINATOR)
             .then(|| {
-                let mut data = &log_bytes[T::DISCRIMINATOR.len()..];
-                T::deserialize(&mut data).map_err(|e| ClientError::LogParseError(e.to_string()))
+                let data = &log_bytes[T::DISCRIMINATOR.len()..];
+                anchor_lang_v2::wincode::config::deserialize::<T, _>(
+                    data,
+                    anchor_lang_v2::BORSH_CONFIG,
+                )
+                .map_err(|e| ClientError::LogParseError(e.to_string()))
             })
             .transpose()?;
 
@@ -666,7 +676,10 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
     }
 }
 
-fn parse_logs_response<T: anchor_lang_v2::Event + anchor_lang_v2::AnchorDeserialize>(
+fn parse_logs_response<
+    T: anchor_lang_v2::Event
+        + for<'de> anchor_lang_v2::wincode::SchemaRead<'de, anchor_lang_v2::BorshConfig, Dst = T>,
+>(
     logs: RpcResponse<RpcLogsResponse>,
     program_id_str: &str,
 ) -> Result<Vec<T>, ClientError> {
@@ -730,16 +743,19 @@ mod tests {
     // depends on the `wincode` derive (anchor-lang-v2 transitively pulls it
     // in but the re-exported derive's generated code references the bare
     // `wincode` path, not visible from this crate). The test only needs
-    // `Event + AnchorDeserialize + Discriminator` for type inference inside
+    // `Event + SchemaRead + Discriminator` for type inference inside
     // `parse_logs_response::<MockEvent>`.
+    // The wincode derive macros emit `::wincode::…` paths, so `wincode` must
+    // be present in this crate's extern-prelude (added as a direct dep).
     use {
-        anchor_lang_v2::{AnchorDeserialize, AnchorSerialize, Discriminator, Event},
+        anchor_lang_v2::{Discriminator, Event},
         futures::{SinkExt, StreamExt},
         solana_rpc_client_api::response::RpcResponseContext,
         std::sync::atomic::{AtomicU64, Ordering},
         tokio_tungstenite::tungstenite::Message,
+        wincode::{SchemaRead, SchemaWrite},
     };
-    #[derive(Debug, Clone, Copy, AnchorSerialize, AnchorDeserialize)]
+    #[derive(Debug, Clone, Copy, SchemaWrite, SchemaRead)]
     pub struct MockEvent {}
     impl Discriminator for MockEvent {
         const DISCRIMINATOR: &'static [u8] = &[0; 8];

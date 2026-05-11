@@ -1,35 +1,47 @@
 use {
     super::serialized_account::{AnchorAccountSerialize, SerializedAccount},
-    borsh::{BorshDeserialize, BorshSerialize},
+    crate::{BorshConfig, BORSH_CONFIG},
     solana_program_error::ProgramError,
+    wincode::{SchemaRead, SchemaWrite},
 };
 
-/// Borsh codec tag for [`SerializedAccount`]. Zero-sized; selected at the
-/// use site via the [`BorshAccount`] alias.
+/// Borsh-wire codec tag for [`SerializedAccount`]. Zero-sized; selected at the
+/// use site via the [`BorshAccount`] alias. The on-chain wire format matches
+/// borsh exactly (via [`crate::BORSH_CONFIG`]); the encode/decode path is
+/// wincode under the hood.
 pub struct BorshSerializer;
 
 impl<T> AnchorAccountSerialize<T> for BorshSerializer
 where
-    T: BorshSerialize + BorshDeserialize,
+    T: SchemaWrite<BorshConfig, Src = T> + for<'de> SchemaRead<'de, BorshConfig, Dst = T>,
 {
     #[inline(always)]
     fn serialize(value: &T, buf: &mut &mut [u8]) -> Result<(), ProgramError> {
-        value
-            .serialize(buf)
-            .map_err(|_| ProgramError::InvalidAccountData)
+        // `&mut [u8]` implements `wincode::io::Writer` by advancing in place
+        // via `mem::take` + split. Take ownership of the inner slice so the
+        // writer can consume it, then restore the (now-advanced) tail to the
+        // caller's outer cursor.
+        let mut writer: &mut [u8] = core::mem::take(buf);
+        wincode::config::serialize_into(&mut writer, value, BORSH_CONFIG)
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        *buf = writer;
+        Ok(())
     }
 
     #[inline(always)]
     fn deserialize(buf: &mut &[u8]) -> Result<T, ProgramError> {
-        T::deserialize(buf).map_err(|_| ProgramError::InvalidAccountData)
+        wincode::config::deserialize::<T, _>(*buf, BORSH_CONFIG)
+            .map_err(|_| ProgramError::InvalidAccountData)
     }
 }
 
-/// Borsh-serialized account type.
+/// Borsh-wire-compatible account type.
 ///
-/// Validates owner, checks discriminator, deserializes via borsh. Holds a
-/// pinocchio borrow guard (`Ref` for `load`, `RefMut` for `load_mut`);
-/// `exit()` serializes through the held `RefMut`.
+/// Validates owner, checks discriminator, then encodes/decodes the payload via
+/// wincode using [`crate::BORSH_CONFIG`]. The on-disk and CPI wire format is
+/// byte-identical to borsh, so off-chain clients that decode with a borsh
+/// library still work. Holds a pinocchio borrow guard (`Ref` for `load`,
+/// `RefMut` for `load_mut`); `exit()` serializes through the held `RefMut`.
 ///
 /// Type alias over [`SerializedAccount<T, BorshSerializer>`]; all inherent
 /// methods (`address`, `release_borrow`, `reacquire_borrow_mut`,

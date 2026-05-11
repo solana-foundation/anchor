@@ -17,16 +17,18 @@
 
 use {
     anchor_lang_v2::{
-        prelude::BorshAccount, testing::AccountBuffer, AnchorAccount, Discriminator, Owner,
+        prelude::BorshAccount,
+        testing::AccountBuffer,
+        wincode::{SchemaRead, SchemaWrite},
+        AnchorAccount, Discriminator, Owner,
     },
-    borsh::{BorshDeserialize, BorshSerialize},
     pinocchio::{account::RuntimeAccount, address::Address},
     solana_program_error::ProgramError,
 };
 
 const PROGRAM_ID: [u8; 32] = [0x42; 32];
 
-#[derive(BorshDeserialize, BorshSerialize, Default, Clone, PartialEq, Debug)]
+#[derive(SchemaRead, SchemaWrite, Default, Clone, PartialEq, Debug)]
 struct Counter {
     value: u64,
 }
@@ -47,7 +49,8 @@ fn counter_disc() -> [u8; 8] {
 }
 
 fn setup_counter_buf(buf: &mut AccountBuffer<256>, initial_value: u64) {
-    // Layout: disc(8) + borsh(Counter) = disc(8) + u64(8) = 16 bytes
+    // Layout: disc(8) + wincode(Counter) = disc(8) + u64(8) = 16 bytes
+    // (byte-identical to borsh for Counter — single u64, no length prefix).
     let data_len = 16;
     buf.init([0xAA; 32], PROGRAM_ID, data_len, false, true, false);
     let mut data = [0u8; 16];

@@ -1063,9 +1063,12 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let struct_docs = idl::extract_doc_lines(attrs);
     // `#[account]` has two modes: default zero-copy (Pod + repr(C)) and opt-in
-    // borsh (`#[account(borsh)]`). The mode propagates into the IDL type
-    // definition's `serialization` / `repr` fields (spec:180-216) so
-    // downstream codegen knows which wire format to use.
+    // borsh (`#[account(borsh)]`). The borsh mode is implemented on top of
+    // wincode + `BORSH_CONFIG`, which produces byte-identical output to a
+    // real borsh impl while skipping the borsh crate's slower encode/decode
+    // path. The mode propagates into the IDL type definition's
+    // `serialization` / `repr` fields (spec:180-216) so downstream codegen
+    // knows which wire format to use.
     let type_kind = if is_borsh {
         idl::TypeKind::Borsh
     } else {
@@ -1100,9 +1103,10 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     // Client-side `AccountDeserialize` impl. Mode-dependent: borsh accounts
-    // run `BorshDeserialize` over the post-disc tail; pod accounts do a
-    // `bytemuck::pod_read_unaligned` on a sized slice. Both share the disc-
-    // check shape so a wrong-type fetch surfaces as `InvalidAccountData`.
+    // run wincode (with `BORSH_CONFIG`, borsh-wire-compatible) over the
+    // post-disc tail; pod accounts do a `bytemuck::pod_read_unaligned` on a
+    // sized slice. Both share the disc-check shape so a wrong-type fetch
+    // surfaces as `InvalidAccountData`.
     let account_deserialize_impl = if is_borsh {
         quote! {
             impl anchor_lang_v2::AccountDeserialize for #name {
@@ -1123,7 +1127,10 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
                 fn try_deserialize_unchecked(
                     buf: &mut &[u8],
                 ) -> ::core::result::Result<Self, anchor_lang_v2::Error> {
-                    <Self as anchor_lang_v2::borsh::BorshDeserialize>::deserialize(buf)
+                    anchor_lang_v2::wincode::config::deserialize::<Self, _>(
+                        *buf,
+                        anchor_lang_v2::BORSH_CONFIG,
+                    )
                         .map_err(|_| anchor_lang_v2::Error::InvalidAccountData)
                 }
             }
@@ -1162,7 +1169,7 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let (struct_attrs, pod_impls) = if is_borsh {
         (
-            quote! { #[derive(anchor_lang_v2::borsh::BorshSerialize, anchor_lang_v2::borsh::BorshDeserialize, Default)] },
+            quote! { #[derive(anchor_lang_v2::wincode::SchemaWrite, anchor_lang_v2::wincode::SchemaRead, Default)] },
             quote! {},
         )
     } else {
@@ -2625,10 +2632,9 @@ enum EventMode {
 /// Parse the `#[account]` attribute's optional mode argument.
 ///
 /// Accepts: `#[account]` (default → zero-copy Pod) or `#[account(borsh)]`.
-/// Previously this was `attr.to_string().contains("borsh")`, which silently
-/// accepted typos like `#[account(borhs)]` as zero-copy — the struct would
-/// compile under the wrong layout and clients decoding it as borsh would
-/// get garbage.
+/// Under the hood the borsh mode encodes/decodes via wincode using
+/// `BORSH_CONFIG`, so the on-chain bytes still match what a borsh library
+/// would produce, while paying for wincode's faster encode/decode path.
 fn parse_account_mode(attr: TokenStream) -> Result<bool, syn::Error> {
     if attr.is_empty() {
         return Ok(false);

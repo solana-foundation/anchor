@@ -52,12 +52,11 @@ anchor-derive-accounts-v2 = { path = "./derive", version = "2.0.0" }
 # "copy" makes AccountView Copy — saves 2 CU per account (avoids memcpy on access).
 pinocchio = { workspace = true, features = ["copy"] }
 pinocchio-system = "0.6"
-solana-address = { version = "2.0", features = ["bytemuck", "borsh", "syscalls", "curve25519", "wincode"] }
+solana-address = { version = "2.0", features = ["bytemuck", "syscalls", "curve25519", "wincode"] }
 solana-instruction = { version = "3", default-features = false }
-solana-program-error = { version = "3.0", features = ["borsh"] }
+solana-program-error = "3.0"
 solana-msg = { version = "3.1", default-features = false, features = ["alloc"] }
 solana-program-log = { version = "1.1", features = ["macro"], optional = true }
-borsh = "1.5.7"
 bytemuck = { version = "1", features = ["derive"] }
 wincode = { version = "0.5", features = ["derive"] }
 

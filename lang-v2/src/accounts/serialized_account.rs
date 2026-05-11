@@ -38,7 +38,7 @@ pub trait AnchorAccountSerialize<T> {
 /// pinocchio borrow guard (`Ref` for `load`, `RefMut` for `load_mut`);
 /// `exit()` serializes through the held `RefMut`.
 ///
-/// The borsh-backed instantiation is exposed as [`super::BorshAccount<T>`].
+/// The wincode-backed instantiation is exposed as [`super::BorshAccount<T>`].
 ///
 /// ## `#[account(owner = X @ MyErr)]` does NOT surface `MyErr`
 ///
