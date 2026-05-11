@@ -1,6 +1,7 @@
 mod borsh_account;
 mod boxed;
 mod program;
+mod serialized_account;
 mod signer;
 mod slab;
 mod slab_hooks;
@@ -10,8 +11,9 @@ mod unchecked_account;
 
 pub use {
     crate::AccountInitialize,
-    borsh_account::BorshAccount,
+    borsh_account::{BorshAccount, BorshSerializer},
     program::Program,
+    serialized_account::{AnchorAccountSerialize, SerializedAccount},
     signer::Signer,
     slab::{HeaderOnly, Slab},
     slab_hooks::{SlabInit, SlabSchema},
