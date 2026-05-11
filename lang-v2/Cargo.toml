@@ -88,6 +88,10 @@ name = "borsh_exit_semantics"
 required-features = ["testing"]
 
 [[test]]
+name = "serialized_account_custom_codec"
+required-features = ["testing"]
+
+[[test]]
 name = "close_semantics"
 required-features = ["testing"]
 
