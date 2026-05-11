@@ -276,6 +276,12 @@ pub fn generate_constraint_zeroed(
     quote! {
         let #field: #ty_decl = {
             let mut __data: &[u8] = &#field.try_borrow_data()?;
+            let __required = #discriminator.len().checked_add(std::mem::size_of::<#account_ty>()).ok_or(
+                anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountDidNotDeserialize).with_account_name(#name_str)
+            )?;
+            if __data.len() < __required {
+                return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountDidNotDeserialize).with_account_name(#name_str));
+            }
             let __disc = &__data[..#discriminator.len()];
             let __has_disc = __disc.iter().any(|b| *b != 0);
             if __has_disc {

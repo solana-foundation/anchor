@@ -156,8 +156,12 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     pub fn load(&self) -> Result<Ref<'_, T>> {
         let data = self.acc_info.try_borrow_data()?;
         let disc = T::DISCRIMINATOR;
-        if data.len() < disc.len() {
-            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        let required = disc
+            .len()
+            .checked_add(mem::size_of::<T>())
+            .ok_or(ErrorCode::AccountDidNotDeserialize)?;
+        if data.len() < required {
+            return Err(ErrorCode::AccountDidNotDeserialize.into());
         }
 
         let given_disc = &data[..disc.len()];
@@ -180,8 +184,12 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
         let data = self.acc_info.try_borrow_mut_data()?;
         let disc = T::DISCRIMINATOR;
-        if data.len() < disc.len() {
-            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        let required = disc
+            .len()
+            .checked_add(mem::size_of::<T>())
+            .ok_or(ErrorCode::AccountDidNotDeserialize)?;
+        if data.len() < required {
+            return Err(ErrorCode::AccountDidNotDeserialize.into());
         }
 
         let given_disc = &data[..disc.len()];
@@ -209,6 +217,13 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
         // The discriminator should be zero, since we're initializing.
         let disc = T::DISCRIMINATOR;
+        let required = disc
+            .len()
+            .checked_add(mem::size_of::<T>())
+            .ok_or(ErrorCode::AccountDidNotDeserialize)?;
+        if data.len() < required {
+            return Err(ErrorCode::AccountDidNotDeserialize.into());
+        }
         let given_disc = &data[..disc.len()];
         let has_disc = given_disc.iter().any(|b| *b != 0);
         if has_disc {
