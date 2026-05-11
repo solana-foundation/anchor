@@ -509,7 +509,7 @@ pub fn gen_idl_type(
                     type_aliases: HashMap<String, String>,
                 }
 
-                // FIXME: migrate to syn 2.0. syn 1.x was last released in December 2022 and
+                // FIXME(#4521): migrate to syn 2.0. syn 1.x was last released in December 2022 and
                 // does not support Rust syntax stabilised after that date (e.g. precise-capturing
                 // `use<T>` syntax, C-string literals). Our MSRV has long since moved past what
                 // syn 1.x supports, so CrateContext::parse will silently fail on any project
