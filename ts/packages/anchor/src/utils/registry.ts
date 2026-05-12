@@ -7,25 +7,31 @@ const OSEC_REGISTRY_URL = "https://verify.osec.io";
 
 export type VerifiedBuild = {
   is_verified: boolean;
+  message?: string;
   on_chain_hash: string;
   executable_hash: string;
   repo_url: string;
-  commit: string;
   last_verified_at: string;
-  signer: string;
-  is_frozen: boolean;
+  // present in some registry responses but not guaranteed by the documented API
+  commit?: string;
+  signer?: string;
+  is_frozen?: boolean;
 };
 
-/** Returns verified build info from the OtterSec registry, or null if unverified. */
+/** Returns verified build info from the OtterSec registry, or null if unverified or the request fails. */
 export async function verifiedBuild(
   programId: PublicKey
 ): Promise<VerifiedBuild | null> {
-  const resp = await fetch(
-    `${OSEC_REGISTRY_URL}/status/${programId.toString()}`
-  );
-  if (!resp.ok) return null;
-  const build = (await resp.json()) as VerifiedBuild;
-  return build.is_verified ? build : null;
+  try {
+    const resp = await fetch(
+      `${OSEC_REGISTRY_URL}/status/${programId.toString()}`
+    );
+    if (!resp.ok) return null;
+    const build = (await resp.json()) as VerifiedBuild;
+    return build.is_verified ? build : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
