@@ -113,7 +113,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                     // Bump collector.
                     let mut __bumps = <#accounts_struct_name as anchor_lang::Bumps>::Bumps::default();
 
-                    let mut __reallocs = std::collections::BTreeSet::new();
+                    let mut __resizes = std::collections::BTreeSet::new();
 
                     // Deserialize accounts.
                     let mut __remaining_accounts = __accounts;
@@ -122,7 +122,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         &mut __remaining_accounts,
                         __ix_data,
                         &mut __bumps,
-                        &mut __reallocs,
+                        &mut __resizes,
                     )?;
 
                     unsafe fn __shrink_lifetime<'from, 'to, T>(value: &'from mut T) -> &'to mut T {

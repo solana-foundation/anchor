@@ -271,12 +271,12 @@ pub enum ErrorCode {
     /// 3015 - The given public key does not match the required sysvar
     #[msg("The given public key does not match the required sysvar")]
     AccountSysvarMismatch,
-    /// 3016 - The account reallocation exceeds the MAX_PERMITTED_DATA_INCREASE limit
-    #[msg("The account reallocation exceeds the MAX_PERMITTED_DATA_INCREASE limit")]
-    AccountReallocExceedsLimit,
-    /// 3017 - The account was duplicated for more than one reallocation
-    #[msg("The account was duplicated for more than one reallocation")]
-    AccountDuplicateReallocs,
+    /// 3016 - The account resize exceeds the MAX_PERMITTED_DATA_INCREASE limit
+    #[msg("The account resize exceeds the MAX_PERMITTED_DATA_INCREASE limit")]
+    AccountResizeExceedsLimit,
+    /// 3017 - The account was duplicated for more than one resize
+    #[msg("The account was duplicated for more than one resize")]
+    AccountDuplicateResizes,
 
     // Miscellaneous
     /// 4100 - The declared program id does not match actual program id

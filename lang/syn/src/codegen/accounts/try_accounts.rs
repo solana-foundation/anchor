@@ -29,7 +29,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                     quote! {
                         #[cfg(feature = "anchor-debug")]
                         ::anchor_lang::solana_program::log::sol_log(stringify!(#name));
-                        let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __reallocs)?;
+                        let #name: #ty = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, &mut __bumps.#name, __resizes)?;
                     }
                 }
                 AccountField::Field(f) => {
@@ -84,7 +84,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                         quote! {
                             #[cfg(feature = "anchor-debug")]
                             ::anchor_lang::solana_program::log::sol_log(stringify!(#typed_name));
-                            let #typed_name = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __reallocs)
+                            let #typed_name = anchor_lang::Accounts::try_accounts(__program_id, __accounts, __ix_data, __bumps, __resizes)
                                 .map_err(|e| e.with_account_name(#name))?;
                             #warning
                         }
@@ -252,7 +252,7 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 __accounts: &mut &#trait_generics [anchor_lang::solana_program::account_info::AccountInfo<#trait_generics>],
                 __ix_data: &[u8],
                 __bumps: &mut #bumps_struct_name,
-                __reallocs: &mut std::collections::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,
+                __resizes: &mut std::collections::BTreeSet<anchor_lang::solana_program::pubkey::Pubkey>,
             ) -> anchor_lang::Result<Self> {
                 // Deserialize instruction, if declared.
                 #ix_de

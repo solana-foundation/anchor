@@ -269,14 +269,14 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         }
     }
 
-    // REALLOC
-    let mut required_realloc = false;
-    let realloc_fields: Vec<&Field> = fields
+    // RESIZE
+    let mut required_resize = false;
+    let resize_fields: Vec<&Field> = fields
         .iter()
         .filter_map(|f| match f {
-            AccountField::Field(field) if field.constraints.realloc.is_some() => {
+            AccountField::Field(field) if field.constraints.resize.is_some() => {
                 if !field.is_optional {
-                    required_realloc = true
+                    required_resize = true
                 }
                 Some(field)
             }
@@ -284,29 +284,29 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
         })
         .collect();
 
-    if !realloc_fields.is_empty() {
-        // realloc needs system program.
+    if !resize_fields.is_empty() {
+        // resize needs system program.
         if !fields
             .iter()
-            .any(|f| f.ident() == "system_program" && !(required_realloc && f.is_optional()))
+            .any(|f| f.ident() == "system_program" && !(required_resize && f.is_optional()))
         {
             #[allow(
                 clippy::indexing_slicing,
-                reason = "guarded by !realloc_fields.is_empty() above"
+                reason = "guarded by !resize_fields.is_empty() above"
             )]
             return Err(ParseError::new(
-                realloc_fields[0].ident.span(),
-                message("realloc", "system_program", required_realloc),
+                resize_fields[0].ident.span(),
+                message("resize", "system_program", required_resize),
             ));
         }
 
-        for field in realloc_fields {
-            // Get allocator for realloc-ed account
+        for field in resize_fields {
+            // Get allocator for resized account
             #[allow(
                 clippy::unwrap_used,
-                reason = "realloc_fields only contains fields with realloc constraint set"
+                reason = "resize_fields only contains fields with resize constraint set"
             )]
-            let associated_payer_name = match field.constraints.realloc.clone().unwrap().payer {
+            let associated_payer_name = match field.constraints.resize.clone().unwrap().payer {
                 // composite allocator, check not supported
                 Expr::Field(_) => continue,
                 // method call, check not supported
@@ -325,21 +325,20 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     if !associated_payer_field.constraints.is_mutable() {
                         return Err(ParseError::new(
                             field.ident.span(),
-                            "the realloc::payer specified for an realloc constraint must be \
-                             mutable.",
+                            "the resize::payer specified for a resize constraint must be mutable.",
                         ));
-                    } else if associated_payer_field.is_optional && required_realloc {
+                    } else if associated_payer_field.is_optional && required_resize {
                         return Err(ParseError::new(
                             field.ident.span(),
-                            "the realloc::payer specified for a required realloc constraint must \
-                             be required.",
+                            "the resize::payer specified for a required resize constraint must be \
+                             required.",
                         ));
                     }
                 }
                 _ => {
                     return Err(ParseError::new(
                         field.ident.span(),
-                        "the realloc::payer specified does not exist.",
+                        "the resize::payer specified does not exist.",
                     ));
                 }
             }

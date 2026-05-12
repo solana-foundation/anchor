@@ -230,7 +230,7 @@ impl<'info, B, T: ZeroCopy + Owner> Accounts<'info, B> for AccountLoader<'info, 
         accounts: &mut &'info [AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut B,
-        _reallocs: &mut BTreeSet<Pubkey>,
+        _resizes: &mut BTreeSet<Pubkey>,
     ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());

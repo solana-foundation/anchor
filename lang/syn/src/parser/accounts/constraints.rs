@@ -396,15 +396,22 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
             }
         }
         "realloc" => {
+            return Err(ParseError::new(
+                ident.span(),
+                "`realloc` has been renamed to `resize` (and `realloc::payer`/`realloc::zero` to \
+                 `resize::payer`/`resize::zero`) to match AccountInfo::resize in the Solana SDK",
+            ));
+        }
+        "resize" => {
             if stream.peek(Token![=]) {
                 stream.parse::<Token![=]>()?;
                 let span = ident
                     .span()
                     .join(stream.span())
                     .unwrap_or_else(|| ident.span());
-                ConstraintToken::Realloc(Context::new(
+                ConstraintToken::Resize(Context::new(
                     span,
-                    ConstraintRealloc {
+                    ConstraintResize {
                         space: stream.parse()?,
                     },
                 ))
@@ -420,23 +427,23 @@ pub fn parse_token(stream: ParseStream) -> ParseResult<ConstraintToken> {
                     .unwrap_or_else(|| ident.span());
 
                 match kw.as_str() {
-                    "payer" => ConstraintToken::ReallocPayer(Context::new(
+                    "payer" => ConstraintToken::ResizePayer(Context::new(
                         span,
-                        ConstraintReallocPayer {
+                        ConstraintResizePayer {
                             target: stream.parse()?,
                         },
                     )),
-                    "zero" => ConstraintToken::ReallocZero(Context::new(
+                    "zero" => ConstraintToken::ResizeZero(Context::new(
                         span,
-                        ConstraintReallocZero {
+                        ConstraintResizeZero {
                             zero: stream.parse()?,
                         },
                     )),
                     _ => {
                         return Err(ParseError::new(
                             ident.span(),
-                            "Invalid attribute. realloc::payer and realloc::zero are the only \
-                             valid attributes",
+                            "Invalid attribute. resize::payer and resize::zero are the only valid \
+                             attributes",
                         ))
                     }
                 }
@@ -584,9 +591,9 @@ pub struct ConstraintGroupBuilder<'ty> {
     pub extension_pausable_authority: Option<Context<ConstraintExtensionAuthority>>,
     pub bump: Option<Context<ConstraintTokenBump>>,
     pub program_seed: Option<Context<ConstraintProgramSeed>>,
-    pub realloc: Option<Context<ConstraintRealloc>>,
-    pub realloc_payer: Option<Context<ConstraintReallocPayer>>,
-    pub realloc_zero: Option<Context<ConstraintReallocZero>>,
+    pub resize: Option<Context<ConstraintResize>>,
+    pub resize_payer: Option<Context<ConstraintResizePayer>>,
+    pub resize_zero: Option<Context<ConstraintResizeZero>>,
     pub dup: Option<Context<ConstraintDup>>,
 }
 
@@ -631,9 +638,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_pausable_authority: None,
             bump: None,
             program_seed: None,
-            realloc: None,
-            realloc_payer: None,
-            realloc_zero: None,
+            resize: None,
+            resize_payer: None,
+            resize_zero: None,
             dup: None,
         }
     }
@@ -730,18 +737,18 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             }
         }
 
-        // Realloc.
-        if let Some(r) = &self.realloc {
-            if self.realloc_payer.is_none() {
+        // Resize.
+        if let Some(r) = &self.resize {
+            if self.resize_payer.is_none() {
                 return Err(ParseError::new(
                     r.span(),
-                    "realloc::payer must be provided when using realloc",
+                    "resize::payer must be provided when using resize",
                 ));
             }
-            if self.realloc_zero.is_none() {
+            if self.resize_zero.is_none() {
                 return Err(ParseError::new(
                     r.span(),
-                    "realloc::zero must be provided when using realloc",
+                    "resize::zero must be provided when using resize",
                 ));
             }
         }
@@ -849,9 +856,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             extension_pausable_authority,
             bump,
             program_seed,
-            realloc,
-            realloc_payer,
-            realloc_zero,
+            resize,
+            resize_payer,
+            resize_zero,
             dup,
         } = self;
 
@@ -1112,18 +1119,18 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
                     })
                 })
                 .transpose()?,
-            realloc: realloc.as_ref().map(|r| ConstraintReallocGroup {
+            resize: resize.as_ref().map(|r| ConstraintResizeGroup {
                 #[allow(
                     clippy::unwrap_used,
-                    reason = "realloc payer guaranteed when realloc constraint present"
+                    reason = "resize payer guaranteed when resize constraint present"
                 )]
-                payer: into_inner!(realloc_payer).unwrap().target,
+                payer: into_inner!(resize_payer).unwrap().target,
                 space: r.space.clone(),
                 #[allow(
                     clippy::unwrap_used,
-                    reason = "realloc zero guaranteed when realloc constraint present"
+                    reason = "resize zero guaranteed when resize constraint present"
                 )]
-                zero: into_inner!(realloc_zero).unwrap().zero,
+                zero: into_inner!(resize_zero).unwrap().zero,
             }),
             zeroed: into_inner!(zeroed),
             mutable: into_inner!(mutable),
@@ -1173,9 +1180,9 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
             ConstraintToken::MintTokenProgram(c) => self.add_mint_token_program(c),
             ConstraintToken::Bump(c) => self.add_bump(c),
             ConstraintToken::ProgramSeed(c) => self.add_program_seed(c),
-            ConstraintToken::Realloc(c) => self.add_realloc(c),
-            ConstraintToken::ReallocPayer(c) => self.add_realloc_payer(c),
-            ConstraintToken::ReallocZero(c) => self.add_realloc_zero(c),
+            ConstraintToken::Resize(c) => self.add_resize(c),
+            ConstraintToken::ResizePayer(c) => self.add_resize_payer(c),
+            ConstraintToken::ResizeZero(c) => self.add_resize_zero(c),
             ConstraintToken::ExtensionGroupPointerAuthority(c) => {
                 self.add_extension_group_pointer_authority(c)
             }
@@ -1303,7 +1310,7 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         Ok(())
     }
 
-    fn add_realloc(&mut self, c: Context<ConstraintRealloc>) -> ParseResult<()> {
+    fn add_resize(&mut self, c: Context<ConstraintResize>) -> ParseResult<()> {
         if !matches!(self.f_ty, Some(Ty::Account(_)))
             && !matches!(self.f_ty, Some(Ty::LazyAccount(_)))
             && !matches!(self.f_ty, Some(Ty::AccountLoader(_)))
@@ -1311,47 +1318,47 @@ impl<'ty> ConstraintGroupBuilder<'ty> {
         {
             return Err(ParseError::new(
                 c.span(),
-                "realloc must be on an Account, LazyAccount, AccountLoader, or Migration",
+                "resize must be on an Account, LazyAccount, AccountLoader, or Migration",
             ));
         }
         if self.mutable.is_none() {
             return Err(ParseError::new(
                 c.span(),
-                "mut must be provided before realloc",
+                "mut must be provided before resize",
             ));
         }
-        if self.realloc.is_some() {
-            return Err(ParseError::new(c.span(), "realloc already provided"));
+        if self.resize.is_some() {
+            return Err(ParseError::new(c.span(), "resize already provided"));
         }
-        self.realloc.replace(c);
+        self.resize.replace(c);
         Ok(())
     }
 
-    fn add_realloc_payer(&mut self, c: Context<ConstraintReallocPayer>) -> ParseResult<()> {
-        if self.realloc.is_none() {
+    fn add_resize_payer(&mut self, c: Context<ConstraintResizePayer>) -> ParseResult<()> {
+        if self.resize.is_none() {
             return Err(ParseError::new(
                 c.span(),
-                "realloc must be provided before realloc::payer",
+                "resize must be provided before resize::payer",
             ));
         }
-        if self.realloc_payer.is_some() {
-            return Err(ParseError::new(c.span(), "realloc::payer already provided"));
+        if self.resize_payer.is_some() {
+            return Err(ParseError::new(c.span(), "resize::payer already provided"));
         }
-        self.realloc_payer.replace(c);
+        self.resize_payer.replace(c);
         Ok(())
     }
 
-    fn add_realloc_zero(&mut self, c: Context<ConstraintReallocZero>) -> ParseResult<()> {
-        if self.realloc.is_none() {
+    fn add_resize_zero(&mut self, c: Context<ConstraintResizeZero>) -> ParseResult<()> {
+        if self.resize.is_none() {
             return Err(ParseError::new(
                 c.span(),
-                "realloc must be provided before realloc::zero",
+                "resize must be provided before resize::zero",
             ));
         }
-        if self.realloc_zero.is_some() {
-            return Err(ParseError::new(c.span(), "realloc::zero already provided"));
+        if self.resize_zero.is_some() {
+            return Err(ParseError::new(c.span(), "resize::zero already provided"));
         }
-        self.realloc_zero.replace(c);
+        self.resize_zero.replace(c);
         Ok(())
     }
 

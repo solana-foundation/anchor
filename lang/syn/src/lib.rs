@@ -751,7 +751,7 @@ pub struct ConstraintGroup {
     pub associated_token: Option<ConstraintAssociatedToken>,
     pub token_account: Option<ConstraintTokenAccountGroup>,
     pub mint: Option<ConstraintTokenMintGroup>,
-    pub realloc: Option<ConstraintReallocGroup>,
+    pub resize: Option<ConstraintResizeGroup>,
 }
 
 impl ConstraintGroup {
@@ -804,7 +804,7 @@ pub enum Constraint {
     Address(ConstraintAddress),
     TokenAccount(ConstraintTokenAccountGroup),
     Mint(ConstraintTokenMintGroup),
-    Realloc(ConstraintReallocGroup),
+    Resize(ConstraintResizeGroup),
 }
 
 // Constraint token is a single keyword in a `#[account(<TOKEN>)]` attribute.
@@ -838,9 +838,9 @@ pub enum ConstraintToken {
     MintTokenProgram(Context<ConstraintTokenProgram>),
     Bump(Context<ConstraintTokenBump>),
     ProgramSeed(Context<ConstraintProgramSeed>),
-    Realloc(Context<ConstraintRealloc>),
-    ReallocPayer(Context<ConstraintReallocPayer>),
-    ReallocZero(Context<ConstraintReallocZero>),
+    Resize(Context<ConstraintResize>),
+    ResizePayer(Context<ConstraintResizePayer>),
+    ResizeZero(Context<ConstraintResizeZero>),
     // extensions
     ExtensionGroupPointerAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionGroupPointerGroupAddress(Context<ConstraintExtensionGroupPointerGroupAddress>),
@@ -885,24 +885,24 @@ pub struct ConstraintMut {
 pub struct ConstraintDup {}
 
 #[derive(Debug, Clone)]
-pub struct ConstraintReallocGroup {
+pub struct ConstraintResizeGroup {
     pub payer: Expr,
     pub space: Expr,
     pub zero: Expr,
 }
 
 #[derive(Debug, Clone)]
-pub struct ConstraintRealloc {
+pub struct ConstraintResize {
     pub space: Expr,
 }
 
 #[derive(Debug, Clone)]
-pub struct ConstraintReallocPayer {
+pub struct ConstraintResizePayer {
     pub target: Expr,
 }
 
 #[derive(Debug, Clone)]
-pub struct ConstraintReallocZero {
+pub struct ConstraintResizeZero {
     pub zero: Expr,
 }
 

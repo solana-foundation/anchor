@@ -23,7 +23,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
         accounts: &mut &'info [AccountInfo<'info>],
         ix_data: &[u8],
         bumps: &mut B,
-        reallocs: &mut BTreeSet<Pubkey>,
+        resizes: &mut BTreeSet<Pubkey>,
     ) -> Result<Self> {
         if accounts.is_empty() {
             return if cfg!(feature = "allow-missing-optionals") {
@@ -49,7 +49,7 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Option<T> {
             // If the program_id doesn't equal the account key, we default to
             // the try_accounts implementation for the inner type and then wrap that with
             // Some. This should handle all possible valid cases.
-            T::try_accounts(program_id, accounts, ix_data, bumps, reallocs).map(Some)
+            T::try_accounts(program_id, accounts, ix_data, bumps, resizes).map(Some)
         }
     }
 }

@@ -100,7 +100,7 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
         associated_token,
         token_account,
         mint,
-        realloc,
+        resize,
     } = c_group.clone();
 
     let mut constraints = Vec::new();
@@ -111,8 +111,8 @@ pub fn linearize(c_group: &ConstraintGroup) -> Vec<Constraint> {
     if let Some(c) = init {
         constraints.push(Constraint::Init(c));
     }
-    if let Some(c) = realloc {
-        constraints.push(Constraint::Realloc(c));
+    if let Some(c) = resize {
+        constraints.push(Constraint::Resize(c));
     }
     if let Some(c) = seeds {
         constraints.push(Constraint::Seeds(c));
@@ -177,7 +177,7 @@ fn generate_constraint(
         Constraint::AssociatedToken(c) => generate_constraint_associated_token(f, c, accs),
         Constraint::TokenAccount(c) => generate_constraint_token_account(f, c, accs),
         Constraint::Mint(c) => generate_constraint_mint(f, c, accs),
-        Constraint::Realloc(c) => generate_constraint_realloc(f, c, accs),
+        Constraint::Resize(c) => generate_constraint_resize(f, c, accs),
     }
 }
 
@@ -428,9 +428,9 @@ pub fn generate_constraint_rent_exempt(
     }
 }
 
-fn generate_constraint_realloc(
+fn generate_constraint_resize(
     f: &Field,
-    c: &ConstraintReallocGroup,
+    c: &ConstraintResizeGroup,
     accs: &AccountsStruct,
 ) -> proc_macro2::TokenStream {
     let field = &f.ident;
@@ -444,11 +444,11 @@ fn generate_constraint_realloc(
         optional_check_scope.generate_check(quote! {system_program});
 
     quote! {
-        // Blocks duplicate account reallocs in a single instruction to prevent accidental account overwrites
+        // Blocks duplicate account resizes in a single instruction to prevent accidental account overwrites
         // and to ensure the calculation of the change in bytes is based on account size at program entry
         // which inheritantly guarantee idempotency.
-        if __reallocs.contains(&#field.key()) {
-            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountDuplicateReallocs).with_account_name(#account_name));
+        if __resizes.contains(&#field.key()) {
+            return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountDuplicateResizes).with_account_name(#account_name));
         }
 
         let __anchor_rent = anchor_lang::prelude::Rent::get()?;
@@ -464,7 +464,7 @@ fn generate_constraint_realloc(
             if __delta_space > 0 {
                 #system_program_optional_check
                 if ::std::convert::TryInto::<usize>::try_into(__delta_space).unwrap() > anchor_lang::solana_program::entrypoint::MAX_PERMITTED_DATA_INCREASE {
-                    return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountReallocExceedsLimit).with_account_name(#account_name));
+                    return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::AccountResizeExceedsLimit).with_account_name(#account_name));
                 }
 
                 if __new_rent_minimum > __field_info.lamports() {
@@ -486,7 +486,7 @@ fn generate_constraint_realloc(
             }
 
             __field_info.resize(#new_space)?;
-            __reallocs.insert(#field.key());
+            __resizes.insert(#field.key());
         }
     }
 }

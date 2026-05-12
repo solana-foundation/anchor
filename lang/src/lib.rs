@@ -208,7 +208,7 @@ pub trait Accounts<'info, B>: ToAccountMetas + ToAccountInfos<'info> + Sized {
         accounts: &mut &'info [AccountInfo<'info>],
         ix_data: &[u8],
         bumps: &mut B,
-        reallocs: &mut BTreeSet<Pubkey>,
+        resizes: &mut BTreeSet<Pubkey>,
     ) -> Result<Self>;
 }
 

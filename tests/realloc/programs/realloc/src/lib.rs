@@ -12,7 +12,7 @@ pub mod realloc {
         Ok(())
     }
 
-    pub fn realloc(ctx: Context<Realloc>, len: u16) -> Result<()> {
+    pub fn realloc(ctx: Context<Resize>, len: u16) -> Result<()> {
         ctx.accounts
             .sample
             .data
@@ -20,7 +20,7 @@ pub mod realloc {
         Ok(())
     }
 
-    pub fn realloc2(ctx: Context<Realloc2>, len: u16) -> Result<()> {
+    pub fn realloc2(ctx: Context<Resize2>, len: u16) -> Result<()> {
         ctx.accounts
             .sample1
             .data
@@ -53,7 +53,7 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 #[instruction(len: u16)]
-pub struct Realloc<'info> {
+pub struct Resize<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -61,9 +61,9 @@ pub struct Realloc<'info> {
         mut,
         seeds = [b"sample"],
         bump = sample.bump,
-        realloc = Sample::space(len as usize),
-        realloc::payer = authority,
-        realloc::zero = false,
+        resize = Sample::space(len as usize),
+        resize::payer = authority,
+        resize::zero = false,
     )]
     pub sample: Account<'info, Sample>,
 
@@ -72,7 +72,7 @@ pub struct Realloc<'info> {
 
 #[derive(Accounts)]
 #[instruction(len: u16)]
-pub struct Realloc2<'info> {
+pub struct Resize2<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -80,9 +80,9 @@ pub struct Realloc2<'info> {
         mut,
         seeds = [b"sample"],
         bump = sample1.bump,
-        realloc = Sample::space(len as usize),
-        realloc::payer = authority,
-        realloc::zero = false,
+        resize = Sample::space(len as usize),
+        resize::payer = authority,
+        resize::zero = false,
     )]
     pub sample1: Account<'info, Sample>,
 
@@ -90,9 +90,9 @@ pub struct Realloc2<'info> {
         mut,
         seeds = [b"sample"],
         bump = sample2.bump,
-        realloc = Sample::space((len + 10) as usize),
-        realloc::payer = authority,
-        realloc::zero = false,
+        resize = Sample::space((len + 10) as usize),
+        resize::payer = authority,
+        resize::zero = false,
         dup, // Allow duplicate accounts
     )]
     pub sample2: Account<'info, Sample>,

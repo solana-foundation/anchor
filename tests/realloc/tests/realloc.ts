@@ -42,7 +42,7 @@ describe("realloc", () => {
       assert.isTrue(e instanceof AnchorError);
       const err: AnchorError = e;
       const errMsg =
-        "The account reallocation exceeds the MAX_PERMITTED_DATA_INCREASE limit";
+        "The account resize exceeds the MAX_PERMITTED_DATA_INCREASE limit";
       assert.strictEqual(err.error.errorMessage, errMsg);
       assert.strictEqual(err.error.errorCode.number, 3016);
     }
@@ -81,8 +81,7 @@ describe("realloc", () => {
     } catch (e) {
       assert.isTrue(e instanceof AnchorError);
       const err: AnchorError = e;
-      const errMsg =
-        "The account was duplicated for more than one reallocation";
+      const errMsg = "The account was duplicated for more than one resize";
       assert.strictEqual(err.error.errorMessage, errMsg);
       assert.strictEqual(err.error.errorCode.number, 3017);
     }

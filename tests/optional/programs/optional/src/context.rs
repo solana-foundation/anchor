@@ -30,11 +30,11 @@ pub struct Update<'info> {
 pub struct Realloc<'info> {
     #[account(mut)]
     pub payer: Option<Signer<'info>>,
-    #[account(mut, realloc = new_size as usize, realloc::payer = payer, realloc::zero = false)]
+    #[account(mut, resize = new_size as usize, resize::payer = payer, resize::zero = false)]
     pub optional_pda: Option<Account<'info, DataPda>>,
     pub required: Account<'info, DataAccount>,
     pub system_program: Option<Program<'info, System>>,
-    #[account(mut, signer, realloc = new_size as usize, realloc::payer = payer, realloc::zero = true)]
+    #[account(mut, signer, resize = new_size as usize, resize::payer = payer, resize::zero = true)]
     pub optional_account: Option<Account<'info, DataAccount>>,
 }
 

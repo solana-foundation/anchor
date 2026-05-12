@@ -30,10 +30,10 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
         accounts: &mut &'info [AccountInfo<'info>],
         ix_data: &[u8],
         bumps: &mut B,
-        reallocs: &mut BTreeSet<Pubkey>,
+        resizes: &mut BTreeSet<Pubkey>,
     ) -> Result<Self> {
         let mut vec: Vec<T> = Vec::new();
-        T::try_accounts(program_id, accounts, ix_data, bumps, reallocs)
+        T::try_accounts(program_id, accounts, ix_data, bumps, resizes)
             .map(|item| vec.push(item))?;
         Ok(vec)
     }
@@ -65,10 +65,10 @@ mod tests {
         let account2 =
             AccountInfo::new(&key, true, true, &mut lamports2, &mut data2, &owner, false);
         let mut bumps = TestBumps::default();
-        let mut reallocs = std::collections::BTreeSet::new();
+        let mut resizes = std::collections::BTreeSet::new();
         let mut accounts = &[account1, account2][..];
         let parsed_accounts =
-            Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps, &mut reallocs)
+            Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps, &mut resizes)
                 .unwrap();
 
         assert_eq!(accounts.len(), parsed_accounts.len());
@@ -79,9 +79,9 @@ mod tests {
     fn test_accounts_trait_for_vec_empty() {
         let program_id = Pubkey::default();
         let mut bumps = TestBumps::default();
-        let mut reallocs = std::collections::BTreeSet::new();
+        let mut resizes = std::collections::BTreeSet::new();
         let mut accounts = &[][..];
-        Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps, &mut reallocs)
+        Vec::<Test>::try_accounts(&program_id, &mut accounts, &[], &mut bumps, &mut resizes)
             .unwrap();
     }
 }

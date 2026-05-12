@@ -43,7 +43,7 @@ pub enum MigrationInner<From, To> {
 /// instruction exits. On exit, the account must be in the migrated state or an error will
 /// be returned.
 ///
-/// This type is typically used with the `realloc` constraint to resize the account
+/// This type is typically used with the `resize` constraint to resize the account
 /// during migration.
 ///
 /// Checks:
@@ -142,9 +142,9 @@ pub enum MigrationInner<From, To> {
 ///     pub payer: Signer<'info>,
 ///     #[account(
 ///         mut,
-///         realloc = 8 + AccountV2::INIT_SPACE,
-///         realloc::payer = payer,
-///         realloc::zero = false
+///         resize = 8 + AccountV2::INIT_SPACE,
+///         resize::payer = payer,
+///         resize::zero = false
 ///     )]
 ///     pub my_account: Migration<'info, AccountV1, AccountV2>,
 ///     pub system_program: Program<'info, System>,
@@ -341,7 +341,7 @@ where
         accounts: &mut &'info [AccountInfo<'info>],
         _ix_data: &[u8],
         _bumps: &mut B,
-        _reallocs: &mut BTreeSet<Pubkey>,
+        _resizes: &mut BTreeSet<Pubkey>,
     ) -> Result<Self> {
         if accounts.is_empty() {
             return Err(ErrorCode::AccountNotEnoughKeys.into());

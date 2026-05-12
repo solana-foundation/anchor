@@ -27,9 +27,9 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Box<T> {
         accounts: &mut &'info [AccountInfo<'info>],
         ix_data: &[u8],
         bumps: &mut B,
-        reallocs: &mut BTreeSet<Pubkey>,
+        resizes: &mut BTreeSet<Pubkey>,
     ) -> Result<Self> {
-        T::try_accounts(program_id, accounts, ix_data, bumps, reallocs).map(Box::new)
+        T::try_accounts(program_id, accounts, ix_data, bumps, resizes).map(Box::new)
     }
 }
 
