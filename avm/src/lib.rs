@@ -493,11 +493,16 @@ pub fn install_version(
                 "https://github.com/solana-foundation/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
             ))
             .send()?;
-        if !res.status().is_success() {
-            return Err(anyhow!(
+        match res.status() {
+            StatusCode::NOT_FOUND => bail!(
+                "No prebuilt binary found for version `{version}` (HTTP 404). \
+                 Try `avm install {version} --from-source`."
+            ),
+            status if !status.is_success() => bail!(
                 "Failed to download the binary for version `{version}` (status code: {})",
                 res.status()
-            ));
+            ),
+            _ => (),
         }
 
         let bin_path = version_binary_path(&version);
