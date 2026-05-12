@@ -147,9 +147,7 @@ pub fn convert_idl_type_def_to_ts(
     };
 
     let attrs = {
-        let debug_attr = can_derive_debug(ty_def, ty_defs)
-            .then_some(quote!(#[derive(Debug)]))
-            .unwrap_or_default();
+        let debug_attr = quote!(#[derive(Debug)]);
 
         let default_attr =
             can_derive_default(ty_def, ty_defs).then_some(quote!(#[derive(Default)]));
@@ -168,8 +166,8 @@ pub fn convert_idl_type_def_to_ts(
             .into_compile_error(),
         };
 
-        let clone_attr = can_derive_clone(ty_def, ty_defs)
-            .then_some(quote!(#[derive(Clone)]))
+        let clone_attr = matches!(ty_def.serialization, IdlSerialization::Borsh)
+            .then(|| quote!(#[derive(Clone)]))
             .unwrap_or_default();
 
         let copy_attr = matches!(ty_def.serialization, IdlSerialization::Borsh)
@@ -550,45 +548,42 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use anchor_lang_idl::types::{
-        IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlSerialization, IdlType,
-        IdlTypeDef, IdlTypeDefTy,
+    use {
+        super::*,
+        anchor_lang_idl::types::{
+            IdlArrayLen, IdlDefinedFields, IdlField, IdlGenericArg, IdlSerialization, IdlType,
+            IdlTypeDef, IdlTypeDefTy,
+        },
     };
+
+    fn struct_def(name: &str, fields: Vec<IdlField>) -> IdlTypeDef {
+        IdlTypeDef {
+            name: name.to_string(),
+            ty: IdlTypeDefTy::Struct {
+                fields: Some(IdlDefinedFields::Named(fields)),
+            },
+            generics: vec![],
+            docs: vec![],
+            serialization: IdlSerialization::Borsh,
+            repr: None,
+        }
+    }
+
+    fn field(name: &str, ty: IdlType) -> IdlField {
+        IdlField {
+            name: name.to_string(),
+            ty,
+            docs: vec![],
+        }
+    }
 
     fn create_test_idl_types() -> Vec<IdlTypeDef> {
         vec![
-            // Simple struct with copyable types
-            IdlTypeDef {
-                name: "SimpleStruct".to_string(),
-                ty: IdlTypeDefTy::Struct {
-                    fields: Some(IdlDefinedFields::Named(vec![IdlField {
-                        name: "value".to_string(),
-                        ty: IdlType::U64,
-                        docs: vec![],
-                    }])),
-                },
-                generics: vec![],
-                docs: vec![],
-                serialization: IdlSerialization::Borsh,
-                repr: None,
-            },
-            // Struct with non-copyable types
-            IdlTypeDef {
-                name: "NonCopyStruct".to_string(),
-                ty: IdlTypeDefTy::Struct {
-                    fields: Some(IdlDefinedFields::Named(vec![IdlField {
-                        name: "data".to_string(),
-                        ty: IdlType::String,
-                        docs: vec![],
-                    }])),
-                },
-                generics: vec![],
-                docs: vec![],
-                serialization: IdlSerialization::Borsh,
-                repr: None,
-            },
-            // Enum with copyable variants
+            // [0] Simple struct with copyable types
+            struct_def("SimpleStruct", vec![field("value", IdlType::U64)]),
+            // [1] Struct with non-copyable (but cloneable/debuggable/defaultable) types
+            struct_def("NonCopyStruct", vec![field("data", IdlType::String)]),
+            // [2] Enum with copyable variants
             IdlTypeDef {
                 name: "SimpleEnum".to_string(),
                 ty: IdlTypeDefTy::Enum {
@@ -599,11 +594,10 @@ mod tests {
                         },
                         anchor_lang_idl::types::IdlEnumVariant {
                             name: "Variant2".to_string(),
-                            fields: Some(IdlDefinedFields::Named(vec![IdlField {
-                                name: "value".to_string(),
-                                ty: IdlType::U32,
-                                docs: vec![],
-                            }])),
+                            fields: Some(IdlDefinedFields::Named(vec![field(
+                                "value",
+                                IdlType::U32,
+                            )])),
                         },
                     ],
                 },
@@ -612,7 +606,7 @@ mod tests {
                 serialization: IdlSerialization::Borsh,
                 repr: None,
             },
-            // Type alias
+            // [3] Type alias
             IdlTypeDef {
                 name: "TypeAlias".to_string(),
                 ty: IdlTypeDefTy::Type {
@@ -623,6 +617,30 @@ mod tests {
                 serialization: IdlSerialization::Borsh,
                 repr: None,
             },
+            // [4] Struct containing a generic param — should not derive Clone/Debug/Default/Copy
+            struct_def(
+                "GenericStruct",
+                vec![field("inner", IdlType::Generic("T".to_string()))],
+            ),
+            // [5] Struct with an array too large to derive Default (>32 elements)
+            struct_def(
+                "LargeArrayStruct",
+                vec![field(
+                    "buf",
+                    IdlType::Array(Box::new(IdlType::U8), IdlArrayLen::Value(64)),
+                )],
+            ),
+            // [6] Struct that references NonCopyStruct — propagates clone/debug/default but not copy
+            struct_def(
+                "WrapperStruct",
+                vec![field(
+                    "inner",
+                    IdlType::Defined {
+                        name: "NonCopyStruct".to_string(),
+                        generics: vec![],
+                    },
+                )],
+            ),
         ]
     }
 
@@ -941,81 +959,117 @@ mod tests {
         // Test type alias
         let type_alias = &ty_defs[3];
         assert!(can_derive_default(type_alias, &ty_defs));
+
+        // Generic-bearing struct: Default has no T: Default bound expansion, so reject
+        let generic_struct = &ty_defs[4];
+        assert!(!can_derive_default(generic_struct, &ty_defs));
+
+        // Struct with an oversize array — std Default impls only go up to 32 elements
+        let large_array_struct = &ty_defs[5];
+        assert!(!can_derive_default(large_array_struct, &ty_defs));
+
+        // Wrapper around NonCopyStruct: inherits Default-able (String: Default)
+        let wrapper = &ty_defs[6];
+        assert!(can_derive_default(wrapper, &ty_defs));
+    }
+
+    #[test]
+    fn test_generic_struct_rejects_clone_debug_copy() {
+        // Regression coverage: a defined type whose field is `IdlType::Generic("T")`
+        // can't safely derive Clone/Debug/Copy from a procedural macro because the
+        // derive expansion would need a `T: Clone` bound we don't synthesise.
+        let ty_defs = create_test_idl_types();
+        let generic_struct = &ty_defs[4];
+
+        assert!(!can_derive_clone(generic_struct, &ty_defs));
+        assert!(!can_derive_debug(generic_struct, &ty_defs));
+        assert!(!can_derive_copy(generic_struct, &ty_defs));
+    }
+
+    #[test]
+    fn test_wrapper_struct_inherits_non_copy() {
+        // A struct wrapping NonCopyStruct should be Clone+Debug+Default-able but NOT Copy.
+        let ty_defs = create_test_idl_types();
+        let wrapper = &ty_defs[6];
+
+        assert!(can_derive_clone(wrapper, &ty_defs));
+        assert!(can_derive_debug(wrapper, &ty_defs));
+        assert!(can_derive_default(wrapper, &ty_defs));
+        assert!(!can_derive_copy(wrapper, &ty_defs));
+    }
+
+    #[test]
+    fn test_can_derive_ty_defined_lookup() {
+        // `_ty` helpers must walk through `IdlType::Defined` and pick up the wrapped
+        // type-def's trait status, not assume the defined type is always derivable.
+        let ty_defs = create_test_idl_types();
+
+        let wrapper_ref = IdlType::Defined {
+            name: "WrapperStruct".to_string(),
+            generics: vec![],
+        };
+        assert!(can_derive_clone_ty(&wrapper_ref, &ty_defs));
+        assert!(can_derive_debug_ty(&wrapper_ref, &ty_defs));
+        assert!(!can_derive_copy_ty(&wrapper_ref, &ty_defs));
+
+        let large_array_ref = IdlType::Defined {
+            name: "LargeArrayStruct".to_string(),
+            generics: vec![],
+        };
+        assert!(!can_derive_default_ty(&large_array_ref, &ty_defs));
     }
 
     #[test]
     fn test_convert_idl_type_to_str() {
-        // Test basic types
-        assert_eq!(convert_idl_type_to_str(&IdlType::Bool, false), "bool");
-        assert_eq!(convert_idl_type_to_str(&IdlType::U8, false), "u8");
-        assert_eq!(convert_idl_type_to_str(&IdlType::U64, false), "u64");
-        assert_eq!(convert_idl_type_to_str(&IdlType::String, false), "String");
-        assert_eq!(convert_idl_type_to_str(&IdlType::Pubkey, false), "Pubkey");
+        fn s(ty: &IdlType) -> String {
+            convert_idl_type_to_str(ty, false).unwrap()
+        }
 
-        // Test Option
-        assert_eq!(
-            convert_idl_type_to_str(&IdlType::Option(Box::new(IdlType::U64)), false),
-            "Option<u64>"
-        );
+        assert_eq!(s(&IdlType::Bool), "bool");
+        assert_eq!(s(&IdlType::U8), "u8");
+        assert_eq!(s(&IdlType::U64), "u64");
+        assert_eq!(s(&IdlType::String), "String");
+        assert_eq!(s(&IdlType::Pubkey), "Pubkey");
 
-        // Test Vec
-        assert_eq!(
-            convert_idl_type_to_str(&IdlType::Vec(Box::new(IdlType::String)), false),
-            "Vec<String>"
-        );
+        assert_eq!(s(&IdlType::Option(Box::new(IdlType::U64))), "Option<u64>");
+        assert_eq!(s(&IdlType::Vec(Box::new(IdlType::String))), "Vec<String>");
 
-        // Test Array with value length
         assert_eq!(
-            convert_idl_type_to_str(
-                &IdlType::Array(Box::new(IdlType::U8), IdlArrayLen::Value(10)),
-                false
-            ),
+            s(&IdlType::Array(
+                Box::new(IdlType::U8),
+                IdlArrayLen::Value(10)
+            )),
             "[u8; 10]"
         );
-
-        // Test Array with generic length
         assert_eq!(
-            convert_idl_type_to_str(
-                &IdlType::Array(Box::new(IdlType::U8), IdlArrayLen::Generic("N".to_string())),
-                false
-            ),
+            s(&IdlType::Array(
+                Box::new(IdlType::U8),
+                IdlArrayLen::Generic("N".to_string())
+            )),
             "[u8; N]"
         );
 
-        // Test defined type without generics
         assert_eq!(
-            convert_idl_type_to_str(
-                &IdlType::Defined {
-                    name: "MyStruct".to_string(),
-                    generics: vec![],
-                },
-                false
-            ),
+            s(&IdlType::Defined {
+                name: "MyStruct".to_string(),
+                generics: vec![],
+            }),
             "MyStruct"
         );
-
-        // Test defined type with generics
         assert_eq!(
-            convert_idl_type_to_str(
-                &IdlType::Defined {
-                    name: "MyStruct".to_string(),
-                    generics: vec![
-                        IdlGenericArg::Type { ty: IdlType::U64 },
-                        IdlGenericArg::Const {
-                            value: "10".to_string()
-                        },
-                    ],
-                },
-                false
-            ),
+            s(&IdlType::Defined {
+                name: "MyStruct".to_string(),
+                generics: vec![
+                    IdlGenericArg::Type { ty: IdlType::U64 },
+                    IdlGenericArg::Const {
+                        value: "10".to_string()
+                    },
+                ],
+            }),
             "MyStruct<u64,10>"
         );
 
-        // Test generic type
-        assert_eq!(
-            convert_idl_type_to_str(&IdlType::Generic("T".to_string()), false),
-            "T"
-        );
+        assert_eq!(s(&IdlType::Generic("T".to_string())), "T");
     }
 
     #[test]

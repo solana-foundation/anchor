@@ -97,17 +97,16 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 })
                 .collect();
 
-            // Check if all argument types can derive Clone and Debug
-            // Note: all() returns true for empty iterators, so no need to check is_empty()
-            let can_derive_traits = ix
+            // Conditionally derive Clone and Debug if every arg type supports them.
+            // `all()` is true for empty iterators, so unit instructions always get the derives.
+            let extra_derives: Vec<proc_macro2::TokenStream> = if ix
                 .args
                 .iter()
-                .all(|arg| can_derive_common_trait(&arg.raw_arg.ty));
-
-            let traits_attr = if can_derive_traits {
-                quote!(Clone, Debug,)
+                .all(|arg| can_derive_common_trait(&arg.raw_arg.ty))
+            {
+                vec![quote!(Clone), quote!(Debug)]
             } else {
-                quote!()
+                vec![]
             };
 
             let impls = {
@@ -138,7 +137,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     #(#ix_cfgs)*
                     /// Instruction.
-                    #[derive(AnchorSerialize, AnchorDeserialize, #traits_attr)]
+                    #[derive(AnchorSerialize, AnchorDeserialize #(, #extra_derives)*)]
                     pub struct #ix_name_camel;
 
                     #impls
@@ -147,7 +146,7 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 quote! {
                     #(#ix_cfgs)*
                     /// Instruction.
-                    #[derive(AnchorSerialize, AnchorDeserialize, #traits_attr)]
+                    #[derive(AnchorSerialize, AnchorDeserialize #(, #extra_derives)*)]
                     pub struct #ix_name_camel {
                         #(#raw_args),*
                     }
@@ -170,5 +169,61 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
 
             #(#variants)*
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::can_derive_common_trait, syn::parse_quote};
+
+    #[test]
+    fn primitives_and_std_types_derive() {
+        assert!(can_derive_common_trait(&parse_quote!(u8)));
+        assert!(can_derive_common_trait(&parse_quote!(i128)));
+        assert!(can_derive_common_trait(&parse_quote!(bool)));
+        assert!(can_derive_common_trait(&parse_quote!(String)));
+        assert!(can_derive_common_trait(&parse_quote!(Pubkey)));
+    }
+
+    #[test]
+    fn fully_qualified_paths_resolve_to_last_segment() {
+        // `std::vec::Vec<u8>` should be recognised as a `Vec` of a primitive.
+        assert!(can_derive_common_trait(&parse_quote!(std::vec::Vec<u8>)));
+        assert!(can_derive_common_trait(&parse_quote!(
+            ::std::option::Option<u64>
+        )));
+    }
+
+    #[test]
+    fn option_and_vec_recurse_into_inner() {
+        assert!(can_derive_common_trait(&parse_quote!(Option<u64>)));
+        assert!(can_derive_common_trait(&parse_quote!(Vec<String>)));
+        // Inner user-defined type makes the wrapper undecidable.
+        assert!(!can_derive_common_trait(&parse_quote!(Option<MyType>)));
+        assert!(!can_derive_common_trait(&parse_quote!(Vec<MyType>)));
+    }
+
+    #[test]
+    fn arrays_tuples_and_references_recurse() {
+        assert!(can_derive_common_trait(&parse_quote!([u8; 32])));
+        assert!(can_derive_common_trait(&parse_quote!((u8, bool, String))));
+        assert!(can_derive_common_trait(&parse_quote!(&u8)));
+
+        assert!(!can_derive_common_trait(&parse_quote!([MyType; 4])));
+        assert!(!can_derive_common_trait(&parse_quote!((u8, MyType))));
+    }
+
+    #[test]
+    fn user_defined_types_are_conservative() {
+        // Without name resolution we can't know whether `MyType` is Clone/Debug.
+        assert!(!can_derive_common_trait(&parse_quote!(MyType)));
+        assert!(!can_derive_common_trait(&parse_quote!(some_mod::MyType)));
+    }
+
+    #[test]
+    fn exotic_types_rejected() {
+        // Trait objects, fn pointers, impl traits — none are supported.
+        assert!(!can_derive_common_trait(&parse_quote!(dyn std::fmt::Debug)));
+        assert!(!can_derive_common_trait(&parse_quote!(fn(u8) -> u8)));
     }
 }
