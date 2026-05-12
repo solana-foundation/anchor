@@ -12,6 +12,7 @@ members = [
     "lang/syn",
     "spl",
     "tests/idl-forward-ref/programs/idl-forward-ref",
+    "tests/idl-type-alias/programs/idl-type-alias",
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
