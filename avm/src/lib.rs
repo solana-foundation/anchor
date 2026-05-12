@@ -495,8 +495,8 @@ pub fn install_version(
             .send()?;
         match res.status() {
             StatusCode::NOT_FOUND => bail!(
-                "No prebuilt binary found for version `{version}` (HTTP 404). \
-                 Try `avm install {version} --from-source`."
+                "No prebuilt binary found for version `{version}` (HTTP 404). Try `avm install \
+                 {version} --from-source`."
             ),
             status if !status.is_success() => bail!(
                 "Failed to download the binary for version `{version}` (status code: {})",
