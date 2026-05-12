@@ -65,10 +65,11 @@ impl CrateContext {
                 // Check if unsafe field type has been documented with a /// SAFETY: doc string.
                 let is_documented = unsafe_field.attrs.iter().any(|attr| {
                     if let syn::Meta::NameValue(syn::MetaNameValue {
-                        value: syn::Expr::Lit(syn::ExprLit {
-                            lit: syn::Lit::Str(s),
-                            ..
-                        }),
+                        value:
+                            syn::Expr::Lit(syn::ExprLit {
+                                lit: syn::Lit::Str(s),
+                                ..
+                            }),
                         ..
                     }) = &attr.meta
                     {

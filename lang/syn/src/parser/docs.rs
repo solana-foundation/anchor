@@ -7,10 +7,11 @@ pub fn parse(attrs: &[syn::Attribute]) -> Option<Vec<String>> {
                 return None;
             }
             if let syn::Meta::NameValue(syn::MetaNameValue {
-                value: syn::Expr::Lit(syn::ExprLit {
-                    lit: syn::Lit::Str(doc),
-                    ..
-                }),
+                value:
+                    syn::Expr::Lit(syn::ExprLit {
+                        lit: syn::Lit::Str(doc),
+                        ..
+                    }),
                 ..
             }) = &attr.meta
             {

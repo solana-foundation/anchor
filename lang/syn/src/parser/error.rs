@@ -42,9 +42,7 @@ pub fn parse(error_enum: &mut syn::ItemEnum, args: Option<ErrorArgs>) -> Result<
             last_discriminant = id + 1;
 
             // Remove any non-doc attributes on the error variant.
-            variant
-                .attrs
-                .retain(|attr| attr.path().is_ident("doc"));
+            variant.attrs.retain(|attr| attr.path().is_ident("doc"));
 
             Ok(ErrorCode { id, ident, msg })
         })
@@ -82,7 +80,10 @@ fn parse_error_attribute(variant: &syn::Variant) -> Result<Option<String>, syn::
             let g_stream = match &attr.meta {
                 syn::Meta::List(list) => list.tokens.clone(),
                 _ => {
-                    return Err(syn::Error::new(attr.span(), "expected `#[msg(\"message\")]`"))
+                    return Err(syn::Error::new(
+                        attr.span(),
+                        "expected `#[msg(\"message\")]`",
+                    ))
                 }
             };
 
