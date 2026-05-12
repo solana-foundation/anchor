@@ -11,6 +11,7 @@ members = [
     "lang/error",
     "lang/syn",
     "spl",
+    "tests/idl-forward-ref/programs/idl-forward-ref",
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"

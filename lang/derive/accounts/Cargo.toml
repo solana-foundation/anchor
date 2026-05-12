@@ -27,4 +27,4 @@ init-if-needed = ["anchor-syn/init-if-needed"]
 [dependencies]
 anchor-syn = { path = "../../syn", version = "1.0.2" }
 quote = "1"
-syn = { version = "1", features = ["full"] }
+syn = { version = "2", features = ["full"] }

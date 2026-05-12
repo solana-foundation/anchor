@@ -11,15 +11,15 @@ use {
 };
 
 pub fn parse(accounts_struct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
-    let instruction_api: Option<Punctuated<Expr, Comma>> = accounts_struct
+    let instruction_api: Option<Punctuated<syn::FnArg, Comma>> = accounts_struct
         .attrs
         .iter()
         .find(|a| {
-            a.path
+            a.path()
                 .get_ident()
                 .is_some_and(|ident| ident == "instruction")
         })
-        .map(|ix_attr| ix_attr.parse_args_with(Punctuated::<Expr, Comma>::parse_terminated))
+        .map(|ix_attr| ix_attr.parse_args_with(Punctuated::<syn::FnArg, Comma>::parse_terminated))
         .transpose()?;
 
     #[cfg(feature = "event-cpi")]
@@ -27,7 +27,7 @@ pub fn parse(accounts_struct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
         let is_event_cpi = accounts_struct
             .attrs
             .iter()
-            .filter_map(|attr| attr.path.get_ident())
+            .filter_map(|attr| attr.path().get_ident())
             .any(|ident| *ident == "event_cpi");
         if is_event_cpi {
             event_cpi::add_event_cpi_accounts(accounts_struct)?
