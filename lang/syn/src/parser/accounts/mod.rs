@@ -22,6 +22,47 @@ pub fn parse(accounts_struct: &syn::ItemStruct) -> ParseResult<AccountsStruct> {
         .map(|ix_attr| ix_attr.parse_args_with(Punctuated::<syn::FnArg, Comma>::parse_terminated))
         .transpose()?;
 
+    if let Some(ref api) = instruction_api {
+        for arg in api.iter() {
+            match arg {
+                syn::FnArg::Receiver(r) => {
+                    return Err(ParseError::new(
+                        r.self_token.span,
+                        "#[instruction] args cannot use `self`",
+                    ));
+                }
+                syn::FnArg::Typed(pat_type) => match pat_type.pat.as_ref() {
+                    syn::Pat::Ident(pat_ident) => {
+                        if let Some(by_ref) = &pat_ident.by_ref {
+                            return Err(ParseError::new_spanned(
+                                by_ref,
+                                "#[instruction] arg names cannot use `ref`",
+                            ));
+                        }
+                        if let Some(mutability) = &pat_ident.mutability {
+                            return Err(ParseError::new_spanned(
+                                mutability,
+                                "#[instruction] arg names cannot use `mut`",
+                            ));
+                        }
+                        if let Some((_, subpat)) = &pat_ident.subpat {
+                            return Err(ParseError::new_spanned(
+                                subpat,
+                                "#[instruction] arg names cannot use subpatterns",
+                            ));
+                        }
+                    }
+                    _ => {
+                        return Err(ParseError::new_spanned(
+                            &pat_type.pat,
+                            "#[instruction] arg names must be plain identifiers, e.g. `data: u64`",
+                        ));
+                    }
+                },
+            }
+        }
+    }
+
     #[cfg(feature = "event-cpi")]
     let accounts_struct = {
         let is_event_cpi = accounts_struct

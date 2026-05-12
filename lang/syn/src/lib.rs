@@ -1282,3 +1282,9 @@ impl<T> Context<T> {
         self.span
     }
 }
+
+impl<T: ToTokens> ToTokens for Context<T> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.inner.to_tokens(tokens)
+    }
+}

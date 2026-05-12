@@ -315,7 +315,14 @@ fn get_attr_str(name: impl AsRef<str>, attrs: &[syn::Attribute]) -> Option<Strin
                 .is_some()
         })
         .filter_map(|attr| match &attr.meta {
-            syn::Meta::List(list) => Some(format!("({})", list.tokens)),
+            syn::Meta::List(list) => {
+                let (open, close) = match list.delimiter {
+                    syn::MacroDelimiter::Paren(_) => ("(", ")"),
+                    syn::MacroDelimiter::Bracket(_) => ("[", "]"),
+                    syn::MacroDelimiter::Brace(_) => ("{", "}"),
+                };
+                Some(format!("{open}{}{close}", list.tokens))
+            }
             _ => None,
         })
         .reduce(|acc, cur| {
