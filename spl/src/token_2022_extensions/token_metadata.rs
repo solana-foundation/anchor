@@ -1,5 +1,3 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
 use {
     anchor_lang::{
         context::CpiContext, solana_program::account_info::AccountInfo, Result, ToAccountInfos,

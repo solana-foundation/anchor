@@ -71,7 +71,6 @@ fn recursively_find_type(
 }
 
 fn get_registry_path() -> Result<PathBuf> {
-    #[allow(deprecated)]
     let path = env::home_dir()
         .unwrap()
         .join(".cargo")
