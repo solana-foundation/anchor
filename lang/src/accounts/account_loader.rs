@@ -125,6 +125,8 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         Ok(())
     }
 
+    /// Check that the account data is long enough to hold the discriminator and
+    /// an instance of `T`.
     fn check_data_len(data: &[u8]) -> Result<()> {
         let disc = T::DISCRIMINATOR;
         let required = disc
