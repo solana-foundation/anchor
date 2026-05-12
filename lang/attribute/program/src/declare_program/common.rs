@@ -385,6 +385,10 @@ pub fn can_derive_clone_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
         IdlType::Option(inner) => can_derive_clone_ty(inner, ty_defs),
         IdlType::Vec(inner) => can_derive_clone_ty(inner, ty_defs),
         IdlType::Array(inner, _) => can_derive_clone_ty(inner, ty_defs),
+        #[allow(
+            clippy::expect_used,
+            reason = "IDL cross-references are guaranteed consistent by Anchor tooling"
+        )]
         IdlType::Defined { name, .. } => ty_defs
             .iter()
             .find(|ty_def| &ty_def.name == name)
@@ -400,6 +404,10 @@ pub fn can_derive_debug_ty(ty: &IdlType, ty_defs: &[IdlTypeDef]) -> bool {
         IdlType::Option(inner) => can_derive_debug_ty(inner, ty_defs),
         IdlType::Vec(inner) => can_derive_debug_ty(inner, ty_defs),
         IdlType::Array(inner, _) => can_derive_debug_ty(inner, ty_defs),
+        #[allow(
+            clippy::expect_used,
+            reason = "IDL cross-references are guaranteed consistent by Anchor tooling"
+        )]
         IdlType::Defined { name, .. } => ty_defs
             .iter()
             .find(|ty_def| &ty_def.name == name)
@@ -547,6 +555,11 @@ pub fn get_all_instruction_accounts(idl: &Idl) -> Vec<IdlInstructionAccounts> {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    reason = "tests construct fixtures with known shape and only feed valid IDL types"
+)]
 mod tests {
     use {
         super::*,

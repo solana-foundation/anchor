@@ -10,12 +10,9 @@ fn can_derive_common_trait(ty: &Type) -> bool {
     match ty {
         // Primitives - always support Clone/Debug
         Type::Path(path) if path.qself.is_none() => {
-            let segments = &path.path.segments;
-            if segments.is_empty() {
+            let Some(last_segment) = path.path.segments.last() else {
                 return false;
-            }
-            // Use last segment to handle fully qualified paths like std::vec::Vec<T>
-            let last_segment = segments.last().unwrap();
+            };
             let ident_str = last_segment.ident.to_string();
 
             // Check for primitives
