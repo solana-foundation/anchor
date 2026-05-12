@@ -117,24 +117,45 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }
     }
 
-    /// Constructs a new `Loader` from a previously initialized account.
-    #[inline(never)]
-    pub fn try_from(acc_info: &'info AccountInfo<'info>) -> Result<AccountLoader<'info, T>> {
+    fn check_owner(acc_info: &AccountInfo) -> Result<()> {
         if acc_info.owner != &T::owner() {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
                 .with_pubkeys((*acc_info.owner, T::owner())));
         }
+        Ok(())
+    }
 
-        let data = &acc_info.try_borrow_data()?;
+    fn check_data_len(data: &[u8]) -> Result<()> {
+        let disc = T::DISCRIMINATOR;
+        let required = disc
+            .len()
+            .checked_add(mem::size_of::<T>())
+            .ok_or(ErrorCode::AccountDidNotDeserialize)?;
+        if data.len() < required {
+            return Err(ErrorCode::AccountDidNotDeserialize.into());
+        }
+        Ok(())
+    }
+
+    fn check_discriminator(data: &[u8]) -> Result<()> {
         let disc = T::DISCRIMINATOR;
         if data.len() < disc.len() {
             return Err(ErrorCode::AccountDiscriminatorNotFound.into());
         }
-
         let given_disc = &data[..disc.len()];
         if given_disc != disc {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
+        Ok(())
+    }
+
+    /// Constructs a new `Loader` from a previously initialized account.
+    #[inline(never)]
+    pub fn try_from(acc_info: &'info AccountInfo<'info>) -> Result<AccountLoader<'info, T>> {
+        Self::check_owner(acc_info)?;
+
+        let data = &acc_info.try_borrow_data()?;
+        Self::check_discriminator(data)?;
 
         Ok(AccountLoader::new(acc_info))
     }
@@ -145,30 +166,17 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         _program_id: &Pubkey,
         acc_info: &'info AccountInfo<'info>,
     ) -> Result<AccountLoader<'info, T>> {
-        if acc_info.owner != &T::owner() {
-            return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*acc_info.owner, T::owner())));
-        }
+        Self::check_owner(acc_info)?;
         Ok(AccountLoader::new(acc_info))
     }
 
     /// Returns a Ref to the account data structure for reading.
     pub fn load(&self) -> Result<Ref<'_, T>> {
         let data = self.acc_info.try_borrow_data()?;
+        Self::check_discriminator(&data)?;
+        Self::check_data_len(&data)?;
+
         let disc = T::DISCRIMINATOR;
-        let required = disc
-            .len()
-            .checked_add(mem::size_of::<T>())
-            .ok_or(ErrorCode::AccountDidNotDeserialize)?;
-        if data.len() < required {
-            return Err(ErrorCode::AccountDidNotDeserialize.into());
-        }
-
-        let given_disc = &data[..disc.len()];
-        if given_disc != disc {
-            return Err(ErrorCode::AccountDiscriminatorMismatch.into());
-        }
-
         Ok(Ref::map(data, |data| {
             bytemuck::from_bytes(&data[disc.len()..mem::size_of::<T>() + disc.len()])
         }))
@@ -183,20 +191,10 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }
 
         let data = self.acc_info.try_borrow_mut_data()?;
+        Self::check_discriminator(&data)?;
+        Self::check_data_len(&data)?;
+
         let disc = T::DISCRIMINATOR;
-        let required = disc
-            .len()
-            .checked_add(mem::size_of::<T>())
-            .ok_or(ErrorCode::AccountDidNotDeserialize)?;
-        if data.len() < required {
-            return Err(ErrorCode::AccountDidNotDeserialize.into());
-        }
-
-        let given_disc = &data[..disc.len()];
-        if given_disc != disc {
-            return Err(ErrorCode::AccountDiscriminatorMismatch.into());
-        }
-
         Ok(RefMut::map(data, |data| {
             bytemuck::from_bytes_mut(
                 &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],
@@ -216,14 +214,8 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         let data = self.acc_info.try_borrow_mut_data()?;
 
         // The discriminator should be zero, since we're initializing.
+        Self::check_data_len(&data)?;
         let disc = T::DISCRIMINATOR;
-        let required = disc
-            .len()
-            .checked_add(mem::size_of::<T>())
-            .ok_or(ErrorCode::AccountDidNotDeserialize)?;
-        if data.len() < required {
-            return Err(ErrorCode::AccountDidNotDeserialize.into());
-        }
         let given_disc = &data[..disc.len()];
         let has_disc = given_disc.iter().any(|b| *b != 0);
         if has_disc {
