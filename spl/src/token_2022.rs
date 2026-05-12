@@ -457,6 +457,53 @@ pub fn ui_amount_to_amount<'info>(
         .map_err(Into::into)
 }
 
+pub fn reallocate<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, Reallocate<'info>>,
+    extension_types: &[spl_token_2022::extension::ExtensionType],
+) -> Result<()> {
+    let ix = spl_token_2022::instruction::reallocate(
+        &ctx.program_id,
+        ctx.accounts.account.key,
+        ctx.accounts.payer.key,
+        ctx.accounts.authority.key,
+        &[],
+        extension_types,
+    )?;
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.account,
+            ctx.accounts.payer,
+            ctx.accounts.system_program,
+            ctx.accounts.authority,
+        ],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
+pub fn withdraw_excess_lamports<'info>(
+    ctx: CpiContext<'_, '_, '_, 'info, WithdrawExcessLamports<'info>>,
+) -> Result<()> {
+    let ix = spl_token_2022::instruction::withdraw_excess_lamports(
+        &ctx.program_id,
+        ctx.accounts.source.key,
+        ctx.accounts.destination.key,
+        ctx.accounts.authority.key,
+        &[],
+    )?;
+    anchor_lang::solana_program::program::invoke_signed(
+        &ix,
+        &[
+            ctx.accounts.source,
+            ctx.accounts.destination,
+            ctx.accounts.authority,
+        ],
+        ctx.signer_seeds,
+    )
+    .map_err(Into::into)
+}
+
 pub struct Transfer<'info> {
     pub from: AccountInfo<'info>,
     pub to: AccountInfo<'info>,
@@ -989,6 +1036,61 @@ impl<'info> ToAccountMetas for UiAmountToAmount<'info> {
     fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
         let mut account_metas = vec![];
         account_metas.extend(self.account.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
+pub struct Reallocate<'info> {
+    pub account: AccountInfo<'info>,
+    pub payer: AccountInfo<'info>,
+    pub system_program: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for Reallocate<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.account.to_owned(),
+            self.payer.to_owned(),
+            self.system_program.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for Reallocate<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.account.to_account_metas(is_signer));
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.system_program.to_account_metas(is_signer));
+        account_metas.extend(self.authority.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
+pub struct WithdrawExcessLamports<'info> {
+    pub source: AccountInfo<'info>,
+    pub destination: AccountInfo<'info>,
+    pub authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for WithdrawExcessLamports<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.source.to_owned(),
+            self.destination.to_owned(),
+            self.authority.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for WithdrawExcessLamports<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.source.to_account_metas(is_signer));
+        account_metas.extend(self.destination.to_account_metas(is_signer));
+        account_metas.extend(self.authority.to_account_metas(is_signer));
         account_metas
     }
 }

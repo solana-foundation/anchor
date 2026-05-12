@@ -242,10 +242,7 @@ pub fn account(
 
                     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
                         let data: &[u8] = &buf[#disc.len()..];
-                        // Re-interpret raw bytes into the POD data structure.
-                        let account = anchor_lang::__private::bytemuck::from_bytes(data);
-                        // Copy out the bytes into a new, owned data structure.
-                        Ok(*account)
+                        Ok(anchor_lang::__private::bytemuck::pod_read_unaligned(data))
                     }
                 }
 
