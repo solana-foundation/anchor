@@ -1,5 +1,3 @@
-[toolchain]
-
 [features]
 resolution = true
 skip-lint = false
@@ -13,6 +11,4 @@ example = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/test.ts"
-test2 = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/test.ts"
-
-[test]
+test2 = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/test2.ts"

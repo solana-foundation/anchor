@@ -3467,10 +3467,10 @@ fn run_test_suite(
 
     // Run the tests.
     let test_result = {
-        let cmd = scripts
-            .get(script_name)
-            .unwrap_or_else(|| panic!("Not able to find script for `{}`", script_name))
-            .clone();
+        let Some(cmd) = scripts.get(script_name) else {
+            bail!("Not able to find script for `{}`", script_name);
+        };
+        let cmd = cmd.clone();
         let script_args = format!("{cmd} {}", extra_args.join(" "));
 
         std::process::Command::new("bash")
