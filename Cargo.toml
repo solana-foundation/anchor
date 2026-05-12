@@ -11,6 +11,7 @@ members = [
     "lang/error",
     "lang/syn",
     "spl",
+    "tests/idl-forward-ref/programs/idl-forward-ref",
 ]
 exclude = ["tests/cfo/deps/openbook-dex", "tests/swap/deps/openbook-dex"]
 resolver = "2"
@@ -62,6 +63,7 @@ solana-transaction = "3.0.1"
 
 # Non solana crates
 cargo_toml = "0.22.3"
+syn = "2"
 
 [profile.release]
 lto = true

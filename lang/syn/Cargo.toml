@@ -39,5 +39,5 @@ proc-macro2 = { version = "1.0.100", features = ["span-locations"] }
 quote = "1"
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.11"
-syn = { version = "1", features = ["full", "extra-traits", "parsing"] }
+syn = { workspace = true, features = ["full", "extra-traits", "parsing"] }
 thiserror = "1"

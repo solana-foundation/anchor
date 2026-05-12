@@ -29,4 +29,4 @@ anyhow = "1"
 heck = "0.3"
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "1", features = ["full"] }
+syn = { workspace = true, features = ["full"] }
