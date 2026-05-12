@@ -81,15 +81,8 @@ fn test_cpi_empty_accounts() {
 
     let proxy_empty = caller::instruction::ProxyEmpty {}.data();
     let proxy_metas = vec![AccountMeta::new_readonly(callee_id(), false)];
-    send_instruction(
-        &mut svm,
-        caller_id(),
-        proxy_empty,
-        proxy_metas,
-        &payer,
-        &[],
-    )
-    .expect("caller::proxy_empty should succeed");
+    send_instruction(&mut svm, caller_id(), proxy_empty, proxy_metas, &payer, &[])
+        .expect("caller::proxy_empty should succeed");
 }
 
 #[test]

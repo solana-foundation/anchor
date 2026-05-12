@@ -17,16 +17,18 @@
 
 use {
     anchor_lang_v2::{
-        prelude::BorshAccount, testing::AccountBuffer, AnchorAccount, Discriminator, Owner,
+        prelude::BorshAccount,
+        testing::AccountBuffer,
+        wincode::{SchemaRead, SchemaWrite},
+        AnchorAccount, Discriminator, Owner,
     },
-    borsh::{BorshDeserialize, BorshSerialize},
     pinocchio::{account::RuntimeAccount, address::Address},
     solana_program_error::ProgramError,
 };
 
 const PROGRAM_ID: [u8; 32] = [0x42; 32];
 
-#[derive(BorshDeserialize, BorshSerialize, Default, Clone, PartialEq, Debug)]
+#[derive(SchemaRead, SchemaWrite, Default, Clone, PartialEq, Debug)]
 struct Counter {
     value: u64,
 }
@@ -47,7 +49,8 @@ fn counter_disc() -> [u8; 8] {
 }
 
 fn setup_counter_buf(buf: &mut AccountBuffer<256>, initial_value: u64) {
-    // Layout: disc(8) + borsh(Counter) = disc(8) + u64(8) = 16 bytes
+    // Layout: disc(8) + wincode(Counter) = disc(8) + u64(8) = 16 bytes
+    // (byte-identical to borsh for Counter — single u64, no length prefix).
     let data_len = 16;
     buf.init([0xAA; 32], PROGRAM_ID, data_len, false, true, false);
     let mut data = [0u8; 16];
@@ -365,4 +368,96 @@ fn stale_detection_fires_on_data_len_change() {
     // First 16 bytes should reflect the updated state.
     let bytes = read_data_bytes(&buf, 8, 8);
     assert_eq!(u64::from_le_bytes(bytes.try_into().unwrap()), 100);
+}
+
+// -- 7. Codec cursor advance contract ---------------------------------
+//
+// `AnchorAccountSerialize::{serialize, deserialize}` is documented to
+// advance the cursor through the bytes it consumes. Wincode's
+// `config::deserialize` takes the input by value and would silently leave
+// the caller's `&mut &[u8]` unchanged; the impl uses `SchemaRead::get`
+// instead so the contract holds. Regression test: encode two values
+// back-to-back, decode them in sequence using the codec directly, and
+// assert both the values and the post-decode cursor.
+
+#[test]
+fn codec_round_trip_advances_cursor() {
+    use anchor_lang_v2::accounts::{AnchorAccountSerialize, BorshSerializer};
+
+    let mut buf = [0u8; 32];
+    // Serialize: two Counter values back-to-back.
+    {
+        let mut write: &mut [u8] = &mut buf;
+        BorshSerializer::serialize(&Counter { value: 0xAA }, &mut write).unwrap();
+        BorshSerializer::serialize(&Counter { value: 0xBB }, &mut write).unwrap();
+        // Writer should have advanced 16 bytes (2 × u64).
+        assert_eq!(write.len(), 32 - 16);
+    }
+    // Deserialize: cursor should advance past each value.
+    {
+        let mut read: &[u8] = &buf[..];
+        let a: Counter = BorshSerializer::deserialize(&mut read).unwrap();
+        assert_eq!(a.value, 0xAA);
+        assert_eq!(
+            read.len(),
+            32 - 8,
+            "deserialize must advance the input cursor"
+        );
+        let b: Counter = BorshSerializer::deserialize(&mut read).unwrap();
+        assert_eq!(b.value, 0xBB);
+        assert_eq!(read.len(), 32 - 16);
+    }
+}
+
+// -- 8. realloc-shrink below discriminator is rejected ----------------
+//
+// `realloc_account` does not (and cannot, given Slab over external
+// header-only types) enforce that `new_space >= DISC_LEN`. The
+// BorshAccount-shaped reacquire path must reject it: leaving the buffer
+// shorter than the 8-byte discriminator truncates `T::DISCRIMINATOR`
+// on chain, bricks the account, and panics exit()'s `guard[DISC_LEN..]`
+// slice index. The Solana runtime rolls back the rejected transaction.
+
+#[test]
+fn reacquire_guard_only_rejects_buffer_shorter_than_discriminator() {
+    let mut buf = AccountBuffer::<256>::new();
+    setup_counter_buf(&mut buf, 42);
+    let program_id = Address::new_from_array(PROGRAM_ID);
+
+    let view = unsafe { buf.view() };
+    let mut acct = unsafe { BorshAccount::<Counter>::load_mut(view, &program_id) }.unwrap();
+
+    // Simulate `realloc_account(new_space = 4)`: shrink below DISC_LEN.
+    acct.release_borrow().unwrap();
+    buf.set_data_len(4);
+
+    let err = acct.reacquire_guard_only().expect_err(
+        "reacquire_guard_only must reject a post-resize buffer shorter than DISC_LEN — otherwise \
+         the discriminator is truncated on-chain and exit()'s guard[DISC_LEN..] panics",
+    );
+    assert!(matches!(err, ProgramError::AccountDataTooSmall));
+}
+
+// Exit path: an out-of-band shrink below DISC_LEN triggers the stale-
+// detection branch in `exit()`, which calls `reacquire_guard_only`. The
+// added check propagates the error rather than panicking on the
+// subsequent `guard[DISC_LEN..]` slice.
+
+#[test]
+fn exit_rejects_external_shrink_below_discriminator() {
+    let mut buf = AccountBuffer::<256>::new();
+    setup_counter_buf(&mut buf, 42);
+    let program_id = Address::new_from_array(PROGRAM_ID);
+
+    let view = unsafe { buf.view() };
+    let mut acct = unsafe { BorshAccount::<Counter>::load_mut(view, &program_id) }.unwrap();
+    acct.value = 100;
+
+    // Simulate an external resize to 4 bytes (below DISC_LEN = 8).
+    buf.set_data_len(4);
+
+    let err = acct
+        .exit()
+        .expect_err("exit must surface the under-DISC_LEN buffer as an error, not panic");
+    assert!(matches!(err, ProgramError::AccountDataTooSmall));
 }

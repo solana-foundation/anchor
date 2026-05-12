@@ -1,7 +1,5 @@
 //! Prelude: import everything you need with `use anchor_lang_v2::prelude::*;`
 
-#[cfg(feature = "idl-build")]
-pub use crate::IdlAccountType;
 pub use crate::{
     access_control,
     account,
@@ -51,9 +49,6 @@ pub use crate::{
     Accounts,
     // Core trait
     AnchorAccount,
-    AnchorDeserialize,
-    // Serialization
-    AnchorSerialize,
     Bumps,
     // Context
     Context,
@@ -75,6 +70,9 @@ pub use crate::{
     Owner,
     // Error
     Result,
+    // Serialization
+    SchemaRead,
+    SchemaWrite,
     Space,
     ToAccountMetas,
     ToCpiAccounts,
@@ -83,7 +81,7 @@ pub use crate::{
 // Re-export pinocchio sysvar types and trait for use with Sysvar<T>
 pub use pinocchio::sysvars::Sysvar as PinocchioSysvar;
 pub use {
-    crate::IdlType,
+    crate::{IdlAccountType, IdlType},
     pinocchio::{
         account::AccountView,
         address::Address,

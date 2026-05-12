@@ -154,15 +154,16 @@ jobs:
 
       # CLI: unit-test + build sanity only. No anchor-binary install,
       # no `anchor build`/`anchor test` flows, no tests/* integration.
-      - run: cargo check -p anchor-cli
-      - run: cargo test -p anchor-cli
+      - name: Run CLI Tests
+        run: cargo test -p anchor-cli
 
       # Install the `anchor` bin to `~/.cargo/bin` (already on PATH via
       # rustup). Shared `./target/` via `--target-dir` means the build
       # reuses artifacts from prior `cargo test -p anchor-cli` instead
       # of starting from scratch in a temp tree; `--debug` skips release
       # opt (smoke test — runtime speed doesn't matter).
-      - run: cargo install --path cli --locked --debug --force --target-dir ./target
+      - name: Install CLI
+        run: cargo install --path cli --locked --debug --force --target-dir ./target
 
       # `anchor debugger` smoke test. These bench crates have no
       # Anchor.toml, so the CLI falls into loose mode and runs the full
@@ -190,8 +191,8 @@ jobs:
             log=$(mktemp)
 
             # Build phase — surface build breaks as a distinct error.
-            if ! ( cd "$prog" && cargo build-sbf --tools-version v1.52 ); then
-              echo "::error::cargo build-sbf failed in $prog"
+            if ! ( cd "$prog" && anchor coverage ); then
+              echo "::error::`anchor coverage` failed in $prog"
               fail=1
               rm -f "$log"
               echo "::endgroup::"
@@ -202,7 +203,7 @@ jobs:
             # without toggling `set +e`/`set -e` around it.
             rc=0
             ( cd "$prog" && timeout --kill-after=30 30 \
-                script -qec 'anchor debugger' "$log" ) || rc=$?
+                script -qec 'anchor debugger --skip-build' "$log" ) || rc=$?
 
             if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
               echo "::error::anchor debugger failed in $prog (exit $rc)"

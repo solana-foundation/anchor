@@ -6,7 +6,10 @@ use {
         marker::PhantomData,
         ops::{Deref, DerefMut, Index, IndexMut},
     },
-    pinocchio::{account::AccountView, address::Address},
+    pinocchio::{
+        account::{AccountView, NOT_BORROWED},
+        Address,
+    },
     solana_program_error::ProgramError,
 };
 
@@ -224,6 +227,15 @@ where
 
     #[inline(always)]
     fn from_ref(view: AccountView, program_id: &Address) -> Result<Self, ProgramError> {
+        // Solana guarantees account data buffers are 8-byte aligned. Headers
+        // demanding stricter alignment would produce misaligned reads through
+        // the cached `header_ptr`. Caught at monomorphization.
+        const {
+            assert!(
+                core::mem::align_of::<H>() <= 8,
+                "Slab header alignment exceeds Solana's 8-byte account data alignment",
+            )
+        };
         // SAFETY: AccountView's data pointer is valid for the instruction lifetime
         // (Solana runtime guarantee). Duplicate mutable accounts are rejected at
         // deserialization, so no aliasing can occur.
@@ -234,11 +246,11 @@ where
         }
         Self::validate_tail(data)?;
         let header_ptr = unsafe { view.data_ptr().add(Self::HEADER_OFFSET) } as *mut H;
-        // Leave `borrow_state = NOT_BORROWED` untouched. Duplicate-mutable
-        // detection runs at deserialization time in the derive macro, and
-        // leaving the byte clear means downstream pinocchio CPIs can call
-        // `try_borrow*()` against this account's view without an explicit
-        // release step on the Slab side.
+        // Mark one immutable borrow outstanding so that any copied AccountView
+        // cannot obtain a mutable borrow via try_borrow_mut(). Additional
+        // immutable borrows are still allowed (safe — they alias &H, not &mut H,
+        // and DerefMut panics on a read-only Slab).
+        unsafe { (*view.account_ptr().cast_mut()).borrow_state = NOT_BORROWED - 1 };
         Ok(Self {
             view,
             header_ptr,
@@ -264,10 +276,12 @@ where
         // Using data_ptr → *const would lose it under Stacked Borrows / Tree Borrows.
         let mut view_mut = view;
         let header_ptr = unsafe { view_mut.data_mut_ptr().add(Self::HEADER_OFFSET) } as *mut H;
-        // Leave `borrow_state = NOT_BORROWED` untouched — same rationale as
-        // `from_ref`. Slab accesses data via `borrow_unchecked*()` anyway
-        // (the cached `header_ptr`), so the marker byte would not gate our
-        // own reads — only downstream pinocchio CPIs.
+        // Mark as mutably borrowed so that any copied AccountView cannot
+        // obtain any borrow (immutable or mutable) via try_borrow*().
+        // borrow_state == 0 means "exclusively borrowed" in pinocchio's
+        // protocol. Slab itself accesses data via borrow_unchecked*() which
+        // bypasses this check.
+        unsafe { (*view_mut.account_mut_ptr()).borrow_state = 0 };
         Ok(Self {
             view,
             header_ptr,
@@ -678,6 +692,32 @@ where
             .ok_or(ProgramError::ArithmeticOverflow)?;
         destination.set_lamports(dest_lamports);
         self_view.set_lamports(0);
+
+        // Defense-in-depth: scrub the discriminator to [u8::MAX; 8] before
+        // pinocchio's close() zeros the 48-byte header (data is left
+        // untouched until SVM end-of-instruction zero). If a future caller
+        // restores data_len + owner without going through SVM zero-on-
+        // allocate, the stale discriminator would otherwise allow a reload
+        // with pre-close state. Mirrors `BorshAccount::close`. Gated on
+        // `HEADER_OFFSET >= 8` so SPL-owned schemas (Mint / TokenAccount,
+        // `DATA_OFFSET = 0`, no discriminator) don't have their first 8
+        // bytes corrupted.
+        if Self::HEADER_OFFSET >= 8 {
+            // SAFETY: `&mut self` plus `is_mutable` (close is only emitted
+            // by the derive for mutable contexts) means no aliasing borrow
+            // exists; the view's data is valid for the instruction lifetime.
+            let data = unsafe { self_view.borrow_unchecked_mut() };
+            if data.len() >= 8 {
+                data[..8].copy_from_slice(&[u8::MAX; 8]);
+            }
+        }
+
+        // Flip is_mutable so any post-close DerefMut / tail-mutation panics
+        // loudly instead of silently writing through the cached header_ptr
+        // to memory pinocchio is about to mark closed. Mirrors how
+        // `BorshAccount::close` transitions its borrow guard to Released.
+        self.is_mutable = false;
+
         // SAFETY: Slab owns exclusive access (borrow flag is set). Use
         // close_unchecked to bypass pinocchio's is_borrowed() check.
         unsafe { self_view.close_unchecked() };
@@ -766,14 +806,132 @@ where
     }
 }
 
-#[cfg(feature = "idl-build")]
+#[doc(hidden)]
 impl<H, T> crate::IdlAccountType for Slab<H, T>
 where
     H: Pod + Zeroable + SlabSchema + crate::IdlAccountType,
 {
-    const __IDL_TYPE: Option<&'static str> = H::__IDL_TYPE;
-    fn __register_idl_deps(types: &mut ::alloc::vec::Vec<&'static str>) {
-        H::__register_idl_deps(types);
+    const __IDL_ACCOUNT_ENTRY: Option<&'static str> = H::__IDL_ACCOUNT_ENTRY;
+    const __IDL_TYPE_DEF: Option<&'static str> = H::__IDL_TYPE_DEF;
+    fn __register_idl_deps(
+        accounts: &mut ::alloc::vec::Vec<&'static str>,
+        types: &mut ::alloc::vec::Vec<&'static str>,
+    ) {
+        H::__register_idl_deps(accounts, types);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Borrow-state registration tests.
+//
+// `from_ref` / `build_mutable` mark the account's pinocchio borrow_state so
+// that a copied `AccountView` cannot escape into a raw mutable byte slice
+// while a typed wrapper is alive — otherwise `Slab::Deref{,Mut}` would
+// produce `&H` / `&mut H` aliasing a `RefMut<'_, [u8]>` from a *safe*
+// `try_borrow_mut()` call on the copy.
+// ---------------------------------------------------------------------------
+
+#[cfg(all(test, feature = "testing"))]
+mod tests {
+    use {
+        super::*,
+        crate::{testing::AccountBuffer, AnchorAccount, Discriminator, Owner},
+        bytemuck::{Pod, Zeroable},
+        solana_program_error::ProgramError,
+    };
+
+    const PROGRAM_ID: [u8; 32] = [0x42; 32];
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Pod, Zeroable)]
+    struct Counter {
+        value: u64,
+        _pad: [u8; 8],
+    }
+
+    impl Owner for Counter {
+        fn owner(program_id: &Address) -> Address {
+            *program_id
+        }
+    }
+
+    impl Discriminator for Counter {
+        const DISCRIMINATOR: &'static [u8] = &[0xff, 0xb0, 0x04, 0xf5, 0xbc, 0xfd, 0x7c, 0x19];
+    }
+
+    type CounterAccount = Slab<Counter, HeaderOnly>;
+
+    fn setup(buf: &mut AccountBuffer<256>, writable: bool) {
+        let data_len = 8 + core::mem::size_of::<Counter>();
+        buf.init([0xAA; 32], PROGRAM_ID, data_len, false, writable, false);
+        let mut data = [0u8; 24];
+        data[..8].copy_from_slice(Counter::DISCRIMINATOR);
+        data[8..16].copy_from_slice(&42u64.to_le_bytes());
+        buf.write_data(&data);
+    }
+
+    #[test]
+    fn read_only_load_blocks_try_borrow_mut_on_copy() {
+        let mut buf = AccountBuffer::<256>::new();
+        setup(&mut buf, false);
+        let pid = Address::new_from_array(PROGRAM_ID);
+        let view = unsafe { buf.view() };
+
+        let acct = CounterAccount::load(view, &pid).unwrap();
+        assert_eq!(acct.value, 42);
+
+        let mut view_copy = view;
+        assert_eq!(
+            view_copy.try_borrow_mut().err(),
+            Some(ProgramError::AccountBorrowFailed),
+            "try_borrow_mut on a view copy must fail while a typed Slab is alive"
+        );
+
+        drop(acct);
+    }
+
+    #[test]
+    fn read_only_load_allows_try_borrow_on_copy() {
+        let mut buf = AccountBuffer::<256>::new();
+        setup(&mut buf, false);
+        let pid = Address::new_from_array(PROGRAM_ID);
+        let view = unsafe { buf.view() };
+
+        let acct = CounterAccount::load(view, &pid).unwrap();
+
+        let view_copy = view;
+        assert!(
+            view_copy.try_borrow().is_ok(),
+            "try_borrow on a view copy should succeed alongside a read-only Slab"
+        );
+
+        drop(acct);
+    }
+
+    #[test]
+    fn mut_load_blocks_all_borrows_on_copy() {
+        let mut buf = AccountBuffer::<256>::new();
+        setup(&mut buf, true);
+        let pid = Address::new_from_array(PROGRAM_ID);
+        let view = unsafe { buf.view() };
+
+        // SAFETY: this is the only live wrapper over `view`'s data.
+        let mut acct = unsafe { CounterAccount::load_mut(view, &pid).unwrap() };
+        acct.value = 99;
+
+        let mut view_copy = view;
+        assert_eq!(
+            view_copy.try_borrow_mut().err(),
+            Some(ProgramError::AccountBorrowFailed),
+            "try_borrow_mut on a view copy must fail while a mutable Slab is alive"
+        );
+        assert_eq!(
+            view_copy.try_borrow().err(),
+            Some(ProgramError::AccountBorrowFailed),
+            "try_borrow on a view copy must fail while a mutable Slab is alive"
+        );
+
+        drop(acct);
     }
 }
 

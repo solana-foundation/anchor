@@ -14,7 +14,7 @@ no-entrypoint = []
 cpi = ["no-entrypoint"]
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang-v2/idl-build"]
+idl-build = []
 
 [dependencies]
 anchor-lang-v2 = { path = "../../../lang-v2", default-features = false, features = ["alloc"] }

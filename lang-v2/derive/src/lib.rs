@@ -1007,20 +1007,25 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
         }
 
         #[cfg(feature = "idl-build")]
+        #[doc(hidden)]
         impl #name {
             // Runtime-assembled accounts JSON: reads per-wrapper signer /
             // address trait consts, splices in compile-time flags.
             #idl_accounts_fn
 
-            /// Walks each account field's `IdlAccountType::__register_idl_deps`
-            /// so nested user-defined types (plain `#[derive(IdlType)]`
-            /// structs, `#[account]` data types, `#[event]` payload types,
-            /// etc.) transitively register into the IDL's `types[]` array.
+            /// **Opaque / unstable.** Walks each account field's
+            /// [`IdlAccountType::__register_idl_deps`] so nested
+            /// user-defined types (plain `#[derive(IdlType)]` structs,
+            /// `#[account]` data types, `#[event]` payload types, etc.)
+            /// transitively register into the IDL's program-level
+            /// `accounts[]` and `types[]` arrays.
+            #[doc(hidden)]
             pub fn __idl_register_deps(
+                accounts: &mut anchor_lang_v2::__alloc::vec::Vec<&'static str>,
                 types: &mut anchor_lang_v2::__alloc::vec::Vec<&'static str>,
             ) {
                 #(
-                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(types);
+                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(accounts, types);
                 )*
             }
         }
@@ -1058,18 +1063,21 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let struct_docs = idl::extract_doc_lines(attrs);
     // `#[account]` has two modes: default zero-copy (Pod + repr(C)) and opt-in
-    // borsh (`#[account(borsh)]`). The mode propagates into the IDL type
-    // definition's `serialization` / `repr` fields (spec:180-216) so
-    // downstream codegen knows which wire format to use.
+    // borsh (`#[account(borsh)]`). The borsh mode is implemented on top of
+    // wincode + `BORSH_CONFIG`, which produces byte-identical output to a
+    // real borsh impl while skipping the borsh crate's slower encode/decode
+    // path. The mode propagates into the IDL type definition's
+    // `serialization` / `repr` fields (spec:180-216) so downstream codegen
+    // knows which wire format to use.
     let type_kind = if is_borsh {
         idl::TypeKind::Borsh
     } else {
         idl::TypeKind::BytemuckRepr
     };
-    let idl_type_json = if let Fields::Named(named) = fields {
-        idl::build_type_json(&name_str, disc_bytes, &struct_docs, &named.named, type_kind)
+    let idl_type_strings = if let Fields::Named(named) = fields {
+        idl::build_type_strings(&name_str, disc_bytes, &struct_docs, &named.named, type_kind)
     } else {
-        idl::build_type_json(
+        idl::build_type_strings(
             &name_str,
             disc_bytes,
             &struct_docs,
@@ -1077,6 +1085,11 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
             type_kind,
         )
     };
+    let idl_account_entry = match idl_type_strings.account_entry {
+        Some(s) => quote! { Some(#s) },
+        None => quote! { None },
+    };
+    let idl_type_def = idl_type_strings.type_def;
 
     // Named-field types for the transitive IDL dep walk. `__register_idl_deps`
     // fans out through each field type so nested user structs land in the
@@ -1089,9 +1102,80 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
         Fields::Unit => Vec::new(),
     };
 
+    // Client-side `AccountDeserialize` impl. Mode-dependent: borsh accounts
+    // run wincode (with `BORSH_CONFIG`, borsh-wire-compatible) over the
+    // post-disc tail; pod accounts do a `bytemuck::pod_read_unaligned` on a
+    // sized slice. Both share the disc-check shape so a wrong-type fetch
+    // surfaces as `InvalidAccountData`.
+    let account_deserialize_impl = if is_borsh {
+        quote! {
+            impl anchor_lang_v2::AccountDeserialize for #name {
+                fn try_deserialize(
+                    buf: &mut &[u8],
+                ) -> ::core::result::Result<Self, anchor_lang_v2::Error> {
+                    use anchor_lang_v2::Discriminator as _;
+                    if buf.len() < <Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR.len() {
+                        return Err(anchor_lang_v2::Error::AccountDataTooSmall);
+                    }
+                    let (disc, rest) = buf.split_at(<Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR.len());
+                    if disc != <Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR {
+                        return Err(anchor_lang_v2::Error::InvalidAccountData);
+                    }
+                    *buf = rest;
+                    Self::try_deserialize_unchecked(buf)
+                }
+                fn try_deserialize_unchecked(
+                    buf: &mut &[u8],
+                ) -> ::core::result::Result<Self, anchor_lang_v2::Error> {
+                    // Use `SchemaRead::get` (reads from a `&mut &[u8]` Reader
+                    // and advances it) rather than `config::deserialize`,
+                    // which takes the input by value and would leave `*buf`
+                    // unchanged — `AccountDeserialize`'s cursor contract
+                    // requires the post-disc slice to advance through the
+                    // payload so chained deserializations stay aligned.
+                    <Self as anchor_lang_v2::wincode::SchemaRead<
+                        '_,
+                        anchor_lang_v2::BorshConfig,
+                    >>::get(buf)
+                        .map_err(|_| anchor_lang_v2::Error::InvalidAccountData)
+                }
+            }
+        }
+    } else {
+        quote! {
+            impl anchor_lang_v2::AccountDeserialize for #name {
+                fn try_deserialize(
+                    buf: &mut &[u8],
+                ) -> ::core::result::Result<Self, anchor_lang_v2::Error> {
+                    use anchor_lang_v2::Discriminator as _;
+                    if buf.len() < <Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR.len() {
+                        return Err(anchor_lang_v2::Error::AccountDataTooSmall);
+                    }
+                    let (disc, rest) = buf.split_at(<Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR.len());
+                    if disc != <Self as anchor_lang_v2::Discriminator>::DISCRIMINATOR {
+                        return Err(anchor_lang_v2::Error::InvalidAccountData);
+                    }
+                    *buf = rest;
+                    Self::try_deserialize_unchecked(buf)
+                }
+                fn try_deserialize_unchecked(
+                    buf: &mut &[u8],
+                ) -> ::core::result::Result<Self, anchor_lang_v2::Error> {
+                    let n = ::core::mem::size_of::<Self>();
+                    if buf.len() < n {
+                        return Err(anchor_lang_v2::Error::AccountDataTooSmall);
+                    }
+                    let value: Self = anchor_lang_v2::bytemuck::pod_read_unaligned(&buf[..n]);
+                    *buf = &buf[n..];
+                    Ok(value)
+                }
+            }
+        }
+    };
+
     let (struct_attrs, pod_impls) = if is_borsh {
         (
-            quote! { #[derive(anchor_lang_v2::borsh::BorshSerialize, anchor_lang_v2::borsh::BorshDeserialize, Default)] },
+            quote! { #[derive(anchor_lang_v2::wincode::SchemaWrite, anchor_lang_v2::wincode::SchemaRead, Default)] },
             quote! {},
         )
     } else {
@@ -1159,17 +1243,24 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
         impl anchor_lang_v2::Discriminator for #name {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
         }
+        #account_deserialize_impl
         #[cfg(feature = "idl-build")]
+        #[doc(hidden)]
         impl anchor_lang_v2::IdlAccountType for #name {
-            const __IDL_TYPE: Option<&'static str> = Some(#idl_type_json);
+            const __IDL_ACCOUNT_ENTRY: Option<&'static str> = #idl_account_entry;
+            const __IDL_TYPE_DEF: Option<&'static str> = Some(#idl_type_def);
             fn __register_idl_deps(
+                accounts: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
                 types: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
             ) {
-                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE {
+                if let Some(a) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_ACCOUNT_ENTRY {
+                    accounts.push(a);
+                }
+                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE_DEF {
                     types.push(t);
                 }
                 #(
-                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(types);
+                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(accounts, types);
                 )*
             }
         }
@@ -1238,10 +1329,10 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
     // `IdlType` is layout-agnostic — users opt into Pod separately via
     // their own `bytemuck::Pod` derive if they need zero-copy. Forcing a
     // `"bytemuck"` tag here would lie in the IDL for non-Pod types.
-    let (idl_type_json, field_tys) = match &input.data {
+    let (idl_type_strings, field_tys) = match &input.data {
         Data::Struct(data) => {
-            let idl_json = match &data.fields {
-                Fields::Named(named) => idl::build_type_json(
+            let strings = match &data.fields {
+                Fields::Named(named) => idl::build_type_strings(
                     &name_str,
                     &empty_disc,
                     &docs,
@@ -1254,7 +1345,7 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
                 // variants get `IdlDefinedFields::Tuple` — so tuple structs
                 // fall through to struct-with-empty-fields. Users needing
                 // tuple shapes should prefer named fields.
-                _ => idl::build_type_json(
+                _ => idl::build_type_strings(
                     &name_str,
                     &empty_disc,
                     &docs,
@@ -1270,10 +1361,10 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
                 Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(|f| &f.ty).collect(),
                 Fields::Unit => Vec::new(),
             };
-            (idl_json, field_tys)
+            (strings, field_tys)
         }
         Data::Enum(data) => {
-            let idl_json = idl::build_enum_type_json(
+            let strings = idl::build_enum_type_strings(
                 &name_str,
                 &empty_disc,
                 &docs,
@@ -1292,7 +1383,7 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
                     Fields::Unit => Vec::new(),
                 })
                 .collect();
-            (idl_json, field_tys)
+            (strings, field_tys)
         }
         Data::Union(_) => {
             return syn::Error::new(
@@ -1303,6 +1394,11 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
             .into();
         }
     };
+    // Plain `IdlType` types never carry a discriminator and never appear in
+    // `accounts[]`; only `__IDL_TYPE_DEF` is `Some`. The builder enforces
+    // this via the empty-disc → `account_entry: None` rule.
+    debug_assert!(idl_type_strings.account_entry.is_none());
+    let idl_type_def = idl_type_strings.type_def;
 
     // Thread any generic / lifetime params from the input type through
     // the impl so `#[derive(IdlType)] struct Foo<'a>` lowers to
@@ -1313,16 +1409,21 @@ pub fn derive_idl_type(input: TokenStream) -> TokenStream {
 
     TokenStream::from(quote! {
         #[cfg(feature = "idl-build")]
+        #[doc(hidden)]
         impl #impl_generics anchor_lang_v2::IdlAccountType for #name #ty_generics #where_clause {
-            const __IDL_TYPE: Option<&'static str> = Some(#idl_type_json);
+            const __IDL_TYPE_DEF: Option<&'static str> = Some(#idl_type_def);
             fn __register_idl_deps(
+                accounts: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
                 types: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
             ) {
-                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE {
+                // `IdlType` plain types never push to `accounts[]` —
+                // `__IDL_ACCOUNT_ENTRY` defaults to `None`. We only
+                // contribute to `types[]` and recurse for transitive deps.
+                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE_DEF {
                     types.push(t);
                 }
                 #(
-                    <#field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(types);
+                    <#field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(accounts, types);
                 )*
             }
         }
@@ -1671,7 +1772,7 @@ fn process_handler(
             pub fn #fn_name #lt_decl(
                 __ctx: anchor_lang_v2::CpiContext<'a, accounts::#accounts_type<'a>>,
                 #(#extra_arg_names: #extra_arg_types,)*
-            ) -> anchor_lang_v2::Result<()> {
+            ) {
                 let __ix = super::instruction::#ix_struct_name #ix_lt_use_local {
                     #(#extra_arg_names,)*
                 };
@@ -1679,7 +1780,7 @@ fn process_handler(
                     super::instruction::#ix_struct_name #ix_lt_use_local
                     as anchor_lang_v2::InstructionData
                 >::data(&__ix);
-                __ctx.invoke(&__data)
+                __ctx.invoke(&__data);
             }
         }
     };
@@ -2080,77 +2181,45 @@ fn impl_program(module: &ItemMod) -> TokenStream2 {
                     ),*
                 ];
 
-                // Collect types from all accounts structs via the transitive
-                // dep walker. `__register_idl_deps` on each field type pushes
-                // the field's `__IDL_TYPE` (if any) and recursively walks its
-                // own fields — so a plain `#[derive(IdlType)] struct Inner`
-                // embedded in an `#[account]` data type lands in `types[]`
-                // too. View wrappers (Signer, Program<T>, Sysvar<T>, …) use
-                // the trait's default no-op `__register_idl_deps`, so they
-                // contribute nothing.
+                // Collect accounts + types from every Accounts struct field
+                // via the transitive dep walker, plus from every handler's
+                // ix arg types. `__register_idl_deps` pushes pre-split
+                // strings — `__IDL_ACCOUNT_ENTRY` into the accounts buffer,
+                // `__IDL_TYPE_DEF` into the types buffer — so the print
+                // test just dedupes + joins. No runtime JSON parsing.
                 //
-                // Also walk every handler's **ix arg types** — a user
-                // struct referenced only as a `#[program]` fn argument
-                // (e.g. `args: MixedArgs<'_>`) otherwise lands in
+                // View wrappers (Signer, Program<T>, Sysvar<T>, …) use
+                // the trait's default no-op `__register_idl_deps`, so they
+                // contribute nothing. Primitive / collection / `&T`
+                // blanket impls are no-op forwarders (`idl_build.rs`),
+                // so only user-derived `#[account]` / `#[event]` /
+                // `IdlType` structs contribute.
+                //
+                // Walking ix arg types matters because a user struct
+                // referenced only as a `#[program]` fn argument (e.g.
+                // `args: MixedArgs<'_>`) otherwise lands in
                 // `instructions[].args` as a bare `{defined:{name:...}}`
-                // reference with no matching `types[]` entry. Primitive /
-                // collection / `&T` blanket impls are no-op forwarders
-                // (`idl_build.rs`), so only user-derived `IdlType` structs
-                // contribute.
-                let mut all_types: Vec<&str> = Vec::new();
-                #(#idl_accounts_types::__idl_register_deps(&mut all_types);)*
+                // reference with no matching `types[]` entry.
+                let mut accounts_entries: Vec<&'static str> = Vec::new();
+                let mut types_entries: Vec<&'static str> = Vec::new();
+                #(
+                    #idl_accounts_types::__idl_register_deps(
+                        &mut accounts_entries,
+                        &mut types_entries,
+                    );
+                )*
                 #(
                     #(
-                        <#ix_arg_types_per_handler as anchor_lang_v2::IdlAccountType>::__register_idl_deps(&mut all_types);
+                        <#ix_arg_types_per_handler as anchor_lang_v2::IdlAccountType>::__register_idl_deps(
+                            &mut accounts_entries,
+                            &mut types_entries,
+                        );
                     )*
                 )*
-                all_types.sort();
-                all_types.dedup();
-
-                // Split each __IDL_TYPE into an `IdlAccount`
-                // (name + discriminator, spec:137-140) and an
-                // `IdlTypeDef` (everything else, spec:176-188). Each
-                // input string is a full type def:
-                //
-                //   {"name":"X","discriminator":[...][,"docs":[...]]
-                //    [,"serialization":"...","repr":{...}],
-                //    "type":{"kind":"struct","fields":[...]}}
-                //
-                // We parse each one as structured JSON, pluck off
-                // `name` + `discriminator` for the accounts entry, drop
-                // `discriminator` for the types entry, and skip
-                // `IdlType`-registered plain types (empty discriminator)
-                // from `accounts[]` entirely.
-                let mut accounts_entries = Vec::new();
-                let mut types_entries = Vec::new();
-                for ty in &all_types {
-                    let Ok(mut parsed) =
-                        anchor_lang_v2::__serde_json::from_str::<
-                            anchor_lang_v2::__serde_json::Value,
-                        >(ty)
-                    else {
-                        continue;
-                    };
-                    let Some(obj) = parsed.as_object_mut() else { continue; };
-                    let Some(name) = obj.get("name").cloned() else { continue; };
-                    let disc = obj.remove("discriminator");
-                    let disc_is_empty = matches!(
-                        &disc,
-                        Some(anchor_lang_v2::__serde_json::Value::Array(a)) if a.is_empty()
-                    );
-                    if let Some(disc_v) = disc {
-                        if !disc_is_empty {
-                            let acct = anchor_lang_v2::__serde_json::json!({
-                                "name": name,
-                                "discriminator": disc_v,
-                            });
-                            accounts_entries.push(acct.to_string());
-                        }
-                    }
-                    // `parsed` is now `{name, docs?, serialization?, repr?, type}` —
-                    // exactly the `IdlTypeDef` shape (spec:176-188).
-                    types_entries.push(parsed.to_string());
-                }
+                accounts_entries.sort();
+                accounts_entries.dedup();
+                types_entries.sort();
+                types_entries.dedup();
 
                 let crate_name = env!("CARGO_CRATE_NAME").replace('-', "_");
                 // Pull `description` / `repository` from the program crate's
@@ -2285,10 +2354,10 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
         EventMode::Bytemuck => idl::TypeKind::BytemuckRepr,
     };
     let struct_docs = idl::extract_doc_lines(attrs);
-    let type_def_json = if let Fields::Named(named) = fields {
-        idl::build_type_json(&name_str, disc_bytes, &struct_docs, &named.named, type_kind)
+    let event_type_strings = if let Fields::Named(named) = fields {
+        idl::build_type_strings(&name_str, disc_bytes, &struct_docs, &named.named, type_kind)
     } else {
-        idl::build_type_json(
+        idl::build_type_strings(
             &name_str,
             disc_bytes,
             &struct_docs,
@@ -2296,6 +2365,7 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
             type_kind,
         )
     };
+    let event_type_def = event_type_strings.type_def;
     let event_disc_json = idl::disc_json(disc_bytes);
     let event_header_json = format!(
         "{{\"event\":{{\"name\":\"{}\",\"discriminator\":{}}},\"types\":[",
@@ -2324,9 +2394,20 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[cfg(all(test, feature = "idl-build"))]
         #[test]
         fn #idl_fn_name() {
+            // Events don't appear in the program-level `accounts[]` array
+            // (the event's own discriminator lives in `event_header_json`
+            // below), so the accounts buffer here is a sink that's never
+            // serialized — we still pass it because `__register_idl_deps`
+            // takes both buffers, and a nested `#[account]` data type
+            // referenced from an event payload would push into it.
+            let mut __accounts: anchor_lang_v2::__alloc::vec::Vec<&'static str> =
+                anchor_lang_v2::__alloc::vec::Vec::new();
             let mut __types: anchor_lang_v2::__alloc::vec::Vec<&'static str> =
                 anchor_lang_v2::__alloc::vec::Vec::new();
-            <#name as anchor_lang_v2::IdlAccountType>::__register_idl_deps(&mut __types);
+            <#name as anchor_lang_v2::IdlAccountType>::__register_idl_deps(
+                &mut __accounts,
+                &mut __types,
+            );
             __types.sort();
             __types.dedup();
             let mut __payload = anchor_lang_v2::__alloc::string::String::from(#event_header_json);
@@ -2343,21 +2424,24 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
     // Emit the `IdlAccountType` impl for the event itself. Walks field
-    // types for transitive dep registration. Same shape as the `#[account]`
-    // impl — the only difference is that `#[event]` + `#[account]` both
-    // carry their own discriminator embedded in `type_def_json`.
+    // types for transitive dep registration. Events don't surface in the
+    // program-level `accounts[]` array — `__IDL_ACCOUNT_ENTRY` defaults
+    // to `None`. Their discriminator lives in `event_header_json` (the
+    // `--- IDL begin event ---` payload prefix), not in `__IDL_TYPE_DEF`.
     let idl_account_type_impl = quote! {
         #[cfg(feature = "idl-build")]
+        #[doc(hidden)]
         impl anchor_lang_v2::IdlAccountType for #name {
-            const __IDL_TYPE: Option<&'static str> = Some(#type_def_json);
+            const __IDL_TYPE_DEF: Option<&'static str> = Some(#event_type_def);
             fn __register_idl_deps(
+                accounts: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
                 types: &mut ::anchor_lang_v2::__alloc::vec::Vec<&'static str>,
             ) {
-                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE {
+                if let Some(t) = <Self as anchor_lang_v2::IdlAccountType>::__IDL_TYPE_DEF {
                     types.push(t);
                 }
                 #(
-                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(types);
+                    <#idl_field_tys as anchor_lang_v2::IdlAccountType>::__register_idl_deps(accounts, types);
                 )*
             }
         }
@@ -2554,10 +2638,9 @@ enum EventMode {
 /// Parse the `#[account]` attribute's optional mode argument.
 ///
 /// Accepts: `#[account]` (default → zero-copy Pod) or `#[account(borsh)]`.
-/// Previously this was `attr.to_string().contains("borsh")`, which silently
-/// accepted typos like `#[account(borhs)]` as zero-copy — the struct would
-/// compile under the wrong layout and clients decoding it as borsh would
-/// get garbage.
+/// Under the hood the borsh mode encodes/decodes via wincode using
+/// `BORSH_CONFIG`, so the on-chain bytes still match what a borsh library
+/// would produce, while paying for wincode's faster encode/decode path.
 fn parse_account_mode(attr: TokenStream) -> Result<bool, syn::Error> {
     if attr.is_empty() {
         return Ok(false);

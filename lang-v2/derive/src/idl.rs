@@ -332,6 +332,10 @@ pub fn build_accounts_emission(fields: &[AccountsJsonField<'_>]) -> TokenStream2
         .collect();
 
     quote! {
+        /// **Opaque / unstable.** Returns the IDL JSON for this Accounts
+        /// struct's account list. Implementation detail of the IDL build
+        /// pipeline; do not rely on the shape or call this directly.
+        #[doc(hidden)]
         pub fn __idl_accounts() -> anchor_lang_v2::__alloc::string::String {
             let __parts: anchor_lang_v2::__alloc::vec::Vec<
                 anchor_lang_v2::__alloc::string::String
@@ -395,31 +399,50 @@ pub enum TypeKind {
     BytemuckRepr,
 }
 
-/// Build IDL type definition JSON from struct fields. `docs` is the list of
-/// `#[doc = "..."]` lines scraped from the struct-level attrs; each named
-/// field also contributes its own `docs` array from its own attrs.
+/// Pre-split IDL type strings emitted by the derive at macro-expansion time.
+///
+/// The runtime print test no longer parses JSON — it concatenates these
+/// strings directly. Eliminating runtime `serde_json` is what lets the
+/// `idl-build` feature/cfg disappear from `lang-v2` entirely.
+pub struct IdlTypeStrings {
+    /// `{"name":"X","discriminator":[…]}` for the program-level
+    /// `accounts[]` array (spec:137-140). `None` when the discriminator
+    /// is empty — i.e. plain `#[derive(IdlType)]` types that only
+    /// contribute to `types[]`.
+    pub account_entry: Option<String>,
+    /// `IdlTypeDef` JSON (spec:176-188) — `name`, optional `docs`, the
+    /// `serialization` / `repr` pair, and the inner `type` object. Never
+    /// carries `discriminator`; that field belongs only on the
+    /// accounts entry.
+    pub type_def: String,
+}
+
+/// Build pre-split IDL type strings from struct fields.
 ///
 /// `kind` selects the `serialization` / `repr` metadata emitted onto the
 /// type definition. Zero-copy `#[account]` / default `#[event]` pass
 /// `TypeKind::BytemuckRepr`; their borsh-mode counterparts pass
 /// `TypeKind::Borsh` (the default, which suppresses both fields).
-pub fn build_type_json(
+pub fn build_type_strings(
     name: &str,
     disc: &[u8],
     docs: &[String],
     fields: &syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
     kind: TypeKind,
-) -> String {
-    let mut out = build_type_header(name, disc, docs, kind);
+) -> IdlTypeStrings {
+    let mut type_def_obj = build_type_def_header(name, docs, kind);
     let field_values: Vec<Value> = fields.iter().map(named_field_value).collect();
-    out.insert(
+    type_def_obj.insert(
         "type".into(),
         json!({ "kind": "struct", "fields": field_values }),
     );
-    Value::Object(out).to_string()
+    IdlTypeStrings {
+        account_entry: build_account_entry(name, disc),
+        type_def: Value::Object(type_def_obj).to_string(),
+    }
 }
 
-/// Build IDL type definition JSON from enum variants. Matches the spec's
+/// Build pre-split IDL type strings from enum variants. Matches the spec's
 /// `IdlTypeDefTy::Enum { variants }` shape (idl/spec/src/lib.rs:237-248).
 /// Each variant is emitted as `{"name": ..., "fields"?: ...}` where `fields`
 /// is either a named-field object array (struct-like variants), a tuple of
@@ -428,15 +451,15 @@ pub fn build_type_json(
 ///
 /// Only `TypeKind::Borsh` is really meaningful for enums today — bytemuck
 /// enums are rare. We accept the same `kind` parameter for shape symmetry
-/// with `build_type_json`.
-pub fn build_enum_type_json(
+/// with `build_type_strings`.
+pub fn build_enum_type_strings(
     name: &str,
     disc: &[u8],
     docs: &[String],
     variants: &syn::punctuated::Punctuated<syn::Variant, syn::token::Comma>,
     kind: TypeKind,
-) -> String {
-    let mut out = build_type_header(name, disc, docs, kind);
+) -> IdlTypeStrings {
+    let mut type_def_obj = build_type_def_header(name, docs, kind);
     let variant_values: Vec<Value> = variants
         .iter()
         .map(|v| {
@@ -460,26 +483,44 @@ pub fn build_enum_type_json(
             Value::Object(obj)
         })
         .collect();
-    out.insert(
+    type_def_obj.insert(
         "type".into(),
         json!({ "kind": "enum", "variants": variant_values }),
     );
-    Value::Object(out).to_string()
+    IdlTypeStrings {
+        account_entry: build_account_entry(name, disc),
+        type_def: Value::Object(type_def_obj).to_string(),
+    }
 }
 
-/// Shared header construction for struct and enum type definitions. Emits
-/// `name`, `discriminator`, optional `docs`, and the `serialization` / `repr`
-/// pair derived from `kind`. The caller appends the `type` object matching
-/// `IdlTypeDefTy::{Struct, Enum, Type}`.
-fn build_type_header(
+/// Compose the program-level `accounts[]` entry. Returns `None` when the
+/// discriminator is empty (plain `IdlType` types that don't appear in
+/// `accounts[]`).
+fn build_account_entry(name: &str, disc: &[u8]) -> Option<String> {
+    if disc.is_empty() {
+        return None;
+    }
+    Some(
+        json!({
+            "name": name,
+            "discriminator": disc_json_value(disc),
+        })
+        .to_string(),
+    )
+}
+
+/// Shared header construction for the `IdlTypeDef` payload. Emits
+/// `name`, optional `docs`, and the `serialization` / `repr` pair derived
+/// from `kind`. The caller appends the `type` object matching
+/// `IdlTypeDefTy::{Struct, Enum, Type}`. Notably *no* `discriminator` —
+/// that field only belongs on the accounts entry.
+fn build_type_def_header(
     name: &str,
-    disc: &[u8],
     docs: &[String],
     kind: TypeKind,
 ) -> serde_json::Map<String, Value> {
     let mut out = serde_json::Map::new();
     out.insert("name".into(), Value::String(name.to_owned()));
-    out.insert("discriminator".into(), disc_json_value(disc));
     if !docs.is_empty() {
         out.insert("docs".into(), docs_value(docs));
     }

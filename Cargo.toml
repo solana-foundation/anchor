@@ -2,6 +2,7 @@
 members = [
     "avm",
     "cli",
+    "cli/cli-macros",
     "client",
     "idl",
     "lang",
@@ -62,6 +63,8 @@ solana-sysvar = "3.1.1"
 solana-sysvar-id = "3.1.0"
 solana-transaction = "3.0.1"
 
+# Non solana crates
+cargo_toml = "0.22.3"
 
 [profile.release]
 lto = true

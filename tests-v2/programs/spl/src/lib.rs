@@ -48,7 +48,8 @@ pub mod spl_test {
             authority: ctx.accounts.authority.cpi_handle(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.address(), accs);
-        token_cpi::mint_to(cpi_ctx, amount)
+        token_cpi::mint_to(cpi_ctx, amount);
+        Ok(())
     }
 
     /// Transfer `amount` tokens from `from` to `to`. Hits `token_cpi::transfer`.
@@ -60,7 +61,8 @@ pub mod spl_test {
             authority: ctx.accounts.authority.cpi_handle(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.address(), accs);
-        token_cpi::transfer(cpi_ctx, amount)
+        token_cpi::transfer(cpi_ctx, amount);
+        Ok(())
     }
 
     /// TransferChecked (also verifies decimals match mint). Hits
@@ -78,7 +80,8 @@ pub mod spl_test {
             authority: ctx.accounts.authority.cpi_handle(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.address(), accs);
-        token_cpi::transfer_checked(cpi_ctx, amount, decimals)
+        token_cpi::transfer_checked(cpi_ctx, amount, decimals);
+        Ok(())
     }
 
     /// Burn `amount` tokens from `account`. Hits `token_cpi::burn`.
@@ -90,7 +93,8 @@ pub mod spl_test {
             authority: ctx.accounts.authority.cpi_handle(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.address(), accs);
-        token_cpi::burn(cpi_ctx, amount)
+        token_cpi::burn(cpi_ctx, amount);
+        Ok(())
     }
 
     /// Approve `delegate` to spend `amount` from `source`. Hits
@@ -103,7 +107,8 @@ pub mod spl_test {
             authority: ctx.accounts.authority.cpi_handle(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.address(), accs);
-        token_cpi::approve(cpi_ctx, amount)
+        token_cpi::approve(cpi_ctx, amount);
+        Ok(())
     }
 
     /// Revoke delegation. Hits `token_cpi::revoke`.
@@ -114,7 +119,8 @@ pub mod spl_test {
             authority: ctx.accounts.authority.cpi_handle(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.address(), accs);
-        token_cpi::revoke(cpi_ctx)
+        token_cpi::revoke(cpi_ctx);
+        Ok(())
     }
 
     /// Close `account`, reclaiming lamports to `destination`. Hits
@@ -127,7 +133,9 @@ pub mod spl_test {
             authority: ctx.accounts.authority.cpi_handle(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.address(), accs);
-        token_cpi::close_account(cpi_ctx)
+        token_cpi::close_account(cpi_ctx);
+
+        Ok(())
     }
 
     /// Reads every `Mint` accessor — supply, decimals, authority flags,

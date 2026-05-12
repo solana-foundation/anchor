@@ -27,6 +27,8 @@ const ERR_BAD_ADDRESS: u32 = 6000;
 const ERR_BAD_AUTHORITY: u32 = 6001;
 const ERR_BAD_OWNER: u32 = 6002;
 const ERR_BAD_CONSTRAINT: u32 = 6003;
+const ERR_BAD_FIRST: u32 = 6004;
+const ERR_BAD_SECOND: u32 = 6005;
 
 /// `ErrorCode::ConstraintRaw` maps to `Custom(2001)`.
 const CONSTRAINT_RAW: u32 = 2001;
@@ -699,6 +701,158 @@ fn signer_on_unchecked_ok_when_signed() {
         &[&user],
     )
     .expect("signed");
+}
+
+// ---- 17/18. address = <Into<Address> expr> -------------------------------
+//
+// Asserts the constraint accepts any `Into<Address>` RHS, not just an
+// `Address` literal. Two fixtures cover the two non-trivial impls in
+// `solana-address`:
+//   - `From<[u8; 32]> for Address` — `address = SOME_BYTES`
+//   - `From<&Address>  for Address` — `address = some_fn_returning_ref()`
+
+#[test]
+fn address_into_from_byte_array_match_ok() {
+    let (mut svm, payer, _) = setup();
+    call(
+        &mut svm,
+        &payer,
+        17,
+        vec![AccountMeta::new_readonly(pinned_address(), false)],
+        &[],
+    )
+    .expect("address from [u8; 32]");
+}
+
+#[test]
+fn address_into_from_byte_array_mismatch_rejected() {
+    let (mut svm, payer, _) = setup();
+    let result = call_raw(
+        &mut svm,
+        &payer,
+        17,
+        vec![AccountMeta::new_readonly(Pubkey::new_unique(), false)],
+        &[],
+    );
+    assert_err_contains(&result, "InvalidAccountData");
+}
+
+#[test]
+fn address_into_from_ref_match_ok() {
+    let (mut svm, payer, _) = setup();
+    call(
+        &mut svm,
+        &payer,
+        18,
+        vec![AccountMeta::new_readonly(pinned_address(), false)],
+        &[],
+    )
+    .expect("address from &Address");
+}
+
+#[test]
+fn address_into_from_ref_mismatch_rejected() {
+    let (mut svm, payer, _) = setup();
+    let result = call_raw(
+        &mut svm,
+        &payer,
+        18,
+        vec![AccountMeta::new_readonly(Pubkey::new_unique(), false)],
+        &[],
+    );
+    assert_err_contains(&result, "InvalidAccountData");
+}
+
+// ---- 16. Multiple constraints on a single field --------------------------
+//
+// `CheckMultipleConstraints` carries three `constraint`s on its `c` field,
+// in source order:
+//   1. `constraint(a != b @ BadFirst)`
+//   2. `constraint = a != c @ BadSecond`
+//   3. `constraint(b != c)`                (default ConstraintRaw)
+//
+// The integration tests assert (a) all three pass on distinct addresses,
+// (b) each individual check trips its own error in isolation, and (c)
+// when multiple checks would fail, the first one in source order wins —
+// proving the emitter preserves the declared evaluation order.
+
+fn call_multi(
+    svm: &mut LiteSVM,
+    payer: &Keypair,
+    a: Pubkey,
+    b: Pubkey,
+    c: Pubkey,
+) -> TransactionResult {
+    call_raw(
+        svm,
+        payer,
+        16,
+        vec![
+            AccountMeta::new_readonly(a, false),
+            AccountMeta::new_readonly(b, false),
+            AccountMeta::new_readonly(c, false),
+        ],
+        &[],
+    )
+}
+
+#[test]
+fn multiple_constraints_all_satisfied_ok() {
+    let (mut svm, payer, _) = setup();
+    call(
+        &mut svm,
+        &payer,
+        16,
+        vec![
+            AccountMeta::new_readonly(Pubkey::new_unique(), false),
+            AccountMeta::new_readonly(Pubkey::new_unique(), false),
+            AccountMeta::new_readonly(Pubkey::new_unique(), false),
+        ],
+        &[],
+    )
+    .expect("all three distinct addresses satisfy every constraint");
+}
+
+#[test]
+fn multiple_constraints_first_failure_surfaces_first_error() {
+    // Only the first constraint fails (a == b). Surfaced error must be
+    // its custom code.
+    let (mut svm, payer, _) = setup();
+    let dup = Pubkey::new_unique();
+    let result = call_multi(&mut svm, &payer, dup, dup, Pubkey::new_unique());
+    assert_custom(&result, ERR_BAD_FIRST);
+}
+
+#[test]
+fn multiple_constraints_second_failure_surfaces_second_error() {
+    // First passes, second fails (a == c). Third would also pass.
+    let (mut svm, payer, _) = setup();
+    let dup = Pubkey::new_unique();
+    let result = call_multi(&mut svm, &payer, dup, Pubkey::new_unique(), dup);
+    assert_custom(&result, ERR_BAD_SECOND);
+}
+
+#[test]
+fn multiple_constraints_third_failure_surfaces_default_error() {
+    // First two pass, third fails (b == c). The third entry has no `@
+    // err`, so the default `ConstraintRaw` code surfaces.
+    let (mut svm, payer, _) = setup();
+    let dup = Pubkey::new_unique();
+    let result = call_multi(&mut svm, &payer, Pubkey::new_unique(), dup, dup);
+    assert_custom(&result, CONSTRAINT_RAW);
+}
+
+#[test]
+fn multiple_constraints_short_circuit_on_first_failure() {
+    // Both the first AND the second checks would fail. The first one
+    // declared (a != b) must fire first and short-circuit the rest, so
+    // BadFirst — not BadSecond — is what surfaces. This is the test
+    // that proves source-order is the evaluation order.
+    let (mut svm, payer, _) = setup();
+    let same = Pubkey::new_unique();
+    // a == b == c — every check fails. The first in source order wins.
+    let result = call_multi(&mut svm, &payer, same, same, same);
+    assert_custom(&result, ERR_BAD_FIRST);
 }
 
 #[test]

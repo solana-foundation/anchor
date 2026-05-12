@@ -16,31 +16,26 @@ pub trait SysvarId {
     const SYSVAR_ID: Address;
     /// Well-known base58 address for IDL emission. Empty string → no
     /// `address` emission at the `Program<T>` / `Sysvar<T>` IDL site.
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "";
 }
 
 impl SysvarId for pinocchio::sysvars::clock::Clock {
     const SYSVAR_ID: Address = pinocchio::sysvars::clock::CLOCK_ID;
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "SysvarC1ock11111111111111111111111111111111";
 }
 
 impl<T: Deref<Target = [u8]>> SysvarId for pinocchio::sysvars::instructions::Instructions<T> {
     const SYSVAR_ID: Address = pinocchio::sysvars::instructions::INSTRUCTIONS_ID;
-    #[cfg(feature = "idl-build")]
-    const IDL_ADDRESS: &'static str = "SysvarC1ock11111111111111111111111111111111";
+    const IDL_ADDRESS: &'static str = "Sysvar1nstructions1111111111111111111111111";
 }
 
 impl SysvarId for pinocchio::sysvars::rent::Rent {
     const SYSVAR_ID: Address = pinocchio::sysvars::rent::RENT_ID;
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "SysvarRent111111111111111111111111111111111";
 }
 
 impl<T: Deref<Target = [u8]>> SysvarId for pinocchio::sysvars::slot_hashes::SlotHashes<T> {
     const SYSVAR_ID: Address = pinocchio::sysvars::slot_hashes::SLOTHASHES_ID;
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "SysvarS1otHashes111111111111111111111111111";
 }
 
@@ -102,7 +97,7 @@ impl<T: PinocchioSysvar + SysvarId + Copy> AsRef<AccountView> for Sysvar<T> {
     }
 }
 
-#[cfg(feature = "idl-build")]
+#[doc(hidden)]
 impl<T: PinocchioSysvar + SysvarId + Copy> crate::IdlAccountType for Sysvar<T> {
     const __IDL_ADDRESS: Option<&'static str> = if T::IDL_ADDRESS.is_empty() {
         None

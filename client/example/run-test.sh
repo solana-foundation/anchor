@@ -132,7 +132,12 @@ check_surfpool() {
 }
 
 start_surfpool() {
-    surfpool start --ci --offline --daemon &>/dev/null &
+    # FIXME: drop `--feature deprecate_rent_exemption_threshold` once
+    # surfpool's bundled mainnet defaults catch up — currently stale and
+    # missing this SIMD, so pinocchio's `Rent::get` reads half the
+    # rent-exempt minimum and `init` simulations fail with
+    # `InsufficientFundsForRent`.
+    surfpool start --ci --offline --daemon --feature deprecate_rent_exemption_threshold &>/dev/null &
     local surfpool_pid=$!
 
     sleep 3

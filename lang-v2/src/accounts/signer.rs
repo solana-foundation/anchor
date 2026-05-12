@@ -63,7 +63,7 @@ impl AnchorAccount for Signer {
 
 view_wrapper_traits!(Signer);
 
-#[cfg(feature = "idl-build")]
+#[doc(hidden)]
 impl crate::IdlAccountType for Signer {
     const __IDL_IS_SIGNER: bool = true;
 }

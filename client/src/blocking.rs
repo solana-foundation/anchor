@@ -5,8 +5,9 @@ use {
         ClientError, Config, EventContext, EventUnsubscriber, Program, ProgramAccountsIterator,
         RequestBuilder,
     },
-    anchor_lang::{prelude::Pubkey, AccountDeserialize, Discriminator},
+    anchor_lang_v2::{AccountDeserialize, Discriminator},
     solana_commitment_config::CommitmentConfig,
+    solana_program::pubkey::Pubkey,
     solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
     solana_rpc_client_api::{config::RpcSendTransactionConfig, filter::RpcFilterType},
     solana_signature::Signature,
@@ -98,7 +99,10 @@ impl<C: Deref<Target = impl Signer> + Clone> Program<C> {
         self.rt.block_on(self.accounts_lazy_internal(filters))
     }
 
-    pub fn on<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
+    pub fn on<
+        T: anchor_lang_v2::Event
+            + for<'de> anchor_lang_v2::wincode::SchemaRead<'de, anchor_lang_v2::BorshConfig, Dst = T>,
+    >(
         &self,
         f: impl FnMut(&EventContext, T) + Send + 'static,
     ) -> Result<EventUnsubscriber<'_>, ClientError> {

@@ -1,5 +1,5 @@
 use {
-    crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT},
+    crate::{get_keypair, is_hidden, keys_sync, target_dir, AbsolutePath, DEFAULT_RPC_PORT},
     anchor_client::Cluster,
     anchor_lang_idl::types::Idl,
     anyhow::{anyhow, bail, Context, Error, Result},
@@ -35,7 +35,7 @@ use {
 
 pub const SURFPOOL_HOST: &str = "127.0.0.1";
 /// Wrapper around CommitmentLevel to support case-insensitive parsing
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AbsolutePath)]
 pub struct CaseInsensitiveCommitmentLevel(pub CommitmentLevel);
 
 impl FromStr for CaseInsensitiveCommitmentLevel {
@@ -64,7 +64,7 @@ pub trait Merge: Sized {
     fn merge(&mut self, _other: Self) {}
 }
 
-#[derive(Default, Debug, Parser)]
+#[derive(Default, Debug, Parser, AbsolutePath)]
 pub struct ConfigOverride {
     /// Cluster override.
     #[clap(global = true, long = "provider.cluster")]
@@ -224,7 +224,7 @@ impl WithPath<Config> {
             let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
             let lib_name = cargo.lib_name()?;
 
-            let idl_filepath = Path::new("target")
+            let idl_filepath = target_dir()?
                 .join("idl")
                 .join(&lib_name)
                 .with_extension("json");
@@ -308,6 +308,16 @@ impl WithPath<Config> {
     }
 }
 
+impl WalletPath {
+    fn resolve_relative_to(self, base: &Path) -> Self {
+        if self.0.is_relative() {
+            Self(base.join(self.0))
+        } else {
+            self
+        }
+    }
+}
+
 impl<T> std::ops::Deref for WithPath<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -330,6 +340,7 @@ pub struct Config {
     pub scripts: ScriptsConfig,
     pub hooks: HooksConfig,
     pub workspace: WorkspaceConfig,
+    pub clients: ClientsConfig,
     // Separate entry next to test_config because
     // "anchor localnet" only has access to the Anchor.toml,
     // not the Test.toml files
@@ -343,7 +354,7 @@ pub struct Config {
     pub skip_local_validator: Option<bool>,
 }
 
-#[derive(ValueEnum, Parser, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, Copy, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum ValidatorType {
     /// Use Surfpool validator (default)
     Surfpool,
@@ -363,7 +374,9 @@ pub struct ToolchainConfig {
 /// that need to resolve a concrete package manager (when nothing is configured)
 /// should go through `crate::resolve_package_manager` so the waterfall
 /// (pnpm → yarn → npm) and missing-binary diagnostics are centralized.
-#[derive(Clone, Debug, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize, AbsolutePath,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
@@ -469,6 +482,119 @@ pub enum HookType {
     PostDeploy,
 }
 
+/// `[clients]` section of `Anchor.toml`.
+///
+/// Declares which Codama-generated client SDKs the workspace ships, where
+/// they live on disk, and whether they should be regenerated automatically
+/// (e.g. as part of `anchor build` once that integration lands).
+///
+/// TOML shape:
+///
+/// ```toml
+/// [clients]
+/// auto = true
+/// rust = true                                    # enables `clients/rust`
+/// js   = { enable = true }                       # equivalent to `js = true`
+/// go   = { enable = true, path = "go-client" }   # custom output dir
+/// js-umi = false                                 # explicitly disabled
+/// ```
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClientsConfig {
+    /// Regenerate clients automatically on `anchor build` / IDL change.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub auto: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub js: Option<ClientLanguageConfig>,
+    #[serde(
+        default,
+        rename = "js-umi",
+        alias = "js_umi",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub js_umi: Option<ClientLanguageConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rust: Option<ClientLanguageConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub go: Option<ClientLanguageConfig>,
+}
+
+/// Per-language client entry. Accepts either a bare `bool` (`rust = true`)
+/// or a table with explicit `enable` and optional `path` keys.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ClientLanguageConfig {
+    /// `lang = true` / `lang = false`.
+    Enabled(bool),
+    /// `lang = { enable = bool, path = "..." }`.
+    Detailed {
+        #[serde(default = "ClientLanguageConfig::default_enable")]
+        enable: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        path: Option<String>,
+    },
+}
+
+impl ClientLanguageConfig {
+    fn default_enable() -> bool {
+        true
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            Self::Enabled(b) => *b,
+            Self::Detailed { enable, .. } => *enable,
+        }
+    }
+
+    pub fn path(&self) -> Option<&str> {
+        match self {
+            Self::Enabled(_) => None,
+            Self::Detailed { path, .. } => path.as_deref(),
+        }
+    }
+}
+
+/// Stable identifiers used both as TOML keys and as Codama script names so
+/// `Anchor.toml` and `anchor codama generate -l <lang>` agree on spelling.
+pub const CLIENT_LANGUAGES: &[&str] = &["js", "js-umi", "rust", "go"];
+
+impl ClientsConfig {
+    /// Look up a language entry by its [`CLIENT_LANGUAGES`] id.
+    pub fn get(&self, language: &str) -> Option<&ClientLanguageConfig> {
+        match language {
+            "js" => self.js.as_ref(),
+            "js-umi" => self.js_umi.as_ref(),
+            "rust" => self.rust.as_ref(),
+            "go" => self.go.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Languages the user has explicitly enabled, paired with the resolved
+    /// output directory (`<base>/<lang>` if no `path` was set on the entry).
+    pub fn enabled(&self, base: &Path) -> Vec<(&'static str, PathBuf)> {
+        CLIENT_LANGUAGES
+            .iter()
+            .filter_map(|&lang| {
+                let entry = self.get(lang)?;
+                if !entry.is_enabled() {
+                    return None;
+                }
+                let path = entry
+                    .path()
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| base.join(lang));
+                Some((lang, path))
+            })
+            .collect()
+    }
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct WorkspaceConfig {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -479,7 +605,7 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum BootstrapMode {
     None,
     Debian,
@@ -542,15 +668,17 @@ impl Config {
                     .path();
                 if let Some(filename) = p.file_name() {
                     if filename.to_str() == Some("Anchor.toml") {
+                        let config_dir = p.parent().unwrap();
                         // Make sure the program id is correct (only on the initial build)
                         let mut cfg = Config::from_path(&p)?;
-                        let deploy_dir = p.parent().unwrap().join("target").join("deploy");
+                        let deploy_dir = target_dir()?.join("deploy");
                         if !deploy_dir.exists() && !cfg.programs.contains_key(&Cluster::Localnet) {
                             println!("Updating program ids...");
                             fs::create_dir_all(deploy_dir)?;
                             keys_sync(&ConfigOverride::default(), None)?;
                             cfg = Config::from_path(&p)?;
                         }
+                        cfg.provider.wallet = cfg.provider.wallet.resolve_relative_to(config_dir);
 
                         return Ok(Some(WithPath::new(cfg, p)));
                     }
@@ -570,7 +698,7 @@ impl Config {
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
-        get_keypair(&self.provider.wallet.to_string())
+        get_keypair(Path::new(&self.provider.wallet.0))
     }
 
     pub fn run_hooks(&self, hook_type: HookType) -> Result<()> {
@@ -613,6 +741,8 @@ struct _Config {
     surfpool: Option<_SurfpoolConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     skip_local_validator: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    clients: Option<ClientsConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -715,6 +845,19 @@ impl fmt::Display for Config {
                 .then(|| self.workspace.clone()),
             surfpool: self.surfpool_config.clone().map(Into::into),
             skip_local_validator: self.skip_local_validator,
+            clients: {
+                let c = &self.clients;
+                let empty = !c.auto
+                    && c.js.is_none()
+                    && c.js_umi.is_none()
+                    && c.rust.is_none()
+                    && c.go.is_none();
+                if empty {
+                    None
+                } else {
+                    Some(c.clone())
+                }
+            },
         };
 
         let cfg = toml::to_string(&cfg).expect("Must be well formed");
@@ -744,6 +887,7 @@ impl FromStr for Config {
             workspace: cfg.workspace.unwrap_or_default(),
             surfpool_config: cfg.surfpool.map(Into::into),
             skip_local_validator: cfg.skip_local_validator,
+            clients: cfg.clients.unwrap_or_default(),
         })
     }
 }
@@ -1032,6 +1176,12 @@ impl _TestToml {
                         entry.filename = canonicalize_filepath_from_origin(&entry.filename, &path)?;
                     }
                 }
+                if let Some(account_dirs) = &mut validator.account_dir {
+                    for entry in account_dirs {
+                        entry.directory =
+                            canonicalize_filepath_from_origin(&entry.directory, &path)?;
+                    }
+                }
             }
         }
         Ok(current_toml)
@@ -1192,7 +1342,7 @@ pub struct _Validator {
     // Load all the accounts from the JSON files found in the specified DIRECTORY
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_dir: Option<Vec<AccountDirEntry>>,
-    // IP address to bind the validator ports. [default: 0.0.0.0]
+    // IP address to bind the validator ports. [default: 127.0.0.1]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bind_address: Option<String>,
     // Copy an account from the cluster referenced by the url argument.
@@ -1337,7 +1487,7 @@ pub fn get_default_ledger_path() -> PathBuf {
     Path::new(".anchor").join("test-ledger")
 }
 
-const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
+const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
 
 impl Merge for _Validator {
     fn merge(&mut self, other: Self) {
@@ -1443,12 +1593,12 @@ impl Program {
 
     pub fn keypair(&self) -> Result<Keypair> {
         let file = self.keypair_file()?;
-        get_keypair(file.path().to_str().unwrap())
+        get_keypair(file.path())
     }
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
     pub fn keypair_file(&self) -> Result<WithPath<File>> {
-        let deploy_dir_path = Path::new("target").join("deploy");
+        let deploy_dir_path = target_dir()?.join("deploy");
         fs::create_dir_all(&deploy_dir_path)
             .with_context(|| format!("Error creating directory with path: {deploy_dir_path:?}"))?;
         let path = std::env::current_dir()
@@ -1468,15 +1618,15 @@ impl Program {
         Ok(WithPath::new(file, path))
     }
 
-    pub fn binary_path(&self, verifiable: bool) -> PathBuf {
-        let path = Path::new("target")
+    pub fn binary_path(&self, verifiable: bool) -> Result<PathBuf> {
+        let path = target_dir()?
             .join(if verifiable { "verifiable" } else { "deploy" })
             .join(&self.lib_name)
             .with_extension("so");
 
-        std::env::current_dir()
+        Ok(std::env::current_dir()
             .expect("Must have current dir")
-            .join(path)
+            .join(path))
     }
 }
 
@@ -1566,24 +1716,20 @@ pub struct RunbookExecution {
 #[macro_export]
 macro_rules! home_path {
     ($my_struct:ident, $path:literal) => {
-        #[derive(Clone, Debug)]
-        pub struct $my_struct(String);
+        #[derive(Clone, Debug, AbsolutePath)]
+        pub struct $my_struct(::std::path::PathBuf);
 
         impl Default for $my_struct {
             fn default() -> Self {
-                $my_struct(
-                    home_dir()
-                        .unwrap()
-                        .join($path.replace('/', std::path::MAIN_SEPARATOR_STR))
-                        .display()
-                        .to_string(),
-                )
+                $my_struct(home_dir().unwrap().join($path))
             }
         }
 
         impl $my_struct {
             fn stringify_with_tilde(&self) -> String {
                 self.0
+                    .display()
+                    .to_string()
                     .replacen(home_dir().unwrap().to_str().unwrap(), "~", 1)
             }
         }
@@ -1592,13 +1738,13 @@ macro_rules! home_path {
             type Err = anyhow::Error;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Ok(Self(s.to_owned()))
+                Ok(Self(::std::path::PathBuf::from(s)))
             }
         }
 
         impl fmt::Display for $my_struct {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}", self.0)
+                write!(f, "{}", self.0.display())
             }
         }
     };
@@ -1668,9 +1814,124 @@ mod tests {
     }
 
     #[test]
+    fn parse_clients_section() {
+        let toml = BASE_CONFIG.to_owned()
+            + r#"
+[clients]
+auto = true
+rust = true
+js = false
+js-umi = { enable = true }
+go = { enable = true, path = "go-client" }
+"#;
+        let config = Config::from_str(&toml).unwrap();
+        let clients = &config.clients;
+        assert!(clients.auto);
+        assert!(clients.rust.as_ref().unwrap().is_enabled());
+        assert!(!clients.js.as_ref().unwrap().is_enabled());
+        assert!(clients.js_umi.as_ref().unwrap().is_enabled());
+        let go = clients.go.as_ref().unwrap();
+        assert!(go.is_enabled());
+        assert_eq!(go.path(), Some("go-client"));
+
+        let resolved = clients.enabled(Path::new("clients"));
+        // js is explicitly disabled; rust gets the default path; go uses the
+        // override; js-umi is enabled with no `path` so it falls back to the
+        // base+id default.
+        assert_eq!(
+            resolved,
+            vec![
+                ("js-umi", PathBuf::from("clients/js-umi")),
+                ("rust", PathBuf::from("clients/rust")),
+                ("go", PathBuf::from("go-client")),
+            ]
+        );
+    }
+
+    #[test]
+    fn clients_section_round_trips() {
+        // Round-trip the table form through Display+FromStr to make sure
+        // serde's untagged enum picks the same variant we wrote out.
+        let toml = BASE_CONFIG.to_owned()
+            + r#"
+[clients]
+auto = true
+rust = true
+go = { enable = true, path = "go-client" }
+"#;
+        let config = Config::from_str(&toml).unwrap();
+        let serialized = config.to_string();
+        let reparsed = Config::from_str(&serialized).unwrap();
+        assert!(reparsed.clients.auto);
+        assert!(reparsed.clients.rust.as_ref().unwrap().is_enabled());
+        assert_eq!(
+            reparsed.clients.go.as_ref().and_then(|g| g.path()),
+            Some("go-client"),
+        );
+    }
+
+    #[test]
+    fn clients_section_omitted_when_default() {
+        // An empty [clients] section should not be emitted: a fresh `anchor
+        // init` workspace has no clients configured, so we don't want a
+        // confusing empty stanza in `Anchor.toml`.
+        let config = Config::from_str(BASE_CONFIG).unwrap();
+        assert!(!config.to_string().contains("[clients]"));
+    }
+
+    #[test]
+    fn unknown_clients_field_is_rejected() {
+        // `deny_unknown_fields` on `ClientsConfig` catches typos like
+        // `[clients] python = true` so users don't silently ship a config
+        // that no Codama renderer will pick up.
+        let toml = BASE_CONFIG.to_owned() + "[clients]\npython = true\n";
+        assert!(Config::from_str(&toml).is_err());
+    }
+
+    #[test]
     fn parse_skip_lint_false() {
         let string = BASE_CONFIG.to_owned() + "[features]\nskip-lint = false";
         let config = Config::from_str(&string).unwrap();
         assert!(!config.features.skip_lint);
+    }
+
+    #[test]
+    fn test_toml_resolves_account_dir_relative_to_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let suite_dir = dir.path().join("tests").join("suite");
+        let accounts_dir = suite_dir.join("accounts");
+        fs::create_dir_all(&accounts_dir).unwrap();
+
+        let account_file = accounts_dir.join("account.json");
+        fs::write(&account_file, "{}").unwrap();
+
+        let test_toml = suite_dir.join("Test.toml");
+        fs::write(
+            &test_toml,
+            r#"
+[scripts]
+test = "true"
+
+[[test.validator.account]]
+address = "3vMPj13emX9JmifYcWc77ekEzV1F37ga36E1YeSr6Mdj"
+filename = "accounts/account.json"
+
+[[test.validator.account_dir]]
+directory = "accounts"
+"#,
+        )
+        .unwrap();
+
+        let parsed = TestToml::from_path(test_toml).unwrap();
+        let validator = parsed.test.unwrap().validator.unwrap();
+
+        assert_eq!(
+            validator.account.unwrap()[0].filename,
+            account_file.canonicalize().unwrap().display().to_string()
+        );
+        assert_eq!(
+            validator.account_dir.unwrap()[0].directory,
+            accounts_dir.canonicalize().unwrap().display().to_string()
+        );
     }
 }

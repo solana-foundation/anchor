@@ -124,6 +124,19 @@ pub struct CheckFnSeedsExplicitBump {
     pub data: Account<Data>,
 }
 
+// 5b. Optional account + function-call seeds + explicit bump.
+//
+// Exercises the codegen branch in `derive/src/parse.rs` that handles
+// opaque seed expressions paired with `bump = <expr>`. The synthesized
+// `Bumps` struct types optional-account slots as `Option<u8>`, so the
+// generated assignment must wrap the bump in `Some(...)` to type-check.
+#[derive(Accounts)]
+pub struct CheckFnSeedsExplicitBumpOptional {
+    pub payer: Signer,
+    #[account(seeds = tag_seeds(), bump = 0)]
+    pub data: Option<Account<Data>>,
+}
+
 // 6. Verify const-item seeds + bare bump
 #[derive(Accounts)]
 pub struct CheckConstSeeds {

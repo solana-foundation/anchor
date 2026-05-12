@@ -14,7 +14,6 @@ pub mod cursor;
 mod dispatch;
 pub mod event;
 pub mod hash;
-#[cfg(feature = "idl-build")]
 #[doc(hidden)]
 pub mod idl_build;
 pub mod loader;
@@ -25,8 +24,7 @@ pub mod programs;
 pub mod testing;
 mod traits;
 
-// Re-export derive macros
-// Re-export borsh and bytemuck for generated code
+// Re-export derive macros and bytemuck for generated code
 #[cfg(feature = "account-resize")]
 pub use cpi::realloc_account;
 /// Chunked 4×u64 equality compare for `Address`. Preferred over `==`
@@ -90,40 +88,60 @@ pub use wincode;
 /// `BorshAccount<T>`) so the on-chain wire format matches borsh exactly,
 /// while keeping wincode's faster encoding path.
 ///
-/// `ZERO_COPY_ALIGN_CHECK = false`: borsh's u32 length prefix puts payload
-/// data 4 bytes off natural alignment, so handler args like `amounts: &[u64]`
-/// would otherwise fail wincode's runtime alignment guard. The guard exists
-/// to prevent Rust-level UB on hosts where misaligned wide loads are
-/// undefined; SBPF's `ldxdw` has no alignment-specialized variants and the
-/// Solana program ecosystem already reads u64 from arbitrary `&[u8]` offsets,
-/// so disabling the check on SBPF is safe.
+/// # ⚠ Incompatibilities with the borsh crate
 ///
-/// Compatibility caveats:
-/// - `HashMap` / `HashSet` are NOT byte-identical (borsh sorts by key,
-///   wincode preserves insertion order). Use `Vec<(K, V)>` if you need
-///   canonical ordering.
-/// - `f32` / `f64` NaN: borsh rejects on deserialize, wincode accepts.
-pub const BORSH_CONFIG: wincode::config::Configuration<
+/// Wincode with this config is byte-identical to borsh for the shapes Anchor
+/// programs commonly use (integers, fixed arrays, `Vec`, `String`, `Option`,
+/// tagged enums, nested structs). The following shapes are NOT byte-
+/// identical — if a program built on Anchor v1 (real borsh) used them, the
+/// on-chain bytes will NOT round-trip cleanly through v2:
+///
+/// - **`HashMap` / `HashSet`**: borsh sorts entries by key, wincode preserves
+///   insertion order. Use `BTreeMap` / `BTreeSet` or `Vec<(K, V)>` if you
+///   need canonical ordering.
+/// - **`f32` / `f64` NaN**: borsh rejects NaN on deserialize, wincode
+///   accepts it. v2 won't surface an error for a NaN-bearing account.
+///
+/// Programs that don't use these types are unaffected.
+///
+/// # `ZERO_COPY_ALIGN_CHECK = false`
+///
+/// Borsh's u32 length prefix puts payload data 4 bytes off natural alignment,
+/// so handler args like `amounts: &[u64]` would otherwise fail wincode's
+/// runtime alignment guard. The guard exists to prevent Rust-level UB on
+/// hosts where misaligned wide loads are undefined; SBPF's `ldxdw` has no
+/// alignment-specialized variants and the Solana program ecosystem already
+/// reads u64 from arbitrary `&[u8]` offsets, so disabling the check on SBPF
+/// is safe.
+pub const BORSH_CONFIG: BorshConfig = wincode::config::Configuration::new();
+
+/// Concrete type of [`BORSH_CONFIG`]. Spelled out so downstream callers can
+/// name it in trait bounds (e.g. `T: wincode::SchemaRead<'de, BorshConfig>`).
+pub type BorshConfig = wincode::config::Configuration<
     false,
     { wincode::config::DEFAULT_PREALLOCATION_SIZE_LIMIT },
     wincode::len::FixIntLen<u32>,
     wincode::int_encoding::LittleEndian,
     wincode::int_encoding::FixInt,
     u8,
-> = wincode::config::Configuration::new();
+>;
 
-// Internal: only used by `#[cfg(feature = "idl-build")]` codegen from the
-// derive macros to split type-def JSON in `__anchor_private_print_idl_program`.
-// Not part of the stable API — hence the `__` prefix.
 /// `#[derive(IdlType)]` — register a plain struct in the IDL's `types[]`
-/// array. Always exported; the emitted impl body is itself
-/// `#[cfg(feature = "idl-build")]`, so non-IDL builds pay nothing.
+/// array.
+///
+/// **Opaque / unstable.** Apply this derive on user types you want to
+/// surface in the generated IDL; do not call any of the emitted associated
+/// items directly — they are implementation details of the `anchor idl
+/// build` pipeline and will change without notice. The emitted impl body
+/// is gated on the **end-user crate's** local `idl-build` feature, so
+/// non-IDL builds pay nothing.
 pub use anchor_derive_accounts_v2::IdlType;
-#[cfg(feature = "idl-build")]
+/// **Opaque / unstable.** Re-exported so derive-emitted code in user
+/// crates can name the trait. Do not implement this trait by hand or call
+/// its associated items — they are implementation details of the IDL
+/// build pipeline and will change without notice. See [`idl_build`] for
+/// the trait definition.
 pub use idl_build::IdlAccountType;
-#[cfg(feature = "idl-build")]
-#[doc(hidden)]
-pub use serde_json as __serde_json;
 // ---------------------------------------------------------------------------
 // Client-side types — for building instructions off-chain (tests, CPI, SDK)
 // ---------------------------------------------------------------------------
@@ -139,7 +157,6 @@ pub use {
         access_control, account, constant, emit, error_code, event, pod_wrapper, program, Accounts,
         InitSpace,
     },
-    borsh::{self, BorshDeserialize as AnchorDeserialize, BorshSerialize as AnchorSerialize},
     bytemuck,
     context::{Bumps, Context},
     context_cpi::CpiContext,
@@ -155,6 +172,7 @@ pub use {
     loader::AccountLoader,
     pinocchio::{self, account::AccountView, address::Address},
     traits::*,
+    wincode::{SchemaRead, SchemaWrite},
 };
 
 /// Re-export of the Solana SDK `Instruction` + `AccountMeta` types under a v1-

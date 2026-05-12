@@ -62,7 +62,7 @@ unsafe impl Zeroable for TokenAccount {}
 // — its layout is known to any SPL-aware client. Default `__IDL_TYPE = None`
 // keeps it out of the user's IDL `types[]` array (matches v1's
 // `impl_idl_build!` behavior for this type).
-#[cfg(feature = "idl-build")]
+#[doc(hidden)]
 impl anchor_lang_v2::IdlAccountType for TokenAccount {}
 
 // On-chain size — SPL Token program requires 165 bytes. Used by
@@ -265,7 +265,6 @@ pub mod cpi {
         alloc::{vec, vec::Vec},
         anchor_lang_v2::{CpiContext, CpiHandle, ToCpiAccounts},
         pinocchio::instruction::InstructionAccount,
-        solana_program_error::ProgramError,
     };
 
     /// Accounts structs consumed by each CPI helper. Each field is a
@@ -587,68 +586,72 @@ pub mod cpi {
         data
     }
 
-    pub fn transfer<'a>(
-        ctx: CpiContext<'a, accounts::Transfer<'a>>,
-        amount: u64,
-    ) -> Result<(), ProgramError> {
-        ctx.invoke(&encode_amount_ix(DISC_TRANSFER, amount))
+    pub fn transfer<'a>(ctx: CpiContext<'a, accounts::Transfer<'a>>, amount: u64) {
+        ctx.invoke(&encode_amount_ix(DISC_TRANSFER, amount));
     }
 
     pub fn transfer_checked<'a>(
         ctx: CpiContext<'a, accounts::TransferChecked<'a>>,
         amount: u64,
         decimals: u8,
-    ) -> Result<(), ProgramError> {
-        ctx.invoke(&encode_amount_decimals_ix(DISC_TRANSFER_CHECKED, amount, decimals))
+    ) {
+        ctx.invoke(&encode_amount_decimals_ix(
+            DISC_TRANSFER_CHECKED,
+            amount,
+            decimals,
+        ));
     }
 
-    pub fn mint_to<'a>(
-        ctx: CpiContext<'a, accounts::MintTo<'a>>,
-        amount: u64,
-    ) -> Result<(), ProgramError> {
-        ctx.invoke(&encode_amount_ix(DISC_MINT_TO, amount))
+    pub fn mint_to<'a>(ctx: CpiContext<'a, accounts::MintTo<'a>>, amount: u64) {
+        ctx.invoke(&encode_amount_ix(DISC_MINT_TO, amount));
     }
 
     pub fn mint_to_checked<'a>(
         ctx: CpiContext<'a, accounts::MintToChecked<'a>>,
         amount: u64,
         decimals: u8,
-    ) -> Result<(), ProgramError> {
-        ctx.invoke(&encode_amount_decimals_ix(DISC_MINT_TO_CHECKED, amount, decimals))
+    ) {
+        ctx.invoke(&encode_amount_decimals_ix(
+            DISC_MINT_TO_CHECKED,
+            amount,
+            decimals,
+        ));
     }
 
-    pub fn burn<'a>(
-        ctx: CpiContext<'a, accounts::Burn<'a>>,
-        amount: u64,
-    ) -> Result<(), ProgramError> {
-        ctx.invoke(&encode_amount_ix(DISC_BURN, amount))
+    pub fn burn<'a>(ctx: CpiContext<'a, accounts::Burn<'a>>, amount: u64) {
+        ctx.invoke(&encode_amount_ix(DISC_BURN, amount));
     }
 
     pub fn burn_checked<'a>(
         ctx: CpiContext<'a, accounts::BurnChecked<'a>>,
         amount: u64,
         decimals: u8,
-    ) -> Result<(), ProgramError> {
-        ctx.invoke(&encode_amount_decimals_ix(DISC_BURN_CHECKED, amount, decimals))
+    ) {
+        ctx.invoke(&encode_amount_decimals_ix(
+            DISC_BURN_CHECKED,
+            amount,
+            decimals,
+        ));
     }
 
-    pub fn approve<'a>(
-        ctx: CpiContext<'a, accounts::Approve<'a>>,
-        amount: u64,
-    ) -> Result<(), ProgramError> {
-        ctx.invoke(&encode_amount_ix(DISC_APPROVE, amount))
+    pub fn approve<'a>(ctx: CpiContext<'a, accounts::Approve<'a>>, amount: u64) {
+        ctx.invoke(&encode_amount_ix(DISC_APPROVE, amount));
     }
 
     pub fn approve_checked<'a>(
         ctx: CpiContext<'a, accounts::ApproveChecked<'a>>,
         amount: u64,
         decimals: u8,
-    ) -> Result<(), ProgramError> {
-        ctx.invoke(&encode_amount_decimals_ix(DISC_APPROVE_CHECKED, amount, decimals))
+    ) {
+        ctx.invoke(&encode_amount_decimals_ix(
+            DISC_APPROVE_CHECKED,
+            amount,
+            decimals,
+        ));
     }
 
-    pub fn revoke<'a>(ctx: CpiContext<'a, accounts::Revoke<'a>>) -> Result<(), ProgramError> {
-        ctx.invoke(&[DISC_REVOKE])
+    pub fn revoke<'a>(ctx: CpiContext<'a, accounts::Revoke<'a>>) {
+        ctx.invoke(&[DISC_REVOKE]);
     }
 
     /// SPL Token `SetAuthority`.
@@ -661,7 +664,7 @@ pub mod cpi {
         ctx: CpiContext<'a, accounts::SetAuthority<'a>>,
         authority_type: u8,
         new_authority: Option<&anchor_lang_v2::Address>,
-    ) -> Result<(), ProgramError> {
+    ) {
         // Layout: disc(1) + authority_type(1) + option_tag(1) + [address(32)] = 3 or 35.
         let mut data = [0u8; 35];
         data[0] = DISC_SET_AUTHORITY;
@@ -670,36 +673,28 @@ pub mod cpi {
             Some(addr) => {
                 data[2] = 1;
                 data[3..35].copy_from_slice(addr.as_ref());
-                ctx.invoke(&data[..35])
+                ctx.invoke(&data[..35]);
             }
             None => {
                 data[2] = 0;
-                ctx.invoke(&data[..3])
+                ctx.invoke(&data[..3]);
             }
         }
     }
 
-    pub fn close_account<'a>(
-        ctx: CpiContext<'a, accounts::CloseAccount<'a>>,
-    ) -> Result<(), ProgramError> {
+    pub fn close_account<'a>(ctx: CpiContext<'a, accounts::CloseAccount<'a>>) {
         ctx.invoke(&[DISC_CLOSE_ACCOUNT])
     }
 
-    pub fn freeze_account<'a>(
-        ctx: CpiContext<'a, accounts::FreezeAccount<'a>>,
-    ) -> Result<(), ProgramError> {
+    pub fn freeze_account<'a>(ctx: CpiContext<'a, accounts::FreezeAccount<'a>>) {
         ctx.invoke(&[DISC_FREEZE_ACCOUNT])
     }
 
-    pub fn thaw_account<'a>(
-        ctx: CpiContext<'a, accounts::ThawAccount<'a>>,
-    ) -> Result<(), ProgramError> {
+    pub fn thaw_account<'a>(ctx: CpiContext<'a, accounts::ThawAccount<'a>>) {
         ctx.invoke(&[DISC_THAW_ACCOUNT])
     }
 
-    pub fn sync_native<'a>(
-        ctx: CpiContext<'a, accounts::SyncNative<'a>>,
-    ) -> Result<(), ProgramError> {
+    pub fn sync_native<'a>(ctx: CpiContext<'a, accounts::SyncNative<'a>>) {
         ctx.invoke(&[DISC_SYNC_NATIVE])
     }
 }

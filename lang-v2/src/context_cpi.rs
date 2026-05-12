@@ -7,7 +7,6 @@ use {
         address::Address,
         instruction::{InstructionAccount, InstructionView},
     },
-    solana_program_error::ProgramError,
 };
 
 /// Context for cross-program invocations.
@@ -72,7 +71,7 @@ impl<'a, T: ToCpiAccounts<'a>> CpiContext<'a, T> {
     /// Invoke the CPI with the given instruction data. Collects accounts
     /// from [`ToCpiAccounts`], appends remaining accounts, and calls
     /// `invoke_signed_unchecked`.
-    pub fn invoke(&self, data: &[u8]) -> Result<(), ProgramError> {
+    pub fn invoke(&self, data: &[u8]) {
         let mut instruction_accounts = self.accounts.to_instruction_accounts();
         let mut handles = self.accounts.to_cpi_handles();
 
@@ -136,7 +135,5 @@ impl<'a, T: ToCpiAccounts<'a>> CpiContext<'a, T> {
                 &signers,
             );
         }
-
-        Ok(())
     }
 }

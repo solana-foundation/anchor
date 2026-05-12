@@ -196,12 +196,35 @@ pub trait Id {
     /// signals "no address to advertise in the IDL" — consumed by
     /// `IdlAccountType::__IDL_ADDRESS` on `Program<T>` and converted to
     /// `None` there.
-    #[cfg(feature = "idl-build")]
     const IDL_ADDRESS: &'static str = "";
 }
 
 pub trait Discriminator {
     const DISCRIMINATOR: &'static [u8];
+}
+
+/// Client-side account deserialization. Mirrors v1 anchor-lang's trait so
+/// `anchor-client` can fetch raw account bytes and decode them into the
+/// user's `#[account]` struct. The `#[account]` macro emits two impl
+/// bodies:
+///
+///   - Borsh mode (`#[account(borsh)]`): check disc, run `BorshDeserialize`.
+///   - Pod mode (default): check disc, `bytemuck::pod_read_unaligned` on
+///     the post-disc bytes.
+///
+/// Not used by the on-chain account wrappers (`BorshAccount` / `Slab`),
+/// which read directly from `AccountView` borrows; this is purely the
+/// off-chain client helper.
+pub trait AccountDeserialize: Sized {
+    /// Verify the leading discriminator and decode. Default implementation
+    /// strips the disc and forwards to `try_deserialize_unchecked`.
+    fn try_deserialize(buf: &mut &[u8]) -> Result<Self, ProgramError> {
+        Self::try_deserialize_unchecked(buf)
+    }
+
+    /// Decode without verifying the discriminator. Used during initialization
+    /// when the bytes are zero or otherwise not yet stamped with the disc.
+    fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self, ProgramError>;
 }
 
 /// Wrapper-level init: creates the on-chain account and returns a loaded
@@ -339,10 +362,14 @@ impl<T> core::ops::DerefMut for Nested<T> {
     }
 }
 
-#[cfg(feature = "idl-build")]
+#[doc(hidden)]
 impl<T: crate::IdlAccountType> crate::IdlAccountType for Nested<T> {
-    const __IDL_TYPE: Option<&'static str> = T::__IDL_TYPE;
-    fn __register_idl_deps(types: &mut ::alloc::vec::Vec<&'static str>) {
-        T::__register_idl_deps(types);
+    const __IDL_ACCOUNT_ENTRY: Option<&'static str> = T::__IDL_ACCOUNT_ENTRY;
+    const __IDL_TYPE_DEF: Option<&'static str> = T::__IDL_TYPE_DEF;
+    fn __register_idl_deps(
+        accounts: &mut ::alloc::vec::Vec<&'static str>,
+        types: &mut ::alloc::vec::Vec<&'static str>,
+    ) {
+        T::__register_idl_deps(accounts, types);
     }
 }

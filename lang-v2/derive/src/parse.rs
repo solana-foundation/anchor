@@ -68,8 +68,12 @@ pub struct AccountAttrs {
     pub owner: Option<Expr>,
     pub owner_error: Option<Expr>,
     pub close: Option<Ident>,
-    pub constraint: Option<Expr>,
-    pub constraint_error: Option<Expr>,
+    /// Arbitrary boolean constraints in source order. Each entry is `(expr,
+    /// optional custom-error expr)`. Both `constraint = expr [@ err]` and
+    /// the parenthesized `constraint(expr [@ err])` push here, and any
+    /// number of either spelling may appear in a single `#[account(...)]` —
+    /// they are emitted as checks in the order written.
+    pub raw_constraints: Vec<(Expr, Option<Expr>)>,
     pub realloc: Option<Expr>,
     pub realloc_payer: Option<Ident>,
     pub realloc_zero: bool,
@@ -107,8 +111,7 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
         owner: None,
         owner_error: None,
         close: None,
-        constraint: None,
-        constraint_error: None,
+        raw_constraints: Vec::new(),
         realloc: None,
         realloc_payer: None,
         realloc_zero: false,
@@ -264,12 +267,39 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
                         result.close = Some(input.parse()?);
                     }
                     "constraint" => {
-                        input.parse::<Token![=]>()?;
-                        result.constraint = Some(input.parse()?);
-                        // Optional: @ ErrorExpr
-                        if input.peek(Token![@]) {
-                            input.parse::<Token![@]>()?;
-                            result.constraint_error = Some(input.parse()?);
+                        // Two accepted spellings, both pushing to the same
+                        // ordered list:
+                        //   - `constraint = expr [@ err]`     (legacy)
+                        //   - `constraint(expr [@ err])`      (parens)
+                        // Either form may appear multiple times in a single
+                        // `#[account(...)]`; checks fire in source order.
+                        if input.peek(syn::token::Paren) {
+                            let content;
+                            syn::parenthesized!(content in input);
+                            let expr: Expr = content.parse()?;
+                            let err = if content.peek(Token![@]) {
+                                content.parse::<Token![@]>()?;
+                                Some(content.parse()?)
+                            } else {
+                                None
+                            };
+                            if !content.is_empty() {
+                                return Err(content.error(
+                                    "expected a single `expr [@ err]` inside `constraint(...)`; \
+                                     write multiple `constraint(...)` entries to chain checks",
+                                ));
+                            }
+                            result.raw_constraints.push((expr, err));
+                        } else {
+                            input.parse::<Token![=]>()?;
+                            let expr: Expr = input.parse()?;
+                            let err = if input.peek(Token![@]) {
+                                input.parse::<Token![@]>()?;
+                                Some(input.parse()?)
+                            } else {
+                                None
+                            };
+                            result.raw_constraints.push((expr, err));
                         }
                     }
                     _ => {
@@ -318,6 +348,23 @@ pub fn parse_account_attrs(attrs: &[Attribute]) -> syn::Result<AccountAttrs> {
             Ok(())
         })?;
     }
+
+    // Reject `init` + `bump = <expr>` (mirroring Anchor v1). Account
+    // creation requires an off-curve address, which is only guaranteed by
+    // the canonical bump returned by `find_program_address`. A caller-
+    // supplied bump could be non-canonical and either create the wrong
+    // PDA or fail under the runtime's curve check, so we don't allow the
+    // combination at all.
+    if (result.is_init || result.is_init_if_needed) && matches!(result.bump, Some(Some(_))) {
+        if let Some(Some(ref bump_expr)) = result.bump {
+            return Err(syn::Error::new(
+                syn::spanned::Spanned::span(bump_expr),
+                "`bump = <expr>` is not allowed with `init` / `init_if_needed`: account creation \
+                 must use the canonical bump (write `bump` without a value)",
+            ));
+        }
+    }
+
     Ok(result)
 }
 
@@ -1206,8 +1253,11 @@ pub fn parse_field(
                         {
                             let __seed_val = #seeds_expr;
                             let __seed_ref: &[&[u8]] = __seed_val.as_ref();
-                            let __bump_val: u8 = #bump_expr;
-                            let __bump_bytes = [__bump_val];
+                            if __seed_ref.len() > 16 {
+                                return Err(anchor_lang_v2::ErrorCode::ConstraintSeeds.into());
+                            }
+                            let __bump: u8 = #bump_expr;
+                            let __bump_bytes = [__bump];
                             let mut __seed_buf: [&[u8]; 17] = [&[]; 17];
                             let __n = __seed_ref.len();
                             __seed_buf[..__n].copy_from_slice(__seed_ref);
@@ -1217,7 +1267,7 @@ pub fn parse_field(
                                 #pda_program,
                                 #field_name.account().address(),
                             )?;
-                            __bumps.#field_name = __bump_val;
+                            __bumps.#field_name = #bump_assign;
                         }
                     });
                 } else {
@@ -1284,8 +1334,14 @@ pub fn parse_field(
         };
         constraints.push(quote! {
             {
-                // Bind the expected address to a local for `address_eq`.
-                let __expected: anchor_lang_v2::Address = #addr;
+                // Accept any `T: Into<Address>` on the RHS — `Address`
+                // itself goes through the blanket `From<T> for T`,
+                // `&Address`, `[u8; 32]`, and any user-defined wrapper
+                // with an `Into<Address>` impl all flow through the
+                // same conversion. Still binds to a local first so
+                // `address_eq` sees a stable reference.
+                let __expected: anchor_lang_v2::Address =
+                    core::convert::Into::into(#addr);
                 if !anchor_lang_v2::address_eq(#field_name.account().address(), &__expected) {
                     return Err(#err);
                 }
@@ -1307,9 +1363,9 @@ pub fn parse_field(
         });
     }
 
-    // constraint
-    if let Some(ref expr) = attrs.constraint {
-        let err = if let Some(ref custom_err) = attrs.constraint_error {
+    // constraint(s) — emitted in the order they appeared in the attribute.
+    for (expr, custom_err) in &attrs.raw_constraints {
+        let err = if let Some(custom_err) = custom_err {
             quote! { core::convert::Into::into(#custom_err) }
         } else {
             quote! { anchor_lang_v2::ErrorCode::ConstraintRaw.into() }
@@ -1642,6 +1698,127 @@ mod tests {
         assert!(parsed_attrs.seeds.is_some());
         assert!(parsed_attrs.bump.is_some());
         assert!(parsed_attrs.is_signer);
+    }
+
+    #[test]
+    fn opaque_seeds_with_explicit_bump_emits_seed_len_guard() {
+        // The opaque-seeds + explicit-bump branch builds a fixed
+        // `[&[u8]; 17]` buffer at runtime. Without a length guard, a seed
+        // expression returning more than 16 elements panics in
+        // `copy_from_slice` or when writing the bump byte. Assert that the
+        // generated code rejects oversized seeds with `ConstraintSeeds`
+        // before touching the buffer.
+        use syn::parse::Parser;
+        let field: syn::Field = syn::Field::parse_named
+            .parse2(quote::quote! {
+                #[account(seeds = MyAcc::seeds(), bump = 0)]
+                pub my_acc: Account<MyAcc>
+            })
+            .unwrap();
+        let parsed = parse_field(&field, &[], quote::quote!(0usize), &[]).unwrap();
+        let joined = parsed
+            .constraints
+            .iter()
+            .map(|t| t.to_string())
+            .collect::<String>();
+        assert!(
+            joined.contains("__seed_ref . len () > 16"),
+            "expected seed-length guard in generated constraints, got: {joined}"
+        );
+        assert!(
+            joined.contains("ConstraintSeeds"),
+            "expected ConstraintSeeds error path in generated constraints, got: {joined}"
+        );
+    }
+
+    #[test]
+    fn init_with_explicit_bump_is_rejected() {
+        // Mirrors Anchor v1: `init` requires the canonical bump (off-curve
+        // guarantee), so caller-supplied bumps must be rejected at parse
+        // time rather than silently discarded by the codegen.
+        let attrs: Vec<Attribute> = vec![syn::parse_quote!(
+            #[account(init, payer = payer, space = 8, seeds = [b"x"], bump = 0)]
+        )];
+        let err = match parse_account_attrs(&attrs) {
+            Ok(_) => panic!("init + bump=<expr> must be rejected"),
+            Err(err) => err,
+        };
+        assert!(
+            err.to_string()
+                .contains("`bump = <expr>` is not allowed with `init`"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn init_if_needed_with_explicit_bump_is_rejected() {
+        let attrs: Vec<Attribute> = vec![syn::parse_quote!(
+            #[account(init_if_needed, payer = payer, space = 8, seeds = [b"x"], bump = 0)]
+        )];
+        let err = match parse_account_attrs(&attrs) {
+            Ok(_) => panic!("init_if_needed + bump=<expr> must be rejected"),
+            Err(err) => err,
+        };
+        assert!(
+            err.to_string()
+                .contains("`bump = <expr>` is not allowed with `init`"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn multiple_constraints_collected_in_source_order() {
+        // Mixed `=` and parenthesized spellings, repeated. Each entry
+        // must land in `raw_constraints` at the index it appears, so
+        // codegen emits the checks in the same order the user wrote.
+        let attrs: Vec<Attribute> = vec![syn::parse_quote!(
+            #[account(
+                mut,
+                constraint = a == b,
+                constraint(c == d @ MyErr::X),
+                constraint(e.f()),
+                constraint = g @ MyErr::Y,
+            )]
+        )];
+        let parsed = parse_account_attrs(&attrs).unwrap();
+        assert_eq!(parsed.raw_constraints.len(), 4);
+        let strs: Vec<(String, Option<String>)> = parsed
+            .raw_constraints
+            .iter()
+            .map(|(e, err)| {
+                (
+                    quote!(#e).to_string(),
+                    err.as_ref().map(|x| quote!(#x).to_string()),
+                )
+            })
+            .collect();
+        assert_eq!(strs[0].0, "a == b");
+        assert_eq!(strs[0].1, None);
+        assert_eq!(strs[1].0, "c == d");
+        assert_eq!(strs[1].1.as_deref(), Some("MyErr :: X"));
+        assert_eq!(strs[2].0, "e . f ()");
+        assert_eq!(strs[2].1, None);
+        assert_eq!(strs[3].0, "g");
+        assert_eq!(strs[3].1.as_deref(), Some("MyErr :: Y"));
+    }
+
+    #[test]
+    fn paren_constraint_rejects_extra_tokens() {
+        // `constraint(a, b)` is not a chain — chained checks must be
+        // written as separate `constraint(...)` entries. The parser
+        // surfaces the misuse at parse time rather than silently
+        // dropping the trailing tokens.
+        let attrs: Vec<Attribute> = vec![syn::parse_quote!(
+            #[account(constraint(a == b, c == d))]
+        )];
+        let err = match parse_account_attrs(&attrs) {
+            Ok(_) => panic!("expected `constraint(a, b)` to be rejected"),
+            Err(err) => err,
+        };
+        assert!(
+            err.to_string().contains("single `expr"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]

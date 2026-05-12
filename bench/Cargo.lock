@@ -369,13 +369,12 @@ dependencies = [
  "bytemuck",
  "pinocchio",
  "pinocchio-system",
- "serde_json",
  "sha2 0.10.9",
  "solana-address 2.6.0",
  "solana-define-syscall 5.0.0",
  "solana-instruction",
+ "solana-msg",
  "solana-program-error",
- "solana-program-log",
  "wincode",
 ]
 
@@ -3663,27 +3662,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f04fa578707b3612b095f0c8e19b66a1233f7c42ca8082fcb3b745afcc0add6"
 dependencies = [
  "borsh",
-]
-
-[[package]]
-name = "solana-program-log"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b26115ff9ec592bb4407379c82e7f00b9d0ae4e3fac80c3fd28c932aec852dc6"
-dependencies = [
- "solana-define-syscall 4.0.1",
- "solana-program-log-macro",
-]
-
-[[package]]
-name = "solana-program-log-macro"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de2b224806ef141865d2f4b4614179089e3b80ba7311fc3bb28742c1d8323946"
-dependencies = [
- "quote",
- "regex",
- "syn 2.0.117",
 ]
 
 [[package]]

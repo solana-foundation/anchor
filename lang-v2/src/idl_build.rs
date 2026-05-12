@@ -5,41 +5,61 @@
 //! sysvar/signer/program/unchecked from IDL types). Data-bearing wrappers
 //! (`Box<T>`, `Account<T>`, `BorshAccount<T>`, `Slab<H, T>`, `Nested<T>`)
 //! delegate to the inner type. User `#[account]`/`#[event]`/`#[derive(IdlType)]`
-//! structs get auto-generated impls with `__IDL_TYPE = Some(<JSON>)` and
-//! recursive `__register_idl_deps`.
+//! structs get auto-generated impls with both `__IDL_ACCOUNT_ENTRY` and
+//! `__IDL_TYPE_DEF` set at macro-expansion time.
 //!
-//! Only present under `idl-build` cfg; compiles out for on-chain builds.
+//! The trait + helpers are unconditionally compiled — empty default-method
+//! impls cost nothing in BPF. End-user crates opt into IDL emission via
+//! their own local `idl-build` feature; the macro emissions in
+//! `anchor-derive-accounts-v2` are gated on that user-side feature.
 //!
-//! This module is exposed only for IDL generation;
-//! it is NOT part of the stable API and is subject to change.
+//! This module is exposed only for IDL generation; it is NOT part of the
+//! stable API and is subject to change.
 
 extern crate alloc;
 
 /// Contributes (or elides) a user-defined type to the generated IDL.
 ///
-/// `__IDL_TYPE = None` → framework wrapper, nothing added to `types[]`.
-/// `__IDL_TYPE = Some(json)` → contributes a types entry.
-/// `__IDL_IS_SIGNER` / `__IDL_ADDRESS` surface per-wrapper metadata in
-/// `instructions[i].accounts[j]` JSON (`Signer`, `Program<T>`, `Sysvar<T>`).
+/// **Opaque / unstable.** Do not access these consts or call
+/// `__register_idl_deps` directly — they are implementation details of the
+/// `anchor idl build` pipeline and will change without notice.
 ///
-/// `__register_idl_deps` handles transitive type registration: user structs
-/// push their type def and recurse into fields. Primitives/collections
-/// default to no-op; wrappers delegate to the inner type.
+/// `__IDL_ACCOUNT_ENTRY` populates the IDL's program-level `accounts[]`
+/// array (spec:137-140). `__IDL_TYPE_DEF` populates `types[]` (spec:176-188).
+/// Plain `#[derive(IdlType)]` types set only the latter — they don't appear
+/// in `accounts[]`. View wrappers (`Signer`, `Program<T>`, `Sysvar<T>`,
+/// `UncheckedAccount`, …) leave both at `None` and surface per-wrapper
+/// metadata via `__IDL_IS_SIGNER` / `__IDL_ADDRESS`.
+///
+/// `__register_idl_deps` handles transitive type registration: a user struct
+/// pushes its own pair of strings, then recurses into field types so a
+/// nested `#[derive(IdlType)] struct Inner` referenced from an `#[account]`
+/// data type lands in `types[]` too.
+#[diagnostic::on_unimplemented(message = "Ensure that `{Self}` has an `#[account]` attribute")]
 pub trait IdlAccountType {
-    const __IDL_TYPE: Option<&'static str> = None;
+    /// `{"name":"X","discriminator":[…]}` for the program-level `accounts[]`.
+    /// `None` for types that don't appear there (`IdlType` plain types,
+    /// view wrappers, primitives, collections).
+    const __IDL_ACCOUNT_ENTRY: Option<&'static str> = None;
+    /// `IdlTypeDef` JSON for the program-level `types[]`. `None` for
+    /// view wrappers, primitives, and collection forwarders.
+    const __IDL_TYPE_DEF: Option<&'static str> = None;
     const __IDL_IS_SIGNER: bool = false;
     const __IDL_ADDRESS: Option<&'static str> = None;
 
-    /// Register this type's `__IDL_TYPE` (if any) and recursively register
-    /// any user-defined types its fields reference. Default: no-op.
+    /// Push this type's accounts/types entries (if any) and recursively
+    /// register every user-defined type its fields reference. Default: no-op.
     ///
-    /// Implementers that carry their own type def push it here; delegating
-    /// wrappers (`Box<T>`, `BorshAccount<T>`, `Slab<H, T>`, `Nested<T>`)
-    /// forward to their inner type; collection impls (`Vec<T>`, `Option<T>`,
-    /// `[T; N]`) forward to the element type. Primitive impls (bool, u*,
-    /// i*, f*, String, Address, etc.) use the default no-op — they never
-    /// appear in `types[]`.
-    fn __register_idl_deps(_types: &mut alloc::vec::Vec<&'static str>) {}
+    /// Wrappers (`Box<T>`, `BorshAccount<T>`, `Slab<H, T>`, `Nested<T>`)
+    /// forward to the inner type; collection impls (`Vec<T>`, `Option<T>`,
+    /// `[T; N]`, `[T]`, `&T`, `PodVec<T, N>`) forward to the element type.
+    /// Primitive impls (bool, u*, i*, f*, String, Address, etc.) use the
+    /// default no-op — they never appear in `types[]`.
+    fn __register_idl_deps(
+        _accounts: &mut alloc::vec::Vec<&'static str>,
+        _types: &mut alloc::vec::Vec<&'static str>,
+    ) {
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -54,6 +74,7 @@ pub trait IdlAccountType {
 macro_rules! impl_idl_account_type_noop {
     ($($t:ty),* $(,)?) => {
         $(
+            #[doc(hidden)]
             impl IdlAccountType for $t {}
         )*
     };
@@ -93,50 +114,74 @@ impl_idl_account_type_noop!(
     crate::pod::PodI128,
 );
 
+#[doc(hidden)]
 impl<T: IdlAccountType> IdlAccountType for alloc::vec::Vec<T> {
-    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
-        T::__register_idl_deps(types);
+    fn __register_idl_deps(
+        accounts: &mut alloc::vec::Vec<&'static str>,
+        types: &mut alloc::vec::Vec<&'static str>,
+    ) {
+        T::__register_idl_deps(accounts, types);
     }
 }
 
 // Borrowed slice `&[T]` — surfaces on `#[derive(IdlType)]` structs that
 // carry borrowed slice fields (e.g. `MixedArgs<'a> { values: &'a [u64] }`),
 // which wincode supports as a zero-copy ix arg.
+#[doc(hidden)]
 impl<T: IdlAccountType> IdlAccountType for [T] {
-    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
-        T::__register_idl_deps(types);
+    fn __register_idl_deps(
+        accounts: &mut alloc::vec::Vec<&'static str>,
+        types: &mut alloc::vec::Vec<&'static str>,
+    ) {
+        T::__register_idl_deps(accounts, types);
     }
 }
 
 // `&T` — forward to `T` so a field typed as `&'a Inner` pulls `Inner`'s
 // type def into the IDL's `types[]`.
+#[doc(hidden)]
 impl<T: IdlAccountType + ?Sized> IdlAccountType for &T {
-    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
-        T::__register_idl_deps(types);
+    fn __register_idl_deps(
+        accounts: &mut alloc::vec::Vec<&'static str>,
+        types: &mut alloc::vec::Vec<&'static str>,
+    ) {
+        T::__register_idl_deps(accounts, types);
     }
 }
 
+#[doc(hidden)]
 impl<T: IdlAccountType> IdlAccountType for Option<T> {
-    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
-        T::__register_idl_deps(types);
+    fn __register_idl_deps(
+        accounts: &mut alloc::vec::Vec<&'static str>,
+        types: &mut alloc::vec::Vec<&'static str>,
+    ) {
+        T::__register_idl_deps(accounts, types);
     }
 }
 
+#[doc(hidden)]
 impl<T: IdlAccountType, const N: usize> IdlAccountType for [T; N] {
-    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
-        T::__register_idl_deps(types);
+    fn __register_idl_deps(
+        accounts: &mut alloc::vec::Vec<&'static str>,
+        types: &mut alloc::vec::Vec<&'static str>,
+    ) {
+        T::__register_idl_deps(accounts, types);
     }
 }
 
 // `PodVec<T, MAX>` — the zero-copy bounded-capacity analog of `Vec<T>`.
 // Forward `__register_idl_deps` so a `#[account]` zero-copy type holding
 // a `PodVec<Inner, 16>` still pulls `Inner` into the IDL's `types[]`.
+#[doc(hidden)]
 impl<T, const MAX: usize> IdlAccountType for crate::pod::PodVec<T, MAX>
 where
     T: bytemuck::Pod + IdlAccountType,
 {
-    fn __register_idl_deps(types: &mut alloc::vec::Vec<&'static str>) {
-        T::__register_idl_deps(types);
+    fn __register_idl_deps(
+        accounts: &mut alloc::vec::Vec<&'static str>,
+        types: &mut alloc::vec::Vec<&'static str>,
+    ) {
+        T::__register_idl_deps(accounts, types);
     }
 }
 

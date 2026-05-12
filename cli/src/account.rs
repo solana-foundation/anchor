@@ -1,5 +1,5 @@
 use {
-    crate::{config::ConfigOverride, get_cluster_and_wallet},
+    crate::{config::ConfigOverride, get_cluster_and_wallet, AbsolutePath},
     anyhow::{anyhow, Result},
     clap::Parser,
     solana_commitment_config::CommitmentConfig,
@@ -8,7 +8,7 @@ use {
     std::{fs::File, io::Write, path::PathBuf},
 };
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, AbsolutePath)]
 pub struct ShowAccountCommand {
     /// Account address to show
     pub account_address: Pubkey,

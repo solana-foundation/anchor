@@ -68,13 +68,19 @@ coverage-v2-host:
 	# Second pass: the other v2 crates under default features.
 	CARGO_PROFILE_RELEASE_DEBUG=2 \
 	cargo llvm-cov --no-report -p anchor-spl-v2 -p tests-v2
-	# Third pass: lang-v2 + spl-v2 with --features idl-build so the
-	# IDL-emission branches in derive/src/idl.rs and the program-level IDL
-	# assembler run. `--no-report` accumulates profile data across passes;
-	# the merged report is assembled by the final `llvm-cov report` below.
+	# Third pass: the test programs that declare a local `idl-build` feature,
+	# run with `--features idl-build` so the IDL-emission code paths fire —
+	# derive-emitted `IdlAccountType` impls, `__idl_accounts()` /
+	# `__idl_register_deps()` / `__idl_errors()` fns, and the
+	# `__anchor_private_print_idl_*` test bodies. After the IDL redesign the
+	# `idl-build` feature lives only in end-user crates; lang-v2 and spl-v2
+	# ship the supporting trait + helpers unconditionally and have no
+	# feature of their own. `--no-report` accumulates profile data across
+	# passes; the merged report is assembled by the final `llvm-cov report`
+	# below.
 	CARGO_PROFILE_RELEASE_DEBUG=2 \
 	cargo llvm-cov --no-report --features idl-build \
-		-p anchor-lang-v2 -p anchor-spl-v2
+		-p constraints -p derives-test -p accounts-test -p spl-test
 	cargo llvm-cov report \
 		--lcov \
 		--output-path $(COVERAGE_DIR)/host.lcov \
@@ -142,8 +148,9 @@ coverage-v2-merge: $(COVERAGE_DIR)/sbf.lcov $(COVERAGE_DIR)/host.lcov
 		--ignore-errors unused \
 		--ignore-errors empty
 	# Self-merge to collapse duplicate `SF:` blocks. Host coverage runs
-	# three `cargo llvm-cov --no-report` passes (default features, + spl
-	# + tests-v2, + idl-build), plus the SBF pass. Ubuntu's lcov 1.x
+	# three `cargo llvm-cov --no-report` passes (lang-v2 testing, spl-v2 +
+	# tests-v2 default, test programs + idl-build), plus the SBF pass.
+	# Ubuntu's lcov 1.x
 	# concatenates records from each pass rather than merging them,
 	# yielding 4x duplicate `SF:` entries per file in the combined
 	# output. lcov 2.x merges on read, so this step is a no-op locally

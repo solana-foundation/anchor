@@ -35,7 +35,7 @@ pub mod caller {
         };
         let cpi_ctx =
             CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
-        callee::cpi::set_data(cpi_ctx, value)?;
+        callee::cpi::set_data(cpi_ctx, value);
         Ok(())
     }
 
@@ -48,7 +48,7 @@ pub mod caller {
         };
         let cpi_ctx =
             CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
-        callee::cpi::noop(cpi_ctx)?;
+        callee::cpi::noop(cpi_ctx);
         Ok(())
     }
 
@@ -61,7 +61,7 @@ pub mod caller {
             ctx.accounts.callee_program.address(),
             callee::cpi::accounts::Empty::new(),
         );
-        callee::cpi::empty(cpi_ctx)?;
+        callee::cpi::empty(cpi_ctx);
         Ok(())
     }
 
@@ -77,7 +77,7 @@ pub mod caller {
         };
         let cpi_ctx =
             CpiContext::new(ctx.accounts.callee_program.address(), cpi_accounts);
-        callee::cpi::touch(cpi_ctx, delta)?;
+        callee::cpi::touch(cpi_ctx, delta);
         Ok(())
     }
 }
