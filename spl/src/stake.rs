@@ -79,7 +79,6 @@ pub fn deactivate_stake<'info>(
 
 // CPI accounts
 
-#[derive(Accounts)]
 pub struct Authorize<'info> {
     /// The stake account to be updated
     pub stake: AccountInfo<'info>,
@@ -94,7 +93,28 @@ pub struct Authorize<'info> {
     pub clock: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for Authorize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.stake.to_owned(),
+            self.authorized.to_owned(),
+            self.new_authorized.to_owned(),
+            self.clock.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for Authorize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.stake.to_account_metas(is_signer));
+        account_metas.extend(self.authorized.to_account_metas(is_signer));
+        account_metas.extend(self.new_authorized.to_account_metas(is_signer));
+        account_metas.extend(self.clock.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct Withdraw<'info> {
     /// The stake account to be updated
     pub stake: AccountInfo<'info>,
@@ -112,7 +132,30 @@ pub struct Withdraw<'info> {
     pub stake_history: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
+impl<'info> ToAccountInfos<'info> for Withdraw<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.stake.to_owned(),
+            self.withdrawer.to_owned(),
+            self.to.to_owned(),
+            self.clock.to_owned(),
+            self.stake_history.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for Withdraw<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.stake.to_account_metas(is_signer));
+        account_metas.extend(self.withdrawer.to_account_metas(is_signer));
+        account_metas.extend(self.to.to_account_metas(is_signer));
+        account_metas.extend(self.clock.to_account_metas(is_signer));
+        account_metas.extend(self.stake_history.to_account_metas(is_signer));
+        account_metas
+    }
+}
+
 pub struct DeactivateStake<'info> {
     /// The stake account to be deactivated
     pub stake: AccountInfo<'info>,
@@ -122,6 +165,26 @@ pub struct DeactivateStake<'info> {
 
     /// Clock sysvar
     pub clock: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for DeactivateStake<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.stake.to_owned(),
+            self.staker.to_owned(),
+            self.clock.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for DeactivateStake<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.stake.to_account_metas(is_signer));
+        account_metas.extend(self.staker.to_account_metas(is_signer));
+        account_metas.extend(self.clock.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 // State

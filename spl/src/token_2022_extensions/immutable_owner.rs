@@ -1,10 +1,7 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
 use {
     anchor_lang::{
-        context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        Accounts, Result,
+        context::CpiContext, solana_program::account_info::AccountInfo, Result, ToAccountInfos,
+        ToAccountMetas,
     },
     spl_token_2022_interface as spl_token_2022,
 };
@@ -24,8 +21,25 @@ pub fn immutable_owner_initialize<'info>(
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct ImmutableOwnerInitialize<'info> {
     pub token_program_id: AccountInfo<'info>,
     pub token_account: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for ImmutableOwnerInitialize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.token_program_id.to_owned(),
+            self.token_account.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for ImmutableOwnerInitialize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.token_program_id.to_account_metas(is_signer));
+        account_metas.extend(self.token_account.to_account_metas(is_signer));
+        account_metas
+    }
 }

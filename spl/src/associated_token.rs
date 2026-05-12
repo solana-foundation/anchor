@@ -1,5 +1,3 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
 pub use ::spl_associated_token_account_interface::{
     self as spl_associated_token_account,
     address::{get_associated_token_address, get_associated_token_address_with_program_id},
@@ -8,7 +6,7 @@ pub use ::spl_associated_token_account_interface::{
 use anchor_lang::{
     context::CpiContext,
     solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-    Accounts, Result,
+    Result, ToAccountInfos, ToAccountMetas,
 };
 
 pub fn create<'info>(ctx: CpiContext<'_, '_, '_, 'info, Create<'info>>) -> Result<()> {
@@ -57,7 +55,6 @@ pub fn create_idempotent<'info>(
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct Create<'info> {
     pub payer: AccountInfo<'info>,
     pub associated_token: AccountInfo<'info>,
@@ -65,6 +62,32 @@ pub struct Create<'info> {
     pub mint: AccountInfo<'info>,
     pub system_program: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for Create<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.payer.to_owned(),
+            self.associated_token.to_owned(),
+            self.authority.to_owned(),
+            self.mint.to_owned(),
+            self.system_program.to_owned(),
+            self.token_program.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for Create<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.payer.to_account_metas(is_signer));
+        account_metas.extend(self.associated_token.to_account_metas(is_signer));
+        account_metas.extend(self.authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas.extend(self.system_program.to_account_metas(is_signer));
+        account_metas.extend(self.token_program.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 type CreateIdempotent<'info> = Create<'info>;

@@ -1,10 +1,7 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
 use {
     anchor_lang::{
-        context::CpiContext,
-        solana_program::{account_info::AccountInfo, pubkey::Pubkey},
-        Accounts, Result,
+        context::CpiContext, solana_program::account_info::AccountInfo, Result, ToAccountInfos,
+        ToAccountMetas,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_token_metadata_interface::state::Field,
@@ -40,13 +37,36 @@ pub fn token_metadata_initialize<'info>(
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TokenMetadataInitialize<'info> {
     pub program_id: AccountInfo<'info>,
     pub metadata: AccountInfo<'info>,
     pub update_authority: AccountInfo<'info>,
     pub mint_authority: AccountInfo<'info>,
     pub mint: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TokenMetadataInitialize<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.program_id.to_owned(),
+            self.metadata.to_owned(),
+            self.update_authority.to_owned(),
+            self.mint_authority.to_owned(),
+            self.mint.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for TokenMetadataInitialize<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint_authority.to_account_metas(is_signer));
+        account_metas.extend(self.mint.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub fn token_metadata_update_authority<'info>(
@@ -71,12 +91,33 @@ pub fn token_metadata_update_authority<'info>(
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TokenMetadataUpdateAuthority<'info> {
     pub program_id: AccountInfo<'info>,
     pub metadata: AccountInfo<'info>,
     pub current_authority: AccountInfo<'info>,
     pub new_authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TokenMetadataUpdateAuthority<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.program_id.to_owned(),
+            self.metadata.to_owned(),
+            self.current_authority.to_owned(),
+            self.new_authority.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for TokenMetadataUpdateAuthority<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.current_authority.to_account_metas(is_signer));
+        account_metas.extend(self.new_authority.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub fn token_metadata_update_field<'info>(
@@ -103,11 +144,30 @@ pub fn token_metadata_update_field<'info>(
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TokenMetadataUpdateField<'info> {
     pub program_id: AccountInfo<'info>,
     pub metadata: AccountInfo<'info>,
     pub update_authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TokenMetadataUpdateField<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.program_id.to_owned(),
+            self.metadata.to_owned(),
+            self.update_authority.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for TokenMetadataUpdateField<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas
+    }
 }
 
 pub fn token_metadata_remove_key<'info>(
@@ -134,9 +194,28 @@ pub fn token_metadata_remove_key<'info>(
     .map_err(Into::into)
 }
 
-#[derive(Accounts)]
 pub struct TokenMetadataRemoveKey<'info> {
     pub program_id: AccountInfo<'info>,
     pub metadata: AccountInfo<'info>,
     pub update_authority: AccountInfo<'info>,
+}
+
+impl<'info> ToAccountInfos<'info> for TokenMetadataRemoveKey<'info> {
+    fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+        vec![
+            self.program_id.to_owned(),
+            self.metadata.to_owned(),
+            self.update_authority.to_owned(),
+        ]
+    }
+}
+
+impl<'info> ToAccountMetas for TokenMetadataRemoveKey<'info> {
+    fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        let mut account_metas = vec![];
+        account_metas.extend(self.program_id.to_account_metas(is_signer));
+        account_metas.extend(self.metadata.to_account_metas(is_signer));
+        account_metas.extend(self.update_authority.to_account_metas(is_signer));
+        account_metas
+    }
 }

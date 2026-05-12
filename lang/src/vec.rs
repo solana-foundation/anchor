@@ -1,5 +1,3 @@
-// Avoiding AccountInfo deprecated msg in anchor context
-#![allow(deprecated)]
 use {
     crate::{
         solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
@@ -41,12 +39,15 @@ impl<'info, B, T: Accounts<'info, B>> Accounts<'info, B> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::solana_program::pubkey::Pubkey};
+    use {
+        super::*,
+        crate::{accounts::unchecked_account::UncheckedAccount, solana_program::pubkey::Pubkey},
+    };
 
     #[derive(Accounts)]
     pub struct Test<'info> {
         #[account(signer)]
-        test: AccountInfo<'info>,
+        test: UncheckedAccount<'info>,
     }
 
     #[test]
