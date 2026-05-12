@@ -173,8 +173,8 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
     /// Returns a Ref to the account data structure for reading.
     pub fn load(&self) -> Result<Ref<'_, T>> {
         let data = self.acc_info.try_borrow_data()?;
-        Self::check_discriminator(&data)?;
         Self::check_data_len(&data)?;
+        Self::check_discriminator(&data)?;
 
         let disc = T::DISCRIMINATOR;
         Ok(Ref::map(data, |data| {
@@ -191,8 +191,8 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         }
 
         let data = self.acc_info.try_borrow_mut_data()?;
-        Self::check_discriminator(&data)?;
         Self::check_data_len(&data)?;
+        Self::check_discriminator(&data)?;
 
         let disc = T::DISCRIMINATOR;
         Ok(RefMut::map(data, |data| {
