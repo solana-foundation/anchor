@@ -12,9 +12,10 @@
 //!
 //! Tracking: solana-foundation/anchor#4509
 
-use anchor_lang::error::ErrorCode;
-use anchor_lang::prelude::*;
-use std::mem;
+use {
+    anchor_lang::{error::ErrorCode, prelude::*},
+    std::mem,
+};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
