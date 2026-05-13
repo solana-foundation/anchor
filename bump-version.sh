@@ -29,9 +29,12 @@ case "$(uname)" in
   Darwin*) sedi=(-i "")
 esac
 
-# Bump all rust crates that have `publish` enabled
+# Bump all rust crates that have `publish` enabled (excluding crates that are
+# versioned separately)
 cargo release version $version \
     --workspace \
+    --exclude anchor-lang-idl \
+    --exclude anchor-lang-idl-spec \
     $(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.publish == []) | "--exclude " + .name') \
     --no-confirm \
     --execute
