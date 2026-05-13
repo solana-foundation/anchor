@@ -1026,9 +1026,6 @@ impl _TestToml {
                 }
             }
             if let Some(validator) = &mut test.validator {
-                if let Some(ledger_dir) = &mut validator.ledger {
-                    *ledger_dir = canonicalize_filepath_from_origin(&ledger_dir, &path)?;
-                }
                 if let Some(accounts) = &mut validator.account {
                     for entry in accounts {
                         entry.filename = canonicalize_filepath_from_origin(&entry.filename, &path)?;
@@ -1716,5 +1713,38 @@ directory = "accounts"
             validator.account_dir.unwrap()[0].directory,
             accounts_dir.canonicalize().unwrap().display().to_string()
         );
+    }
+
+    #[test]
+    fn test_toml_keeps_ledger_path_relative() {
+        let dir = tempfile::tempdir().unwrap();
+        let suite_dir = dir.path().join("tests").join("suite");
+        fs::create_dir_all(&suite_dir).unwrap();
+
+        let test_toml = suite_dir.join("Test.toml");
+        fs::write(
+            &test_toml,
+            r#"
+[scripts]
+test = "true"
+
+[test.validator]
+ledger = "ledgers/local"
+"#,
+        )
+        .unwrap();
+
+        let parsed = TestToml::from_path(test_toml).unwrap();
+        let validator = parsed.test.unwrap().validator.unwrap();
+
+        assert_eq!(validator.ledger, "ledgers/local");
+
+        fs::create_dir_all(suite_dir.join("ledgers").join("local")).unwrap();
+
+        let test_toml = suite_dir.join("Test.toml");
+        let parsed = TestToml::from_path(test_toml).unwrap();
+        let validator = parsed.test.unwrap().validator.unwrap();
+
+        assert_eq!(validator.ledger, "ledgers/local");
     }
 }
