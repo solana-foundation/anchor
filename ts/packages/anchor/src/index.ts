@@ -41,7 +41,7 @@ export const workspace: any = new Proxy(
       }
       throw new Error(
         "`workspace` is only available in the CommonJS build of " +
-          "@coral-xyz/anchor. From an ESM module, load it via:\n" +
+          "@anchor-lang/core. From an ESM module, load it via:\n" +
           "  import { createRequire } from 'module';\n" +
           "  const require = createRequire(import.meta.url);\n" +
           "  const { workspace } = require('@coral-xyz/anchor');\n" +
