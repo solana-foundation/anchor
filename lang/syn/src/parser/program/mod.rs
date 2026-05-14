@@ -17,6 +17,7 @@ pub fn parse(program_mod: syn::ItemMod) -> ParseResult<Program> {
         docs,
         program_mod,
         fallback_fn,
+        program_args: None,
     })
 }
 

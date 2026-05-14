@@ -56,6 +56,7 @@ mod account;
 mod checks;
 pub mod config;
 mod keygen;
+mod legacy_idl;
 mod metadata;
 mod program;
 pub mod rust_template;
@@ -417,6 +418,13 @@ pub enum Command {
     Program {
         #[clap(subcommand)]
         subcmd: ProgramCommand,
+    },
+    /// [DEPRECATED] Manage legacy on-chain IDL accounts.
+    /// These commands interact with the old Anchor IDL instruction protocol and will be removed
+    /// in a future release. Migrate to Program Metadata-based IDL management (`anchor idl`).
+    LegacyIdl {
+        #[clap(subcommand)]
+        subcmd: legacy_idl::LegacyIdlCommand,
     },
 }
 
@@ -1263,6 +1271,9 @@ fn process_command(opts: Opts) -> Result<()> {
             )
         }
         Command::Idl { subcmd } => idl(&opts.cfg_override, subcmd),
+        Command::LegacyIdl { subcmd } => {
+            legacy_idl::handle_legacy_idl_command(&opts.cfg_override, subcmd)
+        }
         Command::Migrate => migrate(&opts.cfg_override),
         Command::Test {
             program_name,
@@ -4205,7 +4216,7 @@ fn test_validator_file_paths(test_validator: &Option<TestValidator>) -> Result<(
     Ok((ledger_path, log_path))
 }
 
-fn cluster_url(
+pub(crate) fn cluster_url(
     cfg: &Config,
     test_validator: &Option<TestValidator>,
     surfpool_config: &Option<SurfpoolConfig>,
@@ -4988,7 +4999,7 @@ fn target_dir_no_cache() -> Result<PathBuf> {
 //
 // The closure passed into this function must never change the working directory
 // to be outside the workspace. Doing so will have undefined behavior.
-fn with_workspace<R>(
+pub(crate) fn with_workspace<R>(
     cfg_override: &ConfigOverride,
     f: impl FnOnce(&mut WithPath<Config>) -> R,
 ) -> Result<R> {
@@ -5091,7 +5102,7 @@ fn strip_workspace_prefix(absolute_path: PathBuf) -> PathBuf {
 }
 
 /// Create a new [`RpcClient`] with `confirmed` commitment level instead of the default(finalized).
-fn create_client<U: ToString>(url: U) -> RpcClient {
+pub(crate) fn create_client<U: ToString>(url: U) -> RpcClient {
     RpcClient::new_with_commitment(url, CommitmentConfig::confirmed())
 }
 
