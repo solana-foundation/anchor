@@ -169,8 +169,13 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
+        let end = required_zero_copy_len::<T>(disc.len())?;
+        if data.len() < end {
+            return Err(ErrorCode::AccountDidNotDeserialize.into());
+        }
+
         Ok(Ref::map(data, |data| {
-            bytemuck::from_bytes(&data[disc.len()..mem::size_of::<T>() + disc.len()])
+            bytemuck::from_bytes(&data[disc.len()..end])
         }))
     }
 
@@ -193,10 +198,13 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
             return Err(ErrorCode::AccountDiscriminatorMismatch.into());
         }
 
+        let end = required_zero_copy_len::<T>(disc.len())?;
+        if data.len() < end {
+            return Err(ErrorCode::AccountDidNotDeserialize.into());
+        }
+
         Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(
-                &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],
-            )
+            bytemuck::from_bytes_mut(&mut data.deref_mut()[disc.len()..end])
         }))
     }
 
@@ -213,18 +221,33 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
 
         // The discriminator should be zero, since we're initializing.
         let disc = T::DISCRIMINATOR;
+        if data.len() < disc.len() {
+            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        }
         let given_disc = &data[..disc.len()];
         let has_disc = given_disc.iter().any(|b| *b != 0);
         if has_disc {
             return Err(ErrorCode::AccountDiscriminatorAlreadySet.into());
         }
 
+        let end = required_zero_copy_len::<T>(disc.len())?;
+        if data.len() < end {
+            return Err(ErrorCode::AccountDidNotDeserialize.into());
+        }
+
         Ok(RefMut::map(data, |data| {
-            bytemuck::from_bytes_mut(
-                &mut data.deref_mut()[disc.len()..mem::size_of::<T>() + disc.len()],
-            )
+            bytemuck::from_bytes_mut(&mut data.deref_mut()[disc.len()..end])
         }))
     }
+}
+
+/// Returns `disc_len + size_of::<T>()`, mapping arithmetic overflow to a
+/// structured `AccountDidNotDeserialize` error rather than panicking.
+#[inline]
+fn required_zero_copy_len<T>(disc_len: usize) -> Result<usize> {
+    disc_len
+        .checked_add(mem::size_of::<T>())
+        .ok_or_else(|| ErrorCode::AccountDidNotDeserialize.into())
 }
 
 impl<'info, B, T: ZeroCopy + Owner> Accounts<'info, B> for AccountLoader<'info, T> {
