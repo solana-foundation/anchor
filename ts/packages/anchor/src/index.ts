@@ -44,7 +44,7 @@ export const workspace: any = new Proxy(
           "@anchor-lang/core. From an ESM module, load it via:\n" +
           "  import { createRequire } from 'module';\n" +
           "  const require = createRequire(import.meta.url);\n" +
-          "  const { workspace } = require('@coral-xyz/anchor');\n" +
+          "  const { workspace } = require('@anchor-lang/core');\n" +
           `Tried to access workspace.${String(prop)}.`
       );
     },
