@@ -7,24 +7,23 @@ const OSEC_REGISTRY_URL = "https://verify.osec.io";
 
 export type VerifiedBuild = {
   is_verified: boolean;
-  message?: string;
+  message: string;
   on_chain_hash: string;
   executable_hash: string;
   repo_url: string;
-  last_verified_at: string;
-  // present in some registry responses but not guaranteed by the documented API
-  commit?: string;
-  signer?: string;
-  is_frozen?: boolean;
+  commit: string;
+  last_verified_at: string | null;
+  is_frozen: boolean;
+  is_closed: boolean;
 };
 
 /** Returns verified build info from the OtterSec registry, or null if unverified or the request fails. */
 export async function verifiedBuild(
-  programId: PublicKey
+  programId: PublicKey,
 ): Promise<VerifiedBuild | null> {
   try {
     const resp = await fetch(
-      `${OSEC_REGISTRY_URL}/status/${programId.toString()}`
+      `${OSEC_REGISTRY_URL}/status/${programId.toString()}`,
     );
     if (!resp.ok) return null;
     const build = (await resp.json()) as VerifiedBuild;
@@ -40,7 +39,7 @@ export async function verifiedBuild(
  */
 export async function fetchData(
   connection: Connection,
-  programId: PublicKey
+  programId: PublicKey,
 ): Promise<ProgramData> {
   const accountInfo = await connection.getAccountInfo(programId);
   if (accountInfo === null) {
@@ -48,13 +47,13 @@ export async function fetchData(
   }
   const { program } = decodeUpgradeableLoaderState(accountInfo.data);
   const programdataAccountInfo = await connection.getAccountInfo(
-    program.programdataAddress
+    program.programdataAddress,
   );
   if (programdataAccountInfo === null) {
     throw new Error("program data account not found");
   }
   const { programData } = decodeUpgradeableLoaderState(
-    programdataAccountInfo.data
+    programdataAccountInfo.data,
   );
   return programData;
 }
@@ -64,7 +63,7 @@ const UPGRADEABLE_LOADER_STATE_LAYOUT = borsh.rustEnum(
     borsh.struct([], "uninitialized"),
     borsh.struct(
       [borsh.option(borsh.publicKey(), "authorityAddress")],
-      "buffer"
+      "buffer",
     ),
     borsh.struct([borsh.publicKey("programdataAddress")], "program"),
     borsh.struct(
@@ -72,11 +71,11 @@ const UPGRADEABLE_LOADER_STATE_LAYOUT = borsh.rustEnum(
         borsh.u64("slot"),
         borsh.option(borsh.publicKey(), "upgradeAuthorityAddress"),
       ],
-      "programData"
+      "programData",
     ),
   ],
   undefined,
-  borsh.u32()
+  borsh.u32(),
 );
 
 export function decodeUpgradeableLoaderState(data: Buffer): any {
