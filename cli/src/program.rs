@@ -1752,7 +1752,7 @@ fn program_extend(
         .send_and_confirm_transaction(&tx)
         .map_err(|e| anyhow!("Failed to extend program: {}", e))?;
 
-    println!("Program extended succesfully!");
+    println!("Program extended successfully!");
     Ok(())
 }
 
