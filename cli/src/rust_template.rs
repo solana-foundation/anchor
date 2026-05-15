@@ -681,6 +681,11 @@ pub enum TestTemplate {
 }
 
 impl TestTemplate {
+    /// Returns true if this template uses Rust-based tests (no Node.js needed).
+    pub fn is_rust_based(&self) -> bool {
+        matches!(self, Self::Rust | Self::Litesvm | Self::Mollusk)
+    }
+
     pub fn get_test_script(&self, js: bool, pkg_manager: &PackageManager) -> String {
         let pkg_manager_exec_cmd = match pkg_manager {
             PackageManager::Yarn => "yarn run",
