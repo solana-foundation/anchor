@@ -1132,7 +1132,8 @@ fn get_npm_init_license() -> Result<String> {
         .arg("config")
         .arg("get")
         .arg("init-license")
-        .output()?;
+        .output()
+        .context("failed to run `npm config get init-license`")?;
 
     if !npm_init_license_output.status.success() {
         return Err(anyhow!("Failed to get npm init license"));
@@ -1369,6 +1370,11 @@ fn init(
     force: bool,
     install_agent_skills: bool,
 ) -> Result<()> {
+    // Skip node setup for Rust-based test templates
+    let skip_node = matches!(
+        test_template,
+        TestTemplate::Rust | TestTemplate::Mollusk | TestTemplate::Litesvm
+    );
     if !force && Config::discover(cfg_override)?.is_some() {
         return Err(anyhow!("Workspace already initialized"));
     }
@@ -1448,35 +1454,36 @@ fn init(
     let toml = cfg.to_string();
     fs::write("Anchor.toml", toml)?;
 
-    // Build the migrations directory.
-    let migrations_path = Path::new("migrations");
-    fs::create_dir_all(migrations_path)?;
+    if !skip_node {
+        // Build the migrations directory.
+        let migrations_path = Path::new("migrations");
+        fs::create_dir_all(migrations_path)?;
 
-    let license = get_npm_init_license()?;
+        let license = get_npm_init_license()?;
+        let jest = TestTemplate::Jest == test_template;
+        if javascript {
+            // Build javascript config
+            let mut package_json = File::create("package.json")?;
+            package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
 
-    let jest = TestTemplate::Jest == test_template;
-    if javascript {
-        // Build javascript config
-        let mut package_json = File::create("package.json")?;
-        package_json.write_all(rust_template::package_json(jest, license).as_bytes())?;
+            let mut deploy = File::create(migrations_path.join("deploy.js"))?;
+            deploy.write_all(rust_template::deploy_script().as_bytes())?;
+        } else {
+            // Build typescript config
+            let mut ts_config = File::create("tsconfig.json")?;
+            ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
 
-        let mut deploy = File::create(migrations_path.join("deploy.js"))?;
-        deploy.write_all(rust_template::deploy_script().as_bytes())?;
-    } else {
-        // Build typescript config
-        let mut ts_config = File::create("tsconfig.json")?;
-        ts_config.write_all(rust_template::ts_config(jest).as_bytes())?;
+            let mut ts_package_json = File::create("package.json")?;
+            ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
 
-        let mut ts_package_json = File::create("package.json")?;
-        ts_package_json.write_all(rust_template::ts_package_json(jest, license).as_bytes())?;
-
-        let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
-        deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
+            let mut deploy = File::create(migrations_path.join("deploy.ts"))?;
+            deploy.write_all(rust_template::ts_deploy_script().as_bytes())?;
+        }
     }
 
     test_template.create_test_files(&project_name, javascript, &program_id.to_string())?;
 
-    if !no_install {
+    if !skip_node && !no_install {
         let package_manager_result = install_node_modules(&package_manager_cmd)?;
         if !package_manager_result.status.success() {
             if package_manager_cmd == "npm" {
@@ -1568,14 +1575,14 @@ fn install_node_modules(cmd: &str) -> Result<std::process::Output> {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e))
+            .with_context(|| format!("failed to run `{cmd} install`"))
     } else {
         std::process::Command::new(cmd)
             .arg("install")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| anyhow::format_err!("{} install failed: {}", cmd, e))
+            .with_context(|| format!("failed to run `{cmd} install`"))
     }
 }
 
@@ -4355,8 +4362,16 @@ fn migrate(cfg_override: &ConfigOverride) -> Result<()> {
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
         let cur_dir = std::env::current_dir()?;
         let migrations_dir = cur_dir.join("migrations");
-        let deploy_ts = Path::new("deploy.ts");
 
+        if !migrations_dir.exists() {
+            return Err(anyhow!(
+                "No `migrations/` directory found. Rust-based test templates (rust, mollusk, \
+                 litesvm) do not generate migration scripts; create one manually or initialize \
+                 the workspace with a JS/TS test template."
+            ));
+        }
+
+        let deploy_ts = Path::new("deploy.ts");
         let use_ts = Path::new("tsconfig.json").exists() && migrations_dir.join(deploy_ts).exists();
 
         if !Path::new(".anchor").exists() {
