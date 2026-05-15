@@ -480,6 +480,8 @@ pub struct WorkspaceConfig {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub exclude: Vec<String>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub idls: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub types: String,
 }
 
