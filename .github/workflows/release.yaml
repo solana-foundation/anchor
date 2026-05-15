@@ -215,7 +215,20 @@ jobs:
             exit 0
           fi
 
-          GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh release create $GITHUB_REF_NAME $DIST/*/* --title "$GITHUB_REF_NAME" "${publish_args[@]}"
+          # TODO: if we end up publishing pre-releases as well, we will need to update the parsing below
+          RELEASE_URL=$(echo $GITHUB_REF_NAME | sed 's/\./-/g' | sed 's/^v//')
+          RELEASE_CHANGELOG="$(echo $GITHUB_REF_NAME | sed 's/\.//g' | sed 's/^v//')---$(date '+%Y-%m-%d')"
+          GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh release create $GITHUB_REF_NAME $DIST/*/* \
+            --title "$GITHUB_REF_NAME" \
+            --notes "$(cat <<EOF
+          The $GITHUB_REF_NAME release is here.
+
+          Check out the release notes from [Anchor website](https://www.anchor-lang.com/docs/updates/release-notes/${RELEASE_URL}) or [GitHub](https://github.com/solana-foundation/anchor/blob/${GITHUB_REF_NAME}/docs/content/docs/updates/release-notes/${RELEASE_URL}.mdx).
+
+          For a list of notable changes with their associated PRs, see the [CHANGELOG](https://github.com/solana-foundation/anchor/blob/${GITHUB_REF_NAME}/CHANGELOG.md#${RELEASE_CHANGELOG}).
+          EOF
+          )" \
+            "${publish_args[@]}"
 
   publish-cli:
     name: Publish CLI onto npmjs

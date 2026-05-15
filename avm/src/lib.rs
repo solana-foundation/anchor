@@ -18,13 +18,23 @@ use {
 const UPDATE_CHECK_INTERVAL_SECS: i64 = 60 * 60;
 /// Shorter HTTP timeout so a slow or unreachable GitHub does not stall the CLI for long.
 const HTTP_CLIENT_TIMEOUT_SECS: u64 = 5;
+/// Longer timeout for release asset downloads, which can take longer than metadata requests.
+const DOWNLOAD_CLIENT_TIMEOUT_SECS: u64 = 60;
 
-/// Shared HTTP client with a short timeout, used for all outbound requests.
+/// Shared HTTP client with a short timeout, used for metadata/API requests.
 static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(HTTP_CLIENT_TIMEOUT_SECS))
         .build()
         .expect("Failed to build HTTP client")
+});
+
+/// Shared HTTP client with a longer timeout, used for release asset downloads.
+static DOWNLOAD_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
+    reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(DOWNLOAD_CLIENT_TIMEOUT_SECS))
+        .build()
+        .expect("Failed to build download HTTP client")
 });
 
 /// Storage directory for AVM, customizable by setting the $AVM_HOME, defaults to ~/.avm
@@ -478,9 +488,11 @@ pub fn install_version(
         } else {
             ""
         };
-        let res = reqwest::blocking::get(format!(
-            "https://github.com/solana-foundation/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
-        ))?;
+        let res = DOWNLOAD_CLIENT
+            .get(format!(
+                "https://github.com/solana-foundation/anchor/releases/download/v{version}/anchor-{version}-{target}{ext}"
+            ))
+            .send()?;
         if !res.status().is_success() {
             return Err(anyhow!(
                 "Failed to download the binary for version `{version}` (status code: {})",
@@ -559,7 +571,7 @@ fn install_solana_verify() -> Result<()> {
     let url = format!(
         "https://github.com/Ellipsis-Labs/solana-verifiable-build/releases/download/v{SOLANA_VERIFY_VERSION}/solana-verify-{os}"
     );
-    let res = reqwest::blocking::get(url)?;
+    let res = DOWNLOAD_CLIENT.get(url).send()?;
     if !res.status().is_success() {
         bail!(
             "Failed to download `solana-verify-{os} v{SOLANA_VERIFY_VERSION} (status code: {})",
@@ -668,20 +680,33 @@ fn fetch_versions_with_client(
             .collect();
         Ok(versions)
     } else {
-        let reset_time_header = response
-            .headers()
-            .get("X-RateLimit-Reset")
-            .map_or("unknown", |v| v.to_str().unwrap());
-        let t = Utc.timestamp_opt(reset_time_header.parse::<i64>().unwrap(), 0);
-        let reset_time = t
-            .single()
-            .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
-            .unwrap_or_else(|| "unknown".to_string());
-        Err(anyhow!(
-            "GitHub API rate limit exceeded. Try again after {} UTC.",
-            reset_time
-        ))
+        Err(
+            if let Some(reset_time) = github_rate_limit_reset_time(response.headers()) {
+                anyhow!(
+                    "GitHub API rate limit exceeded. Try again after {} UTC.",
+                    reset_time
+                )
+            } else {
+                anyhow!("GitHub API rate limit exceeded. Try again later.",)
+            },
+        )
     }
+}
+
+fn github_rate_limit_reset_time(headers: &reqwest::header::HeaderMap) -> Option<String> {
+    let timestamp = headers
+        .get("X-RateLimit-Reset")?
+        .to_str()
+        .ok()?
+        .parse::<i64>()
+        .ok()?;
+
+    Some(
+        Utc.timestamp_opt(timestamp, 0)
+            .single()?
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string(),
+    )
 }
 
 /// Print available versions and flags indicating installed, current and latest
@@ -971,6 +996,29 @@ mod tests {
         // Should ignore this file because it's not anchor- prefixed
         fs::File::create(AVM_HOME.join("bin").join("garbage").as_path()).unwrap();
         assert_eq!(read_installed_versions().unwrap(), expected);
+    }
+
+    #[test]
+    fn test_github_rate_limit_reset_time() {
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("X-RateLimit-Reset", "1715706000".parse().unwrap());
+        assert_eq!(
+            github_rate_limit_reset_time(&headers).as_deref(),
+            Some("2024-05-14 17:00:00")
+        );
+
+        assert!(github_rate_limit_reset_time(&reqwest::header::HeaderMap::new()).is_none());
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("X-RateLimit-Reset", "unknown".parse().unwrap());
+        assert!(github_rate_limit_reset_time(&headers).is_none());
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            "X-RateLimit-Reset",
+            reqwest::header::HeaderValue::from_bytes(b"\xff").unwrap(),
+        );
+        assert!(github_rate_limit_reset_time(&headers).is_none());
     }
 
     #[test]
