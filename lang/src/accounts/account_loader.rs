@@ -110,7 +110,11 @@ impl<T: ZeroCopy + Owner + fmt::Debug> fmt::Debug for AccountLoader<'_, T> {
 }
 
 impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
-    fn new(acc_info: &'info AccountInfo<'info>) -> AccountLoader<'info, T> {
+    /// Constructs a new [`AccountLoader`] without performing any account validation checks.
+    ///
+    /// - [`Self::try_from`] to perform all checks, or
+    /// - [`Self::try_from_unchecked`] to check the owner but not the discriminator
+    pub fn new_unchecked(acc_info: &'info AccountInfo<'info>) -> AccountLoader<'info, T> {
         Self {
             acc_info,
             phantom: PhantomData,
@@ -125,8 +129,6 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         Ok(())
     }
 
-    /// Check that the account data is long enough to hold the discriminator and
-    /// an instance of `T`.
     fn check_data_len(data: &[u8]) -> Result<()> {
         let disc = T::DISCRIMINATOR;
         let required = disc
@@ -151,7 +153,7 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         Ok(())
     }
 
-    /// Constructs a new `Loader` from a previously initialized account.
+    /// Constructs a new [`AccountLoader`] from a previously initialized account.
     #[inline(never)]
     pub fn try_from(acc_info: &'info AccountInfo<'info>) -> Result<AccountLoader<'info, T>> {
         Self::check_owner(acc_info)?;
@@ -159,17 +161,17 @@ impl<'info, T: ZeroCopy + Owner> AccountLoader<'info, T> {
         let data = &acc_info.try_borrow_data()?;
         Self::check_discriminator(data)?;
 
-        Ok(AccountLoader::new(acc_info))
+        Ok(AccountLoader::new_unchecked(acc_info))
     }
 
-    /// Constructs a new `Loader` from an uninitialized account.
+    /// Constructs a new [`AccountLoader`] from an uninitialized account.
     #[inline(never)]
     pub fn try_from_unchecked(
         _program_id: &Pubkey,
         acc_info: &'info AccountInfo<'info>,
     ) -> Result<AccountLoader<'info, T>> {
         Self::check_owner(acc_info)?;
-        Ok(AccountLoader::new(acc_info))
+        Ok(AccountLoader::new_unchecked(acc_info))
     }
 
     /// Returns a Ref to the account data structure for reading.

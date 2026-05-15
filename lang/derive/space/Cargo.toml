@@ -21,4 +21,4 @@ indexing-slicing = "deny"
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "1", features = ["extra-traits"] }
+syn = { workspace = true, features = ["extra-traits", "parsing"] }
