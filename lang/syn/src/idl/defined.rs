@@ -203,19 +203,55 @@ where
         _ => quote! { vec![] },
     };
 
-    let serialization = get_attr_str("derive", attrs)
-        .and_then(|derive| {
-            if derive.contains("bytemuck") {
-                if derive.to_lowercase().contains("unsafe") {
-                    Some(quote! { #idl::IdlSerialization::BytemuckUnsafe })
-                } else {
-                    Some(quote! { #idl::IdlSerialization::Bytemuck })
-                }
-            } else {
-                None
+    // Track both safe and unsafe bytemuck derives from the same derive list.
+    let mut saw_bytemuck = false;
+    let mut saw_bytemuck_unsafe = false;
+    for attr in attrs {
+        if !attr.path.is_ident("derive") {
+            continue;
+        }
+
+        let Ok(syn::Meta::List(list)) = attr.parse_meta() else {
+            continue;
+        };
+
+        for nested in list.nested {
+            let syn::NestedMeta::Meta(syn::Meta::Path(path)) = nested else {
+                continue;
+            };
+
+            let has_bytemuck_segment = path
+                .segments
+                .iter()
+                .any(|segment| segment.ident == "bytemuck");
+
+            if !has_bytemuck_segment {
+                continue;
             }
-        })
-        .unwrap_or_else(|| quote! { #idl::IdlSerialization::default() });
+
+            let has_unsafe_segment = path.segments.iter().any(|segment| {
+                segment
+                    .ident
+                    .to_string()
+                    .to_ascii_lowercase()
+                    .contains("unsafe")
+            });
+
+            if has_unsafe_segment {
+                saw_bytemuck_unsafe = true;
+            } else {
+                saw_bytemuck = true;
+            }
+        }
+    }
+
+    let serialization = if saw_bytemuck_unsafe {
+        quote! { #idl::IdlSerialization::BytemuckUnsafe }
+    } else if saw_bytemuck {
+        quote! { #idl::IdlSerialization::Bytemuck }
+    } else {
+        quote! { #idl::IdlSerialization::default() }
+    };
 
     let repr = get_attr_str("repr", attrs)
         .map(|repr| {
