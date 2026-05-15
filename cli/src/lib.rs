@@ -235,6 +235,9 @@ pub enum Command {
         /// Run the test suites under the specified path
         #[clap(long)]
         run: Vec<String>,
+        /// Name of the script to run from [scripts] section (defaults to "test")
+        #[clap(long)]
+        script: Option<String>,
         /// Validator type to use for local testing
         #[clap(value_enum, long, default_value = "surfpool")]
         validator: ValidatorType,
@@ -1272,6 +1275,7 @@ fn process_command(opts: Opts) -> Result<()> {
             no_idl,
             detach,
             run,
+            script,
             validator,
             args,
             env,
@@ -1287,6 +1291,7 @@ fn process_command(opts: Opts) -> Result<()> {
             no_idl,
             detach,
             run,
+            script,
             validator,
             args,
             env,
@@ -3251,6 +3256,7 @@ fn test(
     no_idl: bool,
     detach: bool,
     tests_to_run: Vec<String>,
+    script_name: Option<String>,
     validator_type: ValidatorType,
     extra_args: Vec<String>,
     env_vars: Vec<String>,
@@ -3308,7 +3314,8 @@ fn test(
         cfg.run_hooks(HookType::PreTest)?;
 
         let mut is_first_suite = true;
-        if let Some(test_script) = cfg.scripts.get_mut("test") {
+        let script_name_to_use = script_name.as_deref().unwrap_or("test");
+        if let Some(test_script) = cfg.scripts.get_mut(script_name_to_use) {
             is_first_suite = false;
 
             match program_name {
@@ -3331,7 +3338,8 @@ fn test(
                     }
                 }
                 _ => println!(
-                    "\nFound a 'test' script in the Anchor.toml. Running it as a test suite!"
+                    "\nFound a '{}' script in the Anchor.toml. Running it as a test suite!",
+                    script_name_to_use
                 ),
             }
 
@@ -3345,6 +3353,7 @@ fn test(
                 validator_type,
                 &cfg.test_validator,
                 &cfg.scripts,
+                script_name_to_use,
                 &extra_args,
                 &cfg.surfpool_config,
             )?;
@@ -3374,6 +3383,7 @@ fn test(
                     validator_type,
                     &test_suite.1.test,
                     &test_suite.1.scripts,
+                    script_name_to_use,
                     &extra_args,
                     &cfg.surfpool_config,
                 )?;
@@ -3395,6 +3405,7 @@ fn run_test_suite(
     validator_type: ValidatorType,
     test_validator: &Option<TestValidator>,
     scripts: &ScriptsConfig,
+    script_name: &str,
     extra_args: &[String],
     surfpool_config: &Option<SurfpoolConfig>,
 ) -> Result<()> {
@@ -3456,10 +3467,10 @@ fn run_test_suite(
 
     // Run the tests.
     let test_result = {
-        let cmd = scripts
-            .get("test")
-            .expect("Not able to find script for `test`")
-            .clone();
+        let Some(cmd) = scripts.get(script_name) else {
+            bail!("Not able to find script for `{}`", script_name);
+        };
+        let cmd = cmd.clone();
         let script_args = format!("{cmd} {}", extra_args.join(" "));
 
         std::process::Command::new("bash")
