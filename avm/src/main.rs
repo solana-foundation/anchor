@@ -70,6 +70,22 @@ pub enum Commands {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
     },
+    #[clap(about = "Inspect or manage the Solana platform-tools toolchain")]
+    PlatformTools {
+        #[clap(subcommand)]
+        command: PlatformToolsCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PlatformToolsCommand {
+    /// Resolve which platform-tools version this project should use.
+    ///
+    /// Walks up from the current directory looking at `[toolchain] solana_version`
+    /// in `Anchor.toml` and the `solana-program` dep in `Cargo.toml`, then maps
+    /// the resolved Solana version to a platform-tools version via the static map
+    /// derived from `cargo-build-sbf`'s `DEFAULT_PLATFORM_TOOLS_VERSION`.
+    Resolve,
 }
 
 /// Returns true if `pre` is a semver pre-release tag (`rc.`, `beta.`, `alpha.`),
@@ -158,6 +174,14 @@ pub fn entry(opts: Cli) -> Result<()> {
             clap_complete::generate(shell, &mut Cli::command(), "avm", &mut std::io::stdout());
             Ok(())
         }
+        Commands::PlatformTools { command } => match command {
+            PlatformToolsCommand::Resolve => {
+                let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+                let res = avm::resolve_platform_tools(&cwd)?;
+                println!("platform-tools {} ({})", res.version, res.source.describe());
+                Ok(())
+            }
+        },
     }
 }
 

@@ -96,6 +96,8 @@ struct AnchorToml {
 struct AnchorToolchain {
     #[serde(default)]
     anchor_version: Option<String>,
+    #[serde(default)]
+    solana_version: Option<String>,
 }
 
 fn resolve_from_anchor_toml(start: &Path) -> Result<Option<Resolution>> {
@@ -277,6 +279,140 @@ fn resolve_version_req(req_str: &str, installed: &[Version]) -> Result<Version> 
                  matching version."
             )
         })
+}
+
+// ── Solana version resolution ────────────────────────────────────────────────
+
+/// Where a resolved Solana version came from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SolanaResolutionSource {
+    /// `[toolchain] solana_version` in the given `Anchor.toml`.
+    AnchorToml(PathBuf),
+    /// `solana-program` dependency in the given `Cargo.toml`.
+    CargoToml(PathBuf),
+}
+
+impl SolanaResolutionSource {
+    pub fn describe(&self) -> String {
+        match self {
+            Self::AnchorToml(p) => format!("[toolchain] solana_version in {}", p.display()),
+            Self::CargoToml(p) => format!("solana-program dep in {}", p.display()),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SolanaResolution {
+    pub version: Version,
+    pub source: SolanaResolutionSource,
+}
+
+/// Resolve the Solana version a project targets, used as input to
+/// platform-tools resolution. Returns `Ok(None)` when the project pins nothing.
+pub fn resolve_solana_version(start: &Path) -> Result<Option<SolanaResolution>> {
+    if let Some(res) = resolve_solana_from_anchor_toml(start)? {
+        return Ok(Some(res));
+    }
+    resolve_solana_from_cargo_toml(start)
+}
+
+fn resolve_solana_from_anchor_toml(start: &Path) -> Result<Option<SolanaResolution>> {
+    let Some(path) = find_ancestor_file(start, "Anchor.toml") else {
+        return Ok(None);
+    };
+    let text = fs::read_to_string(&path).with_context(|| format!("Reading {}", path.display()))?;
+    let parsed: AnchorToml =
+        toml::from_str(&text).with_context(|| format!("Parsing {}", path.display()))?;
+    let Some(ver_str) = parsed.toolchain.and_then(|t| t.solana_version) else {
+        return Ok(None);
+    };
+    let version = Version::parse(&ver_str).with_context(|| {
+        format!(
+            "Parsing [toolchain] solana_version = \"{ver_str}\" in {}",
+            path.display()
+        )
+    })?;
+    Ok(Some(SolanaResolution {
+        version,
+        source: SolanaResolutionSource::AnchorToml(path),
+    }))
+}
+
+fn resolve_solana_from_cargo_toml(start: &Path) -> Result<Option<SolanaResolution>> {
+    for manifest_path in candidate_program_manifests(start) {
+        let Ok(manifest) = Manifest::from_path(&manifest_path) else {
+            continue;
+        };
+        let Some(dep) = manifest.dependencies.get("solana-program") else {
+            continue;
+        };
+        if let Some(version) = solana_program_version(dep, &manifest_path)? {
+            return Ok(Some(SolanaResolution {
+                version,
+                source: SolanaResolutionSource::CargoToml(manifest_path),
+            }));
+        }
+    }
+    Ok(None)
+}
+
+/// Extract a concrete Solana version from a `solana-program` dependency entry.
+/// Unlike Anchor's anchor-lang resolution we cannot consult installed versions
+/// (Solana is not installed via AVM), so version requirements are reduced to
+/// the lowest compatible concrete version via [`min_version_from_req`].
+fn solana_program_version(dep: &Dependency, manifest_path: &Path) -> Result<Option<Version>> {
+    match dep {
+        Dependency::Simple(req) => Ok(Some(min_version_from_req(req)?)),
+        Dependency::Detailed(detail) => {
+            if detail.git.is_some() || detail.path.is_some() {
+                // Non-registry deps cannot be mapped to a Solana release.
+                return Ok(None);
+            }
+            match &detail.version {
+                Some(req) => Ok(Some(min_version_from_req(req)?)),
+                None => Ok(None),
+            }
+        }
+        Dependency::Inherited(_) => resolve_workspace_solana_program(manifest_path),
+    }
+}
+
+fn resolve_workspace_solana_program(member_manifest: &Path) -> Result<Option<Version>> {
+    let mut cur = member_manifest.parent().and_then(Path::parent);
+    while let Some(dir) = cur {
+        let candidate = dir.join("Cargo.toml");
+        if candidate.is_file() {
+            if let Ok(manifest) = Manifest::from_path(&candidate) {
+                if let Some(ws) = manifest.workspace.as_ref() {
+                    if let Some(dep) = ws.dependencies.get("solana-program") {
+                        return solana_program_version(dep, &candidate);
+                    }
+                }
+            }
+        }
+        cur = dir.parent();
+    }
+    Ok(None)
+}
+
+/// Reduce a version-requirement string (`"3.0.0"`, `"^3.0"`, `">=3.0, <4.0"`)
+/// to the lowest concrete `Version` it permits.
+///
+/// `^3.0` → `3.0.0`, `>=3.0, <4.0` → `3.0.0`, `=3.0.5` → `3.0.5`.
+fn min_version_from_req(req_str: &str) -> Result<Version> {
+    if let Ok(v) = Version::parse(req_str) {
+        return Ok(v);
+    }
+    let req = VersionReq::parse(req_str)
+        .with_context(|| format!("Parsing version requirement `{req_str}`"))?;
+    let cmp = req.comparators.first().ok_or_else(|| {
+        anyhow!("Empty version requirement `{req_str}` cannot be reduced to a version")
+    })?;
+    Ok(Version::new(
+        cmp.major,
+        cmp.minor.unwrap_or(0),
+        cmp.patch.unwrap_or(0),
+    ))
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -488,5 +624,129 @@ mod tests {
             .unwrap();
         assert_eq!(res.version, v("0.30.1"));
         assert!(matches!(res.source, ResolutionSource::AnchorToml(_)));
+    }
+
+    // ── Solana resolution ────────────────────────────────────────────────────
+
+    #[test]
+    fn solana_anchor_toml_wins() {
+        let dir = TempDir::new().unwrap();
+        write(
+            &dir.path().join("Anchor.toml"),
+            "[toolchain]\nsolana_version = \"3.0.5\"\n",
+        );
+        let res = resolve_solana_version(dir.path()).unwrap().unwrap();
+        assert_eq!(res.version, v("3.0.5"));
+        assert!(matches!(res.source, SolanaResolutionSource::AnchorToml(_)));
+    }
+
+    #[test]
+    fn solana_cargo_toml_simple() {
+        let dir = TempDir::new().unwrap();
+        write(&dir.path().join("Anchor.toml"), "");
+        write(
+            &dir.path().join("programs/foo/Cargo.toml"),
+            "[package]\nname = \"foo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[lib]\npath = \
+             \"src/lib.rs\"\n[dependencies]\nsolana-program = \"3.0.0\"\n",
+        );
+        write(&dir.path().join("programs/foo/src/lib.rs"), "");
+        let res = resolve_solana_version(dir.path()).unwrap().unwrap();
+        assert_eq!(res.version, v("3.0.0"));
+        assert!(matches!(res.source, SolanaResolutionSource::CargoToml(_)));
+    }
+
+    #[test]
+    fn solana_cargo_toml_version_req_picks_floor() {
+        let dir = TempDir::new().unwrap();
+        write(&dir.path().join("Anchor.toml"), "");
+        write(
+            &dir.path().join("programs/foo/Cargo.toml"),
+            "[package]\nname = \"foo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[lib]\npath = \
+             \"src/lib.rs\"\n[dependencies]\nsolana-program = \"^3.0\"\n",
+        );
+        write(&dir.path().join("programs/foo/src/lib.rs"), "");
+        let res = resolve_solana_version(dir.path()).unwrap().unwrap();
+        assert_eq!(res.version, v("3.0.0"));
+    }
+
+    #[test]
+    fn solana_workspace_inheritance() {
+        let dir = TempDir::new().unwrap();
+        write(&dir.path().join("Anchor.toml"), "");
+        write(
+            &dir.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"programs/foo\"]\nresolver = \
+             \"2\"\n[workspace.dependencies]\nsolana-program = \"3.0.0\"\n",
+        );
+        write(
+            &dir.path().join("programs/foo/Cargo.toml"),
+            "[package]\nname = \"foo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[lib]\npath = \
+             \"src/lib.rs\"\n[dependencies]\nsolana-program = { workspace = true }\n",
+        );
+        write(&dir.path().join("programs/foo/src/lib.rs"), "");
+        let res = resolve_solana_version(dir.path()).unwrap().unwrap();
+        assert_eq!(res.version, v("3.0.0"));
+    }
+
+    #[test]
+    fn solana_returns_none_when_nothing_pins() {
+        let dir = TempDir::new().unwrap();
+        assert!(resolve_solana_version(dir.path()).unwrap().is_none());
+    }
+
+    #[test]
+    fn solana_anchor_toml_beats_cargo_toml() {
+        let dir = TempDir::new().unwrap();
+        write(
+            &dir.path().join("Anchor.toml"),
+            "[toolchain]\nsolana_version = \"3.0.5\"\n",
+        );
+        write(
+            &dir.path().join("programs/foo/Cargo.toml"),
+            "[package]\nname = \"foo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[lib]\npath = \
+             \"src/lib.rs\"\n[dependencies]\nsolana-program = \"2.0.0\"\n",
+        );
+        write(&dir.path().join("programs/foo/src/lib.rs"), "");
+        let res = resolve_solana_version(dir.path()).unwrap().unwrap();
+        assert_eq!(res.version, v("3.0.5"));
+        assert!(matches!(res.source, SolanaResolutionSource::AnchorToml(_)));
+    }
+
+    #[test]
+    fn solana_cargo_toml_git_dep_skipped() {
+        // Unlike anchor-lang where we error on git deps, for Solana resolution
+        // a non-registry dep simply cannot be mapped → fall through.
+        let dir = TempDir::new().unwrap();
+        write(&dir.path().join("Anchor.toml"), "");
+        write(
+            &dir.path().join("programs/foo/Cargo.toml"),
+            "[package]\nname = \"foo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\
+             [lib]\npath = \"src/lib.rs\"\n\
+             [dependencies]\nsolana-program = { git = \"https://github.com/anza-xyz/agave\" }\n",
+        );
+        write(&dir.path().join("programs/foo/src/lib.rs"), "");
+        assert!(resolve_solana_version(dir.path()).unwrap().is_none());
+    }
+
+    // ── min_version_from_req ────────────────────────────────────────────────
+
+    #[test]
+    fn min_version_exact() {
+        assert_eq!(min_version_from_req("3.0.5").unwrap(), v("3.0.5"));
+    }
+
+    #[test]
+    fn min_version_caret_partial() {
+        assert_eq!(min_version_from_req("^3.0").unwrap(), v("3.0.0"));
+    }
+
+    #[test]
+    fn min_version_range() {
+        assert_eq!(min_version_from_req(">=3.0, <4.0").unwrap(), v("3.0.0"));
+    }
+
+    #[test]
+    fn min_version_equals() {
+        assert_eq!(min_version_from_req("=3.0.5").unwrap(), v("3.0.5"));
     }
 }

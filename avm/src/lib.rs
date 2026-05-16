@@ -1,6 +1,6 @@
+pub mod platform_tools;
 pub mod resolve;
 
-pub use resolve::{resolve_anchor_version, Resolution, ResolutionSource};
 use {
     anyhow::{anyhow, bail, Context, Error, Result},
     cargo_toml::Manifest,
@@ -14,6 +14,13 @@ use {
         path::PathBuf,
         process::{Command, Stdio},
         sync::LazyLock,
+    },
+};
+pub use {
+    platform_tools::{resolve_platform_tools, PlatformToolsResolution, PlatformToolsSource},
+    resolve::{
+        resolve_anchor_version, resolve_solana_version, Resolution, ResolutionSource,
+        SolanaResolution, SolanaResolutionSource,
     },
 };
 
