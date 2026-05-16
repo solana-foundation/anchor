@@ -16,7 +16,10 @@ use {
         types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy},
     },
     anyhow::{anyhow, bail, Context, Result},
-    checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow},
+    checks::{
+        check_anchor_version, check_deps, check_idl_build_feature, check_overflow,
+        check_solana_version,
+    },
     clap::{CommandFactory, Parser},
     dirs::home_dir,
     heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase},
@@ -973,6 +976,70 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                             ("agave-install", "anza.xyz")
                         };
 
+                    fn output_error(output: &std::process::Output) -> String {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let msg = stderr.trim();
+                        if msg.is_empty() {
+                            stdout.trim().to_string()
+                        } else {
+                            msg.to_string()
+                        }
+                    }
+
+                    fn release_target() -> Result<&'static str> {
+                        match (std::env::consts::ARCH, std::env::consts::OS) {
+                            ("aarch64", "macos") => Ok("aarch64-apple-darwin"),
+                            ("x86_64", "macos") => Ok("x86_64-apple-darwin"),
+                            ("x86_64", "linux") => Ok("x86_64-unknown-linux-gnu"),
+                            _ => bail!("Unsupported platform for legacy Solana installer"),
+                        }
+                    }
+
+                    fn install_legacy_solana(version: &str, primary_error: String) -> Result<bool> {
+                        let target = release_target()?;
+                        let installer = std::env::temp_dir()
+                            .join(format!("solana-install-init-{target}-{version}"));
+                        let url = format!(
+                            "https://github.com/solana-labs/solana/releases/download/v{version}/\
+                             solana-install-init-{target}"
+                        );
+                        let output = std::process::Command::new("curl")
+                            .args(["-fL", "-o"])
+                            .arg(&installer)
+                            .arg(&url)
+                            .output()?;
+                        if !output.status.success() {
+                            bail!(
+                                "Failed to download legacy Solana installer from {url}: {}. \
+                                 Primary installer error: {primary_error}",
+                                output_error(&output),
+                            );
+                        }
+
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            fs::set_permissions(&installer, fs::Permissions::from_mode(0o755))?;
+                        }
+
+                        let data_dir = home_dir()
+                            .ok_or_else(|| anyhow!("Could not find home directory"))?
+                            .join(".local")
+                            .join("share")
+                            .join("solana")
+                            .join("install");
+                        std::process::Command::new(installer)
+                            .arg("--data-dir")
+                            .arg(data_dir)
+                            .arg("--no-modify-path")
+                            .arg(version)
+                            .spawn()?
+                            .wait()
+                            .map(|status| status.success())
+                            .map_err(|err| anyhow!("Failed to run legacy Solana installer: {err}"))
+                    }
+
                     // Install the command if it's not installed
                     if get_current_version(cmd_name).is_err() {
                         // `solana-install` and `agave-install` are not usable at the same time i.e.
@@ -983,23 +1050,46 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
                         // code path will run each time an Anchor command gets executed.
                         eprintln!(
                             "Command not installed: `{cmd_name}`. \
-                            See https://github.com/anza-xyz/agave/wiki/Agave-Transition, \
-                            installing..."
+                            See https://github.com/anza-xyz/agave/wiki/Agave-Transition."
                         );
+                        let url = format!("https://release.{domain}/v{version}/install");
                         let install_script = std::process::Command::new("curl")
-                            .args([
-                                "-sSfL",
-                                &format!("https://release.{domain}/v{version}/install"),
-                            ])
+                            .args(["-sSfL", &url])
                             .output()?;
-                        let is_successful = std::process::Command::new("sh")
+                        if !install_script.status.success() {
+                            if cmd_name == "solana-install" {
+                                eprintln!(
+                                    "Installing legacy Solana {version} from GitHub release \
+                                     asset..."
+                                );
+                                return install_legacy_solana(
+                                    &version,
+                                    format!("{url}: {}", output_error(&install_script)),
+                                );
+                            }
+                            bail!(
+                                "Failed to download `{cmd_name}` installer from {url}: {}",
+                                output_error(&install_script)
+                            );
+                        }
+                        let install_output = std::process::Command::new("sh")
                             .args(["-c", std::str::from_utf8(&install_script.stdout)?])
-                            .spawn()?
-                            .wait_with_output()?
-                            .status
-                            .success();
-                        if !is_successful {
-                            return Err(anyhow!("Failed to install `{cmd_name}`"));
+                            .output()?;
+                        if !install_output.status.success() {
+                            if cmd_name == "solana-install" {
+                                eprintln!(
+                                    "Installing legacy Solana {version} from GitHub release \
+                                     asset..."
+                                );
+                                return install_legacy_solana(
+                                    &version,
+                                    format!("{url}: {}", output_error(&install_output)),
+                                );
+                            }
+                            return Err(anyhow!(
+                                "Failed to install `{cmd_name}` from {url}: {}",
+                                output_error(&install_output)
+                            ));
                         }
                     }
 
@@ -1839,6 +1929,9 @@ pub fn build(
     // Check whether there is a mismatch between CLI and crate/package versions
     check_anchor_version(&cfg).ok();
     check_deps(&cfg).ok();
+    if solana_version.is_none() && cfg.toolchain.solana_version.is_none() {
+        check_solana_version(&cfg).ok();
+    }
 
     // Check for program ID mismatches before building (skip if --ignore-keys is used), Always skipped in anchor test
     if !ignore_keys {
@@ -1988,7 +2081,14 @@ fn build_rust_cwd(
     };
     match build_config.verifiable {
         false => _build_rust_cwd(
-            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, cargo_args,
+            cfg,
+            build_config,
+            no_idl,
+            idl_out,
+            idl_ts_out,
+            skip_lint,
+            no_docs,
+            cargo_args,
         ),
         true => build_cwd_verifiable(
             cfg,
@@ -2139,6 +2239,7 @@ fn docker_build(
     let result = docker_prep(container_name, build_config).and_then(|_| {
         let cfg_parent = cfg.path().parent().unwrap();
         docker_build_bpf(
+            build_config,
             container_name,
             cargo_toml.as_path(),
             cfg_parent,
@@ -2203,6 +2304,7 @@ fn docker_prep(container_name: &str, build_config: &BuildConfig) -> Result<()> {
 
 #[allow(clippy::too_many_arguments)]
 fn docker_build_bpf(
+    build_config: &BuildConfig,
     container_name: &str,
     cargo_toml: &Path,
     cfg_parent: &Path,
@@ -2238,7 +2340,7 @@ fn docker_build_bpf(
                 .concat(),
         )
         .args([container_name, "cargo"])
-        .args(BUILD_SUBCOMMAND)
+        .args(build_subcommand(build_config))
         .args(["--manifest-path", &manifest_path.display().to_string()])
         .args(cargo_args)
         .stdout(match stdout {
@@ -2325,6 +2427,7 @@ fn docker_exec(container_name: &str, args: &[&str]) -> Result<()> {
 #[allow(clippy::too_many_arguments)]
 fn _build_rust_cwd(
     cfg: &WithPath<Config>,
+    build_config: &BuildConfig,
     no_idl: bool,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
@@ -2333,7 +2436,7 @@ fn _build_rust_cwd(
     cargo_args: Vec<String>,
 ) -> Result<()> {
     let exit = std::process::Command::new("cargo")
-        .args(BUILD_SUBCOMMAND)
+        .args(build_subcommand(build_config))
         .args(cargo_args.clone())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -2385,6 +2488,15 @@ fn _build_rust_cwd(
 
 /// Subcommand and any arguments to be passed to cargo
 const BUILD_SUBCOMMAND: &[&str] = &["build-sbf", "--tools-version", "v1.52"];
+const PINNED_SOLANA_BUILD_SUBCOMMAND: &[&str] = &["build-sbf"];
+
+fn build_subcommand(build_config: &BuildConfig) -> &'static [&'static str] {
+    if build_config.solana_version.is_some() {
+        PINNED_SOLANA_BUILD_SUBCOMMAND
+    } else {
+        BUILD_SUBCOMMAND
+    }
+}
 
 pub fn verify(
     program_id: Pubkey,
