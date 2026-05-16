@@ -28,4 +28,4 @@ idl-build = ["anchor-syn/idl-build"]
 anchor-syn = { path = "../../syn", version = "1.0.2", features = ["hash"] }
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "1", features = ["full"] }
+syn = { workspace = true, features = ["full"] }
