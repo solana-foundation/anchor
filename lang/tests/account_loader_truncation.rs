@@ -53,8 +53,7 @@ fn test_load_mut_truncated() {
 #[test]
 fn test_load_init_truncated() {
     setup_truncated_account!(key, owner, lamports, data, account_info);
-    let loader: AccountLoader<ZcStruct> =
-        AccountLoader::try_from_unchecked(&crate::ID, &account_info).unwrap();
+    let loader: AccountLoader<ZcStruct> = AccountLoader::try_from_unchecked(&account_info).unwrap();
     assert_eq!(
         loader.load_init().unwrap_err(),
         ErrorCode::AccountDidNotDeserialize.into()
