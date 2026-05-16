@@ -1,9 +1,9 @@
 use {
-    anyhow::{anyhow, Error, Result},
-    avm::InstallTarget,
+    anyhow::{anyhow, Context, Error, Result},
+    avm::{InstallTarget, Resolution},
     clap::{CommandFactory, Parser, Subcommand},
     semver::Version,
-    std::ffi::OsStr,
+    std::{ffi::OsStr, io::IsTerminal, path::PathBuf},
 };
 
 #[derive(Parser)]
@@ -164,17 +164,15 @@ pub fn entry(opts: Cli) -> Result<()> {
 fn anchor_proxy() -> Result<()> {
     let args = std::env::args().skip(1).collect::<Vec<String>>();
 
-    let version = avm::current_version()
-        .map_err(|_e| anyhow::anyhow!("Anchor version not set. Please run `avm use latest`."))?;
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let resolution = avm::resolve_anchor_version(&cwd)?.ok_or_else(|| {
+        anyhow!(
+            "Anchor version not set. Pin `[toolchain] anchor_version` in `Anchor.toml`, declare \
+             `anchor-lang` in your program's `Cargo.toml`, or run `avm use <version>`."
+        )
+    })?;
 
-    let binary_path = avm::version_binary_path(&version);
-    if !binary_path.exists() {
-        anyhow::bail!(
-            "anchor-cli {} not installed. Please run `avm use {}`.",
-            version,
-            version
-        );
-    }
+    let binary_path = ensure_resolved_binary(&resolution)?;
 
     let exit = std::process::Command::new(binary_path)
         .args(args)
@@ -186,6 +184,9 @@ fn anchor_proxy() -> Result<()> {
                 std::env::var("PATH").unwrap_or_default()
             ),
         )
+        // Signal to the spawned anchor-cli that AVM has already resolved the
+        // toolchain version, so it must not re-exec via `[toolchain] anchor_version`.
+        .env("AVM_ACTIVE", "1")
         .spawn()?
         .wait_with_output()
         .expect("Failed to run anchor-cli");
@@ -195,6 +196,49 @@ fn anchor_proxy() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Ensure the binary for `resolution.version` exists on disk, prompting the user
+/// to auto-install on a TTY and bailing with a clear hint otherwise.
+fn ensure_resolved_binary(resolution: &Resolution) -> Result<PathBuf> {
+    let version = &resolution.version;
+    let binary_path = avm::version_binary_path(version);
+    if binary_path.exists() {
+        return Ok(binary_path);
+    }
+
+    if !std::io::stdin().is_terminal() {
+        anyhow::bail!(
+            "anchor-cli {version} (resolved from {}) is not installed.\nRun `avm install \
+             {version}` to install it.",
+            resolution.source.describe()
+        );
+    }
+
+    eprintln!(
+        "anchor-cli {version} (resolved from {}) is not installed.",
+        resolution.source.describe()
+    );
+    eprint!("Install now? [y/N] ");
+    std::io::Write::flush(&mut std::io::stderr()).ok();
+
+    let mut line = String::new();
+    std::io::BufRead::read_line(&mut std::io::stdin().lock(), &mut line)
+        .context("reading confirmation from stdin")?;
+    match line.trim() {
+        "y" | "Y" | "yes" => {}
+        _ => anyhow::bail!("Installation declined."),
+    }
+
+    avm::install_version(InstallTarget::Version(version.clone()), false, false, false)?;
+
+    if !binary_path.exists() {
+        anyhow::bail!(
+            "anchor-cli {version} install reported success but binary is still missing at {}",
+            binary_path.display()
+        );
+    }
+    Ok(binary_path)
 }
 
 fn main() -> Result<()> {

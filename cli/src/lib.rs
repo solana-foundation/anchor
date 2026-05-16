@@ -1045,8 +1045,16 @@ fn override_toolchain(cfg_override: &ConfigOverride) -> Result<RestoreToolchainC
             }
         }
 
-        // Anchor version override should be handled last
+        // Anchor version override should be handled last.
+        //
+        // When invoked via the AVM proxy (`AVM_ACTIVE=1`), AVM has already resolved
+        // the requested toolchain version and spawned the matching binary. Re-execing
+        // here would either be a no-op (binary already matches) or fight AVM's
+        // resolution (e.g. when AVM resolved via `anchor-lang` in Cargo.toml). Skip.
         if let Some(anchor_version) = &cfg.toolchain.anchor_version {
+            if std::env::var("AVM_ACTIVE").is_ok() {
+                return Ok(restore_cbs);
+            }
             // Anchor binary name prefix(applies to binaries that are installed via `avm`)
             const ANCHOR_BINARY_PREFIX: &str = "anchor-";
 
