@@ -1,3 +1,6 @@
+pub mod resolve;
+
+pub use resolve::{resolve_anchor_version, Resolution, ResolutionSource};
 use {
     anyhow::{anyhow, bail, Context, Error, Result},
     cargo_toml::Manifest,

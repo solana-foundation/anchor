@@ -677,6 +677,7 @@ dependencies = [
  "semver",
  "serde",
  "tempfile",
+ "toml 0.7.8",
 ]
 
 [[package]]
