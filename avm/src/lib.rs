@@ -1,3 +1,4 @@
+pub mod channel;
 pub mod platform_tools;
 pub mod resolve;
 
@@ -17,6 +18,7 @@ use {
     },
 };
 pub use {
+    channel::{get_channel, set_channel, Channel},
     platform_tools::{resolve_platform_tools, PlatformToolsResolution, PlatformToolsSource},
     resolve::{
         resolve_anchor_version, resolve_solana_version, Resolution, ResolutionSource,
@@ -824,10 +826,11 @@ fn write_update_cache_error() {
     let _ = fs::write(update_check_file_path(), content);
 }
 
-/// Check whether a newer AVM release is available and print a warning to stderr if so.
-/// Results (including failures) are cached in `$AVM_HOME/.update-check` so the network
-/// is hit at most once per hour.
-pub fn check_avm_version_and_warn() {
+/// Check whether a newer AVM release is available on the stable (or, when
+/// `include_pre_release` is true, pre-release) track and print a warning to
+/// stderr if so. Results (including failures) are cached in
+/// `$AVM_HOME/.update-check` so the network is hit at most once per hour.
+pub fn check_avm_version_and_warn(include_pre_release: bool) {
     let Ok(current) = Version::parse(env!("CARGO_PKG_VERSION")) else {
         return;
     };
@@ -850,7 +853,7 @@ pub fn check_avm_version_and_warn() {
             eprintln!("avm update check failed. Next attempt in {next_attempt_secs}s.");
         }
         // Cache is stale or missing: run a fresh check.
-        _ => match get_latest_version_with_client(&HTTP_CLIENT, false) {
+        _ => match get_latest_version_with_client(&HTTP_CLIENT, include_pre_release) {
             Ok(latest) => {
                 write_update_cache_success(&latest);
                 if latest > current {
@@ -870,12 +873,35 @@ pub fn check_avm_version_and_warn() {
     }
 }
 
+/// Dispatch the periodic update check based on the persisted [`Channel`].
+pub fn check_for_updates_and_warn() {
+    match get_channel() {
+        Channel::Stable => check_avm_version_and_warn(false),
+        Channel::PreRelease => check_avm_version_and_warn(true),
+        Channel::Nightly => channel::check_nightly_and_warn(),
+    }
+}
+
 /// Update AVM itself by re-running `cargo install`.
 ///
-/// - Default: installs the latest stable release via `--tag`.
-/// - `include_pre_release`: installs the latest release including rc/beta/alpha.
-/// - `bleeding_edge`: builds from the HEAD of the `master` branch.
-pub fn self_update(include_pre_release: bool, bleeding_edge: bool) -> Result<()> {
+/// - [`Channel::Stable`]: latest stable release via `--tag`.
+/// - [`Channel::PreRelease`]: latest release including rc/beta/alpha.
+/// - [`Channel::Nightly`]: routed to [`channel::install_nightly`], which is
+///   currently `unimplemented!()` pending nightly artifact infrastructure.
+/// - `bleeding_edge` (orthogonal to channel): builds from the HEAD of the
+///   `master` branch via `--branch master`.
+pub fn self_update(channel: Channel, bleeding_edge: bool) -> Result<()> {
+    if bleeding_edge {
+        return self_update_bleeding_edge();
+    }
+    if channel == Channel::Nightly {
+        channel::install_nightly();
+    }
+    let include_pre_release = matches!(channel, Channel::PreRelease);
+    self_update_release(include_pre_release)
+}
+
+fn self_update_release(include_pre_release: bool) -> Result<()> {
     let current = Version::parse(env!("CARGO_PKG_VERSION"))
         .map_err(|e| anyhow!("Failed to parse current avm version: {e}"))?;
 
@@ -886,18 +912,39 @@ pub fn self_update(include_pre_release: bool, bleeding_edge: bool) -> Result<()>
         "--locked".to_string(),
     ];
 
-    if bleeding_edge {
-        println!("Updating avm to the latest commit on master...");
-        args.extend_from_slice(&["--branch".to_string(), "master".to_string()]);
-    } else {
-        let latest = get_latest_version(include_pre_release)?;
-        if latest <= current {
-            println!("avm is already up to date ({current})");
-            return Ok(());
-        }
-        println!("Updating avm from {current} to {latest}...");
-        args.extend_from_slice(&["--tag".to_string(), format!("v{latest}")]);
+    let latest = get_latest_version(include_pre_release)?;
+    if latest <= current {
+        println!("avm is already up to date ({current})");
+        return Ok(());
     }
+    println!("Updating avm from {current} to {latest}...");
+    args.extend_from_slice(&["--tag".to_string(), format!("v{latest}")]);
+
+    args.extend_from_slice(&["avm".to_string(), "--force".to_string()]);
+
+    let status = Command::new("cargo")
+        .args(&args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .map_err(|e| anyhow!("`cargo install` failed: {e}"))?;
+    if !status.success() {
+        bail!("Failed to update avm");
+    }
+    println!("avm successfully updated");
+    Ok(())
+}
+
+fn self_update_bleeding_edge() -> Result<()> {
+    println!("Updating avm to the latest commit on master...");
+    let mut args = vec![
+        "install".to_string(),
+        "--git".to_string(),
+        "https://github.com/solana-foundation/anchor".to_string(),
+        "--locked".to_string(),
+        "--branch".to_string(),
+        "master".to_string(),
+    ];
 
     args.extend_from_slice(&["avm".to_string(), "--force".to_string()]);
 

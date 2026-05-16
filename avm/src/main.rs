@@ -1,6 +1,6 @@
 use {
     anyhow::{anyhow, Context, Error, Result},
-    avm::{InstallTarget, Resolution},
+    avm::{Channel, InstallTarget, Resolution},
     clap::{CommandFactory, Parser, Subcommand},
     semver::Version,
     std::{ffi::OsStr, io::IsTerminal, path::PathBuf},
@@ -58,11 +58,16 @@ pub enum Commands {
     },
     #[clap(about = "Update avm itself to the latest version via cargo install")]
     SelfUpdate {
-        #[clap(long)]
-        /// Update to the latest pre-release version instead of the latest stable
+        /// Update channel (`stable`, `pre-release`, `nightly`). Persisted to
+        /// `~/.avm/config.toml` and used by future periodic checks.
+        #[clap(long, value_enum)]
+        channel: Option<Channel>,
+        #[clap(long, conflicts_with = "channel")]
+        /// Update to the latest pre-release version instead of the latest
+        /// stable. Equivalent to `--channel pre-release` but does not persist.
         pre_release: bool,
-        #[clap(long, conflicts_with = "pre_release")]
-        /// Build and install from the latest commit on the master branch
+        #[clap(long, conflicts_with_all = ["pre_release", "channel"])]
+        /// Build and install from the latest commit on the master branch.
         bleeding_edge: bool,
     },
     #[clap(about = "Generate shell completions for AVM")]
@@ -153,7 +158,7 @@ pub fn entry(opts: Cli) -> Result<()> {
         opts.command,
         Commands::SelfUpdate { .. } | Commands::Completions { .. }
     ) {
-        avm::check_avm_version_and_warn();
+        avm::check_for_updates_and_warn();
     }
 
     match opts.command {
@@ -183,9 +188,22 @@ pub fn entry(opts: Cli) -> Result<()> {
         Commands::List { pre_release } => avm::list_versions(pre_release),
         Commands::Update { pre_release } => avm::update(pre_release),
         Commands::SelfUpdate {
+            channel,
             pre_release,
             bleeding_edge,
-        } => avm::self_update(pre_release, bleeding_edge),
+        } => {
+            // Persist channel selection when explicitly given so future
+            // `avm` invocations check on the chosen track.
+            if let Some(c) = channel {
+                avm::set_channel(c)?;
+            }
+            let active = match (channel, pre_release) {
+                (Some(c), _) => c,
+                (None, true) => Channel::PreRelease,
+                (None, false) => avm::get_channel(),
+            };
+            avm::self_update(active, bleeding_edge)
+        }
         Commands::Completions { shell } => {
             clap_complete::generate(shell, &mut Cli::command(), "avm", &mut std::io::stdout());
             Ok(())
