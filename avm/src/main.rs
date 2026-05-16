@@ -1,9 +1,9 @@
 use {
-    anyhow::{anyhow, Error, Result},
-    avm::InstallTarget,
+    anyhow::{anyhow, Context, Error, Result},
+    avm::{Channel, InstallTarget, Resolution},
     clap::{CommandFactory, Parser, Subcommand},
     semver::Version,
-    std::ffi::OsStr,
+    std::{ffi::OsStr, io::IsTerminal, path::PathBuf},
 };
 
 #[derive(Parser)]
@@ -58,17 +58,54 @@ pub enum Commands {
     },
     #[clap(about = "Update avm itself to the latest version via cargo install")]
     SelfUpdate {
-        #[clap(long)]
-        /// Update to the latest pre-release version instead of the latest stable
+        /// Update channel (`stable`, `pre-release`, `nightly`). Persisted to
+        /// `~/.avm/config.toml` and used by future periodic checks.
+        #[clap(long, value_enum)]
+        channel: Option<Channel>,
+        #[clap(long, conflicts_with = "channel")]
+        /// Update to the latest pre-release version instead of the latest
+        /// stable. Equivalent to `--channel pre-release` but does not persist.
         pre_release: bool,
-        #[clap(long, conflicts_with = "pre_release")]
-        /// Build and install from the latest commit on the master branch
+        #[clap(long, conflicts_with_all = ["pre_release", "channel"])]
+        /// Build and install from the latest commit on the master branch.
         bleeding_edge: bool,
     },
     #[clap(about = "Generate shell completions for AVM")]
     Completions {
         #[clap(value_enum)]
         shell: clap_complete::Shell,
+    },
+    #[clap(about = "Inspect or manage the Solana platform-tools toolchain")]
+    PlatformTools {
+        #[clap(subcommand)]
+        command: PlatformToolsCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PlatformToolsCommand {
+    /// Resolve which platform-tools version this project should use.
+    ///
+    /// Walks up from the current directory looking at `[toolchain] solana_version`
+    /// in `Anchor.toml` and the `solana-program` dep in `Cargo.toml`, then maps
+    /// the resolved Solana version to a platform-tools version via the static map
+    /// derived from `cargo-build-sbf`'s `DEFAULT_PLATFORM_TOOLS_VERSION`.
+    Resolve,
+    /// Install a platform-tools version. With no argument, installs the
+    /// project-resolved version.
+    Install {
+        /// Platform-tools version, e.g. `v1.54` (the leading `v` is optional).
+        version: Option<String>,
+        /// Re-download and replace an existing install.
+        #[clap(long)]
+        force: bool,
+    },
+    /// List installed platform-tools versions under `$AVM_HOME/platform-tools`.
+    List,
+    /// Remove an installed platform-tools version.
+    Uninstall {
+        /// Platform-tools version to remove, e.g. `v1.54`.
+        version: String,
     },
 }
 
@@ -121,7 +158,7 @@ pub fn entry(opts: Cli) -> Result<()> {
         opts.command,
         Commands::SelfUpdate { .. } | Commands::Completions { .. }
     ) {
-        avm::check_avm_version_and_warn();
+        avm::check_for_updates_and_warn();
     }
 
     match opts.command {
@@ -151,30 +188,79 @@ pub fn entry(opts: Cli) -> Result<()> {
         Commands::List { pre_release } => avm::list_versions(pre_release),
         Commands::Update { pre_release } => avm::update(pre_release),
         Commands::SelfUpdate {
+            channel,
             pre_release,
             bleeding_edge,
-        } => avm::self_update(pre_release, bleeding_edge),
+        } => {
+            // Persist channel selection when explicitly given so future
+            // `avm` invocations check on the chosen track.
+            if let Some(c) = channel {
+                avm::set_channel(c)?;
+            }
+            let active = match (channel, pre_release) {
+                (Some(c), _) => c,
+                (None, true) => Channel::PreRelease,
+                (None, false) => avm::get_channel(),
+            };
+            avm::self_update(active, bleeding_edge)
+        }
         Commands::Completions { shell } => {
             clap_complete::generate(shell, &mut Cli::command(), "avm", &mut std::io::stdout());
             Ok(())
         }
+        Commands::PlatformTools { command } => match command {
+            PlatformToolsCommand::Resolve => {
+                let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+                let res = avm::resolve_platform_tools(&cwd)?;
+                println!("platform-tools {} ({})", res.version, res.source.describe());
+                Ok(())
+            }
+            PlatformToolsCommand::Install { version, force } => {
+                let version = match version {
+                    Some(v) => v,
+                    None => {
+                        let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+                        let res = avm::resolve_platform_tools(&cwd)?;
+                        println!(
+                            "Installing project-resolved version {} ({})",
+                            res.version,
+                            res.source.describe()
+                        );
+                        res.version
+                    }
+                };
+                avm::platform_tools::install_platform_tools(&version, force)
+            }
+            PlatformToolsCommand::List => {
+                let installed = avm::platform_tools::read_installed_platform_tools()?;
+                if installed.is_empty() {
+                    println!("(no platform-tools installed)");
+                } else {
+                    for v in installed {
+                        println!("{v}");
+                    }
+                }
+                Ok(())
+            }
+            PlatformToolsCommand::Uninstall { version } => {
+                avm::platform_tools::uninstall_platform_tools(&version)
+            }
+        },
     }
 }
 
 fn anchor_proxy() -> Result<()> {
     let args = std::env::args().skip(1).collect::<Vec<String>>();
 
-    let version = avm::current_version()
-        .map_err(|_e| anyhow::anyhow!("Anchor version not set. Please run `avm use latest`."))?;
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let resolution = avm::resolve_anchor_version(&cwd)?.ok_or_else(|| {
+        anyhow!(
+            "Anchor version not set. Pin `[toolchain] anchor_version` in `Anchor.toml`, declare \
+             `anchor-lang` in your program's `Cargo.toml`, or run `avm use <version>`."
+        )
+    })?;
 
-    let binary_path = avm::version_binary_path(&version);
-    if !binary_path.exists() {
-        anyhow::bail!(
-            "anchor-cli {} not installed. Please run `avm use {}`.",
-            version,
-            version
-        );
-    }
+    let binary_path = ensure_resolved_binary(&resolution)?;
 
     let exit = std::process::Command::new(binary_path)
         .args(args)
@@ -186,6 +272,9 @@ fn anchor_proxy() -> Result<()> {
                 std::env::var("PATH").unwrap_or_default()
             ),
         )
+        // Signal to the spawned anchor-cli that AVM has already resolved the
+        // toolchain version, so it must not re-exec via `[toolchain] anchor_version`.
+        .env("AVM_ACTIVE", "1")
         .spawn()?
         .wait_with_output()
         .expect("Failed to run anchor-cli");
@@ -195,6 +284,49 @@ fn anchor_proxy() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Ensure the binary for `resolution.version` exists on disk, prompting the user
+/// to auto-install on a TTY and bailing with a clear hint otherwise.
+fn ensure_resolved_binary(resolution: &Resolution) -> Result<PathBuf> {
+    let version = &resolution.version;
+    let binary_path = avm::version_binary_path(version);
+    if binary_path.exists() {
+        return Ok(binary_path);
+    }
+
+    if !std::io::stdin().is_terminal() {
+        anyhow::bail!(
+            "anchor-cli {version} (resolved from {}) is not installed.\nRun `avm install \
+             {version}` to install it.",
+            resolution.source.describe()
+        );
+    }
+
+    eprintln!(
+        "anchor-cli {version} (resolved from {}) is not installed.",
+        resolution.source.describe()
+    );
+    eprint!("Install now? [y/N] ");
+    std::io::Write::flush(&mut std::io::stderr()).ok();
+
+    let mut line = String::new();
+    std::io::BufRead::read_line(&mut std::io::stdin().lock(), &mut line)
+        .context("reading confirmation from stdin")?;
+    match line.trim() {
+        "y" | "Y" | "yes" => {}
+        _ => anyhow::bail!("Installation declined."),
+    }
+
+    avm::install_version(InstallTarget::Version(version.clone()), false, false, false)?;
+
+    if !binary_path.exists() {
+        anyhow::bail!(
+            "anchor-cli {version} install reported success but binary is still missing at {}",
+            binary_path.display()
+        );
+    }
+    Ok(binary_path)
 }
 
 fn main() -> Result<()> {

@@ -23,6 +23,7 @@ reqwest = { version = "0.11.9", default-features = false, features = [
 ] }
 semver = "1.0.4"
 serde = { version = "1.0.136", features = ["derive"] }
+toml = "0.7.6"
 
 [dev-dependencies]
 tempfile = "3.3.0"
