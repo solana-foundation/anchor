@@ -5,7 +5,7 @@ use {
     },
     anyhow::{anyhow, Result},
     semver::{Version, VersionReq},
-    std::{fs, path::Path},
+    std::{fs, path::Path, process::Command},
 };
 
 /// Check whether `overflow-checks` codegen option is enabled.
@@ -136,6 +136,76 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
         });
 
     Ok(())
+}
+
+/// Check whether the active Solana toolchain looks compatible with program dependencies.
+///
+/// This check only warns. A `solana-program` version requirement is not a strict statement of the
+/// required CLI/toolchain version, but it is usually a strong signal when the project does not pin
+/// `[toolchain].solana_version`.
+pub fn check_solana_version(cfg: &WithPath<Config>) -> Result<()> {
+    let active_solana_version = get_current_solana_version()?;
+
+    cfg.get_rust_program_list()?
+        .into_iter()
+        .map(|path| path.join("Cargo.toml"))
+        .map(cargo_toml::Manifest::from_path)
+        .map(|man| man.map_err(|e| anyhow!("Failed to read manifest: {e}")))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .filter_map(|man| {
+            let dep = man.dependencies.get("solana-program")?;
+            let version_req = dependency_version_req(dep)?;
+            let req = VersionReq::parse(version_req).ok()?;
+
+            (!req.matches(&active_solana_version)).then_some((
+                man.package().name().to_string(),
+                version_req.to_string(),
+                suggested_solana_version(version_req).to_string(),
+            ))
+        })
+        .for_each(|(program_name, version_req, suggested_solana_version)| {
+            eprintln!(
+                "WARNING: `solana-program` version({version_req}) for program `{program_name}` \
+                 and the current Solana toolchain version({active_solana_version}) don't \
+                 match.\n\n\tThis can lead to unwanted behavior. To use the same Solana version, \
+                 add:\n\n\t[toolchain]\n\tsolana_version = \"{suggested_solana_version}\"\n\n\tto \
+                 Anchor.toml\n"
+            )
+        });
+
+    Ok(())
+}
+
+fn get_current_solana_version() -> Result<Version> {
+    let output = Command::new("solana").arg("--version").output()?;
+    if !output.status.success() {
+        return Err(anyhow!("Failed to run `solana --version`"));
+    }
+
+    let output = std::str::from_utf8(&output.stdout)?;
+    parse_version(output).ok_or_else(|| anyhow!("Failed to parse the version of `solana`"))
+}
+
+fn parse_version(text: &str) -> Option<Version> {
+    text.split_whitespace()
+        .find_map(|word| Version::parse(word.trim_start_matches('v')).ok())
+}
+
+fn dependency_version_req(dep: &cargo_toml::Dependency) -> Option<&str> {
+    match dep {
+        cargo_toml::Dependency::Simple(version) => Some(version),
+        cargo_toml::Dependency::Detailed(detail) => detail.version.as_deref(),
+        _ => None,
+    }
+}
+
+fn suggested_solana_version(version_req: &str) -> &str {
+    version_req
+        .trim()
+        .strip_prefix('=')
+        .unwrap_or(version_req)
+        .trim()
 }
 
 /// Check whether the `idl-build` feature is being used correctly.

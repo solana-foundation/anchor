@@ -14,7 +14,10 @@ use {
         types::{Idl, IdlArrayLen, IdlDefinedFields, IdlType, IdlTypeDefTy},
     },
     anyhow::{anyhow, bail, Context, Result},
-    checks::{check_anchor_version, check_deps, check_idl_build_feature, check_overflow},
+    checks::{
+        check_anchor_version, check_deps, check_idl_build_feature, check_overflow,
+        check_solana_version,
+    },
     clap::{CommandFactory, Parser},
     dirs::home_dir,
     heck::{ToKebabCase, ToLowerCamelCase, ToPascalCase, ToSnakeCase},
@@ -1860,6 +1863,9 @@ pub fn build(
     // Check whether there is a mismatch between CLI and crate/package versions
     check_anchor_version(&cfg).ok();
     check_deps(&cfg).ok();
+    if solana_version.is_none() && cfg.toolchain.solana_version.is_none() {
+        check_solana_version(&cfg).ok();
+    }
 
     // Check for program ID mismatches before building (skip if --ignore-keys is used), Always skipped in anchor test
     if !ignore_keys {
@@ -2009,7 +2015,14 @@ fn build_rust_cwd(
     };
     match build_config.verifiable {
         false => _build_rust_cwd(
-            cfg, no_idl, idl_out, idl_ts_out, skip_lint, no_docs, cargo_args,
+            cfg,
+            build_config,
+            no_idl,
+            idl_out,
+            idl_ts_out,
+            skip_lint,
+            no_docs,
+            cargo_args,
         ),
         true => build_cwd_verifiable(
             cfg,
@@ -2162,6 +2175,7 @@ fn docker_build(
     let result = docker_prep(container_name, build_config).and_then(|_| {
         let cfg_parent = cfg.path().parent().unwrap();
         docker_build_bpf(
+            build_config,
             container_name,
             cargo_toml.as_path(),
             cfg_parent,
@@ -2226,6 +2240,7 @@ fn docker_prep(container_name: &str, build_config: &BuildConfig) -> Result<()> {
 
 #[allow(clippy::too_many_arguments)]
 fn docker_build_bpf(
+    build_config: &BuildConfig,
     container_name: &str,
     cargo_toml: &Path,
     cfg_parent: &Path,
@@ -2261,7 +2276,7 @@ fn docker_build_bpf(
                 .concat(),
         )
         .args([container_name, "cargo"])
-        .args(BUILD_SUBCOMMAND)
+        .args(build_subcommand(build_config))
         .args(["--manifest-path", &manifest_path.display().to_string()])
         .args(cargo_args)
         .stdout(match stdout {
@@ -2352,6 +2367,7 @@ fn docker_exec(container_name: &str, args: &[&str]) -> Result<()> {
 #[allow(clippy::too_many_arguments)]
 fn _build_rust_cwd(
     cfg: &WithPath<Config>,
+    build_config: &BuildConfig,
     no_idl: bool,
     idl_out: Option<PathBuf>,
     idl_ts_out: Option<PathBuf>,
@@ -2360,7 +2376,7 @@ fn _build_rust_cwd(
     cargo_args: Vec<String>,
 ) -> Result<()> {
     let exit = std::process::Command::new("cargo")
-        .args(BUILD_SUBCOMMAND)
+        .args(build_subcommand(build_config))
         .args(cargo_args.clone())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -2412,6 +2428,15 @@ fn _build_rust_cwd(
 
 /// Subcommand and any arguments to be passed to cargo
 const BUILD_SUBCOMMAND: &[&str] = &["build-sbf", "--tools-version", "v1.52"];
+const PINNED_SOLANA_BUILD_SUBCOMMAND: &[&str] = &["build-sbf"];
+
+fn build_subcommand(build_config: &BuildConfig) -> &'static [&'static str] {
+    if build_config.solana_version.is_some() {
+        PINNED_SOLANA_BUILD_SUBCOMMAND
+    } else {
+        BUILD_SUBCOMMAND
+    }
+}
 
 pub fn verify(
     program_id: Pubkey,
