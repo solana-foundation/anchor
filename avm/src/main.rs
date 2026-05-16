@@ -86,6 +86,22 @@ pub enum PlatformToolsCommand {
     /// the resolved Solana version to a platform-tools version via the static map
     /// derived from `cargo-build-sbf`'s `DEFAULT_PLATFORM_TOOLS_VERSION`.
     Resolve,
+    /// Install a platform-tools version. With no argument, installs the
+    /// project-resolved version.
+    Install {
+        /// Platform-tools version, e.g. `v1.54` (the leading `v` is optional).
+        version: Option<String>,
+        /// Re-download and replace an existing install.
+        #[clap(long)]
+        force: bool,
+    },
+    /// List installed platform-tools versions under `$AVM_HOME/platform-tools`.
+    List,
+    /// Remove an installed platform-tools version.
+    Uninstall {
+        /// Platform-tools version to remove, e.g. `v1.54`.
+        version: String,
+    },
 }
 
 /// Returns true if `pre` is a semver pre-release tag (`rc.`, `beta.`, `alpha.`),
@@ -180,6 +196,36 @@ pub fn entry(opts: Cli) -> Result<()> {
                 let res = avm::resolve_platform_tools(&cwd)?;
                 println!("platform-tools {} ({})", res.version, res.source.describe());
                 Ok(())
+            }
+            PlatformToolsCommand::Install { version, force } => {
+                let version = match version {
+                    Some(v) => v,
+                    None => {
+                        let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+                        let res = avm::resolve_platform_tools(&cwd)?;
+                        println!(
+                            "Installing project-resolved version {} ({})",
+                            res.version,
+                            res.source.describe()
+                        );
+                        res.version
+                    }
+                };
+                avm::platform_tools::install_platform_tools(&version, force)
+            }
+            PlatformToolsCommand::List => {
+                let installed = avm::platform_tools::read_installed_platform_tools()?;
+                if installed.is_empty() {
+                    println!("(no platform-tools installed)");
+                } else {
+                    for v in installed {
+                        println!("{v}");
+                    }
+                }
+                Ok(())
+            }
+            PlatformToolsCommand::Uninstall { version } => {
+                avm::platform_tools::uninstall_platform_tools(&version)
             }
         },
     }

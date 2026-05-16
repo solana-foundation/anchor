@@ -40,7 +40,7 @@ static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
 });
 
 /// Shared HTTP client with a longer timeout, used for release asset downloads.
-static DOWNLOAD_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
+pub(crate) static DOWNLOAD_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(DOWNLOAD_CLIENT_TIMEOUT_SECS))
         .build()

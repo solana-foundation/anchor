@@ -1,19 +1,31 @@
-//! Platform-tools version resolution.
+//! Platform-tools version resolution and installation.
 //!
-//! Given a Solana version a project targets, return the `platform-tools` version
-//! that ships with that Solana release. The map is embedded at compile time from
-//! `../platform-tools-map.toml` and ordered by ascending Solana version, so
-//! resolution is a linear floor lookup: pick the entry with the largest
-//! `solana` key that is `<= requested`.
+//! Resolution: given a Solana version a project targets, return the
+//! `platform-tools` version that ships with that Solana release. The map is
+//! embedded at compile time from `../platform-tools-map.toml` and ordered by
+//! ascending Solana version, so resolution is a linear floor lookup: pick the
+//! entry with the largest `solana` key that is `<= requested`. When the
+//! project pins no Solana version at all, fall back to the map's `fallback`
+//! field (kept equal to the newest entry's `platform_tools`).
 //!
-//! When the project pins no Solana version at all, fall back to the map's
-//! `fallback` field (kept equal to the newest entry's `platform_tools`).
+//! Installation: download the matching tarball from `anza-xyz/platform-tools`
+//! GitHub releases and extract into `$AVM_HOME/platform-tools/<version>/`.
+//! Asset naming follows what `cargo-build-sbf` looks for upstream:
+//! `platform-tools-{linux|osx|windows}-{x86_64|aarch64}.tar.bz2`.
 use {
-    crate::resolve::{resolve_solana_version, SolanaResolution, SolanaResolutionSource},
-    anyhow::{anyhow, Context, Result},
+    crate::{
+        resolve::{resolve_solana_version, SolanaResolution, SolanaResolutionSource},
+        AVM_HOME, DOWNLOAD_CLIENT,
+    },
+    anyhow::{anyhow, bail, Context, Result},
     semver::Version,
     serde::Deserialize,
-    std::{path::Path, sync::LazyLock},
+    std::{
+        fs,
+        path::{Path, PathBuf},
+        process::{Command, Stdio},
+        sync::LazyLock,
+    },
 };
 
 const PLATFORM_TOOLS_MAP_TOML: &str = include_str!("../platform-tools-map.toml");
@@ -184,6 +196,225 @@ pub fn fallback_version() -> &'static str {
     &MAP.fallback
 }
 
+// ── Install / storage ────────────────────────────────────────────────────────
+
+/// `$AVM_HOME/platform-tools` — root of installed platform-tools.
+pub fn get_platform_tools_dir_path() -> PathBuf {
+    AVM_HOME.join("platform-tools")
+}
+
+/// Path where the given platform-tools `version` (e.g. `"v1.54"`) is installed.
+pub fn platform_tools_version_path(version: &str) -> PathBuf {
+    get_platform_tools_dir_path().join(version)
+}
+
+/// List installed platform-tools versions, lexicographically ordered.
+pub fn read_installed_platform_tools() -> Result<Vec<String>> {
+    let dir = get_platform_tools_dir_path();
+    if !dir.exists() {
+        return Ok(vec![]);
+    }
+    let mut out: Vec<String> = fs::read_dir(&dir)
+        .with_context(|| format!("Reading {}", dir.display()))?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        .filter_map(|e| e.file_name().into_string().ok())
+        .filter(|n| n.starts_with('v'))
+        .collect();
+    out.sort();
+    Ok(out)
+}
+
+/// Asset file name to download from anza-xyz/platform-tools releases for the
+/// current host (e.g. `"platform-tools-linux-x86_64.tar.bz2"`).
+pub fn host_asset_name() -> &'static str {
+    // Mirrors cargo-build-sbf's naming. The four supported combinations are
+    // baked in so a misconfigured host fails to compile instead of trying to
+    // download a non-existent asset at runtime.
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        "platform-tools-linux-x86_64.tar.bz2"
+    }
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        "platform-tools-linux-aarch64.tar.bz2"
+    }
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    {
+        "platform-tools-osx-x86_64.tar.bz2"
+    }
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        "platform-tools-osx-aarch64.tar.bz2"
+    }
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    {
+        "platform-tools-windows-x86_64.tar.bz2"
+    }
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    {
+        "platform-tools-windows-aarch64.tar.bz2"
+    }
+}
+
+/// Full download URL for a given platform-tools version on the host target.
+pub fn download_url(version: &str) -> String {
+    let version = if version.starts_with('v') {
+        version.to_string()
+    } else {
+        format!("v{version}")
+    };
+    format!(
+        "https://github.com/anza-xyz/platform-tools/releases/download/{version}/{}",
+        host_asset_name()
+    )
+}
+
+/// Download and extract platform-tools `version` into `$AVM_HOME/platform-tools/<version>/`.
+///
+/// When `force` is false and the target directory already exists with a
+/// non-empty `rust/` subdirectory (the expected payload), the install is a
+/// no-op. The download is staged in a `.partial` directory next to the target
+/// and atomically renamed on success so a failed install never leaves a
+/// half-populated directory at the canonical path.
+pub fn install_platform_tools(version: &str, force: bool) -> Result<()> {
+    let version = if version.starts_with('v') {
+        version.to_string()
+    } else {
+        format!("v{version}")
+    };
+    let target = platform_tools_version_path(&version);
+    if !force && looks_installed(&target) {
+        println!(
+            "platform-tools {version} is already installed at {}",
+            target.display()
+        );
+        return Ok(());
+    }
+    if target.exists() {
+        fs::remove_dir_all(&target)
+            .with_context(|| format!("Removing existing {}", target.display()))?;
+    }
+
+    let parent = target.parent().expect("platform-tools path has parent");
+    fs::create_dir_all(parent).with_context(|| format!("Creating {}", parent.display()))?;
+
+    // Stage download + extract in a sibling directory.
+    let staging = parent.join(format!("{version}.partial"));
+    if staging.exists() {
+        fs::remove_dir_all(&staging)
+            .with_context(|| format!("Cleaning up stale {}", staging.display()))?;
+    }
+    fs::create_dir_all(&staging).with_context(|| format!("Creating {}", staging.display()))?;
+
+    // Cleanup on any error from here on.
+    let result = (|| -> Result<()> {
+        let url = download_url(&version);
+        let archive_path = staging.join(host_asset_name());
+        println!("Downloading {url}");
+        download_to(&url, &archive_path)?;
+
+        println!("Extracting {}", archive_path.display());
+        extract_tar_bz2(&archive_path, &staging)?;
+
+        // Remove the archive so it doesn't end up in the final install dir.
+        let _ = fs::remove_file(&archive_path);
+
+        // Sanity check the extracted payload.
+        if !looks_installed(&staging) {
+            bail!(
+                "Extracted archive does not look like a platform-tools install (no `rust/` \
+                 subdirectory under {}). Re-run with --force after checking the upstream release.",
+                staging.display()
+            );
+        }
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => {
+            fs::rename(&staging, &target).with_context(|| {
+                format!("Renaming {} → {}", staging.display(), target.display())
+            })?;
+            println!("Installed platform-tools {version} to {}", target.display());
+            Ok(())
+        }
+        Err(e) => {
+            let _ = fs::remove_dir_all(&staging);
+            Err(e)
+        }
+    }
+}
+
+/// Remove an installed platform-tools version.
+pub fn uninstall_platform_tools(version: &str) -> Result<()> {
+    let version = if version.starts_with('v') {
+        version.to_string()
+    } else {
+        format!("v{version}")
+    };
+    let target = platform_tools_version_path(&version);
+    if !target.exists() {
+        bail!(
+            "platform-tools {version} is not installed at {}",
+            target.display()
+        );
+    }
+    fs::remove_dir_all(&target).with_context(|| format!("Removing {}", target.display()))?;
+    println!("Uninstalled platform-tools {version}");
+    Ok(())
+}
+
+/// Heuristic: an install is "real" when it contains a non-empty `rust/`
+/// subdirectory — the canonical layout of the platform-tools archive.
+fn looks_installed(dir: &Path) -> bool {
+    let rust_dir = dir.join("rust");
+    rust_dir.is_dir()
+        && fs::read_dir(&rust_dir)
+            .map(|mut it| it.next().is_some())
+            .unwrap_or(false)
+}
+
+fn download_to(url: &str, dest: &Path) -> Result<()> {
+    let mut response = DOWNLOAD_CLIENT
+        .get(url)
+        .send()
+        .with_context(|| format!("Sending GET {url}"))?;
+    if !response.status().is_success() {
+        bail!("Failed to download `{url}` (status {})", response.status());
+    }
+    let mut file =
+        fs::File::create(dest).with_context(|| format!("Creating {}", dest.display()))?;
+    response
+        .copy_to(&mut file)
+        .with_context(|| format!("Writing {}", dest.display()))?;
+    Ok(())
+}
+
+/// Extract a `.tar.bz2` into `dest_dir` by shelling out to `tar`.
+///
+/// Using the system `tar` avoids adding a native `libbz2` dependency. `tar` is
+/// available out of the box on Linux, macOS, and modern Windows (10+).
+fn extract_tar_bz2(archive: &Path, dest_dir: &Path) -> Result<()> {
+    let status = Command::new("tar")
+        .arg("-xjf")
+        .arg(archive)
+        .arg("-C")
+        .arg(dest_dir)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .context("Spawning `tar`")?;
+    if !status.success() {
+        bail!(
+            "`tar -xjf {} -C {}` exited with status {status}",
+            archive.display(),
+            dest_dir.display()
+        );
+    }
+    Ok(())
+}
+
 /// Force the map to parse at startup, surfacing any embedded-data bugs as a
 /// clear error instead of a panic in a random first user.
 pub fn validate_embedded_map() -> Result<()> {
@@ -303,5 +534,49 @@ mod tests {
     #[test]
     fn known_transition_4_0_0_to_v1_54() {
         assert_eq!(lookup_for_solana_version(&v("4.0.0")).unwrap(), "v1.54");
+    }
+
+    // ── URL + asset naming ──────────────────────────────────────────────────
+
+    #[test]
+    fn host_asset_name_uses_supported_combo() {
+        let name = host_asset_name();
+        assert!(name.starts_with("platform-tools-"));
+        assert!(name.ends_with(".tar.bz2"));
+        let middle = name
+            .trim_start_matches("platform-tools-")
+            .trim_end_matches(".tar.bz2");
+        let (os, arch) = middle.split_once('-').expect("os-arch");
+        assert!(matches!(os, "linux" | "osx" | "windows"));
+        assert!(matches!(arch, "x86_64" | "aarch64"));
+    }
+
+    #[test]
+    fn download_url_prepends_v_when_missing() {
+        let with_v = download_url("v1.54");
+        let without_v = download_url("1.54");
+        assert_eq!(with_v, without_v);
+        assert!(with_v.contains("/releases/download/v1.54/"));
+    }
+
+    #[test]
+    fn download_url_targets_anza_platform_tools() {
+        let url = download_url("v1.54");
+        assert!(url.starts_with("https://github.com/anza-xyz/platform-tools/releases/download/"));
+        assert!(url.ends_with(host_asset_name()));
+    }
+
+    // ── looks_installed ─────────────────────────────────────────────────────
+
+    #[test]
+    fn looks_installed_requires_nonempty_rust_dir() {
+        let dir = tempfile::TempDir::new().unwrap();
+        assert!(!looks_installed(dir.path()));
+
+        std::fs::create_dir_all(dir.path().join("rust")).unwrap();
+        assert!(!looks_installed(dir.path()), "empty rust/ should not count");
+
+        std::fs::write(dir.path().join("rust/marker"), b"").unwrap();
+        assert!(looks_installed(dir.path()));
     }
 }
