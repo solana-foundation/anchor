@@ -72,8 +72,9 @@ pub mod custom_constraints {
     }
 
     /// `TestAccount` declares `min_value` as required. This
-    /// handler attaches it and compiles. The corresponding compile-fail
-    /// case lives under `tests/ui_required_constraints/`.
+    /// handler attaches it and compiles. The compile-fail counterpart
+    /// lives as a `compile_fail` doctest on
+    /// `anchor_lang_v2::IsSuperset`.
     pub fn handle_required(_ctx: &mut Context<HandleRequired>) -> Result<()> {
         Ok(())
     }

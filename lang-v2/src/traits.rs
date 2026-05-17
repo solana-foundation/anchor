@@ -520,6 +520,46 @@ impl<C, H, T, Idx> Find<C, There<Idx>> for (H, T) where T: Find<C, Idx> {}
 
 /// `Self` (the provided cons-list) contains every element of `Required`.
 /// `Indices` records the path-into-`Self` for each `Required` element.
+///
+/// # Examples
+///
+/// Provided contains required → resolves:
+/// ```
+/// use anchor_lang_v2::{Find, Here, IsSuperset, There};
+///
+/// struct A;
+/// struct B;
+/// struct C;
+///
+/// fn assert<P, R, I>() where P: IsSuperset<R, I> {}
+///
+/// // (A, (B, (C, ()))) ⊇ (B, (A, ()))
+/// assert::<(A, (B, (C, ()))), (B, (A, ())), _>();
+/// // Empty required: any provided list works.
+/// assert::<(), (), _>();
+/// assert::<(A, ()), (), _>();
+/// ```
+///
+/// Missing required → fails to compile:
+/// ```compile_fail
+/// use anchor_lang_v2::IsSuperset;
+/// struct A;
+/// struct B;
+/// fn assert<P, R, I>() where P: IsSuperset<R, I> {}
+/// // (A, ()) does NOT contain B
+/// assert::<(A, ()), (B, ()), _>();
+/// ```
+///
+/// Partial coverage (one of two missing) → fails to compile:
+/// ```compile_fail
+/// use anchor_lang_v2::IsSuperset;
+/// struct A;
+/// struct B;
+/// struct C;
+/// fn assert<P, R, I>() where P: IsSuperset<R, I> {}
+/// // (A, ()) provides A but not B
+/// assert::<(A, ()), (A, (B, ())), _>();
+/// ```
 pub trait IsSuperset<Required, Indices> {}
 impl<P> IsSuperset<(), ()> for P {}
 impl<P, H, T, Idx, Rest> IsSuperset<(H, T), (Idx, Rest)> for P where
