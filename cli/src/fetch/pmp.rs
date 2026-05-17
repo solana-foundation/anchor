@@ -463,9 +463,15 @@ fn reconstruct_prior_writes(
 ) -> std::result::Result<PriorWriteReconstruction, PmpFetchError> {
     // Reuse the shared account-signature pagination so slot filtering semantics stay aligned
     // across legacy and PMP historical fetch paths.
-    let mut eligible =
-        fetch_signatures_for_address(client, account_address, None, None, Some(before_or_at_slot))
-            .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?
+    let mut eligible = fetch_signatures_for_address(
+        client,
+        account_address,
+        None,
+        None,
+        Some(before_or_at_slot),
+        tuning.max_signatures,
+    )
+    .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?
             .into_iter()
             .map(|status| {
                 let signature = Signature::from_str(&status.signature)

@@ -50,6 +50,7 @@ pub(super) fn fetch_idl_signatures(
     before_timestamp: Option<i64>,
     after_timestamp: Option<i64>,
     target_slot: Option<u64>,
+    max_signatures: usize,
 ) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     let program_signer = Pubkey::find_program_address(&[], address).0;
     let idl_account_address = Pubkey::create_with_seed(&program_signer, "anchor:idl", address)
@@ -60,6 +61,7 @@ pub(super) fn fetch_idl_signatures(
         before_timestamp,
         after_timestamp,
         target_slot,
+        max_signatures,
     )
 }
 
@@ -71,6 +73,7 @@ pub(super) fn fetch_pmp_idl_signatures(
     before_timestamp: Option<i64>,
     after_timestamp: Option<i64>,
     target_slot: Option<u64>,
+    max_signatures: usize,
 ) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     let metadata_address = pmp_metadata_address(program_id, authority);
     fetch_signatures_for_address(
@@ -79,19 +82,27 @@ pub(super) fn fetch_pmp_idl_signatures(
         before_timestamp,
         after_timestamp,
         target_slot,
+        max_signatures,
     )
 }
 
 // Paginates signatures for any account address without applying IDL-account-specific derivation.
+//
+// `max_signatures` is a hard cap on collected results. Pagination stops once the cap is reached
+// and a warning is printed so the caller knows older history may have been truncated. The cap
+// must be greater than zero; passing `0` returns an empty result rather than meaning
+// "unbounded".
 pub(super) fn fetch_signatures_for_address(
     client: &RpcClient,
     address: &Pubkey,
     before_timestamp: Option<i64>,
     after_timestamp: Option<i64>,
     target_slot: Option<u64>,
+    max_signatures: usize,
 ) -> Result<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     let mut signatures = Vec::new();
     let mut cursor: Option<Signature> = None;
+    let mut cap_reached = false;
 
     // Mirror the legacy pagination behavior so date/slot filtering stays consistent across both
     // history sources before they are merged.
@@ -133,7 +144,16 @@ pub(super) fn fetch_signatures_for_address(
                     continue;
                 }
             }
+            if signatures.len() >= max_signatures {
+                cap_reached = true;
+                break;
+            }
             signatures.push(sig);
+        }
+
+        // Stop paginating once the user-configured signature cap has been hit
+        if cap_reached {
+            break;
         }
 
         // For slot-based historical fetches we still need to keep paginating after crossing the
@@ -146,6 +166,14 @@ pub(super) fn fetch_signatures_for_address(
             Some(sig) => cursor = Some(sig),
             None => break,
         }
+    }
+
+    if cap_reached {
+        eprintln!(
+            "warning: reached --max-signatures cap of {} for account {}; older history was not \
+             scanned. Pass a higher --max-signatures to fetch more.",
+            max_signatures, address
+        );
     }
 
     Ok(signatures)

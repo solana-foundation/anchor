@@ -737,6 +737,9 @@ pub enum IdlCommand {
         /// Base backoff in milliseconds between retries (doubled each attempt).
         #[clap(long, default_value_t = 500)]
         rpc_retry_backoff_ms: u64,
+        /// Hard cap on signatures fetched per history source.
+        #[clap(long, default_value_t = 1000)]
+        max_signatures: usize,
         /// Print diagnostic progress messages.
         #[clap(long)]
         verbose: bool,
@@ -2587,6 +2590,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
             no_parallel,
             rpc_max_retries,
             rpc_retry_backoff_ms,
+            max_signatures,
             verbose,
         } => fetch::idl_fetch_historical(
             cfg_override,
@@ -2601,6 +2605,7 @@ fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
                 no_parallel,
                 max_retries: rpc_max_retries,
                 retry_backoff_ms: rpc_retry_backoff_ms,
+                max_signatures,
                 verbose,
             },
         ),

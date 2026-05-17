@@ -32,6 +32,9 @@ use self::{
 const DEFAULT_MAX_RETRIES: u32 = 5;
 const DEFAULT_RETRY_BACKOFF_MS: u64 = 500;
 const PROGRESS_TICK_INTERVAL_MS: u64 = 80;
+// Default cap on signatures pulled per history source so pagination cannot accumulate an
+// unbounded `Vec` against a program with deep history.
+const DEFAULT_MAX_SIGNATURES: usize = 1000;
 
 // Shared safety bound for any historical-IDL buffer the fetcher allocates, whether reassembling
 // compressed PMP buffer writes or holding a decompressed legacy/PMP stream. Real anchor IDL JSON
@@ -54,6 +57,7 @@ pub struct FetchTuning {
     pub no_parallel: bool,
     pub max_retries: u32,
     pub retry_backoff_ms: u64,
+    pub max_signatures: usize,
     pub verbose: bool,
 }
 
@@ -64,6 +68,7 @@ impl Default for FetchTuning {
             no_parallel: false,
             max_retries: DEFAULT_MAX_RETRIES,
             retry_backoff_ms: DEFAULT_RETRY_BACKOFF_MS,
+            max_signatures: DEFAULT_MAX_SIGNATURES,
             verbose: false,
         }
     }
@@ -255,7 +260,14 @@ pub fn idl_fetch_historical(
     };
 
     let legacy_signatures = if authority.is_none() {
-        fetch_idl_signatures(&client, &address, filter_before, filter_after, slot)?
+        fetch_idl_signatures(
+            &client,
+            &address,
+            filter_before,
+            filter_after,
+            slot,
+            tuning.max_signatures,
+        )?
     } else {
         Vec::new()
     };
@@ -266,6 +278,7 @@ pub fn idl_fetch_historical(
         filter_before,
         filter_after,
         slot,
+        tuning.max_signatures,
     )?;
 
     if legacy_signatures.is_empty() && pmp_signatures.is_empty() {
