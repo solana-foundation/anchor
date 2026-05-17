@@ -243,6 +243,11 @@ pub fn idl_fetch_historical(
     let client = create_rpc_client(cfg_override)?;
     let fetcher = IdlFetcher::new(&client, tuning);
 
+    // Validate the target slot before paginating signatures
+    if let Some(target_slot) = slot {
+        fetcher.validate_slot(target_slot)?;
+    }
+
     let (filter_before, filter_after) = if slot.is_some() {
         (None, None)
     } else {
@@ -280,10 +285,6 @@ pub fn idl_fetch_historical(
             legacy_signatures.len(),
             pmp_signatures.len()
         );
-    }
-
-    if let Some(target_slot) = slot {
-        fetcher.validate_slot(target_slot)?;
     }
 
     // An explicit authority means "only inspect that authority-scoped PMP metadata account".
