@@ -33,6 +33,11 @@ const DEFAULT_MAX_RETRIES: u32 = 5;
 const DEFAULT_RETRY_BACKOFF_MS: u64 = 500;
 const PROGRESS_TICK_INTERVAL_MS: u64 = 80;
 
+// Shared safety bound for any historical-IDL buffer the fetcher allocates, whether reassembling
+// compressed PMP buffer writes or holding a decompressed legacy/PMP stream. Real anchor IDL JSON
+// stays well under this limit; anything larger is rejected as malicious or corrupt.
+pub(super) const MAX_IDL_BUFFER_BYTES: usize = 16 * 1024 * 1024;
+
 type ChunkData = Vec<u8>;
 type SlotChunk = (u64, String, ChunkData);
 type SessionChunks = Vec<SlotChunk>;

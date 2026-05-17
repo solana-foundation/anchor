@@ -2,6 +2,7 @@ use {
     super::{
         parallel::{historical_fetch_worker_count, should_parallelize_historical_fetch},
         rpc::{fetch_signatures_for_address, fetch_transaction},
+        MAX_IDL_BUFFER_BYTES,
     },
     crate::fetch::FetchTuning,
     anyhow::{anyhow, bail, Context, Result},
@@ -26,7 +27,6 @@ const METADATA_SEED_PADDING: usize = 14;
 
 // Buffer accounts include a fixed header before the staged metadata payload bytes begin.
 const PMP_BUFFER_HEADER_SIZE: usize = 1 + 32 + 32 + 1 + SEED_SIZE + METADATA_SEED_PADDING;
-const MAX_RECONSTRUCTED_BUFFER_BYTES: usize = 16 * 1024 * 1024;
 
 // Mirrors the Program Metadata instruction discriminators so historical fetch can decode the raw
 // compiled instructions it replays from transaction history.
@@ -493,10 +493,10 @@ fn apply_buffer_writes_to_bytes(buffer_writes: Vec<BufferWrite>) -> Result<Vec<u
     if highest_end == 0 {
         bail!("did not contain any recoverable PMP buffer write");
     }
-    if highest_end > MAX_RECONSTRUCTED_BUFFER_BYTES {
+    if highest_end > MAX_IDL_BUFFER_BYTES {
         bail!(
             "reconstructed PMP buffer exceeds safety limit of {} bytes",
-            MAX_RECONSTRUCTED_BUFFER_BYTES
+            MAX_IDL_BUFFER_BYTES
         );
     }
 
@@ -929,21 +929,35 @@ fn decompress_metadata_data(
         MetadataCompression::None => Ok(bytes.to_vec()),
         MetadataCompression::Gzip => {
             let mut decoder = GzDecoder::new(bytes);
-            let mut out = Vec::new();
-            decoder
-                .read_to_end(&mut out)
-                .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?;
-            Ok(out)
+            read_bounded_decompressed(&mut decoder)
         }
         MetadataCompression::Zlib => {
             let mut decoder = ZlibDecoder::new(bytes);
-            let mut out = Vec::new();
-            decoder
-                .read_to_end(&mut out)
-                .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?;
-            Ok(out)
+            read_bounded_decompressed(&mut decoder)
         }
     }
+}
+
+// Reads the decoder output capped at `MAX_IDL_BUFFER_BYTES`. The decoder is consumed
+// through `Read::take` so a bomb cannot expand past the bound, and exceeding it surfaces as
+// `invalid_transaction` rather than an unbounded allocation.
+fn read_bounded_decompressed<R: Read>(
+    decoder: &mut R,
+) -> std::result::Result<Vec<u8>, PmpFetchError> {
+    let mut out = Vec::new();
+    // Read one byte past the cap so that hitting `MAX + 1` definitively signals overflow rather
+    // than a payload that legitimately ends on the boundary.
+    decoder
+        .take(MAX_IDL_BUFFER_BYTES as u64 + 1)
+        .read_to_end(&mut out)
+        .map_err(|err| PmpFetchError::invalid_transaction(err.to_string()))?;
+    if out.len() > MAX_IDL_BUFFER_BYTES {
+        return Err(PmpFetchError::invalid_transaction(format!(
+            "decompressed PMP metadata exceeds safety limit of {} bytes",
+            MAX_IDL_BUFFER_BYTES
+        )));
+    }
+    Ok(out)
 }
 
 // Decodes hexadecimal metadata payloads used when PMP encoding is `None`.
