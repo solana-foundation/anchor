@@ -1,0 +1,280 @@
+@reference './global.css';
+
+@layer base {
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply wrap-break-word;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply text-balance;
+  }
+
+  p {
+    @apply text-pretty;
+  }
+}
+
+@layer utilities {
+  .prose {
+    @apply text-foreground text-base leading-6.5;
+
+    :first-child:not(:where(.not-prose, .not-prose *)) {
+      @apply mt-0;
+    }
+
+    :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground scroll-mt-32 font-medium xl:scroll-mt-[calc(var(--docs-announcement-offset,0)+4rem-4px)];
+    }
+
+    /* Don't use an <h1> in your posts, one is already generated in blog/[...id].astro */
+    :where(h1):not(:where(.not-prose, .not-prose *)) {
+      @apply mt-8 mb-6 text-4xl;
+    }
+
+    :where(h2):not(:where(.not-prose, .not-prose *)) {
+      @apply mt-8 mb-4 text-2xl;
+    }
+
+    :where(h3):not(:where(.not-prose, .not-prose *)) {
+      @apply mt-8 mb-4 text-xl;
+    }
+
+    :where(h4):not(:where(.not-prose, .not-prose *)) {
+      @apply mt-7 mb-3 text-lg;
+    }
+
+    :where(h5, h6):not(:where(.not-prose, .not-prose *)) {
+      @apply mt-5 mb-3;
+    }
+
+    :where(a.heading-anchor):not(:where(.not-prose, .not-prose *)) {
+      @apply text-muted-foreground/40 hover:text-foreground ml-2 inline-block no-underline opacity-0 transition-opacity;
+    }
+
+    :where(h2, h3, h4, h5, h6):hover a.heading-anchor,
+    a.heading-anchor:focus-visible {
+      @apply opacity-100;
+    }
+
+    :where(p):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground/80 my-5;
+    }
+
+    :where(strong):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground font-medium;
+    }
+
+    :where(a):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground decoration-muted-foreground hover:decoration-foreground font-medium wrap-break-word underline underline-offset-[3px] transition-colors;
+    }
+
+    :where(ul):not(:where(.not-prose, .not-prose *)) {
+      @apply marker:text-foreground/30 my-5 ml-6 list-disc [&>li]:mt-2;
+    }
+
+    :where(ol):not(:where(.not-prose, .not-prose *)) {
+      @apply marker:text-foreground/30 my-5 ml-6 list-decimal [&>li]:mt-2;
+      @apply [[type='A']]:list-[upper-alpha] [[type='I']]:list-[upper-roman] [[type='a']]:list-[lower-alpha] [[type='i']]:list-[lower-roman];
+    }
+
+    :where(li):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground/80 pl-2 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0;
+    }
+
+    :where(ul ul, ol ol, ul ol, ol ul):not(:where(.not-prose, .not-prose *)) {
+      @apply marker:text-foreground/30 my-2 ml-6;
+    }
+
+    :where(code):not(:where(.not-prose, .not-prose *)) {
+      @apply code-pill bg-muted/50 text-foreground text-sm font-medium wrap-break-word;
+    }
+
+    :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
+      @apply code-pill bg-muted/50! text-foreground text-sm font-medium wrap-break-word;
+    }
+
+    :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) code {
+      @apply text-[1em];
+    }
+
+    :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) .shiki {
+      @apply text-[0.875em] leading-[inherit];
+    }
+
+    .shiki code {
+      @apply code-pill-inner;
+    }
+
+    :where(a) :where(code):not(:where(.not-prose, .not-prose *)),
+    :where(a) :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
+      @apply underline decoration-muted-foreground underline-offset-[3px] transition-colors;
+    }
+
+    :where(a:hover) :where(code):not(:where(.not-prose, .not-prose *)),
+    :where(a:hover) :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
+      @apply decoration-foreground;
+    }
+
+    :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
+      @apply shiki-tokens;
+    }
+
+    :where(.inline-shell-cmd):not(:where(.not-prose, .not-prose *)) {
+      @apply code-pill bg-muted/50 text-foreground font-mono cursor-pointer text-sm font-medium transition-colors border-0;
+    }
+
+    :where(.inline-shell-cmd):hover:not(:where(.not-prose, .not-prose *)) {
+      @apply bg-muted;
+    }
+
+    :where(.inline-shell-cmd):focus-visible:not(:where(.not-prose, .not-prose *)) {
+      @apply outline-ring outline-2 outline-offset-2;
+    }
+
+    .inline-shell-cmd[data-long-pill='true']:not(.not-prose):not(.not-prose *) {
+      @apply wrap-anywhere;
+    }
+
+    .inline-shell-cmd[data-long-pill='true'] code {
+      @apply inline wrap-anywhere;
+    }
+
+    .inline-shell-cmd code {
+      @apply code-pill-inner text-inherit;
+    }
+
+    :where(.inline-shell-cmd span):not(.shell-prompt):not(:where(.not-prose, .not-prose *)) {
+      @apply shiki-tokens;
+    }
+
+    :where(.inline-shell-cmd .shell-prompt):not(:where(.not-prose, .not-prose *)) {
+      @apply text-accent font-bold select-none transition-colors mr-[1ch];
+    }
+
+    :where(.inline-shell-cmd.copied .shell-prompt):not(:where(.not-prose, .not-prose *)) {
+      @apply text-(--ctp-green);
+    }
+
+    :where(.inline-path-icon):not(:where(.not-prose, .not-prose *)) {
+      @apply inline-block w-[0.95em] h-[0.95em] mr-[0.4ch] align-[-0.15em] text-muted-foreground shrink-0;
+    }
+
+    :where(.path-placeholder):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground/50;
+    }
+
+    :where(blockquote):not(:where(.not-prose, .not-prose *)) {
+      @apply **:text-muted-foreground small my-6 border-l-2 pl-6;
+    }
+
+    :where(hr):not(:where(.not-prose, .not-prose *)) {
+      @apply my-8 border-t;
+    }
+
+    :where(.table-wrapper):not(:where(.not-prose, .not-prose *)) {
+      @apply my-6 overflow-x-auto;
+    }
+
+    :where(table):not(:where(.not-prose, .not-prose *)) {
+      @apply w-full text-sm;
+    }
+
+    :where(.table-wrapper table):not(:where(.not-prose, .not-prose *)) {
+      @apply my-0;
+    }
+
+    :where(thead):not(:where(.not-prose, .not-prose *)) {
+      @apply border-muted-foreground/30 border-b;
+    }
+
+    :where(tr):not(:where(.not-prose, .not-prose *)) {
+      @apply border-muted-foreground/30 border-y first:border-t-0 last:border-b-0;
+    }
+
+    :where(th):not(:where(.not-prose, .not-prose *)) {
+      @apply px-4 py-2 font-medium max-xl:whitespace-nowrap text-left [[align=center]]:text-center [[align=right]]:text-right;
+    }
+
+    :where(td):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground/80 small px-4 py-2 align-top wrap-break-word *:first:mt-0! *:last:mb-0! max-xl:whitespace-nowrap text-left [[align=center]]:text-center [[align=right]]:text-right;
+    }
+
+    :where(img, video, figure, .expressive-code):not(:where(.not-prose, .not-prose *)) {
+      @apply mx-auto my-6 max-w-full;
+    }
+
+    :where(img, video):not(:where(.not-prose, .not-prose *)) {
+      @apply block h-auto;
+    }
+
+    :where(pre):not(:where(.not-prose, .not-prose *)) {
+      @apply max-h-[min(68vh,1000px)]! overflow-y-auto [&::-webkit-scrollbar-corner]:hidden;
+    }
+
+    :where(summary):not(:where(.not-prose, .not-prose *)) {
+      @apply [&~*]:small [&~*>*]:first:mt-0! [&~*>*]:last:mb-0!;
+    }
+
+    :where(kbd):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground bg-muted rounded-md border px-2 py-1 text-xs font-medium;
+    }
+
+    :where(.katex-display):not(:where(.not-prose, .not-prose *)) {
+      @apply text-foreground/80 my-6 overflow-x-auto overflow-y-hidden py-2 tracking-normal;
+    }
+  }
+}
+
+@utility small {
+  @apply text-sm leading-6;
+
+  code,
+  .inline-shell-cmd {
+    @apply text-xs px-[0.25rem] py-[0.1rem];
+  }
+
+  .shiki {
+    @apply text-xs px-[0.15rem] py-[0.125rem];
+  }
+
+  :is(img, video, figure, details, blockquote, .katex-display, .expressive-code) {
+    @apply my-4!;
+  }
+
+  li,
+  ol {
+    @apply mt-0;
+  }
+
+  p {
+    @apply my-2!;
+  }
+
+  ul {
+    @apply my-0;
+  }
+}
+
+@utility code-pill {
+  @apply relative rounded-sm px-[0.3rem] py-[0.15rem] align-baseline leading-[1.2] [-webkit-box-decoration-break:clone] [box-decoration-break:clone];
+}
+
+@utility code-pill-inner {
+  @apply bg-transparent! p-0 rounded-none;
+}
+
+@utility shiki-tokens {
+  @apply [font-style:var(--shiki-light-font-style)] font-(--shiki-light-font-weight) [text-decoration:var(--shiki-light-text-decoration)];
+  @apply dark:[font-style:var(--shiki-dark-font-style)] dark:font-(--shiki-dark-font-weight) dark:[text-decoration:var(--shiki-dark-text-decoration)] dark:text-(--shiki-dark)!;
+}

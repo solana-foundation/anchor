@@ -1,0 +1,50 @@
+---
+title: Events
+description: "Emit program events with `wincode{:rs}` or `bytemuck{:rs}` encoding."
+---
+
+Events are structured log records emitted by a program. Clients and indexers can read them from transaction logs instead of trying to infer every state change from account data.
+
+Events are declared with `#[event]{:rs}` and emitted with `emit!{:rs}`. The default encoder is wincode configured to match borsh wire layout for Anchor-supported shapes.
+
+## Default events
+
+Use default events when the payload includes variable-length fields:
+
+```rust showLineNumbers=false
+#[event]
+pub struct OrderFilled {
+    pub maker: Address,
+    pub taker: Address,
+    pub size: u64,
+    pub memo: String,
+}
+
+emit!(OrderFilled {
+    maker: *ctx.accounts.maker.address(),
+    taker: *ctx.accounts.taker.address(),
+    size,
+    memo,
+});
+```
+
+The default encoding supports `Vec{:rs}`, `String{:rs}`, `Option{:rs}`, and enums while staying cheaper than borsh on SBF.
+
+## Bytemuck events
+
+When every field is fixed-size and Pod-compatible, use `#[event(bytemuck)]{:rs}`:
+
+```rust showLineNumbers=false
+#[event(bytemuck)]
+#[repr(C)]
+pub struct PriceUpdate {
+    pub price: PodU64,
+    pub slot: PodU64,
+}
+```
+
+This emits the discriminator and then copies the body bytes directly. It is the cheapest event path, but it is only correct for fixed-size Pod payloads.
+
+## Choosing an event form
+
+Use default `#[event]{:rs}` when you need expressive Rust data. Use `#[event(bytemuck)]{:rs}` when the event is a compact telemetry record with stable fixed-size fields.

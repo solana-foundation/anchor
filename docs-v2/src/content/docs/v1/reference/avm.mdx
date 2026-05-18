@@ -1,0 +1,91 @@
+---
+title: Anchor version manager
+description: Manage multiple installations of the anchor-cli binary.
+---
+
+Anchor Version Manager (`$ [34mavm[0m{:ansi}`) manages multiple installations of the `anchor-cli` binary. Use it to switch between versions for verifiable builds or to work with an alternate release:
+
+```ansi
+$ [34mavm[0m [2m--help[0m
+Anchor version manager
+
+[1m[4mUsage:[0m [1mavm[0m <COMMAND>
+
+[1m[4mCommands:[0m
+  [1muse[0m          Use a specific version of Anchor
+  [1minstall[0m      Install a version of Anchor
+  [1muninstall[0m    Uninstall a version of Anchor
+  [1mlist[0m         List available versions of Anchor
+  [1mupdate[0m       Update to the latest Anchor version
+  [1mself-update[0m  Update avm itself to the latest version via cargo install
+  [1mcompletions[0m  Generate shell completions for AVM
+  [1mhelp[0m         Print this message or the help of the given subcommand(s)
+
+[1m[4mOptions:[0m
+  [1m-h[0m, [1m--help[0m     Print help
+  [1m-V[0m, [1m--version[0m  Print version
+```
+
+## `[34mavm[0m install{:ansi}`
+
+Install a version of `anchor-cli` with `$ [34mavm[0m install [2m<version-or-commit>[0m{:ansi}`. The version argument follows semver, or pass `latest` for the latest stable release and `latest-pre-release` for the latest pre-release:
+
+```ansi
+$ [34mavm[0m install latest
+$ [34mavm[0m install latest-pre-release
+```
+
+You can also install with the following arguments:
+
+| Argument example                                                  | Description                        |
+|-------------------------------------------------------------------|------------------------------------|
+| `$ [34mavm[0m install 1.0.0-rc.3{:ansi}`                                          | Install specific pre-release tag   |
+| `$ [34mavm[0m install 0.30.1-cfe82aa682138f7c6c58bf7a78f48f7d63e9e466{:ansi}`     | Install a `[2m<version>[0m{:ansi}`-`[2m<commit>[0m{:ansi}` pair      |
+| `$ [34mavm[0m install cfe82aa682138f7c6c58bf7a78f48f7d63e9e466{:ansi}`            | Install by full commit hash        |
+| `$ [34mavm[0m install cfe82aa{:ansi}`                                             | Install by short commit hash       |
+
+## `[34mavm[0m list{:ansi}`
+
+List installed and available versions with `$ [34mavm[0m list{:ansi}`. Pass `--pre-release` to include pre-release versions:
+
+```ansi
+[34mavm[0m list [2m--pre-release[0m
+```
+
+## `[34mavm[0m uninstall{:ansi}`
+
+Remove an installed version with `$ [34mavm[0m uninstall <version>{:ansi}`.
+
+## `[34mavm[0m update{:ansi}`
+
+Update to the latest stable version with `$ [34mavm[0m update{:ansi}`. Pass `[2m--pre-release[0m{:ansi}` to update to the latest pre-release instead:
+
+```ansi
+[34mavm[0m update [2m--pre-release[0m
+```
+
+## `[34mavm[0m use{:ansi}`
+
+Select an installed version with `$ [34mavm[0m use [2m<version>[0m{:ansi}`. The selected version remains active until the command runs again with a different argument. As with `$ [34mavm[0m install{:ansi}`, the version argument accepts `latest` or `latest-pre-release`:
+
+```ansi
+[34mavm[0m use latest
+[34mavm[0m use latest-pre-release
+```
+
+## `[34mavm[0m self-update{:ansi}`
+
+Update `$ [34mavm[0m{:ansi}` itself with `$ [34mavm[0m self-update{:ansi}`. By default this installs the latest stable release of `$ [34mavm[0m{:ansi}`.
+
+| Flag | Description |
+| --- | --- |
+| `[2m--pre-release[0m{:ansi}` | Update to the latest pre-release version instead of the latest stable |
+| `[2m--bleeding-edge[0m{:ansi}` | Build and install from the latest commit on the master branch (conflicts with `[2m--pre-release[0m{:ansi}`) |
+
+```ansi
+$ [34mavm[0m self-update
+$ [34mavm[0m self-update [2m--pre-release[0m
+$ [34mavm[0m self-update [2m--bleeding-edge[0m
+```
+
+`$ [34mavm[0m{:ansi}` also passively warns you when it detects that a newer version of itself is available.

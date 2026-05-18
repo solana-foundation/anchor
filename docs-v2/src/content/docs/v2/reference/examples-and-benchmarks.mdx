@@ -1,0 +1,131 @@
+---
+title: Examples and benchmarks
+description: Checked-in example programs, benchmark families, and current size and compute numbers.
+---
+
+Examples live in the repository rather than in a separate published examples package. The most important worked programs are under [`bench/programs/`](https://github.com/solana-foundation/anchor/tree/anchor-next/bench/programs).
+
+These examples serve two purposes:
+
+- They show complete Anchor programs in realistic shapes.
+- They provide repeatable benchmark fixtures for binary size and compute units.
+- They act as source material for docs because the examples compile with the current branch.
+
+If you are learning the framework, read `helloworld` first, then `vault`, then `multisig`. That path moves from one instruction, to PDA-owned state, to a larger program with multiple handlers and shared validation.
+
+## Benchmark programs
+
+| Program | Path | What it demonstrates |
+| --- | --- | --- |
+| `helloworld` | `bench/programs/helloworld/anchor-v2` | Minimal counter-style init path and baseline framework overhead. |
+| `vault` | `bench/programs/vault/anchor-v2` | SOL deposit and withdraw flows with PDA validation. |
+| `nested` | `bench/programs/nested/anchor-v2` | Shared account validation through `Nested<T>{:rs}`. |
+| `multisig` | `bench/programs/multisig/anchor-v2` | Multi-instruction SOL multisig with dynamic signer data. |
+| `prop-amm` | `bench/programs/prop-amm/anchor-v2` | Oracle feed with a small assembly fast path. |
+| `humidifi` | `bench/programs/humidifi/anchor-v2` | Standalone benchmark program checked in with a built artifact. |
+
+The benchmark harness lives in the `anchor-bench` crate under `bench/`. It builds each program, loads the resulting `.so` into LiteSVM, runs the relevant instruction cases, records binary sizes, and measures compute units from the executed transaction metadata.
+
+## Current headline numbers
+
+The current overview numbers are directional, not a stability guarantee. This version is alpha and exact values can move as codegen, pinocchio, and tooling change.
+
+| Program | Description | Binary | CU range | Bin down | CU down |
+| --- | --- | --- | --- | --- | --- |
+| `helloworld` | Single-instruction counter | 6.4 KB | 1,381 | 19x | 4.2x |
+| `prop-amm` | Oracle feed with asm fast path | 8.6 KB | 26-1,375 | 16x | 3.1-50x |
+| `vault` | Single-depositor SOL vault | 5.4 KB | 389-1,899 | 20x | 3.0-6.4x |
+| `nested` | Shared validation via `Nested<T>{:rs}` | 12.4 KB | 473-2,716 | 13x | 7.3-10x |
+| `multisig` | Four-instruction SOL multisig | 31 KB | 469-3,016 | 5.5x | 3.0-9.2x |
+
+`Binary` and `CU range` are from the current Anchor implementation in each family. `Bin down` and `CU down` compare against the older paired Anchor implementation used by the benchmark harness.
+
+## What each family compares
+
+The harness groups programs into families so the same instruction shape can be compared across implementations.
+
+| Family | Compared variants | Instruction cases |
+| --- | --- | --- |
+| `hello_world` | Anchor, older Anchor, Quasar, Pinocchio, Steel | `init` |
+| `vault` | Anchor, older Anchor, Quasar, Pinocchio, Steel | `deposit`, `withdraw` |
+| `nested` | Anchor and older Anchor | `initialize`, `increment`, `reset` |
+| `multisig` | Anchor and older Anchor | `create`, `deposit`, `set_label`, `execute_transfer` |
+| `prop_amm` | Anchor plus asm fast path and older Anchor | `initialize`, `update`, `rotate_authority` |
+
+The non-Anchor variants help calibrate the benchmark against lower-level frameworks. The Anchor rows are the rows used for the headline documentation table.
+
+## Running benchmarks
+
+From the repository root, run a specific benchmark integration test:
+
+```ansi showLineNumbers=false
+$ [34mcargo[0m test [2m-p[0m anchor-bench helloworld_end_to_end [2m--[0m [2m--nocapture[0m
+```
+
+Other benchmark tests are:
+
+```ansi showLineNumbers=false
+$ [34mcargo[0m test [2m-p[0m anchor-bench vault_end_to_end [2m--[0m [2m--nocapture[0m
+$ [34mcargo[0m test [2m-p[0m anchor-bench nested_end_to_end [2m--[0m [2m--nocapture[0m
+$ [34mcargo[0m test [2m-p[0m anchor-bench multisig_end_to_end [2m--[0m [2m--nocapture[0m
+$ [34mcargo[0m test [2m-p[0m anchor-bench prop_amm_end_to_end [2m--[0m [2m--nocapture[0m
+```
+
+Set `BENCH_SKIP_BUILD=1{:ansi}` in your shell to reuse existing `.so` artifacts:
+
+```ansi showLineNumbers=false
+$ BENCH_SKIP_BUILD=1 [34mcargo[0m test [2m-p[0m anchor-bench helloworld_end_to_end [2m--[0m [2m--nocapture[0m
+```
+
+Run the full benchmark test suite when updating all headline numbers:
+
+```ansi showLineNumbers=false
+$ [34mcargo[0m test [2m-p[0m anchor-bench [2m--tests[0m [2m--[0m [2m--nocapture[0m
+```
+
+## Reading benchmark output
+
+Each test asserts that every expected suite produced a nonzero binary size and a sane compute-unit measurement. With `--nocapture`, the tests also print comparison tables sorted by compute units.
+
+The output table includes:
+
+| Column | Meaning |
+| --- | --- |
+| `rank` | Position within the family for one instruction. |
+| `variant` | Human-readable implementation label. |
+| `bytes` | Size of the built deploy artifact. |
+| `CU` | Compute units consumed by the measured transaction. |
+| `vs best` | Difference from the lowest-CU variant in that table. |
+
+## How comparisons stay fair
+
+The paired programs are written to keep the business logic and addresses comparable:
+
+- Anchor variants share program IDs within each benchmark family.
+- PDA seeds are kept equivalent so bump differences do not skew results.
+- The harness measures the same instruction cases for each variant.
+- LiteSVM executes the transactions and reports compute units.
+- Binary size comes from the built deploy artifact.
+- The benchmark payer keypair is derived deterministically from a fixed label.
+
+The suite table in `bench/src/lib.rs` is the source of truth for program IDs, manifest paths, instruction names, and case builders.
+
+## Reading the examples
+
+Use the examples as source material for real Anchor code:
+
+| Example | Useful for |
+| --- | --- |
+| `helloworld/anchor-v2` | Minimal `#[program]{:rs}`, PDA init, generated Rust instruction builders. |
+| `vault/anchor-v2` | Lamport movement, PDA resolution, and comparison with lower-level implementations. |
+| `nested/anchor-v2` | Reusing validation logic across instructions with `Nested<T>{:rs}`. |
+| `multisig/anchor-v2` | Fixed-size state, `PodVec<T, MAX>{:rs}`, dynamic signer validation, and resolved account builders. |
+| `prop-amm/anchor-v2` | Performance-oriented program structure and custom fast paths. |
+
+For SPL token examples, also read `tests-v2/programs/spl/src/lib.rs`. That test program exercises `anchor-spl-v2` init constraints, CPI helpers, interface accounts, and Token-2022 extension readers.
+
+## Updating the docs
+
+When updating benchmark numbers, rerun the relevant `anchor-bench` tests and update both [Anchor overview](/docs/v2/) and this page together. The overview table is the summary. This page is the reference that explains where the examples live, how the measurements are produced, and how to reproduce them.
+
+Keep benchmark prose modest. The numbers are strong, but this version is still alpha, not audited, and not published on crates.io.

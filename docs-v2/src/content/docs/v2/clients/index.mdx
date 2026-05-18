@@ -1,0 +1,35 @@
+---
+title: Clients and IDL
+description: Build instructions from generated Rust account structs and the alpha IDL/TypeScript surface.
+autoCards: false
+---
+
+Clients are the code that builds instructions for your program. A client chooses the instruction, serializes the arguments, orders the accounts, signs the transaction, and sends it to a cluster or test VM.
+
+Anchor clients are built around the IDL and the generated helper structs emitted by the program crate. The Rust path is the most complete alpha path today because it has typed instruction structs, account-meta builders, resolved account helpers, and LiteSVM test integration.
+
+TypeScript support exists through the current IDL and the `@anchor-lang/core` scaffold. The stable v2 npm surface is not published yet. Treat TypeScript as an integration and inspection surface while the package is settling, and use Rust tests as the source of truth for exact instruction construction.
+
+For a new v2 program, start with Rust tests. Once the transaction shape is proven there, use the generated IDL and TypeScript type output for app integration.
+
+<CardGrid>
+
+<Card title="Rust" href="/docs/v2/clients/rust/">
+Use `InstructionData{:rs}`, `ToAccountMetas{:rs}`, full accounts structs, and `Resolved{:rs}` helpers in tests and Rust clients.
+</Card>
+
+<Card title="TypeScript" href="/docs/v2/clients/typescript/">
+Understand the current TypeScript package status and how to use generated IDLs.
+</Card>
+
+</CardGrid>
+
+## What to use today
+
+| Task | Recommended path |
+| --- | --- |
+| Integration tests | Rust tests with `anchor-v2-testing` and `anchor_v2_testing::svm(){:rs}`. |
+| Instruction construction | Generated `program::instruction::*{:rs}` and `program::accounts::*{:rs}` modules. |
+| PDA derivation | Generated `find_<account>_address(){:rs}` helpers or `Resolved{:rs}` account structs. |
+| Profiling and debugger | Rust tests that call `anchor_v2_testing::svm(){:rs}`. |
+| TypeScript integration | Generated IDL and TypeScript IDL type output, with alpha package caveats. |

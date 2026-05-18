@@ -1,0 +1,108 @@
+---
+import { cn } from '@/lib/utils'
+import Icon from '@/components/icon.astro'
+import { renderDescription } from '@/lib/render-description'
+
+const calloutConfig = {
+  note: { color: 'blue', icon: 'info-circle' },
+  tip: { color: 'green', icon: 'bulb' },
+  warning: { color: 'yellow', icon: 'alert-triangle' },
+  danger: { color: 'red', icon: 'shield-exclamation' },
+  important: { color: 'mauve', icon: 'message-circle-exclamation' },
+  definition: { color: 'mauve', icon: 'book' },
+  theorem: { color: 'teal', icon: 'circle-check' },
+  lemma: { color: 'sky', icon: 'puzzle' },
+  proof: { color: 'overlay-1', icon: 'square-check' },
+  corollary: { color: 'sapphire', icon: 'git-branch' },
+  proposition: { color: 'overlay-2', icon: 'file-text' },
+  axiom: { color: 'lavender', icon: 'anchor' },
+  conjecture: { color: 'pink', icon: 'help' },
+  notation: { color: 'overlay-2', icon: 'ballpen' },
+  remark: { color: 'overlay-1', icon: 'message-circle' },
+  intuition: { color: 'yellow', icon: 'bulb' },
+  recall: { color: 'sapphire', icon: 'rotate' },
+  explanation: { color: 'green', icon: 'help' },
+  example: { color: 'green', icon: 'code' },
+  exercise: { color: 'lavender', icon: 'barbell' },
+  problem: { color: 'peach', icon: 'alert-circle' },
+  answer: { color: 'teal', icon: 'check' },
+  solution: { color: 'green', icon: 'circle-check' },
+  summary: { color: 'sky', icon: 'list' },
+} as const
+
+const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
+
+interface Props {
+  title?: string
+  class?: string
+  variant?: keyof typeof calloutConfig
+  defaultOpen?: boolean
+}
+
+const {
+  title,
+  variant = 'note',
+  defaultOpen = true,
+  ...rest
+} = Astro.props as Props
+const { color, icon } = calloutConfig[variant]
+const renderedTitle = title ? await renderDescription(title) : null
+---
+
+<details
+  class={cn(
+    'relative my-6 border-l-4 border-l-(--callout-color) bg-transparent pl-4 py-3 text-sm',
+    '[&[open]>summary_svg:last-child]:rotate-180 [&[open]>summary]:mb-3',
+    rest.class,
+  )}
+  style={`--callout-color: var(--ctp-${color})`}
+  data-callout
+  {...rest}
+  open={defaultOpen}
+>
+  <summary class="flex cursor-pointer items-center font-medium [&::-webkit-details-marker]:hidden">
+    <Icon name={icon} class="mr-2 size-4 shrink-0 text-(--callout-color)" />
+    <span class="mr-2 font-medium text-(--callout-color)">
+      {capitalize(variant)}
+      {renderedTitle && (
+        <span class="font-normal opacity-70" set:html={` (${renderedTitle.html})`} />
+      )}
+    </span>
+    <Icon
+      name="chevron-down"
+      class="ml-auto h-4 w-4 shrink-0 text-(--callout-color) transition-transform duration-200"
+    />
+  </summary>
+  <div data-callout-body>
+    <slot />
+  </div>
+</details>
+
+<style>
+  @layer components {
+    summary code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      padding: 0.05em 0.3em;
+      border-radius: 0.25rem;
+      background: color-mix(in srgb, var(--callout-color) 12%, transparent);
+      color: var(--callout-color);
+    }
+    [data-callout-body] > :global(*:first-child) {
+      margin-top: 0 !important;
+    }
+    [data-callout-body] > :global(*:last-child),
+    [data-callout-body] > :global(*:last-child) > :global(*:last-child),
+    [data-callout-body]
+      > :global(*:last-child)
+      > :global(*:last-child)
+      > :global(*:last-child),
+    [data-callout-body]
+      > :global(*:last-child)
+      > :global(*:last-child)
+      > :global(*:last-child)
+      > :global(*:last-child) {
+      margin-bottom: 0 !important;
+    }
+  }
+</style>

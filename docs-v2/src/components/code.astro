@@ -1,0 +1,34 @@
+---
+import { toHtml } from 'hast-util-to-html'
+import { getEcEngine, getEcStyles } from '@/lib/ec-engine'
+
+interface Props {
+  code: string
+  lang: string
+  title?: string
+  meta?: string
+}
+
+const { code, lang, title, meta = '' } = Astro.props
+
+const metaParts: string[] = []
+if (title) metaParts.push(`title="${title}"`)
+if (meta) metaParts.push(meta)
+const fullMeta = metaParts.join(' ')
+
+const engine = await getEcEngine()
+const { renderedGroupAst } = await engine.render({
+  code: code.replace(/\n+$/, ''),
+  language: lang,
+  meta: fullMeta,
+})
+const html = toHtml(renderedGroupAst as Parameters<typeof toHtml>[0])
+
+const locals = Astro.locals as { __ecStylesEmitted?: boolean }
+const emitStyles = !locals.__ecStylesEmitted
+locals.__ecStylesEmitted = true
+const baseCss = emitStyles ? await getEcStyles() : ''
+---
+
+{baseCss && <style is:global set:html={baseCss} />}
+<Fragment set:html={html} />

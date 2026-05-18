@@ -1,0 +1,315 @@
+---
+title: Anchor CLI
+description: Anchor CLI reference documentation.
+---
+
+The Anchor CLI manages an Anchor workspace: scaffolding projects, building programs, deploying to a cluster, running tests, and interacting with on-chain IDLs. Run `$ [34manchor[0m [2m--help[0m{:ansi}` on any subcommand for the full list of flags:
+
+```ansi
+$ [34manchor[0m [2m--help[0m
+[1m[4mUsage:[0m [1manchor-1.0.1[0m [OPTIONS] <COMMAND>
+
+[1m[4mCommands:[0m
+  [1minit[0m          Initializes a workspace
+  [1mbuild[0m         Builds the workspace
+  [1mexpand[0m        Expands macros (wrapper around cargo expand)
+  [1mverify[0m        Verifies the on-chain bytecode matches the locally compiled artifact. Run this command inside a program subdirectory, i.e., in the dir containing the program's Cargo.toml
+  [1mtest[0m          Runs integration tests
+  [1mnew[0m           Creates a new program
+  [1midl[0m           Commands for interacting with interface definitions
+  [1mclean[0m         Remove all artifacts from the generated directories except program keypairs
+  [1mmigrate[0m       Runs the deploy migration script
+  [1mairdrop[0m       Request an airdrop of SOL
+  [1mcluster[0m       Cluster commands
+  [1mconfig[0m        Configuration management commands
+  [1mshell[0m         Starts a node shell with an Anchor client setup according to the local config
+  [1mrun[0m           Runs the script defined by the current workspace's Anchor.toml
+  [1mkeys[0m          Program keypair commands
+  [1mlocalnet[0m      Localnet commands
+  [1maccount[0m       Fetch and deserialize an account using the IDL provided
+  [1mcompletions[0m   Generates shell completions
+  [1maddress[0m       Get your public key
+  [1mbalance[0m       Get your balance
+  [1mepoch[0m         Get current epoch
+  [1mepoch-info[0m    Get information about the current epoch
+  [1mlogs[0m          Stream transaction logs
+  [1mshow-account[0m  Show the contents of an account
+  [1mkeygen[0m        Keypair generation and management
+  [1mprogram[0m       Program deployment and management commands
+  [1mhelp[0m          Print this message or the help of the given subcommand(s)
+
+[1m[4mOptions:[0m
+      [1m--provider.cluster[0m <CLUSTER>  Cluster override
+      [1m--provider.wallet[0m <WALLET>    Wallet override
+      [1m--commitment[0m <COMMITMENT>     Commitment override (valid values: processed, confirmed, finalized)
+  [1m-h[0m, [1m--help[0m                        Print help
+  [1m-V[0m, [1m--version[0m                     Print version
+```
+
+## `[34manchor[0m account{:ansi}`
+
+```ansi
+$ [34manchor[0m account [2m<program-name>[0m.[2m<AccountTypeName>[0m [2m<account-pubkey>[0m
+```
+
+Fetches an account with the given public key and deserializes the data to JSON using the type name provided. When run inside a workspace, the workspace's IDL files supply the data types. Otherwise, an IDL file path must be provided.
+
+| Argument | Description |
+| --- | --- |
+| `[2m<program-name>[0m{:ansi}` | The name of the program where the account struct resides, usually under `programs/<program-name>/`. Case-sensitive, exactly matching the folder name (typically kebab-case). |
+| `[2m<AccountTypeName>[0m{:ansi}` | The name of the account struct, usually in PascalCase. |
+| `[2m<account-pubkey>[0m{:ansi}` | The Pubkey of the account to deserialize, in Base58. |
+
+For example, `$ [34manchor[0m account anchor-escrow.EscrowAccount 3PNkzWKXCsbjijbasnx55NEpJe8DFXvEEbJKdRKpDcfK{:ansi}` deserializes the account at the given pubkey using the `EscrowAccount` struct defined in the `anchor-escrow` program:
+
+```ansi
+$ [34manchor[0m account [2m<program-name>[0m.[2m<AccountTypeName>[0m [2m<account-pubkey>[0m [2m--idl[0m [2m<path/to/idl.json>[0m
+```
+
+Pass `[2m--idl[0m{:ansi}` to deserialize using a specific IDL file even when inside a workspace.
+
+## `[34manchor[0m build{:ansi}`
+
+```ansi
+$ [34manchor[0m build
+```
+
+Builds programs in the workspace targeting Solana's BPF runtime and emits IDLs into the `target/idl` directory:
+
+```ansi
+$ [34manchor[0m build [2m--verifiable[0m
+```
+
+Runs the build inside a Docker image so that the output binary is deterministic (assuming a `Cargo.lock` file is used). This command must be run from within a single crate subdirectory in the workspace, for example `programs/<my-program>/`. See [verifiable builds](/docs/v1/security/verifiable-builds/) for details.
+
+<Callout variant="tip" title="Passing arguments to cargo build-sbf">
+Forward arguments to the underlying `cargo build-sbf` command with `-- <ARGS>`:
+
+```ansi
+$ [34manchor[0m build [2m--[0m [2m--features[0m my-feature
+```
+</Callout>
+
+## Cluster
+
+### `[34manchor[0m cluster list{:ansi}`
+
+```ansi
+$ [34manchor[0m cluster list
+```
+
+Lists the cluster endpoints:
+
+```text
+Cluster Endpoints:
+
+* Mainnet - https://api.mainnet-beta.solana.com
+* Devnet  - https://api.devnet.solana.com
+* Testnet - https://api.testnet.solana.com
+```
+
+## `[34manchor[0m deploy{:ansi}`
+
+```ansi
+$ [34manchor[0m deploy
+```
+
+Deploys all programs in the workspace to the configured cluster.
+
+<Callout variant="tip" title="Different from solana program deploy">
+Each invocation of `$ [34manchor[0m deploy{:ansi}` generates a *new* program address. To upgrade an existing program, use `$ [34manchor[0m upgrade{:ansi}` or `$ [34msolana[0m program deploy{:ansi}` with the existing program ID.
+</Callout>
+
+## `[34manchor[0m expand{:ansi}`
+
+```ansi
+$ [34manchor[0m expand
+```
+
+Expands the macros of the program when run inside a program folder, or the entire workspace when run from the workspace root. Pass `[2m--program-name[0m{:ansi}` to expand only a specific program.
+
+## IDL
+
+The `idl` subcommand provides commands for interacting with interface definition files. Storing an IDL on chain at a deterministic address (a function of the program's ID) lets clients be generated from nothing but the program ID.
+
+### `[34manchor[0m idl build{:ansi}`
+
+```ansi
+$ [34manchor[0m idl build
+```
+
+Generates the IDL for the program using the compilation method.
+
+### `[34manchor[0m idl init{:ansi}`
+
+```ansi
+$ [34manchor[0m idl init [2m-f[0m [2m<target/idl/program.json>[0m [2m<program-id>[0m
+```
+
+Creates an IDL account, writing the given `[2m<target/idl/program.json>[0m{:ansi}` file into a program-owned account. By default, the size of the account is double the size of the IDL, leaving room for growth in case the IDL is upgraded later. The `[2m<program-id[0m{:ansi}` argument is optional. When omitted, `idl.address` from `Anchor.toml` is used.
+
+### `[34manchor[0m idl fetch{:ansi}`
+
+```ansi
+$ [34manchor[0m idl fetch [2m-o[0m [2m<out-file.json>[0m [2m<program-id>[0m
+```
+
+Fetches an IDL from the configured blockchain. For example, point `Anchor.toml` at the `mainnet` cluster and run:
+
+```ansi
+$ [34manchor[0m idl fetch GrAkKfEpTKQuVHG2Y97Y2FF4i7y7Q5AHLK94JBy7Y5yv
+```
+
+### `[34manchor[0m idl authority{:ansi}`
+
+```ansi
+$ [34manchor[0m idl authority [2m<program-id>[0m
+```
+
+Outputs the IDL account's authority, which is the wallet that has the ability to update the IDL.
+
+### `[34manchor[0m idl erase-authority{:ansi}`
+
+```ansi
+$ [34manchor[0m idl erase-authority [2m-p[0m [2m<program-id>[0m
+```
+
+Erases the IDL account's authority so that upgrades can no longer occur. The configured wallet must be the current authority.
+
+### `[34manchor[0m idl upgrade{:ansi}`
+
+```ansi
+$ [34manchor[0m idl upgrade [2m-f[0m [2m<target/idl/program.json>[0m
+```
+
+Upgrades the on-chain IDL to the new `target/idl/program.json`. The configured wallet must be the current authority. The `program-id` argument is optional. When omitted, `idl.address` is used:
+
+```ansi
+$ [34manchor[0m idl set-authority [2m-n[0m [2m<new-authority>[0m [2m-p[0m [2m<program-id>[0m
+```
+
+Sets a new authority on the IDL account. Both `new-authority` and `program-id` must be encoded in base 58.
+
+## `[34manchor[0m init{:ansi}`
+
+```ansi
+$ [34manchor[0m init [2m<project-name>[0m
+```
+
+Initializes a project workspace with the following structure:
+
+<FileTree>
+  <Dir name="app" comment="Application frontend" />
+  <Dir name="migrations">
+    <File name="deploy.js" comment="Deploy script" />
+  </Dir>
+  <Dir name="programs" comment="Solana program crates" />
+  <Dir name="tests" comment="JavaScript integration tests" />
+  <File name="Anchor.toml" comment="Anchor configuration file" />
+  <File name="Cargo.toml" comment="Rust workspace configuration" />
+  <File name="package.json" comment="JavaScript dependencies" />
+</FileTree>
+
+By default, programs are initialized with a modular structure (multiple files) to promote better code organization. The `[2m--template[0m{:ansi}` flag selects a different layout:
+
+```ansi
+$ [34manchor[0m init [2m--template[0m multiple  [2m# Default: modular structure (recommended)[0m
+$ [34manchor[0m init [2m--template[0m single    [2m# Single lib.rs file (for prototyping)[0m
+```
+
+The modular template organizes code into separate files for instructions, state, constants, and errors, making it easier to navigate and maintain as the program grows. See [Anchor.toml](/docs/v1/reference/anchor-toml/) for the full configuration reference.
+
+## Keys
+
+Program keypair commands.
+
+### `[34manchor[0m keys list{:ansi}`
+
+```ansi
+$ [34manchor[0m keys list
+```
+
+Lists all program keypairs declared in the workspace.
+
+### `[34manchor[0m keys sync{:ansi}`
+
+```ansi
+$ [34manchor[0m keys sync
+```
+
+Syncs each program's `declare_id!(){:rs}` value with the actual pubkey of its keypair file.
+
+## `[34manchor[0m migrate{:ansi}`
+
+```ansi
+$ [34manchor[0m migrate
+```
+
+Runs the deploy script located at `migrations/deploy.js`, injecting a provider configured from the workspace's `Anchor.toml`:
+
+```javascript title="migrations/deploy.js" showLineNumbers=false
+const anchor = require('@anchor-lang/core')
+
+module.exports = async function (provider) {
+  anchor.setProvider(provider)
+
+  // Add your deploy script here.
+}
+```
+
+Migrations currently support only this simple deploy script.
+
+## `[34manchor[0m new{:ansi}`
+
+```ansi
+$ [34manchor[0m new [2m<program-name>[0m
+```
+
+Creates a new program in the workspace's `programs/` directory initialized with boilerplate. By default the modular structure template is used. Pass `[2m--template[0m{:ansi}` to select another:
+
+```ansi
+$ [34manchor[0m new [2m--template[0m multiple [2m<program-name>[0m  [2m# Default: modular (recommended)[0m
+$ [34manchor[0m new [2m--template[0m single [2m<program-name>[0m    [2m# Single file (for prototyping)[0m
+```
+
+## `[34manchor[0m shell{:ansi}`
+
+```ansi
+$ [34manchor[0m shell
+```
+
+Starts a Node.js shell with an Anchor client set up according to the local config. The client can interact with deployed programs in the workspace.
+
+## `[34manchor[0m test{:ansi}`
+
+```ansi
+$ [34manchor[0m test
+```
+
+Runs an integration test suite against the configured cluster, deploying fresh versions of all workspace programs first.
+
+When the configured network is a localnet, `$ [34manchor[0m test{:ansi}` starts the local network automatically and runs the tests against it. By default, [Surfpool](https://github.com/solana-foundation/surfpool) is used as the local network backend. Pass `[2m--validator legacy[0m{:ansi}` to use `solana-test-validator` instead.
+
+<Callout variant="note" title="Local validator conflicts">
+`$ [34manchor[0m test{:ansi}` starts its own local validator. Shut down any other local validators first, or the command fails.
+
+To run against a local validator that's already running, pass `[2m--skip-local-validator[0m{:ansi}`.
+</Callout>
+
+Program logs are streamed to `.anchor/program-logs/<address>.<program-name>.log` while tests run.
+
+## `[34manchor[0m upgrade{:ansi}`
+
+```ansi
+$ [34manchor[0m upgrade [2m<target/deploy/program.so>[0m [2m--program-id[0m [2m<program-id>[0m
+```
+
+Uses Solana's upgradeable BPF loader to upgrade the on-chain program code. The configured wallet must be the upgrade authority.
+
+## `[34manchor[0m verify{:ansi}`
+
+```ansi
+$ [34manchor[0m verify [2m<program-id>[0m
+```
+
+Verifies that the on-chain bytecode matches the locally compiled artifact. See [verifiable builds](/docs/v1/security/verifiable-builds/) for the build setup that produces a deterministic binary.

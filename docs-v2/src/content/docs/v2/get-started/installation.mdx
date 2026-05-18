@@ -1,0 +1,85 @@
+---
+title: Installation
+description: Install the Anchor CLI and depend on the alpha crates from the anchor-next branch.
+---
+
+Anchor v2 is installed from source while the alpha is branch-only. You still need the normal Solana program toolchain around it. At minimum, your terminal should already have Rust, Cargo, and the Solana CLI:
+
+```ansi showLineNumbers=false
+$ rustc [2m--version[0m
+$ cargo [2m--version[0m
+$ solana [2m--version[0m
+```
+
+If you are setting up a machine from scratch, install Rust with [rustup](https://www.rust-lang.org/tools/install) and install the Solana CLI from the [Agave install docs](https://docs.anza.xyz/cli/install). On Windows, run the Solana and Anchor commands inside WSL rather than PowerShell.
+
+The v2 alpha crates have not been published to `crates.io` yet, so install the CLI directly from the [`anchor-next`](https://github.com/solana-foundation/anchor/tree/anchor-next) branch:
+
+```ansi showLineNumbers=false
+$ [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor.git [2m--branch[0m anchor-next anchor-cli [2m--force[0m
+```
+
+<Callout variant="warning" title="Overwrites the anchor binary">
+  `$ [34mcargo[0m install{:ansi}` overwrites the `anchor` binary on your `PATH`. To keep another Anchor install available, run this binary from a source checkout instead of putting it first on `PATH`.
+</Callout>
+
+AVM tracks published Anchor releases. Until v2 has published releases, use `$ [34mcargo[0m install [2m--git[0m ... [2m--branch[0m anchor-next{:ansi}` for the CLI you use with these docs.
+
+On macOS, the final link can fail with an error like `ld: could not parse bitcode object file ... Unknown attribute kind`. If that happens, disable LTO for this install:
+
+```ansi showLineNumbers=false
+$ CARGO_PROFILE_RELEASE_LTO=off [34mcargo[0m install [2m--git[0m https://github.com/solana-foundation/anchor.git [2m--branch[0m anchor-next anchor-cli [2m--force[0m
+```
+
+## Local checkout
+
+Use a local checkout when you want to inspect internals, patch the CLI, or run the debugger against the checked-in bench programs:
+
+<Steps>
+<Step title="Clone the repository">
+
+```ansi showLineNumbers=false
+$ [34mgit[0m clone https://github.com/solana-foundation/anchor.git
+$ [34mcd[0m anchor
+$ [34mgit[0m checkout anchor-next
+```
+
+</Step>
+<Step title="Install the CLI from source">
+
+```ansi showLineNumbers=false
+$ [34mcargo[0m install [2m--path[0m cli [2m--force[0m
+```
+
+Prepend `CARGO_PROFILE_RELEASE_LTO=off{:ansi}` on macOS if you hit the LTO error above.
+
+</Step>
+</Steps>
+
+## Program dependencies
+
+New workspaces created by `$ [34manchor[0m init{:ansi}` already include the git dependency for `anchor-lang-v2`. Add `anchor-spl-v2` when the program uses SPL token helpers or Token-2022 interfaces:
+
+```toml title="Cargo.toml" showLineNumbers=false
+[dependencies]
+anchor-lang-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+anchor-spl-v2 = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+```
+
+These lines live in the program crate at `programs/<program-name>/Cargo.toml`, not the workspace root `Cargo.toml`.
+
+The default `anchor-lang-v2` feature set is `alloc{:toml}`, `guardrails{:toml}`, and `account-resize{:toml}`. Optional features include `const-rent{:toml}`, `compat{:toml}`, `idl-build{:toml}`, and `testing{:toml}`. See [Feature flags](/docs/v2/reference/feature-flags/) for the tradeoffs.
+
+## Test dependencies
+
+The default scaffold uses Rust tests with `anchor-v2-testing`. The dependency also lives in `programs/<program-name>/Cargo.toml`:
+
+```toml title="Cargo.toml" showLineNumbers=false
+[dev-dependencies]
+anchor-v2-testing = { git = "https://github.com/solana-foundation/anchor.git", branch = "anchor-next" }
+
+[features]
+profile = ["anchor-v2-testing/profile"]
+```
+
+That `profile{:toml}` feature is what `$ [34manchor[0m test [2m--profile[0m{:ansi}`, `$ [34manchor[0m debugger{:ansi}`, and `$ [34manchor[0m coverage{:ansi}` use to record SBF register traces.

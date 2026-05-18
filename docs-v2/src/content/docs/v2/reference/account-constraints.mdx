@@ -1,0 +1,53 @@
+---
+title: Account constraints
+description: Built-in and namespaced account constraints.
+---
+
+Account constraints are declared on fields inside a `#[derive(Accounts)]{:rs}` struct. They validate metadata, derive PDAs, create accounts, resize data, close accounts, and run extension-specific checks before the handler executes.
+
+| Constraint | Notes |
+| --- | --- |
+| `mut{:rs}` | Requires writable account metadata and loads the wrapper mutably. |
+| `signer{:rs}` | Requires `is_signer{:rs}`. Prefer `Signer{:rs}` for ordinary signers. |
+| `init{:rs}` | Creates and initializes the account. Requires `payer{:rs}`. |
+| `init_if_needed{:rs}` | Creates on the absent branch, otherwise validates existing data. |
+| `payer = field{:rs}` | Pays rent for init paths. |
+| `space = expr{:rs}` | Allocation size for init. |
+| `seeds = [...]{:rs}` | PDA seeds. Array form gives the best IDL metadata. |
+| `bump{:rs}` | Finds and records the canonical bump. |
+| `bump = expr{:rs}` | Verifies with an explicit bump. |
+| `seeds::program = expr{:rs}` | Derives against another program id. |
+| `address = expr{:rs}` | Checks the account address against an expression. |
+| `owner = expr{:rs}` | Checks the owner address. |
+| `executable{:rs}` | Requires the account's executable flag. |
+| `constraint = expr{:rs}` | Runs a custom boolean expression. |
+| `has_one = field{:rs}` | Deprecated relation check. Prefer `address = parent.field{:rs}` on the sibling account. |
+| `zeroed{:rs}` | Initializes an allocated account whose discriminator is still all zero bytes. |
+| `close = dest{:rs}` | Closes account on successful exit. |
+| `realloc = expr{:rs}` | Resizes account data when enabled. |
+| `realloc_payer = field{:rs}` | Pays for realloc growth. |
+| `realloc_zero = bool{:rs}` | Controls zeroing for new bytes. |
+| `unsafe(dup){:rs}` | Opts out of duplicate mutable account rejection for this field. |
+
+Prefer `address = parent.field{:rs}` when a sibling account must match an address stored in another account.
+
+## Namespaced constraints
+
+Namespaced constraints are implemented by marker types that satisfy `AccountConstraint<A>{:rs}`:
+
+```rust showLineNumbers=false
+#[account(token::mint = mint, token::authority = owner)]
+pub vault: Account<TokenAccount>,
+```
+
+The derive routes each marker through lifecycle hooks:
+
+| Syntax | Hook |
+| --- | --- |
+| `ns::key = value{:rs}` | `check{:rs}` |
+| `init, ns::key = value{:rs}` | `init{:rs}` during creation for runtime-only markers. Built-in namespace markers are handled by init params. |
+| `init_if_needed, ns::key = value{:rs}` | `init{:rs}` then `check{:rs}` on create, `check{:rs}` on existing |
+| `update(ns::key = value){:rs}` | `update{:rs}` |
+| any successful path | `exit{:rs}` during account exit |
+
+The `anchor-spl-v2` crate uses this extension point for `token::*{:rs}` and `mint::*{:rs}` constraints.
