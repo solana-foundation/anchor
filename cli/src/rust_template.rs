@@ -102,8 +102,57 @@ pub mod {} {{
     pub fn initialize(ctx: &mut Context<Initialize>) -> Result<()> {{
         ctx.accounts.counter.count = 0;
         ctx.accounts.counter.authority = *ctx.accounts.payer.address();
-        msg!("Counter initialized");
+
+        let cpi_accounts = system_program::Transfer {{
+            from: ctx.accounts.payer.cpi_handle_mut(),
+            to: ctx.accounts.counter.cpi_handle_mut(),
+        }};
+        let cpi_ctx = CpiContext::new(ctx.accounts.system_program.address(), cpi_accounts);
+        system_program::transfer(cpi_ctx, HELLO_WORLD_LAMPORTS)?;
+
+        msg!("Hello, world! Counter initialized");
         Ok(())
+    }}
+
+    pub fn increment(ctx: &mut Context<Increment>) -> Result<()> {{
+        require_keys_eq!(
+            ctx.accounts.counter.authority,
+            *ctx.accounts.authority.address(),
+            ErrorCode::Unauthorized,
+        );
+        require!(
+            ctx.accounts.counter.count < MAX_COUNT,
+            ErrorCode::CounterOverflow,
+        );
+
+        ctx.accounts.counter.count += 1;
+        msg!("Hello, world! Counter is now {{}}", ctx.accounts.counter.count);
+        Ok(())
+    }}
+}}
+
+pub mod constants {{
+    use super::*;
+
+    #[constant]
+    pub const COUNTER_SEED: &[u8] = b"counter";
+
+    #[constant]
+    pub const HELLO_WORLD_LAMPORTS: u64 = 1;
+
+    #[constant]
+    pub const MAX_COUNT: u64 = 10;
+}}
+
+pub mod error {{
+    use super::*;
+
+    #[error_code]
+    pub enum ErrorCode {{
+        #[msg("Only the counter authority can update this counter")]
+        Unauthorized,
+        #[msg("Counter has reached the maximum value")]
+        CounterOverflow,
     }}
 }}
 
@@ -117,15 +166,24 @@ pub mod state {{
     }}
 }}
 
+use constants::*;
+use error::ErrorCode;
 use state::Counter;
 
 #[derive(Accounts)]
 pub struct Initialize {{
     #[account(mut)]
     pub payer: Signer,
-    #[account(init, payer = payer)]
+    #[account(init, payer = payer, seeds = [COUNTER_SEED], bump)]
     pub counter: Account<Counter>,
     pub system_program: Program<System>,
+}}
+
+#[derive(Accounts)]
+pub struct Increment {{
+    #[account(mut, seeds = [COUNTER_SEED], bump)]
+    pub counter: Account<Counter>,
+    pub authority: Signer,
 }}
 "#,
             get_or_create_program_id(name, target_path),
@@ -157,7 +215,11 @@ pub mod {} {{
     use super::*;
 
     pub fn initialize(ctx: &mut Context<Initialize>) -> Result<()> {{
-        initialize::handler(ctx)
+        initialize::initialize(ctx)
+    }}
+
+    pub fn increment(ctx: &mut Context<Increment>) -> Result<()> {{
+        increment::increment(ctx)
     }}
 }}
 "#,
@@ -170,7 +232,13 @@ pub mod {} {{
             r#"use anchor_lang_v2::prelude::*;
 
 #[constant]
-pub const SEED: &str = "anchor";
+pub const COUNTER_SEED: &[u8] = b"counter";
+
+#[constant]
+pub const HELLO_WORLD_LAMPORTS: u64 = 1;
+
+#[constant]
+pub const MAX_COUNT: u64 = 10;
 "#
             .into(),
         ),
@@ -180,8 +248,10 @@ pub const SEED: &str = "anchor";
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Custom error message")]
-    CustomError,
+    #[msg("Only the counter authority can update this counter")]
+    Unauthorized,
+    #[msg("Counter has reached the maximum value")]
+    CounterOverflow,
 }
 "#
             .into(),
@@ -189,8 +259,10 @@ pub enum ErrorCode {
         (
             src_path.join("instructions.rs"),
             r#"pub mod initialize;
+pub mod increment;
 
 pub use initialize::*;
+pub use increment::*;
 "#
             .into(),
         ),
@@ -198,21 +270,60 @@ pub use initialize::*;
             src_path.join("instructions").join("initialize.rs"),
             r#"use anchor_lang_v2::prelude::*;
 
-use crate::state::Counter;
+use crate::{constants::*, state::Counter};
 
 #[derive(Accounts)]
 pub struct Initialize {
     #[account(mut)]
     pub payer: Signer,
-    #[account(init, payer = payer)]
+    #[account(init, payer = payer, seeds = [COUNTER_SEED], bump)]
     pub counter: Account<Counter>,
     pub system_program: Program<System>,
 }
 
-pub fn handler(ctx: &mut Context<Initialize>) -> Result<()> {
+pub fn initialize(ctx: &mut Context<Initialize>) -> Result<()> {
     ctx.accounts.counter.count = 0;
     ctx.accounts.counter.authority = *ctx.accounts.payer.address();
-    msg!("Counter initialized");
+
+    let cpi_accounts = system_program::Transfer {
+        from: ctx.accounts.payer.cpi_handle_mut(),
+        to: ctx.accounts.counter.cpi_handle_mut(),
+    };
+    let cpi_ctx = CpiContext::new(ctx.accounts.system_program.address(), cpi_accounts);
+    system_program::transfer(cpi_ctx, HELLO_WORLD_LAMPORTS)?;
+
+    msg!("Hello, world! Counter initialized");
+    Ok(())
+}
+"#
+            .into(),
+        ),
+        (
+            src_path.join("instructions").join("increment.rs"),
+            r#"use anchor_lang_v2::prelude::*;
+
+use crate::{constants::*, error::ErrorCode, state::Counter};
+
+#[derive(Accounts)]
+pub struct Increment {
+    #[account(mut, seeds = [COUNTER_SEED], bump)]
+    pub counter: Account<Counter>,
+    pub authority: Signer,
+}
+
+pub fn increment(ctx: &mut Context<Increment>) -> Result<()> {
+    require_keys_eq!(
+        ctx.accounts.counter.authority,
+        *ctx.accounts.authority.address(),
+        ErrorCode::Unauthorized,
+    );
+    require!(
+        ctx.accounts.counter.count < MAX_COUNT,
+        ErrorCode::CounterOverflow,
+    );
+
+    ctx.accounts.counter.count += 1;
+    msg!("Hello, world! Counter is now {}", ctx.accounts.counter.count);
     Ok(())
 }
 "#
@@ -428,16 +539,24 @@ describe("{}", () => {{
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  it("Is initialized!", async () => {{
-    // Add your test here.
+  it("Initializes and increments a counter", async () => {{
     const program = anchor.workspace.{};
-    const counter = anchor.web3.Keypair.generate();
-    const tx = await program.methods
+    const [counter] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("counter")],
+      program.programId
+    );
+
+    const initializeTx = await program.methods
       .initialize()
-      .accounts({{ counter: counter.publicKey }})
-      .signers([counter])
+      .accountsPartial({{ counter }})
       .rpc();
-    console.log("Your transaction signature", tx);
+    console.log("Initialize transaction signature", initializeTx);
+
+    const incrementTx = await program.methods
+      .increment()
+      .accountsPartial({{ counter }})
+      .rpc();
+    console.log("Increment transaction signature", incrementTx);
   }});
 }});
 "#,
@@ -454,16 +573,24 @@ describe("{}", () => {{
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  it("Is initialized!", async () => {{
-    // Add your test here.
+  it("Initializes and increments a counter", async () => {{
     const program = anchor.workspace.{};
-    const counter = anchor.web3.Keypair.generate();
-    const tx = await program.methods
+    const [counter] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("counter")],
+      program.programId
+    );
+
+    const initializeTx = await program.methods
       .initialize()
-      .accounts({{ counter: counter.publicKey }})
-      .signers([counter])
+      .accountsPartial({{ counter }})
       .rpc();
-    console.log("Your transaction signature", tx);
+    console.log("Initialize transaction signature", initializeTx);
+
+    const incrementTx = await program.methods
+      .increment()
+      .accountsPartial({{ counter }})
+      .rpc();
+    console.log("Increment transaction signature", incrementTx);
   }});
 }});
 "#,
@@ -602,15 +729,23 @@ describe("{}", () => {{
 
   const program = anchor.workspace.{} as Program<{}>;
 
-  it("Is initialized!", async () => {{
-    // Add your test here.
-    const counter = anchor.web3.Keypair.generate();
-    const tx = await program.methods
+  it("Initializes and increments a counter", async () => {{
+    const [counter] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("counter")],
+      program.programId
+    );
+
+    const initializeTx = await program.methods
       .initialize()
-      .accounts({{ counter: counter.publicKey }})
-      .signers([counter])
+      .accountsPartial({{ counter }})
       .rpc();
-    console.log("Your transaction signature", tx);
+    console.log("Initialize transaction signature", initializeTx);
+
+    const incrementTx = await program.methods
+      .increment()
+      .accountsPartial({{ counter }})
+      .rpc();
+    console.log("Increment transaction signature", incrementTx);
   }});
 }});
 "#,
@@ -634,15 +769,23 @@ describe("{}", () => {{
 
   const program = anchor.workspace.{} as Program<{}>;
 
-  it("Is initialized!", async () => {{
-    // Add your test here.
-    const counter = anchor.web3.Keypair.generate();
-    const tx = await program.methods
+  it("Initializes and increments a counter", async () => {{
+    const [counter] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("counter")],
+      program.programId
+    );
+
+    const initializeTx = await program.methods
       .initialize()
-      .accounts({{ counter: counter.publicKey }})
-      .signers([counter])
+      .accountsPartial({{ counter }})
       .rpc();
-    console.log("Your transaction signature", tx);
+    console.log("Initialize transaction signature", initializeTx);
+
+    const incrementTx = await program.methods
+      .increment()
+      .accountsPartial({{ counter }})
+      .rpc();
+    console.log("Increment transaction signature", incrementTx);
   }});
 }});
 "#,
@@ -771,12 +914,17 @@ pub enum TestTemplate {
 }
 
 impl TestTemplate {
-    pub fn get_test_script(&self, js: bool, pkg_manager: &PackageManager) -> String {
+    pub fn uses_node(&self) -> bool {
+        matches!(self, Self::Mocha | Self::Jest)
+    }
+
+    pub fn get_test_script(&self, js: bool, pkg_manager: Option<&PackageManager>) -> String {
         let pkg_manager_exec_cmd = match pkg_manager {
-            PackageManager::Yarn => "yarn run",
-            PackageManager::NPM => "npx",
-            PackageManager::PNPM => "pnpm exec",
-            PackageManager::Bun => "bunx",
+            Some(PackageManager::Yarn) => "yarn run",
+            Some(PackageManager::NPM) => "npx",
+            Some(PackageManager::PNPM) => "pnpm exec",
+            Some(PackageManager::Bun) => "bunx",
+            None => "",
         };
 
         match &self {
@@ -926,7 +1074,7 @@ mod test_initialize;
     CommitmentConfig,
     Client, Cluster,
 }};
-use solana_keypair::{{read_keypair_file, Keypair}};
+use solana_keypair::read_keypair_file;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 
@@ -935,25 +1083,40 @@ fn test_initialize() {{
     let program_id = "{0}";
     let anchor_wallet = std::env::var("ANCHOR_WALLET").unwrap();
     let payer = read_keypair_file(&anchor_wallet).unwrap();
-    let counter = Keypair::new();
 
     let client = Client::new_with_options(Cluster::Localnet, &payer, CommitmentConfig::confirmed());
     let program_id = Pubkey::try_from(program_id).unwrap();
     let program = client.program(program_id).unwrap();
+    let counter = Pubkey::find_program_address(
+        &[{1}::constants::COUNTER_SEED],
+        &program_id,
+    )
+    .0;
 
-    let tx = program
+    let initialize_tx = program
         .request()
         .accounts({1}::accounts::Initialize {{
             payer: payer.pubkey(),
-            counter: counter.pubkey(),
+            counter,
             system_program: solana_sdk_ids::system_program::id(),
         }})
         .args({1}::instruction::Initialize {{}})
-        .signer(&counter)
         .send()
         .expect("");
 
-    println!("Your transaction signature {{}}", tx);
+    println!("Initialize transaction signature {{}}", initialize_tx);
+
+    let increment_tx = program
+        .request()
+        .accounts({1}::accounts::Increment {{
+            counter,
+            authority: payer.pubkey(),
+        }})
+        .args({1}::instruction::Increment {{}})
+        .send()
+        .expect("");
+
+    println!("Increment transaction signature {{}}", increment_tx);
 }}
 "#,
                 program_id,
@@ -986,7 +1149,11 @@ fn test_initialize() {{
     let mollusk = Mollusk::new(&program_id, "{0}");
 
     let payer = Pubkey::new_unique();
-    let counter = Pubkey::new_unique();
+    let counter = Pubkey::find_program_address(
+        &[{0}::constants::COUNTER_SEED],
+        &program_id,
+    )
+    .0;
 
     let instruction = Instruction::new_with_bytes(
         program_id,
@@ -1015,15 +1182,48 @@ fn test_initialize() {{
         &[Check::success()],
     );
 
+    let payer_account = result
+        .resulting_accounts
+        .iter()
+        .find(|(pk, _)| *pk == payer)
+        .map(|(_, a)| a.clone())
+        .expect("payer account");
+    let counter_account = result
+        .resulting_accounts
+        .iter()
+        .find(|(pk, _)| *pk == counter)
+        .map(|(_, a)| a.clone())
+        .expect("counter account");
+    assert_eq!(counter_account.data.len(), counter_space);
+    let counter_state: &{0}::state::Counter = bytemuck::from_bytes(&counter_account.data[8..]);
+    assert_eq!(counter_state.count, 0);
+    assert_eq!(counter_state.authority, payer);
+
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &{0}::instruction::Increment {{}}.data(),
+        {0}::accounts::Increment {{
+            counter,
+            authority: payer,
+        }}
+        .to_account_metas(None),
+    );
+    let accounts = vec![(counter, counter_account), (payer, payer_account)];
+
+    let result = mollusk.process_and_validate_instruction(
+        &instruction,
+        &accounts,
+        &[Check::success()],
+    );
+
     let counter_account = result
         .resulting_accounts
         .iter()
         .find(|(pk, _)| *pk == counter)
         .map(|(_, a)| a)
         .expect("counter account");
-    assert_eq!(counter_account.data.len(), counter_space);
     let counter_state: &{0}::state::Counter = bytemuck::from_bytes(&counter_account.data[8..]);
-    assert_eq!(counter_state.count, 0);
+    assert_eq!(counter_state.count, 1);
     assert_eq!(counter_state.authority, payer);
 }}
 "#,
@@ -1043,14 +1243,17 @@ use {{
         accounts::Account, bytemuck, programs::System,
         solana_program::instruction::Instruction, Id, InstructionData, Space, ToAccountMetas,
     }},
-    anchor_v2_testing::{{Keypair, LiteSVM, Message, Signer, VersionedMessage, VersionedTransaction}},
+    anchor_v2_testing::{{Keypair, Message, Signer, VersionedMessage, VersionedTransaction}},
 }};
 
 #[test]
 fn test_initialize() {{
     let program_id = {0}::id();
     let payer = Keypair::new();
-    let counter = Keypair::new();
+    let (counter, _) = anchor_lang_v2::find_program_address(
+        &[{0}::constants::COUNTER_SEED],
+        &program_id,
+    );
 
     // `svm()` is `LiteSVM::new()` by default. When this crate is built
     // with `--features profile` (which `anchor test --profile` and
@@ -1068,7 +1271,7 @@ fn test_initialize() {{
         &{0}::instruction::Initialize {{}}.data(),
         {0}::accounts::Initialize {{
             payer: payer.pubkey(),
-            counter: counter.pubkey(),
+            counter,
             system_program: System::id(),
         }}
         .to_account_metas(None),
@@ -1078,7 +1281,7 @@ fn test_initialize() {{
     let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
     let tx = VersionedTransaction::try_new(
         VersionedMessage::Legacy(msg),
-        &[&payer, &counter],
+        &[&payer],
     )
     .unwrap();
 
@@ -1090,10 +1293,36 @@ fn test_initialize() {{
     // so the assertion doesn't rot if `Counter` gains fields. The payload
     // tail is a `Pod` struct, so we cast directly and read fields by name
     // instead of hand-slicing bytes.
-    let account = svm.get_account(&counter.pubkey()).expect("counter account");
+    let account = svm.get_account(&counter).expect("counter account");
     assert_eq!(account.data.len(), <Account<{0}::state::Counter> as Space>::INIT_SPACE);
     let counter_state: &{0}::state::Counter = bytemuck::from_bytes(&account.data[8..]);
     assert_eq!(counter_state.count, 0);
+    assert_eq!(counter_state.authority, payer.pubkey());
+
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &{0}::instruction::Increment {{}}.data(),
+        {0}::accounts::Increment {{
+            counter,
+            authority: payer.pubkey(),
+        }}
+        .to_account_metas(None),
+    );
+
+    let blockhash = svm.latest_blockhash();
+    let msg = Message::new_with_blockhash(&[instruction], Some(&payer.pubkey()), &blockhash);
+    let tx = VersionedTransaction::try_new(
+        VersionedMessage::Legacy(msg),
+        &[&payer],
+    )
+    .unwrap();
+
+    let res = svm.send_transaction(tx);
+    assert!(res.is_ok(), "send_transaction failed: {{:?}}", res);
+
+    let account = svm.get_account(&counter).expect("counter account");
+    let counter_state: &{0}::state::Counter = bytemuck::from_bytes(&account.data[8..]);
+    assert_eq!(counter_state.count, 1);
     assert_eq!(counter_state.authority, payer.pubkey());
 }}
 "#,
