@@ -5,7 +5,6 @@ use {
     anyhow::{anyhow, bail, Context, Error, Result},
     clap::{Parser, ValueEnum},
     dirs::home_dir,
-    heck::ToSnakeCase,
     reqwest::Url,
     serde::{
         de::{self, MapAccess, Visitor},
@@ -123,7 +122,12 @@ impl Manifest {
                 .package
                 .as_ref()
                 .ok_or_else(|| anyhow!("package section not provided"))
-                .map(|pkg| pkg.name.to_snake_case()),
+                // Mirror Cargo's default lib-target name derivation: replace
+                // `-` with `_`. Using `heck::to_snake_case` here would insert
+                // spurious underscores around digit boundaries (e.g.
+                // `groth16_verify` -> `groth_16_verify`), making anchor look
+                // for IDL/SO artifacts under a name Cargo never produced.
+                .map(|pkg| pkg.name.replace('-', "_")),
         }
     }
 
@@ -1676,6 +1680,44 @@ mod tests {
         let string = BASE_CONFIG.to_owned() + "[features]\nskip-lint = false";
         let config = Config::from_str(&string).unwrap();
         assert!(!config.features.skip_lint);
+    }
+
+    fn manifest_with_package_name(name: &str) -> Manifest {
+        let toml =
+            format!("[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n");
+        Manifest(cargo_toml::Manifest::from_str(&toml).unwrap())
+    }
+
+    // Regression test for #3715: a package name that already contains digits
+    // must not be re-normalized in a way that diverges from Cargo's default
+    // lib-target name derivation (`-` -> `_`). `heck::to_snake_case` would
+    // produce `groth_16_verify` here, sending anchor to look for IDL/SO
+    // artifacts under a name Cargo never produces.
+    #[test]
+    fn lib_name_preserves_digits_in_snake_case_package_name() {
+        let manifest = manifest_with_package_name("groth16_verify");
+        assert_eq!(manifest.lib_name().unwrap(), "groth16_verify");
+    }
+
+    #[test]
+    fn lib_name_replaces_dashes_with_underscores() {
+        let manifest = manifest_with_package_name("my-program");
+        assert_eq!(manifest.lib_name().unwrap(), "my_program");
+    }
+
+    #[test]
+    fn lib_name_passes_through_plain_snake_case() {
+        let manifest = manifest_with_package_name("my_program");
+        assert_eq!(manifest.lib_name().unwrap(), "my_program");
+    }
+
+    #[test]
+    fn lib_name_prefers_explicit_lib_target_name() {
+        let toml = "\
+            [package]\nname = \"my-program\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[lib]\nname \
+                    = \"explicit_name\"\n";
+        let manifest = Manifest(cargo_toml::Manifest::from_str(toml).unwrap());
+        assert_eq!(manifest.lib_name().unwrap(), "explicit_name");
     }
 
     #[test]

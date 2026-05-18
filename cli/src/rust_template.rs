@@ -284,10 +284,14 @@ unexpected_cfgs = {{ level = "warn", check-cfg = ['cfg(target_os, values("solana
 
 /// Read the program keypair file or create a new one if it doesn't exist.
 pub fn get_or_create_program_id(name: &str, target_path: impl AsRef<Path>) -> Pubkey {
+    // Match Cargo's default lib-target naming (`-` -> `_`). Using a full
+    // snake_case conversion would split digit boundaries (e.g.
+    // `groth16_verify` -> `groth_16_verify`) and diverge from the actual
+    // build artifact name. See #3715.
     let keypair_path = target_path
         .as_ref()
         .join("deploy")
-        .join(format!("{}-keypair.json", name.to_snake_case()));
+        .join(format!("{}-keypair.json", name.replace('-', "_")));
 
     read_keypair_file(&keypair_path)
         .unwrap_or_else(|_| {
