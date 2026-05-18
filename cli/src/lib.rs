@@ -4376,6 +4376,12 @@ fn validator_flags(
                     // these validator flags.
                     continue;
                 };
+                if key == "extra_args" {
+                    for arg in value.as_array().unwrap() {
+                        flags.push(arg.as_str().unwrap().to_string());
+                    }
+                    continue;
+                }
                 if key == "account" {
                     for entry in value.as_array().unwrap() {
                         // Push the account flag for each array entry
