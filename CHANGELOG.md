@@ -36,6 +36,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 - lang: Support module constants in `max_len` attribute ([#3879](https://github.com/solana-foundation/anchor/pull/3879)).
 - spl: Deprecate broken `cpi_guard_enable/disable` functions ([#4465](https://github.com/solana-foundation/anchor/pull/4465)).
 - cli: Bump `cargo_toml` to allow parsing `resolver = "3"` ([#4515](https://github.com/solana-foundation/anchor/pull/4515)).
+- lang: Shorten invariant lifetimes during `Context` creation ([#4363](https://github.com/solana-foundation/anchor/pull/4363)).
 
 ### Breaking
 
