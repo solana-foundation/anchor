@@ -591,8 +591,9 @@ fn generate_constraint_init_group(
                         __bumps.#field = #bump_tok;
 
                         // Build signer seeds at runtime = seeds + bump
+                        let __bump_bytes: [u8; 1] = [__bump];
                         let mut __signer_seeds_vec: ::std::vec::Vec<&[u8]> = __seeds_slice.to_vec();
-                        __signer_seeds_vec.push(&[__bump][..]);
+                        __signer_seeds_vec.push(&__bump_bytes[..]);
                         let __signer_seeds = __signer_seeds_vec;
 
                         if #field.key() != __pda_address {

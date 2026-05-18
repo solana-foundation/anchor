@@ -1034,6 +1034,12 @@ impl _TestToml {
                         entry.filename = canonicalize_filepath_from_origin(&entry.filename, &path)?;
                     }
                 }
+                if let Some(account_dirs) = &mut validator.account_dir {
+                    for entry in account_dirs {
+                        entry.directory =
+                            canonicalize_filepath_from_origin(&entry.directory, &path)?;
+                    }
+                }
             }
         }
         Ok(current_toml)
@@ -1670,5 +1676,45 @@ mod tests {
         let string = BASE_CONFIG.to_owned() + "[features]\nskip-lint = false";
         let config = Config::from_str(&string).unwrap();
         assert!(!config.features.skip_lint);
+    }
+
+    #[test]
+    fn test_toml_resolves_account_dir_relative_to_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let suite_dir = dir.path().join("tests").join("suite");
+        let accounts_dir = suite_dir.join("accounts");
+        fs::create_dir_all(&accounts_dir).unwrap();
+
+        let account_file = accounts_dir.join("account.json");
+        fs::write(&account_file, "{}").unwrap();
+
+        let test_toml = suite_dir.join("Test.toml");
+        fs::write(
+            &test_toml,
+            r#"
+[scripts]
+test = "true"
+
+[[test.validator.account]]
+address = "3vMPj13emX9JmifYcWc77ekEzV1F37ga36E1YeSr6Mdj"
+filename = "accounts/account.json"
+
+[[test.validator.account_dir]]
+directory = "accounts"
+"#,
+        )
+        .unwrap();
+
+        let parsed = TestToml::from_path(test_toml).unwrap();
+        let validator = parsed.test.unwrap().validator.unwrap();
+
+        assert_eq!(
+            validator.account.unwrap()[0].filename,
+            account_file.canonicalize().unwrap().display().to_string()
+        );
+        assert_eq!(
+            validator.account_dir.unwrap()[0].directory,
+            accounts_dir.canonicalize().unwrap().display().to_string()
+        );
     }
 }

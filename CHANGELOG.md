@@ -21,19 +21,36 @@ The minor version will be incremented upon a breaking change and the patch versi
 - cli: Resolve the target directory via `cargo metadata` to support target directory overrides ([#3817](https://github.com/solana-foundation/anchor/pull/3817)).
 - spl: Add `Interest Bearing Config` Extension ([#4464](https://github.com/solana-foundation/anchor/pull/4464)).
 - spl: Added `token_metadata_remove_key` to support removing keys from token metadata extension ([#3717](https://github.com/solana-foundation/anchor/pull/3717)).
+- lang: Derive `Clone`, `Debug`, `Copy`, and `Default` on generated client / CPI account structs and instruction args where the field types allow it ([#4085](https://github.com/solana-foundation/anchor/pull/4085)).
+- lang: Add `AccountLoader::new_unchecked` for constructing an `AccountLoader` without performing owner or discriminator checks ([#4162](https://github.com/solana-foundation/anchor/pull/4162)).
 
 ### Fixes
 
-- client: Replace `solana-program` with `solana-hash` ([#4468](https://github.com/solana-foundation/anchor/pull/4468)).
+- idl: Bump version to 0.1.3 ([#4453](https://github.com/solana-foundation/anchor/pull/4453)).
+- lang: Migrate `anchor-syn` from syn 1.x to syn 2.0, allowing use of modern Rust syntax ([#4523](https://github.com/solana-foundation/anchor/issues/4523)).
+- lang: Avoid fatal errors in IDL building when modern Rust syntax is in use ([#4520](https://github.com/solana-foundation/anchor/pull/4520)).
+- client: Avoid panic in `parse_logs_response` when a program-emitted log line ends with `invoke [1]` ([#4461](https://github.com/solana-foundation/anchor/issues/4461)).
 - cli: Correctly honor `--skip-seed-phrase-validation` in `keygen recover` ([#4417](https://github.com/solana-foundation/anchor/pull/4417)).
 - spl: Fix wrong owner pubkey in CPI Guard enable/disable ([#4322](https://github.com/solana-foundation/anchor/pull/4322)).
 - ts: Fix `sha256.hash()` returning corrupted output by using hex encoding ([#4404](https://github.com/solana-foundation/anchor/pull/4404)).
 - spl: Add missing auth account to `group_pointer_update` ([#4324](https://github.com/solana-foundation/anchor/pull/4324)).
+- lang: Support module constants in `max_len` attribute ([#3879](https://github.com/solana-foundation/anchor/pull/3879)).
+- spl: Deprecate broken `cpi_guard_enable/disable` functions ([#4465](https://github.com/solana-foundation/anchor/pull/4465)).
+- cli: Bump `cargo_toml` to allow parsing `resolver = "3"` ([#4515](https://github.com/solana-foundation/anchor/pull/4515)).
+
+### Breaking
+
+## [1.0.2] - 2026-05-02
+
+### Features
+
+### Fixes
+
+- client: Replace `solana-program` with `solana-hash` ([#4468](https://github.com/solana-foundation/anchor/pull/4468)).
 - lang: Make idl build time way faster by caching `CrateContext` ([#4325](https://github.com/solana-foundation/anchor/pull/4325)).
 - cli: Bind `localnet` to `127.0.0.1` by default to fix a panic in `solana-test-validator` version `3.1.10` ([#4397](https://github.com/solana-foundation/anchor/pull/4397)).
 - cli: Fallback to a priority fee of 0 on localnet ([#4259](https://github.com/solana-foundation/anchor/pull/4259/)).
-- lang: Support module constants in `max_len` attribute ([#3879](https://github.com/solana-foundation/anchor/pull/3879)).
-- spl: Deprecate broken `cpi_guard_enable/disable` functions ([#4465](https://github.com/solana-foundation/anchor/pull/4465)).
+- lang/syn: Fix compile error with `init` and a runtime seeds expression ([#4495](https://github.com/solana-foundation/anchor/pull/4495)).
 
 ### Breaking
 
