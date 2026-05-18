@@ -506,6 +506,9 @@ pub enum ProgramCommand {
         /// Maximum transaction length (BPF loader upgradeable limit)
         #[clap(long)]
         max_len: Option<usize>,
+        /// Automatically extend the program data account before upgrade if needed
+        #[clap(long)]
+        auto_extend: bool,
         /// Don't upload IDL during deployment (IDL is uploaded by default)
         #[clap(long)]
         no_idl: bool,
@@ -596,6 +599,9 @@ pub enum ProgramCommand {
         /// Max times to retry on failure
         #[clap(long, default_value = "0")]
         max_retries: u32,
+        /// Automatically extend the program data account before upgrade if needed
+        #[clap(long)]
+        auto_extend: bool,
         /// Additional arguments to configure deployment (e.g., --with-compute-unit-price 1000)
         #[clap(required = false, last = true)]
         solana_args: Vec<String>,
@@ -866,9 +872,16 @@ fn get_cluster_and_wallet(cfg_override: &ConfigOverride) -> Result<(String, Stri
     Ok((final_cluster, wallet_path))
 }
 
-/// Get the recommended priority fee from the RPC client, falling back to 0 if unavailable
-pub fn get_recommended_micro_lamport_fee(client: &RpcClient) -> u64 {
-    let mut fees = match client.get_recent_prioritization_fees(&[]) {
+/// Get the recommended priority fee from the RPC client, falling back to 0 if unavailable.
+/// `write_locked_accounts` scopes the query to txs that write-locked all of these
+/// accounts in recent blocks — passing the accounts the upcoming tx will lock
+/// gives a contention-aware fee. Pass `&[]` for a global median (often too low
+/// for hot mainnet windows).
+pub fn get_recommended_micro_lamport_fee(
+    client: &RpcClient,
+    write_locked_accounts: &[Pubkey],
+) -> u64 {
+    let mut fees = match client.get_recent_prioritization_fees(write_locked_accounts) {
         // Fees may be empty or query may fail, e.g. on localnet
         Err(e) => {
             eprintln!("Warning: failed to fetch prioritization fees, defaulting to 0: {e}");
@@ -896,8 +909,10 @@ pub fn prepend_compute_unit_ix(
     instructions: Vec<Instruction>,
     client: &RpcClient,
     priority_fee: Option<u64>,
+    write_locked_accounts: &[Pubkey],
 ) -> Vec<Instruction> {
-    let priority_fee = priority_fee.unwrap_or_else(|| get_recommended_micro_lamport_fee(client));
+    let priority_fee = priority_fee
+        .unwrap_or_else(|| get_recommended_micro_lamport_fee(client, write_locked_accounts));
 
     if priority_fee > 0 {
         let mut instructions_appended = instructions.clone();
@@ -4285,10 +4300,6 @@ fn deploy(
         let url = cluster_url(cfg, &cfg.test_validator, &cfg.surfpool_config);
         let keypair = cfg.provider.wallet.to_string();
 
-        // Augment the given solana args with recommended defaults.
-        let client = create_client(&url);
-        let solana_args = add_recommended_deployment_solana_args(&client, solana_args)?;
-
         cfg.run_hooks(HookType::PreDeploy)?;
         // Deploy the programs.
         println!("Deploying cluster: {url}");
@@ -4311,10 +4322,11 @@ fn deploy(
                 Some(strip_workspace_prefix(binary_path)),
                 None, // program_name - not needed since we have filepath
                 Some(strip_workspace_prefix(program_keypair_filepath)),
-                None, // upgrade_authority - uses wallet from config
-                None, // program_id - derived from program_keypair
-                None, // buffer
-                None, // max_len
+                None,  // upgrade_authority - uses wallet from config
+                None,  // program_id - derived from program_keypair
+                None,  // buffer
+                None,  // max_len
+                false, // auto_extend
                 no_idl,
                 false, // make_final
                 solana_args.clone(),
@@ -4344,6 +4356,7 @@ fn upgrade(
         None, // buffer
         None, // upgrade_authority - uses wallet from config
         max_retries,
+        false, // auto_extend
         solana_args,
     )
 }
@@ -5026,42 +5039,35 @@ fn get_node_version() -> Result<Version> {
     Version::parse(output).map_err(Into::into)
 }
 
+/// Default re-sign attempts when blockhashes expire mid-deploy.
+/// Matches Agave's `solana program deploy` default (agave/cli/src/program.rs).
+/// Each blockhash window is ~60s, so 5 → ~5 minutes of resign budget.
+pub const DEFAULT_MAX_SIGN_ATTEMPTS: usize = 5;
+
 fn add_recommended_deployment_solana_args(
     client: &RpcClient,
     args: Vec<String>,
+    write_locked_accounts: &[Pubkey],
 ) -> Result<Vec<String>> {
     let mut augmented_args = args.clone();
 
     // If no priority fee is provided, calculate a recommended fee based on recent txs.
     if !args.contains(&"--with-compute-unit-price".to_string()) {
-        let priority_fee = get_recommended_micro_lamport_fee(client);
+        let priority_fee = get_recommended_micro_lamport_fee(client, write_locked_accounts);
         augmented_args.push("--with-compute-unit-price".to_string());
         augmented_args.push(priority_fee.to_string());
     }
 
-    const DEFAULT_MAX_SIGN_ATTEMPTS: u8 = 30;
     if !args.contains(&"--max-sign-attempts".to_string()) {
         augmented_args.push("--max-sign-attempts".to_string());
         augmented_args.push(DEFAULT_MAX_SIGN_ATTEMPTS.to_string());
     }
 
-    // If no buffer keypair is provided, create a temporary one to reuse across deployments.
-    // This is particularly useful for upgrading larger programs, which suffer from an increased
-    // likelihood of some write transactions failing during any single deployment.
-    if !args.contains(&"--buffer".to_owned()) {
-        let tmp_keypair_path = std::env::temp_dir().join("anchor-upgrade-buffer.json");
-        if !tmp_keypair_path.exists() {
-            if let Err(err) = Keypair::new().write_to_file(&tmp_keypair_path) {
-                return Err(anyhow!(
-                    "Error creating keypair for buffer account, {:?}",
-                    err
-                ));
-            }
-        }
-
-        augmented_args.push("--buffer".to_owned());
-        augmented_args.push(tmp_keypair_path.to_string_lossy().to_string());
-    }
+    // Note: `--buffer` injection is handled by callers (program_deploy /
+    // program_upgrade) so the path can be scoped per program
+    // (`target/deploy/{name}-upgrade-buffer.json`). Doing it here would either
+    // collide across concurrent program deploys or require threading
+    // program_name down into this fee/sign-attempts helper.
 
     Ok(augmented_args)
 }
