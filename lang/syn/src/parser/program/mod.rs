@@ -43,7 +43,7 @@ fn function_type(method: &syn::ItemFn) -> FunctionType {
                     "handlers may not take receivers",
                 ));
             };
-            Ok(&arg.ty)
+            Ok(arg)
         })
         .collect::<ParseResult<Vec<_>>>();
 
@@ -54,50 +54,9 @@ fn function_type(method: &syn::ItemFn) -> FunctionType {
         }
     };
 
-    fn valid_fallback(program_id: &syn::Type, accounts: &syn::Type, data: &syn::Type) -> bool {
-        // Check for &Pubkey
-        let syn::Type::Reference(program_id) = program_id else {
-            return false;
-        };
-        let syn::Type::Path(program_id_path) = program_id.elem.as_ref() else {
-            return false;
-        };
-        if !program_id_path.path.is_ident("Pubkey") {
-            return false;
-        }
-
-        // Check for &[AccountInfo]
-        let syn::Type::Reference(accounts) = accounts else {
-            return false;
-        };
-        let syn::Type::Slice(accounts_slice) = accounts.elem.as_ref() else {
-            return false;
-        };
-        let syn::Type::Path(accounts_slice_inner) = accounts_slice.elem.as_ref() else {
-            return false;
-        };
-        let Some(segment) = accounts_slice_inner.path.segments.last() else {
-            return false;
-        };
-        if segment.ident != "AccountInfo" {
-            return false;
-        }
-
-        // Check for &[u8]
-        let syn::Type::Reference(data) = data else {
-            return false;
-        };
-        let syn::Type::Slice(data_slice) = data.elem.as_ref() else {
-            return false;
-        };
-        let syn::Type::Path(data_slice_inner) = data_slice.elem.as_ref() else {
-            return false;
-        };
-        if !data_slice_inner.path.is_ident("u8") {
-            return false;
-        }
-
-        true
+    fn named_args(args: &[&syn::PatType]) -> bool {
+        args.iter()
+            .all(|arg| matches!(&*arg.pat, syn::Pat::Ident(_)))
     }
 
     fn valid_handler(context: &syn::Type) -> bool {
@@ -116,10 +75,8 @@ fn function_type(method: &syn::ItemFn) -> FunctionType {
     }
 
     match inputs.as_slice() {
-        [program_id, accounts, data] if valid_fallback(program_id, accounts, data) => {
-            FunctionType::Fallback
-        }
-        [context, ..] if valid_handler(context) => FunctionType::IxHandler,
+        [context, ..] if valid_handler(&context.ty) => FunctionType::IxHandler,
+        [_, _, _] if named_args(&inputs) => FunctionType::Fallback,
         _ => FunctionType::Error(ParseError::new(
             method.span(),
             "handlers must take a `Context<...>` argument",
