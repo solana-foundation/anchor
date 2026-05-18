@@ -39,6 +39,7 @@ export default {
     "camelcase",
     "eventemitter3",
     "@noble/hashes/sha256",
+    "@noble/hashes/utils",
     "pako",
     "toml",
   ],

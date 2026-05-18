@@ -20,11 +20,13 @@ OPTIONS:
     -V, --version    Print version information
 
 SUBCOMMANDS:
-    help         Print this message or the help of the given subcommand(s)
-    install      Install a version of Anchor
-    list         List available versions of Anchor
-    uninstall    Uninstall a version of Anchor
-    use          Use a specific version of Anchor
+    help           Print this message or the help of the given subcommand(s)
+    install        Install a version of Anchor
+    list           List available versions of Anchor
+    uninstall      Uninstall a version of Anchor
+    update         Update to the latest Anchor version
+    use            Use a specific version of Anchor
+    self-update    Update avm itself to the latest version
 ```
 
 ## Install
@@ -35,11 +37,21 @@ avm install <VERSION_OR_COMMIT>
 
 Install the specified version of anchor-cli. The version argument should follow
 semver versioning. It is also possible to use `latest` as the version argument
-to install the latest version.
-
-It's also possible to install based on a specific commit hash:
+to install the latest stable version, or `latest-pre-release` for the latest
+pre-release:
 
 ```shell
+avm install latest
+avm install latest-pre-release
+```
+
+It's also possible to install based on a specific commit hash or a pre-release
+version tag:
+
+```shell
+# Specific pre-release
+avm install 1.0.0-rc.3
+
 # <VERSION>-<COMMIT>
 avm install 0.30.1-cfe82aa682138f7c6c58bf7a78f48f7d63e9e466
 
@@ -53,13 +65,33 @@ avm install cfe82aa
 ## List
 
 ```shell
-avm list
+avm list [--pre-release]
+```
+
+List available versions. Pass `--pre-release` to include pre-release versions
+in the output:
+
+```shell
+avm list --pre-release
 ```
 
 ## Uninstall
 
 ```shell
 avm uninstall <version>
+```
+
+## Update
+
+```shell
+avm update [--pre-release]
+```
+
+Update to the latest stable version. Pass `--pre-release` to allow updating to
+the latest pre-release instead:
+
+```shell
+avm update --pre-release
 ```
 
 ## Use
@@ -69,5 +101,37 @@ avm use <version>
 ```
 
 Use a specific version. This version will remain in use until you change it by
-calling the same command again. Similarly to `avm install`, you can also use
-`latest` for the version.
+calling the same command again. Similarly to `avm install`, you can use
+`latest` or `latest-pre-release` for the version argument:
+
+```shell
+avm use latest
+avm use latest-pre-release
+```
+
+## Self-update
+
+```shell
+avm self-update [--pre-release] [--bleeding-edge]
+```
+
+Update `avm` itself. By default installs the latest stable release of `avm`.
+
+| Flag | Description |
+|------|-------------|
+| `--pre-release` | Update to the latest pre-release version instead of the latest stable |
+| `--bleeding-edge` | Build and install from the latest commit on the master branch (conflicts with `--pre-release`) |
+
+```shell
+# Update avm to latest stable
+avm self-update
+
+# Update avm to latest pre-release
+avm self-update --pre-release
+
+# Install from the tip of master
+avm self-update --bleeding-edge
+```
+
+`avm` will also passively warn you when it detects that a newer version of
+itself is available.

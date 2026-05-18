@@ -96,9 +96,7 @@ pub fn check_deps(cfg: &WithPath<Config>) -> Result<()> {
             // Assume incompatible if parsing fails
             return false;
         };
-        // Ideally, this should be sourced from the actual version of `solana-program` in use
-        // However, this is not available to `anchor-cli` at publish time so we have to hardcode.
-        let version = "3.0.0";
+        let version = include_str!("../solana-program-version").trim();
         let workspace_solana_prog_version = semver::Version::parse(version).unwrap();
         req.matches(&workspace_solana_prog_version)
     }

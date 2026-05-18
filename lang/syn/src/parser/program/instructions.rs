@@ -63,6 +63,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
             })
             .collect::<Vec<_>>();
         if fallback_fns.len() > 1 {
+            #[allow(clippy::indexing_slicing, reason = "guarded by len() > 1 check above")]
             return Err(ParseError::new(
                 fallback_fns[0].span(),
                 "More than one fallback function found",
@@ -82,7 +83,7 @@ pub fn parse(program_mod: &syn::ItemMod) -> ParseResult<(Vec<Ix>, Option<Fallbac
 fn parse_overrides(attrs: &[syn::Attribute]) -> ParseResult<Option<Overrides>> {
     attrs
         .iter()
-        .find(|attr| match attr.path.segments.last() {
+        .find(|attr| match attr.path().segments.last() {
             Some(seg) => seg.ident == "instruction",
             _ => false,
         })
@@ -129,7 +130,16 @@ pub fn parse_return(method: &syn::ItemFn) -> ParseResult<IxReturn> {
                 _ => return Err(ParseError::new(ty.span(), "expected a return type")),
             };
             // Assume unit return by default
+            #[allow(
+                clippy::unwrap_used,
+                reason = "\"()\" is always valid syn::Type syntax"
+            )]
             let default_generic_arg = syn::GenericArgument::Type(syn::parse_str("()").unwrap());
+            #[allow(
+                clippy::unwrap_used,
+                reason = "type path always has segments; angle-bracketed args always have at \
+                          least one arg"
+            )]
             let generic_args = match &ty.path.segments.last().unwrap().arguments {
                 syn::PathArguments::AngleBracketed(params) => {
                     params.args.iter().next_back().unwrap()
@@ -158,7 +168,7 @@ fn parse_cfg(method: &syn::ItemFn) -> Vec<Attribute> {
     method
         .attrs
         .iter()
-        .filter_map(|attr| match attr.path.is_ident("cfg") {
+        .filter_map(|attr| match attr.path().is_ident("cfg") {
             true => Some(attr.to_owned()),
             false => None,
         })

@@ -43,6 +43,10 @@ pub fn gen_lazy(strct: &syn::ItemStruct) -> syn::Result<TokenStream> {
             let offset_of_ident = to_private_ident(format!("offset_of_{field_ident}"));
             let size_of_ident = to_private_ident(format!("size_of_{field_ident}"));
 
+            #[allow(
+                clippy::unwrap_used,
+                reason = "field i-1 always exists when iterating field i"
+            )]
             let offset = i.eq(&0).then(|| quote!(#disc_len)).unwrap_or_else(|| {
                 // Current offset is the previous field's offset + size
                 strct

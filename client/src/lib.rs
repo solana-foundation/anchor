@@ -45,7 +45,7 @@
 //!
 //! More examples can be found in [here].
 //!
-//! [here]: https://github.com/solana-foundation/anchor/tree/v1.0.0-rc.5/client/example/src
+//! [here]: https://github.com/solana-foundation/anchor/tree/v1.0.2/client/example/src
 //!
 //! # Features
 //!
@@ -54,7 +54,7 @@
 //! The client is blocking by default. To enable asynchronous client, add `async` feature:
 //!
 //! ```toml
-//! anchor-client = { version = "1.0.0-rc.5 ", features = ["async"] }
+//! anchor-client = { version = "1.0.2", features = ["async"] }
 //! ````
 //!
 //! ## `mock`
@@ -69,17 +69,17 @@ pub use nonblocking::ThreadSafeSigner;
 pub use {
     anchor_lang,
     cluster::Cluster,
-    solana_account_decoder,
     solana_commitment_config::CommitmentConfig,
+    solana_hash::Hash,
     solana_instruction::Instruction,
-    solana_program::hash::Hash,
+    solana_message::AddressLookupTableAccount,
     solana_pubsub_client::nonblocking::pubsub_client::PubsubClientError,
     solana_rpc_client_api::{
         client_error::Error as SolanaClientError, config::RpcSendTransactionConfig,
         filter::RpcFilterType,
     },
     solana_signer::{Signer, SignerError},
-    solana_transaction::Transaction,
+    solana_transaction::{versioned::VersionedTransaction, Transaction},
 };
 use {
     anchor_lang::{
@@ -90,6 +90,7 @@ use {
     regex::Regex,
     solana_account_decoder::{UiAccount, UiAccountEncoding},
     solana_instruction::AccountMeta,
+    solana_message::v0,
     solana_pubsub_client::nonblocking::pubsub_client::PubsubClient,
     solana_rpc_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient,
     solana_rpc_client_api::{
@@ -114,6 +115,16 @@ use {
 };
 
 mod cluster;
+
+/// Specifies which transaction version to use when building transactions.
+#[derive(Debug, Clone, Default)]
+pub enum TxVersion<'a> {
+    /// Legacy transaction format.
+    #[default]
+    Legacy,
+    /// Versioned transaction format (v0) with optional address lookup tables.
+    V0(&'a [AddressLookupTableAccount]),
+}
 
 #[cfg(not(feature = "async"))]
 mod blocking;
@@ -491,6 +502,10 @@ pub enum ClientError {
     IOError(#[from] std::io::Error),
     #[error("{0}")]
     SignerError(#[from] SignerError),
+    #[error("{0}")]
+    CompileError(#[from] solana_message::CompileError),
+    #[error("Expected a legacy transaction but got a versioned transaction")]
+    NotLegacyTransaction,
 }
 
 pub trait AsSigner {
@@ -608,43 +623,148 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
         instructions
     }
 
-    fn signed_transaction_with_blockhash(
-        &self,
-        latest_hash: Hash,
-    ) -> Result<Transaction, ClientError> {
-        let signers: Vec<&dyn Signer> = self.signers.iter().map(|s| s.as_signer()).collect();
-        let mut all_signers = signers;
-        all_signers.push(&*self.payer);
-
-        let mut tx = self.transaction();
-        tx.try_sign(&all_signers, latest_hash)?;
-
-        Ok(tx)
-    }
-
+    /// Build the request into a transaction.
+    ///
+    /// Note: This will build a transaction with the legacy transaction format. If you'd like to use
+    /// a different transaction format, use [`transaction_versioned`].
     pub fn transaction(&self) -> Transaction {
         let instructions = &self.instructions();
         Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()))
     }
 
-    async fn signed_transaction_internal(&self) -> Result<Transaction, ClientError> {
-        let latest_hash = self
-            .internal_rpc_client
-            .get_latest_blockhash()
-            .await
-            .map_err(Box::new)?;
+    /// Build an unsigned transaction.
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - The transaction version to use ([`TxVersion::Legacy`] or [`TxVersion::V0`]).
+    /// * `recent_blockhash` - A recent blockhash to include in the transaction message.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use anchor_client::{Client, Cluster, TxVersion};
+    /// use anchor_lang::prelude::Pubkey;
+    /// use solana_signer::null_signer::NullSigner;
+    /// use solana_message::AddressLookupTableAccount;
+    /// use solana_message::Hash;
+    ///
+    /// let payer = NullSigner::new(&Pubkey::default());
+    /// let client = Client::new(Cluster::Localnet, std::rc::Rc::new(payer));
+    ///
+    /// let program = client.program(Pubkey::default()).unwrap();
+    /// // Dummy blockhash
+    /// let blockhash = Hash::from([0; 32]);
+    /// let lookup_table = AddressLookupTableAccount { key: Pubkey::default(), addresses: vec![] };
+    ///
+    /// let request = program.request();
+    /// // Legacy transaction
+    /// let tx = request.transaction_versioned(TxVersion::Legacy, blockhash).unwrap();
+    ///
+    /// // V0 transaction with address lookup tables
+    /// let tx = request.transaction_versioned(TxVersion::V0(&[lookup_table]), blockhash).unwrap();
+    ///
+    /// // V0 transaction without lookup tables
+    /// let tx = request.transaction_versioned(TxVersion::V0(&[]), blockhash).unwrap();
+    //// ```
+    pub fn transaction_versioned(
+        &self,
+        version: TxVersion<'_>,
+        recent_blockhash: Hash,
+    ) -> Result<solana_transaction::versioned::VersionedTransaction, ClientError> {
+        let instructions = self.instructions();
+        let payer = self.payer.pubkey();
 
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+        match version {
+            TxVersion::Legacy => {
+                let message = solana_message::legacy::Message::new_with_blockhash(
+                    &instructions,
+                    Some(&payer),
+                    &recent_blockhash,
+                );
+                Ok(solana_transaction::versioned::VersionedTransaction {
+                    signatures: vec![
+                        solana_signature::Signature::default();
+                        message.header.num_required_signatures as usize
+                    ],
+                    message: solana_message::VersionedMessage::Legacy(message),
+                })
+            }
+            TxVersion::V0(address_lookup_table_accounts) => {
+                let message = v0::Message::try_compile(
+                    &payer,
+                    &instructions,
+                    address_lookup_table_accounts,
+                    recent_blockhash,
+                )?;
+                Ok(solana_transaction::versioned::VersionedTransaction {
+                    signatures: vec![
+                        solana_signature::Signature::default();
+                        message.header.num_required_signatures as usize
+                    ],
+                    message: solana_message::VersionedMessage::V0(message),
+                })
+            }
+        }
+    }
+
+    fn signed_transaction_with_blockhash_versioned(
+        &self,
+        version: TxVersion<'_>,
+        latest_hash: Hash,
+    ) -> Result<solana_transaction::versioned::VersionedTransaction, ClientError> {
+        let signers: Vec<&dyn Signer> = self.signers.iter().map(|s| s.as_signer()).collect();
+        let mut all_signers = signers;
+        all_signers.push(&*self.payer);
+
+        let instructions = self.instructions();
+        let payer = self.payer.pubkey();
+
+        let message = match version {
+            TxVersion::Legacy => {
+                let msg = solana_message::legacy::Message::new_with_blockhash(
+                    &instructions,
+                    Some(&payer),
+                    &latest_hash,
+                );
+                solana_message::VersionedMessage::Legacy(msg)
+            }
+            TxVersion::V0(address_lookup_table_accounts) => {
+                let msg = v0::Message::try_compile(
+                    &payer,
+                    &instructions,
+                    address_lookup_table_accounts,
+                    latest_hash,
+                )?;
+                solana_message::VersionedMessage::V0(msg)
+            }
+        };
+
+        let tx =
+            solana_transaction::versioned::VersionedTransaction::try_new(message, &all_signers)?;
+
         Ok(tx)
     }
 
-    async fn send_internal(&self) -> Result<Signature, ClientError> {
+    async fn signed_transaction_internal(
+        &self,
+        version: TxVersion<'_>,
+    ) -> Result<solana_transaction::versioned::VersionedTransaction, ClientError> {
         let latest_hash = self
             .internal_rpc_client
             .get_latest_blockhash()
             .await
             .map_err(Box::new)?;
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+
+        self.signed_transaction_with_blockhash_versioned(version, latest_hash)
+    }
+
+    async fn send_internal(&self, version: TxVersion<'_>) -> Result<Signature, ClientError> {
+        let latest_hash = self
+            .internal_rpc_client
+            .get_latest_blockhash()
+            .await
+            .map_err(Box::new)?;
+        let tx = self.signed_transaction_with_blockhash_versioned(version, latest_hash)?;
 
         self.internal_rpc_client
             .send_and_confirm_transaction(&tx)
@@ -654,6 +774,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
 
     async fn send_with_spinner_and_config_internal(
         &self,
+        version: TxVersion<'_>,
         config: RpcSendTransactionConfig,
     ) -> Result<Signature, ClientError> {
         let latest_hash = self
@@ -661,7 +782,7 @@ impl<C: Deref<Target = impl Signer> + Clone, S: AsSigner> RequestBuilder<'_, C, 
             .get_latest_blockhash()
             .await
             .map_err(Box::new)?;
-        let tx = self.signed_transaction_with_blockhash(latest_hash)?;
+        let tx = self.signed_transaction_with_blockhash_versioned(version, latest_hash)?;
 
         self.internal_rpc_client
             .send_and_confirm_transaction_with_spinner_and_config(
@@ -684,7 +805,7 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
         if let Ok(mut execution) = Execution::new(&mut logs) {
             // Create a new peekable iterator so that we can peek at the next log whilst iterating
             let mut logs_iter = logs.iter().peekable();
-            let regex = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[[\d]+\]$").unwrap();
+            let regex = Regex::new(r"^Program ([1-9A-HJ-NP-Za-km-z]+) invoke \[(\d+)\]$").unwrap();
 
             while let Some(l) = logs_iter.next() {
                 // Parse the log.
@@ -715,14 +836,17 @@ fn parse_logs_response<T: anchor_lang::Event + anchor_lang::AnchorDeserialize>(
                     // We need to ensure that the `Execution` instance is updated with
                     // the next program ID, or else `execution.program()` will cause
                     // a panic during the next iteration.
+                    //
+                    // Use the full regex match to gate this branch. A loose
+                    // `ends_with("invoke [1]")` check would also accept program-emitted
+                    // log lines that happen to end in that suffix (e.g.
+                    // `"Program log: ...invoke [1]"`), which then fail the strict
+                    // `^Program <pubkey> invoke [N]$` regex and panic on unwrap.
                     if let Some(&next_log) = logs_iter.peek() {
-                        if next_log.ends_with("invoke [1]") {
-                            let next_instruction =
-                                regex.captures(next_log).unwrap().get(1).unwrap().as_str();
-                            // Within this if block, there will always be a regex match.
-                            // Therefore it's safe to unwrap and the captured program ID
-                            // at index 1 can also be safely unwrapped.
-                            execution.push(next_instruction.to_string());
+                        if let Some(caps) = regex.captures(next_log) {
+                            if &caps[2] == "1" {
+                                execution.push(caps[1].to_string());
+                            }
                         }
                     };
                 }
@@ -920,6 +1044,40 @@ mod tests {
                 },
             },
             program_id_str,
+        )
+        .unwrap();
+
+        Ok(())
+    }
+
+    /// Regression for #4461: a program-emitted `Program log:` line that ends
+    /// with the literal `"invoke [1]"` (e.g. log content that happens to
+    /// describe a CPI) used to satisfy the `ends_with` gate but fail the
+    /// strict `^Program <pubkey> invoke [N]$` regex, panicking on
+    /// `.captures(...).unwrap()` whenever it appeared right after a CPI pop.
+    #[test]
+    fn test_parse_logs_response_log_line_ends_with_invoke_1() -> Result<()> {
+        let logs = [
+            "Program VeryCoolProgram invoke [1]",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+            "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+            // Program-emitted log that happens to end with "invoke [1]"
+            // immediately after a CPI returns. Pre-fix this would panic.
+            "Program log: forwarded inner instruction invoke [1]",
+            "Program VeryCoolProgram success",
+        ];
+        let logs: Vec<String> = logs.iter().map(|&l| l.to_string()).collect();
+
+        parse_logs_response::<MockEvent>(
+            RpcResponse {
+                context: RpcResponseContext::new(0),
+                value: RpcLogsResponse {
+                    signature: "".to_string(),
+                    err: None,
+                    logs,
+                },
+            },
+            "VeryCoolProgram",
         )
         .unwrap();
 

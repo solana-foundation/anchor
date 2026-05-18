@@ -500,9 +500,9 @@ export class VersionManager {
 
     // `solana-install` is renamed to `agave-install` in Solana v2
     // https://github.com/anza-xyz/agave/wiki/Agave-Transition
-    const cmdName = activeVersion.startsWith("2")
-      ? "agave-install"
-      : "solana-install";
+    const cmdName = activeVersion.startsWith("1")
+      ? "solana-install"
+      : "agave-install";
     spawn(cmdName, ["init", version], {
       logOutput: true,
       throwOnError: { msg: `Failed to set Solana version to ${version}` },

@@ -29,9 +29,12 @@ case "$(uname)" in
   Darwin*) sedi=(-i "")
 esac
 
-# Bump all rust crates that have `publish` enabled
+# Bump all rust crates that have `publish` enabled (excluding crates that are
+# versioned separately)
 cargo release version $version \
     --workspace \
+    --exclude anchor-lang-idl \
+    --exclude anchor-lang-idl-spec \
     $(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.publish == []) | "--exclude " + .name') \
     --no-confirm \
     --execute
@@ -44,22 +47,48 @@ git grep -l $old_version -- $allow_globs |
 
 # Avoid updating the docs for pre-release builds
 if [[ "$is_prerelease" -eq 0 ]]; then
+    latest_stable_version=$(
+        git tag --sort=-version:refname | \
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
+            head -n1 | \
+            sed 's/^v//'
+    )
+    echo "Latest stable version for documentation was $latest_stable_version..."
+
     # Separately handle docs because blindly replacing the old version with the new
     # might break certain examples/links
     pushd docs/content/docs
-    git grep -l $old_version -- "./*.md*" | \
+    git grep -l $latest_stable_version -- "./*.md*" | \
         xargs sed "${sedi[@]}" \
-        -e "s/\"$old_version\"/\"$version\"/g"
+        -e "s/\"$latest_stable_version\"/\"$version\"/g"
     allow_globs="installation.mdx quickstart/local.mdx references/verifiable-builds.mdx"
-    git grep -l $old_version -- $allow_globs |
+    git grep -l $latest_stable_version -- $allow_globs |
         xargs sed "${sedi[@]}" \
-        -e "s/$old_version/$version/g"
+        -e "s/$latest_stable_version/$version/g"
     # Replace `solana_version` with the current version
     solana_version=$(solana --version | awk '{print $2;}')
     sed $sedi "s/solana_version.*\"/solana_version = \"$solana_version\"/g" references/anchor-toml.mdx
     # Keep release notes and changelog the same
     git restore updates
     popd
+
+    # If the release notes are missing from the website, we should at the minimum create a placeholder linking to the github release notes
+    VERSION_URL=$(echo $version | sed 's/\./-/g')
+    VERSION_CHANGELOG=$(echo $version | sed 's/\.//g')
+    if [[ ! -f "docs/content/docs/updates/release-notes/${VERSION_URL}.mdx" ]]; then
+        cat <<EOF > "docs/content/docs/updates/release-notes/${VERSION_URL}.mdx"
+---
+title: $version
+description: Anchor - Release Notes $version
+---
+
+See the full 
+[CHANGELOG](https://github.com/solana-foundation/anchor/blob/v${version}/CHANGELOG.md#${VERSION_CHANGELOG}---$(date '+%Y-%m-%d')).
+EOF
+
+        # Insert the version into release notes meta, and sort the versions so the order is correct
+        jq --arg v "$VERSION_URL" '.pages |= (. + [$v] | sort_by(split("-") | map(tonumber)))' docs/content/docs/updates/release-notes/meta.json
+    fi
 fi
 
 # Potential for collisions in `package.json` files, handle those separately
@@ -75,18 +104,20 @@ sed "${sedi[@]}" -e \
     CHANGELOG.md
 
 # Update lock files
+# Cannot use --frozen-lockfile: package.json versions were just bumped, so refresh the lockfiles.
+# Only workspace versions changed above; if lockfile diffs look like broad third-party churn, investigate before tagging.
 pushd ts
-yarn
+yarn install
 popd
 
 pushd tests
-yarn
+yarn install
 popd
 
 pushd examples
-yarn
+yarn install
 pushd tutorial
-yarn
+yarn install
 popd
 popd
 

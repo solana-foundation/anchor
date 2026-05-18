@@ -40,7 +40,7 @@ mod bpf_upgradeable_state;
 mod bpf_writer;
 mod common;
 pub mod context;
-pub mod error;
+pub use anchor_lang_error as error;
 #[doc(hidden)]
 pub mod event;
 #[doc(hidden)]
@@ -420,6 +420,63 @@ pub trait Discriminator {
 /// Defines the space of an account for initialization.
 pub trait Space {
     const INIT_SPACE: usize;
+}
+
+// Implement Space for primitive types
+impl Space for bool {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for u8 {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for u16 {
+    const INIT_SPACE: usize = 2;
+}
+
+impl Space for u32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for u64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for u128 {
+    const INIT_SPACE: usize = 16;
+}
+
+impl Space for i8 {
+    const INIT_SPACE: usize = 1;
+}
+
+impl Space for i16 {
+    const INIT_SPACE: usize = 2;
+}
+
+impl Space for i32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for i64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for i128 {
+    const INIT_SPACE: usize = 16;
+}
+
+impl Space for f32 {
+    const INIT_SPACE: usize = 4;
+}
+
+impl Space for f64 {
+    const INIT_SPACE: usize = 8;
+}
+
+impl Space for Pubkey {
+    const INIT_SPACE: usize = 32;
 }
 
 /// Bump seed for program derived addresses.
@@ -840,6 +897,9 @@ macro_rules! require_gte {
 /// pub enum MyError {
 ///     SomeError
 /// }
+///
+/// #[derive(Accounts)]
+/// pub struct Example {}
 /// ```
 #[macro_export]
 macro_rules! err {

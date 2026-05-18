@@ -11,6 +11,10 @@ pub fn constant(
     {
         use quote::quote;
 
+        #[allow(
+            clippy::unwrap_used,
+            reason = "attribute macro input is always a valid syn::Item"
+        )]
         let ts = match syn::parse(input).unwrap() {
             syn::Item::Const(item) => {
                 let idl_print = anchor_syn::idl::gen_idl_print_fn_constant(&item);

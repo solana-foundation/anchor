@@ -20,11 +20,12 @@ use {
     syn::{
         ext::IdentExt,
         parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult},
+        parse_quote,
         punctuated::Punctuated,
         spanned::Spanned,
         token::Comma,
-        Attribute, Expr, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit, LitInt,
-        PatType, Token, Type, TypePath,
+        Attribute, Expr, ExprLit, Generics, Ident, ItemEnum, ItemFn, ItemMod, ItemStruct, Lit,
+        LitInt, PatType, Token, Type, TypePath,
     },
 };
 
@@ -74,26 +75,42 @@ pub struct Ix {
 #[derive(Debug, Default)]
 pub struct Overrides {
     /// Override the default 8-byte discriminator
-    pub discriminator: Option<TokenStream>,
+    // `Box` is used to avoid large memory use in the common case as `Expr` is a large type
+    pub discriminator: Option<Box<Expr>>,
 }
 
 impl Parse for Overrides {
     fn parse(input: ParseStream) -> ParseResult<Self> {
         let mut attr = Self::default();
-        let args = input.parse_terminated::<_, Comma>(NamedArg::parse)?;
+        let args = input.parse_terminated(NamedArg::parse, Token![,])?;
         for arg in args {
             match arg.name.to_string().as_str() {
                 "discriminator" => {
-                    let value = match &arg.value {
+                    let value = match arg.value {
                         // Allow `discriminator = 42`
-                        Expr::Lit(lit) if matches!(lit.lit, Lit::Int(_)) => quote! { &[#lit] },
+                        Expr::Lit(ExprLit {
+                            lit: lit @ Lit::Int(_),
+                            ..
+                        }) => {
+                            parse_quote!(&[#lit])
+                        }
                         // Allow `discriminator = [0, 1, 2, 3]`
-                        Expr::Array(arr) => quote! { &#arr },
-                        expr => expr.to_token_stream(),
+                        Expr::Array(arr) => {
+                            parse_quote!(&#arr)
+                        }
+                        expr => expr,
                     };
-                    attr.discriminator.replace(value)
+                    attr.discriminator.replace(Box::new(value))
                 }
-                _ => return Err(ParseError::new(arg.name.span(), "Invalid argument")),
+                name => {
+                    return Err(ParseError::new(
+                        arg.name.span(),
+                        format!(
+                            "Invalid argument `{}`. Expected one of: `discriminator`",
+                            name
+                        ),
+                    ));
+                }
             };
         }
 
@@ -144,7 +161,7 @@ pub struct AccountsStruct {
     // Fields on the accounts struct.
     pub fields: Vec<AccountField>,
     // Instruction data api expression.
-    instruction_api: Option<Punctuated<Expr, Comma>>,
+    instruction_api: Option<Punctuated<syn::FnArg, Comma>>,
 }
 
 impl Parse for AccountsStruct {
@@ -170,7 +187,7 @@ impl AccountsStruct {
     pub fn new(
         strct: ItemStruct,
         fields: Vec<AccountField>,
-        instruction_api: Option<Punctuated<Expr, Comma>>,
+        instruction_api: Option<Punctuated<syn::FnArg, Comma>>,
     ) -> Self {
         let ident = strct.ident.clone();
         let generics = strct.generics;
@@ -193,7 +210,12 @@ impl AccountsStruct {
                     let arg = parser::tts_to_string(expr);
                     let components: Vec<&str> = arg.split(" : ").collect();
                     assert!(components.len() == 2);
-                    (components[0].to_string(), components[1].to_string())
+                    #[allow(
+                        clippy::indexing_slicing,
+                        reason = "len == 2 asserted immediately above"
+                    )]
+                    let result = (components[0].to_string(), components[1].to_string());
+                    result
                 })
                 .collect()
         })
@@ -834,6 +856,7 @@ pub enum ConstraintToken {
     ExtensionTokenHookAuthority(Context<ConstraintExtensionAuthority>),
     ExtensionTokenHookProgramId(Context<ConstraintExtensionTokenHookProgramId>),
     ExtensionPermanentDelegate(Context<ConstraintExtensionPermanentDelegate>),
+    ExtensionPausableAuthority(Context<ConstraintExtensionAuthority>),
 }
 
 impl Parse for ConstraintToken {
@@ -1002,13 +1025,9 @@ impl syn::parse::Parse for SeedsExpr {
         if stream.peek(syn::token::Bracket) {
             let content;
             syn::bracketed!(content in stream);
-            let mut list: Punctuated<Expr, Token![,]> = content.parse_terminated(Expr::parse)?;
-
-            // Strip a trailing comma if present.
-            // Use `pop_punct` when we update to syn 2.0
-            if let Some(pair) = list.pop() {
-                list.push_value(pair.into_value());
-            }
+            let mut list: Punctuated<Expr, Token![,]> =
+                content.parse_terminated(Expr::parse, Token![,])?;
+            list.pop_punct();
 
             Ok(SeedsExpr::List(list))
         } else {
@@ -1111,6 +1130,7 @@ pub enum InitKind {
         permanent_delegate: Option<Expr>,
         transfer_hook_authority: Option<Expr>,
         transfer_hook_program_id: Option<Expr>,
+        pausable_authority: Option<Expr>,
     },
 }
 
@@ -1229,6 +1249,7 @@ pub struct ConstraintTokenMintGroup {
     pub permanent_delegate: Option<Expr>,
     pub transfer_hook_authority: Option<Expr>,
     pub transfer_hook_program_id: Option<Expr>,
+    pub pausable_authority: Option<Expr>,
 }
 
 // Syntax context object for preserving metadata about the inner item.
@@ -1256,8 +1277,14 @@ impl<T> Deref for Context<T> {
     }
 }
 
-impl<T> Spanned for Context<T> {
-    fn span(&self) -> Span {
+impl<T> Context<T> {
+    pub fn span(&self) -> Span {
         self.span
+    }
+}
+
+impl<T: ToTokens> ToTokens for Context<T> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.inner.to_tokens(tokens)
     }
 }

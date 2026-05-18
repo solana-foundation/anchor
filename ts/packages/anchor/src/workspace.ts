@@ -1,8 +1,88 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as toml from "toml";
 import camelcase from "camelcase";
+import { execSync } from "child_process";
 import { Program } from "./program/index.js";
 import { isBrowser } from "./utils/common.js";
 import { Idl } from "./idl.js";
+
+let cargoTargetDirectoryCache: string | undefined;
+
+/**
+ * Resolves the IDL file name in `idlDirPath` matching `programName`
+ * (already camelCased). Throws a descriptive error if the directory
+ * is missing, empty, or no match is found.
+ */
+export function resolveIdlFileName(
+  idlDirPath: string,
+  programName: string
+): string {
+  let dirEntries: string[];
+  try {
+    dirEntries = fs.readdirSync(idlDirPath);
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      throw new Error(
+        `IDL directory not found at \`${idlDirPath}\`. Did you run \`anchor build\`?`
+      );
+    }
+    throw err;
+  }
+
+  const jsonFiles = dirEntries.filter(
+    (name: string) =>
+      path.extname(name) === ".json" &&
+      fs.statSync(path.join(idlDirPath, name)).isFile()
+  );
+
+  const fileName = jsonFiles.find(
+    (name: string) => camelcase(path.parse(name).name) === programName
+  );
+
+  if (!fileName) {
+    if (jsonFiles.length === 0) {
+      throw new Error(
+        `No IDL files found in \`${idlDirPath}\`. Did you run \`anchor build\`?`
+      );
+    }
+    const available = jsonFiles
+      .map((n: string) => path.parse(n).name)
+      .sort()
+      .join(", ");
+    throw new Error(
+      `Failed to find IDL for program \`${programName}\`.\n` +
+        `Available programs in \`${idlDirPath}\`: ${available}\n` +
+        `Ensure the following all use the same snake_case name:\n` +
+        `  - \`[lib].name\` in Cargo.toml\n` +
+        `  - \`#[program]\` module name in your Rust program\n` +
+        `  - Program key in Anchor.toml under \`[programs.<cluster>]\``
+    );
+  }
+
+  return fileName;
+}
+
+function getCargoTargetDirectory(): string {
+  if (cargoTargetDirectoryCache !== undefined) {
+    return cargoTargetDirectoryCache;
+  }
+  let metadata: { target_directory: string };
+  try {
+    const output = execSync("cargo metadata --no-deps --format-version=1", {
+      encoding: "utf8",
+    });
+    metadata = JSON.parse(output);
+  } catch (err) {
+    throw new Error(
+      `Failed to run 'cargo metadata'. Ensure Rust and Cargo are installed and the project is valid.\nOriginal error: ${
+        err instanceof Error ? err.message : err
+      }`
+    );
+  }
+  cargoTargetDirectoryCache = metadata.target_directory;
+  return cargoTargetDirectoryCache;
+}
 
 /**
  * The `workspace` namespace provides a convenience API to automatically
@@ -27,11 +107,8 @@ const workspace = new Proxy(
       // Return early if the program is in cache
       if (workspaceCache[programName]) return workspaceCache[programName];
 
-      const fs = require("fs");
-      const path = require("path");
-
       // Override the workspace programs if the user put them in the config.
-      const anchorToml = toml.parse(fs.readFileSync("Anchor.toml"));
+      const anchorToml = toml.parse(fs.readFileSync("Anchor.toml", "utf8"));
       const clusterId = anchorToml.provider.cluster;
       const programs = anchorToml.programs?.[clusterId];
       let programEntry;
@@ -54,14 +131,8 @@ const workspace = new Proxy(
         //
         // To avoid the above problem with numbers, read the `idl` directory and
         // compare the camelCased  version of both file names and `programName`.
-        const idlDirPath = path.join("target", "idl");
-        const fileName = fs
-          .readdirSync(idlDirPath)
-          .find((name) => camelcase(path.parse(name).name) === programName);
-        if (!fileName) {
-          throw new Error(`Failed to find IDL of program \`${programName}\``);
-        }
-
+        const idlDirPath = path.join(getCargoTargetDirectory(), "idl");
+        const fileName = resolveIdlFileName(idlDirPath, programName);
         idlPath = path.join(idlDirPath, fileName);
       }
 
@@ -71,7 +142,7 @@ const workspace = new Proxy(
         );
       }
 
-      const idl: Idl = JSON.parse(fs.readFileSync(idlPath));
+      const idl: Idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
       if (programId) {
         idl.address = programId;
       }

@@ -308,13 +308,23 @@ fn get_attr_str(name: impl AsRef<str>, attrs: &[syn::Attribute]) -> Option<Strin
     attrs
         .iter()
         .filter(|attr| {
-            attr.path
+            attr.path()
                 .segments
                 .first()
                 .filter(|seg| seg.ident == name)
                 .is_some()
         })
-        .map(|attr| attr.tokens.to_string())
+        .filter_map(|attr| match &attr.meta {
+            syn::Meta::List(list) => {
+                let (open, close) = match list.delimiter {
+                    syn::MacroDelimiter::Paren(_) => ("(", ")"),
+                    syn::MacroDelimiter::Bracket(_) => ("[", "]"),
+                    syn::MacroDelimiter::Brace(_) => ("{", "}"),
+                };
+                Some(format!("{open}{}{close}", list.tokens))
+            }
+            _ => None,
+        })
         .reduce(|acc, cur| {
             format!(
                 "{} , {}",
@@ -496,16 +506,71 @@ pub fn gen_idl_type(
                     super::{common::find_path, external::get_external_type},
                     crate::parser::context::CrateContext,
                     quote::ToTokens,
+                    std::{
+                        collections::{HashMap, HashSet},
+                        sync::OnceLock,
+                    },
                 };
+
+                struct CachedCrateData {
+                    /// Names of all structs and enums defined in the crate
+                    defined_names: HashSet<String>,
+                    /// Type aliases stored as (name, source_text) for re-parsing
+                    type_aliases: HashMap<String, String>,
+                }
+
+                static CRATE_DATA_CACHE: OnceLock<std::result::Result<CachedCrateData, String>> =
+                    OnceLock::new();
 
                 // If no path was found, just return an empty path and let the find_path function handle it
                 let source_path = proc_macro2::Span::call_site()
                     .local_file()
                     .unwrap_or_default();
 
-                if let Ok(Ok(ctx)) = find_path("lib.rs", &source_path).map(CrateContext::parse) {
+                'cache: {
+                    let Ok(lib_path) = find_path("lib.rs", &source_path) else {
+                        break 'cache;
+                    };
                     let name = path.path.segments.last().unwrap().ident.to_string();
-                    let alias = ctx.type_aliases().find(|ty| ty.ident == name);
+
+                    let cache = CRATE_DATA_CACHE.get_or_init(|| {
+                        CrateContext::parse(&lib_path)
+                            .map_err(|e| e.to_string())
+                            .map(|ctx| {
+                                let defined_names: HashSet<String> = ctx
+                                    .structs()
+                                    .map(|s| s.ident.to_string())
+                                    .chain(ctx.enums().map(|e| e.ident.to_string()))
+                                    .collect();
+                                let mut type_aliases: HashMap<String, String> = HashMap::new();
+                                for ty in ctx.type_aliases() {
+                                    type_aliases
+                                        .entry(ty.ident.to_string())
+                                        .or_insert_with(|| ty.to_token_stream().to_string());
+                                }
+                                CachedCrateData {
+                                    defined_names,
+                                    type_aliases,
+                                }
+                            })
+                    });
+
+                    let cache = match cache {
+                        Ok(data) => data,
+                        Err(e) => {
+                            return Err(syn::Error::new(
+                                path.span(),
+                                format!("Failed to parse crate: {e}"),
+                            ));
+                        }
+                    };
+
+                    let alias_src = cache.type_aliases.get(&name).cloned();
+                    let is_external = !cache.defined_names.contains(&name);
+
+                    let alias: Option<syn::ItemType> =
+                        alias_src.and_then(|src| syn::parse_str(&src).ok());
+
                     if let Some(alias) = alias {
                         if let Some(segment) = path.path.segments.last() {
                             if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
@@ -566,12 +631,6 @@ pub fn gen_idl_type(
                     }
 
                     // Handle external types
-                    let is_external = ctx
-                        .structs()
-                        .map(|s| s.ident.to_string())
-                        .chain(ctx.enums().map(|e| e.ident.to_string()))
-                        .find(|defined| defined == &name)
-                        .is_none();
                     if is_external {
                         if let Ok(Some(ty)) = get_external_type(&name, source_path) {
                             return gen_idl_type(&ty, generic_params);

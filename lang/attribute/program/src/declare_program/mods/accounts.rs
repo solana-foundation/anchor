@@ -10,6 +10,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
         let discriminator = gen_discriminator(&acc.discriminator);
         let disc = quote! { #name::DISCRIMINATOR };
 
+        #[allow(clippy::expect_used, reason = "IDL account types are guaranteed to exist in types array")]
         let ty_def = idl
             .types
             .iter()
@@ -78,8 +79,7 @@ pub fn gen_accounts_mod(idl: &Idl) -> proc_macro2::TokenStream {
 
                             fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
                                 let data: &[u8] = &buf[#disc.len()..];
-                                let account = anchor_lang::__private::bytemuck::from_bytes(data);
-                                Ok(*account)
+                                Ok(anchor_lang::__private::bytemuck::pod_read_unaligned(data))
                             }
                         }
 

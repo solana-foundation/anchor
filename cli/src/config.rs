@@ -1,5 +1,5 @@
 use {
-    crate::{get_keypair, is_hidden, keys_sync, DEFAULT_RPC_PORT},
+    crate::{get_keypair, is_hidden, keys_sync, target_dir, AbsolutePath, DEFAULT_RPC_PORT},
     anchor_client::Cluster,
     anchor_lang_idl::types::Idl,
     anyhow::{anyhow, bail, Context, Error, Result},
@@ -35,7 +35,7 @@ use {
 
 pub const SURFPOOL_HOST: &str = "127.0.0.1";
 /// Wrapper around CommitmentLevel to support case-insensitive parsing
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AbsolutePath)]
 pub struct CaseInsensitiveCommitmentLevel(pub CommitmentLevel);
 
 impl FromStr for CaseInsensitiveCommitmentLevel {
@@ -64,7 +64,7 @@ pub trait Merge: Sized {
     fn merge(&mut self, _other: Self) {}
 }
 
-#[derive(Default, Debug, Parser)]
+#[derive(Default, Debug, Parser, AbsolutePath)]
 pub struct ConfigOverride {
     /// Cluster override.
     #[clap(global = true, long = "provider.cluster")]
@@ -224,7 +224,7 @@ impl WithPath<Config> {
             let cargo = Manifest::from_path(path.join("Cargo.toml"))?;
             let lib_name = cargo.lib_name()?;
 
-            let idl_filepath = Path::new("target")
+            let idl_filepath = target_dir()?
                 .join("idl")
                 .join(&lib_name)
                 .with_extension("json");
@@ -308,6 +308,16 @@ impl WithPath<Config> {
     }
 }
 
+impl WalletPath {
+    fn resolve_relative_to(self, base: &Path) -> Self {
+        if self.0.is_relative() {
+            Self(base.join(self.0))
+        } else {
+            self
+        }
+    }
+}
+
 impl<T> std::ops::Deref for WithPath<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -339,7 +349,7 @@ pub struct Config {
     pub surfpool_config: Option<SurfpoolConfig>,
 }
 
-#[derive(ValueEnum, Parser, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, Copy, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum ValidatorType {
     /// Use Surfpool validator (default)
     Surfpool,
@@ -354,7 +364,9 @@ pub struct ToolchainConfig {
 }
 
 /// Package manager to use for the project.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Default, Eq, PartialEq, Parser, ValueEnum, Serialize, Deserialize, AbsolutePath,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     /// Use npm as the package manager.
@@ -471,7 +483,7 @@ pub struct WorkspaceConfig {
     pub types: String,
 }
 
-#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug)]
+#[derive(ValueEnum, Parser, Clone, PartialEq, Eq, Debug, AbsolutePath)]
 pub enum BootstrapMode {
     None,
     Debian,
@@ -534,15 +546,17 @@ impl Config {
                     .path();
                 if let Some(filename) = p.file_name() {
                     if filename.to_str() == Some("Anchor.toml") {
+                        let config_dir = p.parent().unwrap();
                         // Make sure the program id is correct (only on the initial build)
                         let mut cfg = Config::from_path(&p)?;
-                        let deploy_dir = p.parent().unwrap().join("target").join("deploy");
+                        let deploy_dir = target_dir()?.join("deploy");
                         if !deploy_dir.exists() && !cfg.programs.contains_key(&Cluster::Localnet) {
                             println!("Updating program ids...");
                             fs::create_dir_all(deploy_dir)?;
                             keys_sync(&ConfigOverride::default(), None)?;
                             cfg = Config::from_path(&p)?;
                         }
+                        cfg.provider.wallet = cfg.provider.wallet.resolve_relative_to(config_dir);
 
                         return Ok(Some(WithPath::new(cfg, p)));
                     }
@@ -562,7 +576,7 @@ impl Config {
     }
 
     pub fn wallet_kp(&self) -> Result<Keypair> {
-        get_keypair(&self.provider.wallet.to_string())
+        get_keypair(Path::new(&self.provider.wallet.0))
     }
 
     pub fn run_hooks(&self, hook_type: HookType) -> Result<()> {
@@ -1020,6 +1034,12 @@ impl _TestToml {
                         entry.filename = canonicalize_filepath_from_origin(&entry.filename, &path)?;
                     }
                 }
+                if let Some(account_dirs) = &mut validator.account_dir {
+                    for entry in account_dirs {
+                        entry.directory =
+                            canonicalize_filepath_from_origin(&entry.directory, &path)?;
+                    }
+                }
             }
         }
         Ok(current_toml)
@@ -1180,7 +1200,7 @@ pub struct _Validator {
     // Load all the accounts from the JSON files found in the specified DIRECTORY
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_dir: Option<Vec<AccountDirEntry>>,
-    // IP address to bind the validator ports. [default: 0.0.0.0]
+    // IP address to bind the validator ports. [default: 127.0.0.1]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bind_address: Option<String>,
     // Copy an account from the cluster referenced by the url argument.
@@ -1325,7 +1345,7 @@ pub fn get_default_ledger_path() -> PathBuf {
     Path::new(".anchor").join("test-ledger")
 }
 
-const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
+const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
 
 impl Merge for _Validator {
     fn merge(&mut self, other: Self) {
@@ -1431,12 +1451,12 @@ impl Program {
 
     pub fn keypair(&self) -> Result<Keypair> {
         let file = self.keypair_file()?;
-        get_keypair(file.path().to_str().unwrap())
+        get_keypair(file.path())
     }
 
     // Lazily initializes the keypair file with a new key if it doesn't exist.
     pub fn keypair_file(&self) -> Result<WithPath<File>> {
-        let deploy_dir_path = Path::new("target").join("deploy");
+        let deploy_dir_path = target_dir()?.join("deploy");
         fs::create_dir_all(&deploy_dir_path)
             .with_context(|| format!("Error creating directory with path: {deploy_dir_path:?}"))?;
         let path = std::env::current_dir()
@@ -1456,15 +1476,15 @@ impl Program {
         Ok(WithPath::new(file, path))
     }
 
-    pub fn binary_path(&self, verifiable: bool) -> PathBuf {
-        let path = Path::new("target")
+    pub fn binary_path(&self, verifiable: bool) -> Result<PathBuf> {
+        let path = target_dir()?
             .join(if verifiable { "verifiable" } else { "deploy" })
             .join(&self.lib_name)
             .with_extension("so");
 
-        std::env::current_dir()
+        Ok(std::env::current_dir()
             .expect("Must have current dir")
-            .join(path)
+            .join(path))
     }
 }
 
@@ -1554,24 +1574,20 @@ pub struct RunbookExecution {
 #[macro_export]
 macro_rules! home_path {
     ($my_struct:ident, $path:literal) => {
-        #[derive(Clone, Debug)]
-        pub struct $my_struct(String);
+        #[derive(Clone, Debug, AbsolutePath)]
+        pub struct $my_struct(::std::path::PathBuf);
 
         impl Default for $my_struct {
             fn default() -> Self {
-                $my_struct(
-                    home_dir()
-                        .unwrap()
-                        .join($path.replace('/', std::path::MAIN_SEPARATOR_STR))
-                        .display()
-                        .to_string(),
-                )
+                $my_struct(home_dir().unwrap().join($path))
             }
         }
 
         impl $my_struct {
             fn stringify_with_tilde(&self) -> String {
                 self.0
+                    .display()
+                    .to_string()
                     .replacen(home_dir().unwrap().to_str().unwrap(), "~", 1)
             }
         }
@@ -1580,13 +1596,13 @@ macro_rules! home_path {
             type Err = anyhow::Error;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Ok(Self(s.to_owned()))
+                Ok(Self(::std::path::PathBuf::from(s)))
             }
         }
 
         impl fmt::Display for $my_struct {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}", self.0)
+                write!(f, "{}", self.0.display())
             }
         }
     };
@@ -1660,5 +1676,45 @@ mod tests {
         let string = BASE_CONFIG.to_owned() + "[features]\nskip-lint = false";
         let config = Config::from_str(&string).unwrap();
         assert!(!config.features.skip_lint);
+    }
+
+    #[test]
+    fn test_toml_resolves_account_dir_relative_to_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let suite_dir = dir.path().join("tests").join("suite");
+        let accounts_dir = suite_dir.join("accounts");
+        fs::create_dir_all(&accounts_dir).unwrap();
+
+        let account_file = accounts_dir.join("account.json");
+        fs::write(&account_file, "{}").unwrap();
+
+        let test_toml = suite_dir.join("Test.toml");
+        fs::write(
+            &test_toml,
+            r#"
+[scripts]
+test = "true"
+
+[[test.validator.account]]
+address = "3vMPj13emX9JmifYcWc77ekEzV1F37ga36E1YeSr6Mdj"
+filename = "accounts/account.json"
+
+[[test.validator.account_dir]]
+directory = "accounts"
+"#,
+        )
+        .unwrap();
+
+        let parsed = TestToml::from_path(test_toml).unwrap();
+        let validator = parsed.test.unwrap().validator.unwrap();
+
+        assert_eq!(
+            validator.account.unwrap()[0].filename,
+            account_file.canonicalize().unwrap().display().to_string()
+        );
+        assert_eq!(
+            validator.account_dir.unwrap()[0].directory,
+            accounts_dir.canonicalize().unwrap().display().to_string()
+        );
     }
 }

@@ -56,7 +56,11 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                 actual_param_count,
             );
 
-            // Generate type validation calls for each argument
+            // Generate type validation calls for each argument. These are
+            // purely compile-time checks using function-pointer coercion: when
+            // `#[instruction(...)]` declares the parameter type, the validator
+            // carries an `IsSameType<_>` bound that fires at compile time if
+            // the handler's argument type doesn't match.
             let type_validations: Vec<proc_macro2::TokenStream> = ix.args
                 .iter()
                 .enumerate()
@@ -67,15 +71,9 @@ pub fn generate(program: &Program) -> proc_macro2::TokenStream {
                         proc_macro2::Span::call_site(),
                     );
                     quote! {
-                        // Type validation for argument #idx
-                        if #accounts_struct_name::__ANCHOR_IX_PARAM_COUNT > #idx {
-                            #[allow(unreachable_code)]
-                            if false {
-                                // This code is never executed but is type-checked at compile time
-                                let __type_check_arg: #arg_ty = panic!();
-                                #accounts_struct_name::#method_name(&__type_check_arg);
-                            }
-                        }
+                        const _: fn() = || {
+                            let _: fn(&#arg_ty) = #accounts_struct_name::#method_name;
+                        };
                     }
                 })
                 .collect();

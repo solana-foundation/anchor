@@ -3,7 +3,7 @@
 //! # Example
 //! ```ignore
 //! #[derive(Accounts)]
-//! pub struct Example {
+//! pub struct Example<'info> {
 //!     pub my_acc: Option<Account<'info, MyData>>
 //! }
 //! ```

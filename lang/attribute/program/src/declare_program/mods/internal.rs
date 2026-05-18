@@ -1,5 +1,6 @@
 use {
     super::common::{
+        can_derive_clone_ty, can_derive_copy_ty, can_derive_debug_ty, can_derive_default_ty,
         convert_idl_type_to_syn_type, gen_discriminator, get_all_instruction_accounts,
         get_canonical_program_id,
     },
@@ -70,9 +71,39 @@ fn gen_internal_args_mod(idl: &Idl) -> proc_macro2::TokenStream {
             }
         };
 
+        // Generate conditional derives based on field types
+        let copy_attr = ix
+            .args
+            .iter()
+            .map(|field| &field.ty)
+            .all(|ty| can_derive_copy_ty(ty, &idl.types))
+            .then_some(quote!(#[derive(Copy)]));
+        let clone_attr = ix
+            .args
+            .iter()
+            .map(|field| &field.ty)
+            .all(|ty| can_derive_clone_ty(ty, &idl.types))
+            .then_some(quote!(#[derive(Clone)]));
+        let debug_attr = ix
+            .args
+            .iter()
+            .map(|field| &field.ty)
+            .all(|ty| can_derive_debug_ty(ty, &idl.types))
+            .then_some(quote!(#[derive(Debug)]));
+        let default_attr = ix
+            .args
+            .iter()
+            .map(|field| &field.ty)
+            .all(|ty| can_derive_default_ty(ty, &idl.types))
+            .then_some(quote!(#[derive(Default)]));
+
         quote! {
             /// Instruction argument
             #[derive(AnchorSerialize, AnchorDeserialize)]
+            #copy_attr
+            #clone_attr
+            #debug_attr
+            #default_attr
             #ix_struct
 
             #impl_discriminator
@@ -148,6 +179,10 @@ fn gen_internal_accounts_common(
                 }
                 IdlInstructionAccountItem::Composite(accs) => {
                     let name = format_ident!("{}", accs.name);
+                    #[allow(
+                        clippy::expect_used,
+                        reason = "accounts are guaranteed to exist by prior deduplication pass"
+                    )]
                     let ty_name = all_ix_accs
                         .iter()
                         .find(|a| a.accounts == accs.accounts)
@@ -168,7 +203,15 @@ fn gen_internal_accounts_common(
             }
         })
         .map(|accs_struct| {
+            #[allow(
+                clippy::expect_used,
+                reason = "quote-generated tokens always produce valid syn::ItemStruct"
+            )]
             let accs_struct = syn::parse2(accs_struct).expect("Failed to parse as syn::ItemStruct");
+            #[allow(
+                clippy::expect_used,
+                reason = "quote-generated struct is always valid accounts syntax"
+            )]
             let accs_struct =
                 accounts::parse(&accs_struct).expect("Failed to parse accounts struct");
             gen_accounts(&accs_struct, get_canonical_program_id())

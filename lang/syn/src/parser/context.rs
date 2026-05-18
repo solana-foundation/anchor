@@ -25,23 +25,23 @@ impl CrateContext {
     }
 
     pub fn consts(&self) -> impl Iterator<Item = &syn::ItemConst> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.consts())
+        self.modules.values().flat_map(|ctx| ctx.consts())
     }
 
     pub fn impl_consts(&self) -> impl Iterator<Item = (&Ident, &syn::ImplItemConst)> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.impl_consts())
+        self.modules.values().flat_map(|ctx| ctx.impl_consts())
     }
 
     pub fn structs(&self) -> impl Iterator<Item = &syn::ItemStruct> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.structs())
+        self.modules.values().flat_map(|ctx| ctx.structs())
     }
 
     pub fn enums(&self) -> impl Iterator<Item = &syn::ItemEnum> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.enums())
+        self.modules.values().flat_map(|ctx| ctx.enums())
     }
 
     pub fn type_aliases(&self) -> impl Iterator<Item = &syn::ItemType> {
-        self.modules.iter().flat_map(|(_, ctx)| ctx.type_aliases())
+        self.modules.values().flat_map(|ctx| ctx.type_aliases())
     }
 
     pub fn modules(&self) -> impl Iterator<Item = ModuleContext<'_>> {
@@ -49,9 +49,12 @@ impl CrateContext {
     }
 
     pub fn root_module(&self) -> ModuleContext<'_> {
-        ModuleContext {
-            detail: self.modules.get("crate").unwrap(),
-        }
+        #[allow(
+            clippy::unwrap_used,
+            reason = "\"crate\" module is always inserted during parsing"
+        )]
+        let detail = self.modules.get("crate").unwrap();
+        ModuleContext { detail }
     }
 
     // Perform Anchor safety checks on the parsed create
@@ -61,16 +64,33 @@ impl CrateContext {
             for unsafe_field in ctx.unsafe_struct_fields() {
                 // Check if unsafe field type has been documented with a /// SAFETY: doc string.
                 let is_documented = unsafe_field.attrs.iter().any(|attr| {
-                    attr.tokens.clone().into_iter().any(|token| match token {
-                        // Check for doc comments containing CHECK
-                        proc_macro2::TokenTree::Literal(s) => s.to_string().contains("CHECK"),
-                        _ => false,
-                    })
+                    if let syn::Meta::NameValue(syn::MetaNameValue {
+                        value:
+                            syn::Expr::Lit(syn::ExprLit {
+                                lit: syn::Lit::Str(s),
+                                ..
+                            }),
+                        ..
+                    }) = &attr.meta
+                    {
+                        s.value().contains("CHECK")
+                    } else {
+                        false
+                    }
                 });
                 if !is_documented {
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "unsafe fields always have idents (named fields only)"
+                    )]
                     let ident = unsafe_field.ident.as_ref().unwrap();
                     let span = ident.span();
                     // Error if undocumented.
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "file paths are always valid during compilation"
+                    )]
+                    let canonical = ctx.file.canonicalize().unwrap();
                     return Err(anyhow!(
                         r#"
         {}:{}:{}
@@ -80,7 +100,7 @@ impl CrateContext {
         by using the `skip-lint` option.
         See https://www.anchor-lang.com/docs/basics/program-structure#account-validation for more information.
                     "#,
-                        ctx.file.canonicalize().unwrap().display(),
+                        canonical.display(),
                         span.start().line,
                         span.start().column,
                         ident
@@ -164,7 +184,15 @@ impl ParsedModule {
             None => {
                 // The module is referencing some other file, so we need to load that
                 // to parse the items it has.
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "file paths always have parent directories during compilation"
+                )]
                 let parent_dir = parent_file.parent().unwrap();
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "file stems are always valid UTF-8 Rust identifiers"
+                )]
                 let parent_filename = parent_file.file_stem().unwrap().to_str().unwrap();
                 let parent_mod_dir = parent_dir.join(parent_filename);
 
@@ -230,14 +258,16 @@ impl ParsedModule {
     fn unsafe_struct_fields(&self) -> impl Iterator<Item = &syn::Field> {
         let accounts_filter = |item_struct: &&syn::ItemStruct| {
             item_struct.attrs.iter().any(|attr| {
-                match attr.parse_meta() {
-                    Ok(syn::Meta::List(syn::MetaList{path, nested, ..})) => {
-                        path.is_ident("derive") && nested.iter().any(|nested| {
-                            matches!(nested, syn::NestedMeta::Meta(syn::Meta::Path(path)) if path.is_ident("Accounts"))
+                attr.path().is_ident("derive")
+                    && attr
+                        .parse_args_with(
+                            syn::punctuated::Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
+                        )
+                        .ok()
+                        .is_some_and(|args| {
+                            args.iter()
+                                .any(|m| matches!(m, syn::Meta::Path(p) if p.is_ident("Accounts")))
                         })
-                    }
-                    _ => false
-                }
             })
         };
 

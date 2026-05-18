@@ -4,7 +4,6 @@ use {
         AccountField, AccountsStruct, Ty,
     },
     quote::{quote, quote_spanned},
-    syn::Expr,
 };
 
 // Generates the `Accounts` trait implementation.
@@ -104,13 +103,18 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
             let strct_inner = &ix_api;
             let field_names: Vec<proc_macro2::TokenStream> = ix_api
                 .iter()
-                .map(|expr: &Expr| match expr {
-                    Expr::Type(expr_type) => {
-                        let field = &expr_type.expr;
+                .map(|expr: &syn::FnArg| match expr {
+                    syn::FnArg::Typed(arg) => {
+                        let field = &arg.pat;
                         quote! {
                             #field
                         }
                     }
+                    #[allow(
+                        clippy::panic,
+                        reason = "invariant: ix_api args are typed fn args, validated by the \
+                                  parser before codegen"
+                    )]
                     _ => panic!("Invalid instruction declaration"),
                 })
                 .collect();
@@ -161,8 +165,8 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                 .iter()
                 .enumerate()
                 .map(|(idx, expr)| {
-                    if let Expr::Type(expr_type) = expr {
-                        let ty = &expr_type.ty;
+                    if let syn::FnArg::Typed(arg) = expr {
+                        let ty = &arg.ty;
                         let method_name = syn::Ident::new(
                             &format!("__anchor_validate_ix_arg_type_{}", idx),
                             proc_macro2::Span::call_site(),
@@ -176,7 +180,14 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
                             {}
                         }
                     } else {
-                        panic!("Invalid instruction declaration");
+                        #[allow(
+                            clippy::panic,
+                            reason = "invariant: ix_api args are typed fn args, validated by the \
+                                      parser before codegen"
+                        )]
+                        {
+                            panic!("Invalid instruction declaration");
+                        }
                     }
                 })
                 .collect();

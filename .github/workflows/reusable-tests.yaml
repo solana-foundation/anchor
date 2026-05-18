@@ -56,6 +56,7 @@ jobs:
       - run: cargo build
       - run: rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt && cargo +nightly fmt -- --check
       - run: cargo clippy --all-targets -- -D warnings
+      - run: ./.github/scripts/check-solana-program-version.sh
       # FIXME: Enable `idl-build`
       - run: cargo test --workspace --exclude avm --features allow-missing-optionals,anchor-debug,derive,event-cpi,init-if-needed,lazy-account
       # using singlethreaded testing for avm so that tests that change files do not conflict with each other
@@ -456,7 +457,9 @@ jobs:
             path: tests/zero-copy
           - cmd: cd tests/chat && anchor test --skip-lint
             path: tests/chat
-          - cmd: cd tests/ido-pool && anchor test --skip-lint
+          # Use `solana-test-validator` instead of `surfpool` to fix flakiness
+          # and increase code coverage
+          - cmd: cd tests/ido-pool && anchor test --skip-lint --validator legacy
             path: tests/ido-pool
           # - cmd: cd tests/cfo && anchor run test-with-build && cd deps/stake && git checkout Cargo.lock && cd ../swap && git checkout Cargo.lock
           #   path: tests/cfo

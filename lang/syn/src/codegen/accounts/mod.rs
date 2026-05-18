@@ -3,7 +3,7 @@ use {
     quote::quote,
     std::iter,
     syn::{
-        punctuated::Punctuated, ConstParam, GenericParam, LifetimeDef, PredicateLifetime, Token,
+        punctuated::Punctuated, ConstParam, GenericParam, LifetimeParam, PredicateLifetime, Token,
         TypeParam, WhereClause, WherePredicate,
     },
 };
@@ -28,8 +28,18 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     let impl_shorten_invariant_lifetime = __shorten_invariant_lifetime::generate(accs);
     let bumps_struct = bumps::generate(accs);
 
-    let __client_accounts_mod = __client_accounts::generate(accs, quote!(crate::ID));
-    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs, quote!(crate::ID));
+    let program_id = quote! {
+        // In a doctest the ID will be in the current scope, not the crate root
+        {
+            #[cfg(not(doctest))]
+            { crate::ID }
+            #[cfg(doctest)]
+            { ID }
+        }
+    };
+
+    let __client_accounts_mod = __client_accounts::generate(accs, program_id.clone());
+    let __cpi_client_accounts_mod = __cpi_client_accounts::generate(accs, program_id);
 
     let ret = quote! {
         #impl_try_accounts
@@ -58,6 +68,10 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
 }
 
 fn generics(accs: &AccountsStruct) -> ParsedGenerics {
+    #[allow(
+        clippy::expect_used,
+        reason = "'info is a hardcoded valid lifetime string"
+    )]
     let trait_lifetime = accs
         .generics
         .lifetimes()
@@ -104,8 +118,8 @@ fn generics(accs: &AccountsStruct) -> ParsedGenerics {
                     eq_token: None,
                     default: None,
                 }),
-                GenericParam::Lifetime(LifetimeDef { lifetime, .. }) => {
-                    GenericParam::Lifetime(LifetimeDef {
+                GenericParam::Lifetime(LifetimeParam { lifetime, .. }) => {
+                    GenericParam::Lifetime(LifetimeParam {
                         attrs: vec![],
                         lifetime,
                         colon_token: None,
