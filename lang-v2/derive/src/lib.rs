@@ -1158,10 +1158,11 @@ fn impl_accounts(input: &DeriveInput) -> TokenStream2 {
 
 #[proc_macro_attribute]
 pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let is_borsh = match parse_account_mode(attr) {
-        Ok(b) => b,
+    let mode = match parse_account_mode(attr) {
+        Ok(m) => m,
         Err(err) => return err.to_compile_error().into(),
     };
+    let is_borsh = mode.is_borsh;
     let input = parse_macro_input!(item as DeriveInput);
     let name = &input.ident;
     let name_str = name.to_string();
@@ -1350,16 +1351,26 @@ pub fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
         )
     };
 
+    let owner_expr: TokenStream2 = match mode.foreign_owner {
+        Some(expr) => quote! { #expr },
+        None => quote! { *program_id },
+    };
+    let owner_impl = quote! {
+        impl anchor_lang_v2::Owner for #name {
+            fn owner(program_id: &anchor_lang_v2::Address) -> anchor_lang_v2::Address {
+                #owner_expr
+            }
+        }
+    };
+
     TokenStream::from(quote! {
         #(#attrs)*
         #struct_attrs
         #vis struct #name #fields
 
         #pod_impls
+        #owner_impl
 
-        impl anchor_lang_v2::Owner for #name {
-            fn owner(program_id: &anchor_lang_v2::Address) -> anchor_lang_v2::Address { *program_id }
-        }
         impl anchor_lang_v2::Discriminator for #name {
             const DISCRIMINATOR: &'static [u8] = &[#(#disc_literals),*];
         }
@@ -2780,27 +2791,84 @@ enum EventMode {
 /// Under the hood the borsh mode encodes/decodes via wincode using
 /// `BORSH_CONFIG`, so the on-chain bytes still match what a borsh library
 /// would produce, while paying for wincode's faster encode/decode path.
-fn parse_account_mode(attr: TokenStream) -> Result<bool, syn::Error> {
-    if attr.is_empty() {
-        return Ok(false);
-    }
-    let attr2: proc_macro2::TokenStream = attr.into();
-    let ident: syn::Ident = syn::parse2(attr2.clone()).map_err(|_| {
-        syn::Error::new_spanned(
-            &attr2,
-            "expected `#[account]` or `#[account(borsh)]` — no other arguments are supported",
-        )
-    })?;
-    if ident == "borsh" {
-        Ok(true)
-    } else {
-        Err(syn::Error::new_spanned(
-            ident,
-            "unknown `#[account]` mode — only `borsh` is accepted",
-        ))
-    }
+
+#[derive(Debug)]
+struct AccountMode {
+    is_borsh: bool,
+    foreign_owner: Option<syn::Expr>,
 }
 
+fn parse_account_mode(attr: TokenStream) -> Result<AccountMode, syn::Error> {
+    if attr.is_empty() {
+        return Ok(AccountMode {
+            is_borsh: false,
+            foreign_owner: None,
+        });
+    }
+    let attr2: proc_macro2::TokenStream = attr.into();
+
+    // Parse a comma-separated list of meta items: `borsh` and optionally `owner = <expr>`
+    struct AccountAttrs {
+        is_borsh: bool,
+        foreign_owner: Option<syn::Expr>,
+    }
+
+    impl syn::parse::Parse for AccountAttrs {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            let mut is_borsh = false;
+            let mut foreign_owner = None;
+
+            while !input.is_empty() {
+                let ident: syn::Ident = input.parse()?;
+                println!("{:?}", ident);
+                match ident.to_string().as_str() {
+                    "borsh" => {
+                        is_borsh = true;
+                    }
+                    "owner" => {
+                        input.parse::<syn::Token![=]>()?;
+                        let expr: syn::Expr = input.parse()?;
+                        foreign_owner = Some(expr);
+                    }
+                    other => {
+                        return Err(syn::Error::new(
+                            ident.span(),
+                            format!("unknown `#[account]` argument `{other}` — expected `borsh` or `owner = <expr>`"),
+                        ));
+                    }
+                }
+                if !input.is_empty() {
+                    input.parse::<syn::Token![,]>()?;
+                }
+            }
+
+            Ok(AccountAttrs {
+                is_borsh,
+                foreign_owner,
+            })
+        }
+    }
+
+    let parsed = syn::parse2::<AccountAttrs>(attr2.clone()).map_err(|_| {
+        syn::Error::new_spanned(
+            &attr2,
+            "expected `#[account]`, `#[account(borsh)]`, or `#[account(borsh, owner = some::ID)]`",
+        )
+    })?;
+
+    // `owner = X` only makes sense with borsh — zero-copy foreign accounts aren't supported
+    if parsed.foreign_owner.is_some() && !parsed.is_borsh {
+        return Err(syn::Error::new_spanned(
+            &attr2,
+            "`owner = <expr>` requires `borsh` — use `#[account(borsh, owner = some::ID)]`",
+        ));
+    }
+
+    Ok(AccountMode {
+        is_borsh: parsed.is_borsh,
+        foreign_owner: parsed.foreign_owner,
+    })
+}
 fn parse_event_mode(attr: TokenStream) -> Result<EventMode, syn::Error> {
     if attr.is_empty() {
         return Ok(EventMode::Wincode);
