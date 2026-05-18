@@ -18,6 +18,18 @@ impl<T> BpfWriter<T> {
     }
 }
 
+impl BpfWriter<&mut [u8]> {
+    #[inline]
+    pub fn shrunk_to(&self) -> Option<usize> {
+        let pos = self.pos as usize;
+        if pos < self.inner.len() {
+            Some(pos)
+        } else {
+            None
+        }
+    }
+}
+
 impl Write for BpfWriter<&mut [u8]> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let remaining_inner = match self.inner.get_mut(self.pos as usize..) {
