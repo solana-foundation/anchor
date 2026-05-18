@@ -14,10 +14,14 @@ pub fn generate(accs: &AccountsStruct) -> proc_macro2::TokenStream {
     } = generics(accs);
 
     let shorten_invariant_lifetime = if accs.generics.lt_token.is_some() {
+        let non_lifetime_generics = struct_generics
+            .iter()
+            .skip_while(|g| matches!(g, syn::GenericParam::Lifetime(_)))
+            .fold(quote! {}, |acc, g| quote! { #acc, #g });
         quote! {
             pub unsafe fn __shorten_invariant_lifetime<'__a, '__info: '__a>(
-                value: &'__a mut #name<'__info>,
-            ) -> &'__a mut #name<'__a> {
+                value: &'__a mut #name<'__info #non_lifetime_generics>,
+            ) -> &'__a mut #name<'__a #non_lifetime_generics> {
                 unsafe { ::core::mem::transmute(value) }
             }
         }
