@@ -18,6 +18,7 @@ impl UncheckedAccount {
 
 impl AnchorAccount for UncheckedAccount {
     type Data = AccountView;
+    type RequiredConstraints = ();
     #[inline(always)]
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
         Ok(Self { view })

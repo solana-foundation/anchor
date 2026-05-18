@@ -57,6 +57,7 @@ pub struct Sysvar<T: PinocchioSysvar + SysvarId + Copy> {
 
 impl<T: PinocchioSysvar + SysvarId + Copy> AnchorAccount for Sysvar<T> {
     type Data = T;
+    type RequiredConstraints = ();
 
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
         // Same chunked-compare rationale as `Program<T>::load`. See lib.rs.

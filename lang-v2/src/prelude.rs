@@ -37,6 +37,8 @@ pub use crate::{
     require_keys_eq,
     require_keys_neq,
     require_neq,
+    // Helper macro for declaring `RequiredConstraints` lists.
+    required_constraints,
     run_handler,
     // Hash
     sha256,
@@ -44,6 +46,12 @@ pub use crate::{
     system_program,
     // Constraints
     AccountConstraint,
+    // Required-constraints type-system machinery
+    ConstraintList,
+    Find,
+    Here,
+    IsSuperset,
+    There,
     // Loader & dispatch
     AccountLoader,
     // Client

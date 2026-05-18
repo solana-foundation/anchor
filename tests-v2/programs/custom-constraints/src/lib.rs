@@ -70,6 +70,35 @@ pub mod custom_constraints {
     pub fn handle_boxed_close(_ctx: &mut Context<HandleBoxedClose>) -> Result<()> {
         Ok(())
     }
+
+    /// `TestAccount` declares `min_value` as required. This
+    /// handler attaches it and compiles. The compile-fail counterpart
+    /// lives as a `compile_fail` doctest on
+    /// `anchor_lang_v2::IsSuperset`.
+    pub fn handle_required(_ctx: &mut Context<HandleRequired>) -> Result<()> {
+        Ok(())
+    }
+
+    /// `TestMultiAccount` declares two requirements; both
+    /// attached, declared in the opposite source order to prove
+    /// the superset check is order-independent.
+    pub fn handle_required_multi(_ctx: &mut Context<HandleRequiredMulti>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Required-constraint forwarding through `Box<TestAccount>`.
+    pub fn handle_required_boxed(_ctx: &mut Context<HandleRequiredBoxed>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Spelling the required constraint as `update(...)` still satisfies
+    /// the requirement — required-check is by marker-type-presence,
+    /// not lifecycle phase.
+    pub fn handle_required_via_update(
+        _ctx: &mut Context<HandleRequiredViaUpdate>,
+    ) -> Result<()> {
+        Ok(())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -251,4 +280,210 @@ pub struct HandleBoxedClose {
     pub counter: Box<BorshAccount<Counter>>,
     #[account(mut)]
     pub receiver: SystemAccount,
+}
+
+// ---------------------------------------------------------------------------
+// `TestAccount` / `TestMultiAccount` — custom wrappers that declare required
+// constraints.
+//
+// Thin newtypes around `BorshAccount<Counter>` whose `AnchorAccount` impls
+// set `RequiredConstraints`. Every `#[account(...)]` usage must include the
+// listed `counter_ns::*` constraints (`min_value` for `TestAccount`,
+// `min_value` + `bump_on_exit` for `TestMultiAccount`) or the derive emits a
+// compile error.
+//
+// Non-generic over `Counter` to sidestep restating `BorshAccount`'s wincode
+// trait bounds at every impl site — these are test wrappers, not a public
+// generic API.
+// ---------------------------------------------------------------------------
+
+pub struct TestAccount(BorshAccount<Counter>);
+
+impl core::ops::Deref for TestAccount {
+    type Target = Counter;
+    fn deref(&self) -> &Counter {
+        &*self.0
+    }
+}
+
+impl core::ops::DerefMut for TestAccount {
+    fn deref_mut(&mut self) -> &mut Counter {
+        &mut *self.0
+    }
+}
+
+impl AnchorAccount for TestAccount {
+    type Data = Counter;
+    type RequiredConstraints = required_constraints![counter_ns::MinValueConstraint];
+
+    fn load(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError> {
+        BorshAccount::<Counter>::load(view, program_id).map(Self)
+    }
+
+    unsafe fn load_mut(
+        view: AccountView,
+        program_id: &Address,
+    ) -> core::result::Result<Self, ProgramError> {
+        BorshAccount::<Counter>::load_mut(view, program_id).map(Self)
+    }
+
+    fn account(&self) -> &AccountView {
+        self.0.account()
+    }
+
+    fn exit(&mut self) -> ProgramResult {
+        self.0.exit()
+    }
+
+    fn close(&mut self, destination: AccountView) -> ProgramResult {
+        self.0.close(destination)
+    }
+}
+
+// `AccountInitialize` forward so `init` and `init_if_needed` work on
+// `TestAccount`. Mirrors `Box<T>`'s pattern in lang-v2.
+impl anchor_lang_v2::accounts::AccountInitialize for TestAccount {
+    type Params<'a> =
+        <BorshAccount<Counter> as anchor_lang_v2::accounts::AccountInitialize>::Params<'a>;
+
+    fn create_and_initialize<'ix>(
+        payer: &AccountView,
+        target: &AccountView,
+        space: usize,
+        program_id: &Address,
+        params: &Self::Params<'ix>,
+        seeds: Option<&[&[u8]]>,
+    ) -> core::result::Result<Self, ProgramError> {
+        BorshAccount::<Counter>::create_and_initialize(
+            payer, target, space, program_id, params, seeds,
+        )
+        .map(Self)
+    }
+}
+
+// Per-constraint forwarders. The orphan rule disallows a blanket
+// `impl<C> AccountConstraint<TestAccount> for C where C:
+// AccountConstraint<BorshAccount<Counter>>` from a downstream crate
+// (`C` is uncovered before the first local type), so we enumerate
+// explicitly. Custom-account authors writing third-party constraints
+// hit the same constraint and would write the impls similarly.
+impl AccountConstraint<TestAccount> for counter_ns::MinValueConstraint {
+    type Value = u64;
+    fn check(account: &TestAccount, min: &u64) -> core::result::Result<(), ProgramError> {
+        <Self as AccountConstraint<BorshAccount<Counter>>>::check(&account.0, min)
+    }
+    fn update(account: &mut TestAccount, min: &u64) -> core::result::Result<(), ProgramError> {
+        <Self as AccountConstraint<BorshAccount<Counter>>>::update(&mut account.0, min)
+    }
+}
+
+// A second wrapper that requires TWO constraints, used to test multi-
+// element required lists and order-independence of the superset check.
+pub struct TestMultiAccount(BorshAccount<Counter>);
+
+impl core::ops::Deref for TestMultiAccount {
+    type Target = Counter;
+    fn deref(&self) -> &Counter {
+        &*self.0
+    }
+}
+
+impl core::ops::DerefMut for TestMultiAccount {
+    fn deref_mut(&mut self) -> &mut Counter {
+        &mut *self.0
+    }
+}
+
+impl AnchorAccount for TestMultiAccount {
+    type Data = Counter;
+    type RequiredConstraints = required_constraints![
+        counter_ns::MinValueConstraint,
+        counter_ns::BumpOnExitConstraint,
+    ];
+
+    fn load(view: AccountView, program_id: &Address) -> core::result::Result<Self, ProgramError> {
+        BorshAccount::<Counter>::load(view, program_id).map(Self)
+    }
+
+    unsafe fn load_mut(
+        view: AccountView,
+        program_id: &Address,
+    ) -> core::result::Result<Self, ProgramError> {
+        BorshAccount::<Counter>::load_mut(view, program_id).map(Self)
+    }
+
+    fn account(&self) -> &AccountView {
+        self.0.account()
+    }
+
+    fn exit(&mut self) -> ProgramResult {
+        self.0.exit()
+    }
+}
+
+impl AccountConstraint<TestMultiAccount> for counter_ns::MinValueConstraint {
+    type Value = u64;
+    fn check(account: &TestMultiAccount, min: &u64) -> core::result::Result<(), ProgramError> {
+        <Self as AccountConstraint<BorshAccount<Counter>>>::check(&account.0, min)
+    }
+}
+
+impl AccountConstraint<TestMultiAccount> for counter_ns::BumpOnExitConstraint {
+    type Value = u64;
+    fn exit(account: &mut TestMultiAccount, bump: &u64) -> core::result::Result<(), ProgramError> {
+        <Self as AccountConstraint<BorshAccount<Counter>>>::exit(&mut account.0, bump)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Accounts structs that exercise required-constraint enforcement.
+// ---------------------------------------------------------------------------
+
+#[derive(Accounts)]
+pub struct HandleRequired {
+    #[account(
+        seeds = [b"counter"],
+        bump,
+        counter_ns::min_value = 0u64,
+    )]
+    pub counter: TestAccount,
+}
+
+#[derive(Accounts)]
+pub struct HandleRequiredMulti {
+    // Required = [MinValueConstraint, BumpOnExitConstraint]
+    // Attached in reverse source order — superset check ignores order.
+    #[account(
+        mut,
+        seeds = [b"counter"],
+        bump,
+        counter_ns::bump_on_exit = 0u64,
+        counter_ns::min_value = 0u64,
+    )]
+    pub counter: TestMultiAccount,
+}
+
+#[derive(Accounts)]
+pub struct HandleRequiredBoxed {
+    // RequiredConstraints forwards through Box<T> via the lang-v2 impl.
+    #[account(
+        seeds = [b"counter"],
+        bump,
+        counter_ns::min_value = 0u64,
+    )]
+    pub counter: Box<TestAccount>,
+}
+
+#[derive(Accounts)]
+pub struct HandleRequiredViaUpdate {
+    // Required marker is `MinValueConstraint`; spelled inside `update(...)`.
+    // The required-check is by marker-type presence — the wrapper choice
+    // doesn't matter for fulfillment.
+    #[account(
+        mut,
+        seeds = [b"counter"],
+        bump,
+        update(counter_ns::min_value = 0u64),
+    )]
+    pub counter: TestAccount,
 }

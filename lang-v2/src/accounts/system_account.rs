@@ -18,6 +18,7 @@ impl SystemAccount {
 
 impl AnchorAccount for SystemAccount {
     type Data = AccountView;
+    type RequiredConstraints = ();
     #[inline(always)]
     fn load(view: AccountView, _program_id: &Address) -> Result<Self, ProgramError> {
         if !view.owned_by(&System::id()) {
